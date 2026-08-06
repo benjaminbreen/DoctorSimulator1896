@@ -15,10 +15,11 @@ The pipeline has two deliberately separate layers:
 
 The resulting preset stores the source record at `preset.patient`. This keeps a
 generated model, its case data, and its seed together without adding narrative
-fields to the 100-value render schema.
+fields to the tunable render schema.
 
-Patient and appearance seeds are deliberately distinct. A new patient seed
-creates a new identity and case. An appearance seed can be advanced while
+Patient and appearance seeds are deliberately distinct. **New random patient**
+draws a slate of fresh seeds and chooses a face structurally unlike the current
+one; the chosen seed still reproduces that identity exactly. An appearance seed can be advanced while
 keeping that record fixed, producing another visual interpretation of the same
 patient. Appearance variation waits for **Regenerate model**; **New random
 patient** regenerates the GLBs immediately so the displayed anatomy and fitted

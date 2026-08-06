@@ -15,6 +15,16 @@ import bpy
 from mathutils import Vector
 
 
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+AUTHORED_HAIR_ROOT = os.path.join(
+    PROJECT_ROOT,
+    "character-lab",
+    "assets",
+    "makehuman",
+    "rehmanpolanski_hair_bun_brown",
+)
+
+
 def dynamic_import(package_suffix, symbol):
     for module_name in list(sys.modules):
         if module_name.endswith(package_suffix):
@@ -75,6 +85,26 @@ def add_asset(HumanService, AssetService, base, directory, filename, asset_type,
     return None
 
 
+def add_authored_hair(HumanService, base):
+    path = os.path.join(AUTHORED_HAIR_ROOT, "rehmanpolanski_hair_bun_brown.mhclo")
+    if not os.path.exists(path):
+        raise RuntimeError(f"Missing project hair asset: {path}")
+    result = HumanService.add_mhclo_asset(
+        path,
+        base,
+        asset_type="Clothes",
+        material_type="GAMEENGINE",
+    )
+    if result is not None and hasattr(result, "name"):
+        result.name = "Authored_Hair_Bun"
+        return result
+    candidates = [obj for obj in bpy.context.scene.objects if obj.get("asset_type") == "Clothes"]
+    if candidates:
+        candidates[-1].name = "Authored_Hair_Bun"
+        return candidates[-1]
+    raise RuntimeError("MPFB did not create the authored hair object")
+
+
 def load_signed_target(TargetService, targets_root, base, parameter_id, value, positive, negative=None):
     if abs(value) < 0.0001:
         return
@@ -93,14 +123,27 @@ def add_face_targets(TargetService, LocationService, base, values):
         "headWidth": ("head/head-scale-horiz-incr.target.gz", "head/head-scale-horiz-decr.target.gz"),
         "faceHeight": ("head/head-scale-vert-incr.target.gz", "head/head-scale-vert-decr.target.gz"),
         "headDepth": ("head/head-scale-depth-incr.target.gz", "head/head-scale-depth-decr.target.gz"),
+        "headAngle": ("head/head-angle-out.target.gz", "head/head-angle-in.target.gz"),
+        "headBackDepth": ("head/head-back-scale-depth-incr.target.gz", "head/head-back-scale-depth-decr.target.gz"),
         "noseWidth": ("nose/nose-scale-horiz-incr.target.gz", "nose/nose-scale-horiz-decr.target.gz"),
         "noseLength": ("nose/nose-scale-vert-incr.target.gz", "nose/nose-scale-vert-decr.target.gz"),
         "noseVolume": ("nose/nose-volume-incr.target.gz", "nose/nose-volume-decr.target.gz"),
+        "noseDepth": ("nose/nose-scale-depth-incr.target.gz", "nose/nose-scale-depth-decr.target.gz"),
+        "noseBridge": ("nose/nose-greek-incr.target.gz", "nose/nose-greek-decr.target.gz"),
+        "noseCurve": ("nose/nose-curve-convex.target.gz", "nose/nose-curve-concave.target.gz"),
+        "noseTipAngle": ("nose/nose-point-up.target.gz", "nose/nose-point-down.target.gz"),
+        "nostrilWidth": ("nose/nose-nostrils-width-incr.target.gz", "nose/nose-nostrils-width-decr.target.gz"),
         "jawWidth": ("chin/chin-width-incr.target.gz", "chin/chin-width-decr.target.gz"),
         "chinHeight": ("chin/chin-height-incr.target.gz", "chin/chin-height-decr.target.gz"),
         "chinProminence": ("chin/chin-prominent-incr.target.gz", "chin/chin-prominent-decr.target.gz"),
+        "chinPrognathism": ("chin/chin-prognathism-incr.target.gz", "chin/chin-prognathism-decr.target.gz"),
         "browHeight": ("eyebrows/eyebrows-trans-up.target.gz", "eyebrows/eyebrows-trans-down.target.gz"),
+        "browAngle": ("eyebrows/eyebrows-angle-up.target.gz", "eyebrows/eyebrows-angle-down.target.gz"),
         "mouthWidth": ("mouth/mouth-scale-horiz-incr.target.gz", "mouth/mouth-scale-horiz-decr.target.gz"),
+        "mouthVerticalPosition": ("mouth/mouth-trans-up.target.gz", "mouth/mouth-trans-down.target.gz"),
+        "mouthDepth": ("mouth/mouth-scale-depth-incr.target.gz", "mouth/mouth-scale-depth-decr.target.gz"),
+        "cupidBow": ("mouth/mouth-cupidsbow-incr.target.gz", "mouth/mouth-cupidsbow-decr.target.gz"),
+        "philtrumVolume": ("mouth/mouth-philtrum-volume-incr.target.gz", "mouth/mouth-philtrum-volume-decr.target.gz"),
         "shoulderWidth": ("torso/measure-shoulder-dist-incr.target.gz", "torso/measure-shoulder-dist-decr.target.gz"),
         "torsoLength": ("torso/measure-napetowaist-dist-incr.target.gz", "torso/measure-napetowaist-dist-decr.target.gz"),
     }
@@ -111,10 +154,25 @@ def add_face_targets(TargetService, LocationService, base, values):
         "eyeSpacing": ("eyes/{side}-eye-trans-out.target.gz", "eyes/{side}-eye-trans-in.target.gz"),
         "cheekVolume": ("cheek/{side}-cheek-volume-incr.target.gz", "cheek/{side}-cheek-volume-decr.target.gz"),
         "cheekboneProminence": ("cheek/{side}-cheek-bones-incr.target.gz", "cheek/{side}-cheek-bones-decr.target.gz"),
+        "cheekHeight": ("cheek/{side}-cheek-trans-up.target.gz", "cheek/{side}-cheek-trans-down.target.gz"),
+        "cheekInnerVolume": ("cheek/{side}-cheek-inner-incr.target.gz", "cheek/{side}-cheek-inner-decr.target.gz"),
+        "eyeVerticalPosition": ("eyes/{side}-eye-trans-up.target.gz", "eyes/{side}-eye-trans-down.target.gz"),
+        "eyeHeightInner": ("eyes/{side}-eye-height1-incr.target.gz", "eyes/{side}-eye-height1-decr.target.gz"),
+        "eyeHeightCenter": ("eyes/{side}-eye-height2-incr.target.gz", "eyes/{side}-eye-height2-decr.target.gz"),
+        "eyeHeightOuter": ("eyes/{side}-eye-height3-incr.target.gz", "eyes/{side}-eye-height3-decr.target.gz"),
+        "epicanthus": ("eyes/{side}-eye-epicanthus-in.target.gz", "eyes/{side}-eye-epicanthus-out.target.gz"),
+        "eyeFold": ("eyes/{side}-eye-eyefold-convex.target.gz", "eyes/{side}-eye-eyefold-concave.target.gz"),
     }
     for parameter_id, templates in paired.items():
         for side in ("l", "r"):
             load_signed_target(TargetService, root, base, f"{parameter_id}_{side.upper()}", values.get(parameter_id, 0), *(template.format(side=side) for template in templates))
+    eye_depth = values.get("eyeDepth", 0)
+    for side in ("l", "r"):
+        for region in ("push1", "push2"):
+            load_signed_target(
+                TargetService, root, base, f"eyeDepth_{side.upper()}_{region}", eye_depth,
+                f"eyes/{side}-eye-{region}-out.target.gz", f"eyes/{side}-eye-{region}-in.target.gz"
+            )
     asymmetry = values.get("faceAsymmetry", 0)
     load_signed_target(TargetService, root, base, "faceAsymmetry", asymmetry, "asym/asym-cheek-1-r.target.gz")
     lip_value = values.get("lipFullness", 0)
@@ -406,11 +464,17 @@ def main():
     ExportService = dynamic_import("mpfb.services.exportservice", "ExportService")
     FaceService = dynamic_import("mpfb.services.faceservice", "FaceService")
     clear_scene()
+    race = {name: max(0.0, float(values.get(name, 0.0))) for name in ("asian", "caucasian", "african")}
+    race_total = sum(race.values())
+    if race_total <= 0.0001:
+        race = {"asian": 0.0, "caucasian": 1.0, "african": 0.0}
+    else:
+        race = {name: weight / race_total for name, weight in race.items()}
     macro = {
         "gender": values["gender"], "age": values["age"], "muscle": values["muscle"],
         "weight": values["weight"], "proportions": values["proportions"], "height": values["height"],
         "cupsize": 0.42, "firmness": 0.48,
-        "race": {"asian": values["asian"], "caucasian": values["caucasian"], "african": values["african"]},
+        "race": race,
     }
     base = HumanService.create_human(macro_detail_dict=macro)
     base.name = "Human_Body"
@@ -438,6 +502,7 @@ def main():
     add_asset(HumanService, AssetService, base, "eyebrows", "eyebrow001.mhclo", "Eyebrows", "Eyebrows")
     add_asset(HumanService, AssetService, base, "eyelashes", "eyelashes01.mhclo", "Eyelashes", "Eyelashes")
     add_asset(HumanService, AssetService, base, "teeth", "teeth_base.mhclo", "Teeth", "Teeth")
+    authored_hair = add_authored_hair(HumanService, base)
     garment = add_asset(HumanService, AssetService, base, "clothes", "female_elegantsuit01.mhclo", "Clothes", "Dress_Bodice")
     if garment:
         dress_override = material("Dress_1896_Base", values["dressColor"], values["fabricRoughness"])
@@ -461,7 +526,7 @@ def main():
         base, bake_masks=True, bake_subdiv=False, remove_helpers=True, also_proxy=False
     )
     bpy.context.scene["character_lab_preset"] = json.dumps(preset, separators=(",", ":"))
-    shared_objects = [rig, *[obj for obj in (garment, shoes) if obj]]
+    shared_objects = [rig, *[obj for obj in (authored_hair, garment, shoes) if obj]]
     for object_name in ("Eyes", "Eyebrows", "Eyelashes", "Teeth"):
         found = bpy.data.objects.get(object_name)
         if found:

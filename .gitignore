@@ -4,6 +4,13 @@ dist/
 character-lab/.generated/
 .DS_Store
 *.log
+__pycache__/
+*.py[cod]
 *.blend1
 *.sb-*
 .env*
+
+# Third-party authoring source downloaded from Daniel Bystedt's Gumroad page.
+# Keep the generated project groom, but do not redistribute the source package.
+Geometry nodes - hair cards from curves - blender 3.6.blend
+character-lab/authoring/hair/victorian-low-bun.blend

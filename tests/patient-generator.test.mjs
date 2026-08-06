@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
-  FACE_UNIT_NAMES, FACE_UNIT_PAIRS, generatePatient, generateRestingFaceSignature, patientToCharacterPreset,
+  FACE_UNIT_NAMES, FACE_UNIT_PAIRS, faceIdentityDistance, generatePatient,
+  generateRestingFaceSignature, patientToCharacterPreset,
 } from '../character-lab/src/patients/index.js';
 
 const schema = JSON.parse(await readFile(new URL('../character-lab/public/schema/character.schema.json', import.meta.url)));
@@ -137,4 +138,31 @@ test('generated skin rendering changes coherently with age', () => {
   assert.ok(mean(older, 'stylizedSurfaceRoughness') > mean(young, 'stylizedSurfaceRoughness') + 0.07);
   assert.ok(mean(older, 'stylizedLipTint') < mean(young, 'stylizedLipTint') - 0.07);
   assert.ok(mean(older, 'stylizedEyeContrast') < mean(young, 'stylizedEyeContrast') - 0.06);
+});
+
+test('generated identities span landmark structure beyond a shared face template', () => {
+  const fields = [
+    'headWidth', 'faceHeight', 'headAngle', 'eyeDepth', 'eyeHeightCenter',
+    'noseDepth', 'noseBridge', 'noseCurve', 'mouthVerticalPosition',
+    'chinPrognathism', 'cheekHeight',
+  ];
+  const ranges = Object.fromEntries(fields.map((field) => [field, { minimum: Infinity, maximum: -Infinity }]));
+  for (let seed = 1; seed <= 1200; seed += 1) {
+    const values = patientToCharacterPreset(generatePatient({ seed }), basePreset, definitions).values;
+    for (const field of fields) {
+      ranges[field].minimum = Math.min(ranges[field].minimum, values[field]);
+      ranges[field].maximum = Math.max(ranges[field].maximum, values[field]);
+    }
+  }
+  for (const [field, range] of Object.entries(ranges)) {
+    assert.ok(range.maximum - range.minimum > 0.62, `${field} spans only ${range.maximum - range.minimum}`);
+  }
+});
+
+test('face identity distance detects structural siblings', () => {
+  const first = patientToCharacterPreset(generatePatient({ seed: 111 }), basePreset, definitions);
+  const same = patientToCharacterPreset(generatePatient({ seed: 111 }), basePreset, definitions);
+  const distinct = patientToCharacterPreset(generatePatient({ seed: 222 }), basePreset, definitions);
+  assert.equal(faceIdentityDistance(first, same, definitions), 0);
+  assert.ok(faceIdentityDistance(first, distinct, definitions) > 0.17);
 });

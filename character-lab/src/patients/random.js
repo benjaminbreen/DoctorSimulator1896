@@ -25,6 +25,23 @@ export function nextSeed(seed) {
   return (Math.abs(next) % 9999) + 1;
 }
 
+/** A fresh UI roll, as opposed to the reproducible next step in a seed stream. */
+export function randomSeed(excluded = []) {
+  const blocked = new Set((Array.isArray(excluded) ? excluded : [excluded]).map(normalizeSeed));
+  for (let attempt = 0; attempt < 32; attempt += 1) {
+    let value;
+    if (globalThis.crypto?.getRandomValues) {
+      value = (globalThis.crypto.getRandomValues(new Uint32Array(1))[0] % 9999) + 1;
+    } else {
+      // Only used by older/non-browser runtimes. The patient remains reproducible
+      // after this one-time seed has been written into the preset.
+      value = ((Date.now() + Math.imul(attempt + 1, 2654435761)) >>> 0) % 9999 + 1;
+    }
+    if (!blocked.has(value)) return value;
+  }
+  return (Math.max(0, ...blocked) % 9999) + 1;
+}
+
 export function createRandom(seed, label = 'root') {
   let state = (normalizeSeed(seed) ^ hashLabel(label)) >>> 0;
   const float = () => {
@@ -64,4 +81,3 @@ export function createRandom(seed, label = 'root') {
     },
   };
 }
-

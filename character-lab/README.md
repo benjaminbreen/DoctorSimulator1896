@@ -24,16 +24,24 @@ The header keeps patient generation separate from asset baking:
 - **Appearance variation** advances the appearance seed and rerolls the current
   patient's body, face, hair, palette, clothing, and surface controls without
   replacing her identity, case record, or clinically derived performance.
-- **New random patient** advances the patient seed, creates a new identity,
-  household, clinical presentation, appearance, and performance profile, then
-  immediately rebuilds both Blender renderers so the visible person matches.
+- **New random patient** draws fresh patient seeds, selects the candidate whose
+  baked facial landmarks are most distinct from the person currently visible,
+  creates a new identity, household, clinical presentation, appearance, and
+  performance profile, then immediately rebuilds both Blender renderers.
 - **Regenerate model** sends manually tuned or appearance-variation controls to
   Blender when the user is ready.
 - Each generated renderer-A patient receives a coherent resting-face signature
   assembled from all 52 available MPFB units. **Surprise me** below the atomic
   debugger rerolls only that signature live; performances layer over it.
+- Baked facial identity spans 37 structural controls: broad cranial archetype
+  plus orbital depth and aperture, eyelid structure, brow angle, nose bridge
+  and profile, mouth placement and projection, cheek height, and lower-face
+  projection. Expression offsets are secondary and deliberately restrained.
+- African, Asian, and European target weights are maintained as a normalized
+  blend in the UI and normalized again by Blender before MPFB creates the body.
 
-- `public/presets/*.json` — the contract. One preset = one patient. 100 values.
+- `public/presets/*.json` — the contract. One preset = one patient; the schema
+  defines the complete tunable render vector.
 - `scripts/characters/generate_patient.py` — Blender build: MPFB body, face
   and body identity baked before fitted attachments, all installed ARKit-named
   face units loaded and interpolated onto fitted facial assets, game rig,

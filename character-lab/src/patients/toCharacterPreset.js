@@ -1,7 +1,8 @@
 import { createRandom } from './random.js';
 import { getOriginProfile } from './data/demographics.js';
 import {
-  DRESS_PALETTES, FACE_ARCHETYPES, FACE_VALUE_IDS, HAIR_STYLES, OUTFIT_RULES,
+  DRESS_PALETTES, FACE_ARCHETYPES, FACE_DETAIL_CENTERS, FACE_DETAIL_IDS, FACE_VALUE_IDS,
+  HAIR_STYLES, OUTFIT_RULES,
 } from './data/appearance.js';
 import { nearestHairShade } from '../hair/palette.js';
 import { generateRestingFaceSignature } from './faceSignature.js';
@@ -89,6 +90,27 @@ function descriptionFor(patient) {
   return `${patient.identity.age}-year-old ${patient.identity.origin.label} ${work} from ${patient.social.residence}, presenting with ${patient.clinical.presentingComplaint}.`;
 }
 
+const FACE_IDENTITY_IDS = Object.freeze([
+  'headShapeStrength', ...FACE_VALUE_IDS, ...FACE_DETAIL_IDS, 'browHeight', 'faceAsymmetry',
+]);
+
+/** Normalized RMS landmark distance. Zero is the same baked face; one would
+ * mean every structural control moved across its complete permitted range. */
+export function faceIdentityDistance(leftPreset, rightPreset, definitions) {
+  const left = leftPreset?.values ?? leftPreset ?? {};
+  const right = rightPreset?.values ?? rightPreset ?? {};
+  let squared = 0;
+  let compared = 0;
+  for (const id of FACE_IDENTITY_IDS) {
+    const definition = definitions.find((candidate) => candidate.id === id);
+    const span = Number(definition?.max) - Number(definition?.min);
+    if (!(span > 0) || !Number.isFinite(left[id]) || !Number.isFinite(right[id])) continue;
+    squared += ((left[id] - right[id]) / span) ** 2;
+    compared += 1;
+  }
+  return compared ? Math.sqrt(squared / compared) : 0;
+}
+
 /** Map a domain patient onto the existing Blender/Three.js preset contract. */
 export function patientToCharacterPreset(patient, basePreset, definitions, options = {}) {
   const preset = structuredClone(basePreset);
@@ -122,9 +144,14 @@ export function patientToCharacterPreset(patient, basePreset, definitions, optio
   values.skinRoughness = clamped(definitions, 'skinRoughness', 1.02 + surfaceAge * 0.32 + jitter(bodyRandom, 0.18));
 
   const face = faceRandom.weighted(FACE_ARCHETYPES);
+  const featureScale = faceRandom.between(0.85, 1.38);
   values.headShape = face.headShape;
-  values.headShapeStrength = clamped(definitions, 'headShapeStrength', 0.5 + jitter(faceRandom, 0.18));
-  for (const id of FACE_VALUE_IDS) values[id] = clamped(definitions, id, face[id] + jitter(faceRandom, 0.11));
+  values.headShapeStrength = clamped(definitions, 'headShapeStrength', 0.66 + jitter(faceRandom, 0.14));
+  for (const id of FACE_VALUE_IDS) values[id] = clamped(definitions, id, face[id] * featureScale + jitter(faceRandom, 0.26));
+  for (const id of FACE_DETAIL_IDS) {
+    const center = FACE_DETAIL_CENTERS[face.id]?.[id] ?? 0;
+    values[id] = clamped(definitions, id, center * featureScale * 1.25 + jitter(faceRandom, 0.38));
+  }
   values.browHeight = clamped(definitions, 'browHeight', -0.03 + jitter(faceRandom, 0.16));
   values.faceAsymmetry = clamped(definitions, 'faceAsymmetry', 0.055 + Math.abs(jitter(faceRandom, 0.08)));
 

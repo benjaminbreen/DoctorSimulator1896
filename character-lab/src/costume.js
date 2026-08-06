@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createHairSystem } from './hair/index.js';
+import { createAuthoredHairSystem } from './hair/authored.js';
 
 /* Procedural 1890s costume + hair, rebuilt live from preset values.
    Geometry is constructed in world space at the skeleton's rest pose, then
@@ -122,7 +123,9 @@ function tubeAlong(a, b, radiusFn, { radialSegments = 18, lengthSegments = 12, b
 
 export function createCostume(scene, bones, model = null, options = {}) {
   const stylized = options.renderStyle === 'stylized';
-  const hairSystem = createHairSystem(scene, bones, model);
+  // Prefer the MPFB-fitted authored bun included in the GLB. The procedural
+  // generator remains intact as a fallback for older or experimental models.
+  const hairSystem = createAuthoredHairSystem(model) || createHairSystem(scene, bones, model);
   const materials = {
     dress: new THREE.MeshStandardMaterial({ name: 'CostumeDress', color: '#171525', roughness: 0.82, flatShading: stylized }),
     trim: new THREE.MeshStandardMaterial({ name: 'CostumeTrim', color: '#4f4333', roughness: 0.72, flatShading: stylized }),

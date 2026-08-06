@@ -36,7 +36,9 @@ const roundWeight = (value) => Number(Math.min(0.72, Math.max(0, value)).toFixed
 export function generateRestingFaceSignature(seed, { dramatic = false } = {}) {
   const random = createRandom(seed, dramatic ? 'face-signature.surprise' : 'face-signature');
   const weights = Object.fromEntries(FACE_UNIT_NAMES.map((name) => [name, 0]));
-  const strength = dramatic ? 1.16 : 1;
+  // Generated patients receive a subtle habitual set. The debugger's
+  // Surprise me mode deliberately explores the full expressive range.
+  const strength = dramatic ? 1.16 : 0.62;
 
   const pair = (left, right, maximum) => {
     const base = random.between(maximum * 0.16, maximum) * strength;

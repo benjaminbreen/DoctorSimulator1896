@@ -5,7 +5,8 @@ import { findBones, createCostume } from './costume.js';
 import { createIdle } from './idle.js';
 import { createExpressions } from './expressions.js';
 import {
-  generatePatient, generateRestingFaceSignature, nextSeed, patientToCharacterPreset,
+  faceIdentityDistance, generatePatient, generateRestingFaceSignature, nextSeed,
+  patientToCharacterPreset, randomSeed,
 } from './patients/index.js';
 import { prepareSkinModel, styleProceduralCostume, updateSkinModel } from './stylized.js';
 import './style.css';
@@ -33,6 +34,7 @@ const COSTUME_GEOMETRY_IDS = new Set(['bodiceFit', 'waistHeight', 'skirtFullness
   'bustleAmount', 'sleeveVolume', 'sleeveLength', 'collarHeight', 'collarSpread', 'buttonSpacing', 'buttonCount',
   'outfitStyle', 'hairStyle', 'hairVolume', 'partWidth', 'bunSize', 'hairHeight', 'sideVolume',
   'hairlineHeight', 'templeRecession', 'wispAmount', 'waveAmount', 'flowSweep', 'greyAmount']);
+const HERITAGE_IDS = ['african', 'asian', 'caucasian'];
 
 const renderer = new THREE.WebGLRenderer({ canvas: ui.canvas, antialias: true, alpha: false });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -474,6 +476,7 @@ function makeControl(definition) {
   const applyInput = () => {
     preset.values[definition.id] = definition.type === 'range' ? Number(input.value) : input.value;
     output.textContent = formatValue(definition, input.value);
+    if (HERITAGE_IDS.includes(definition.id)) normalizeHeritageWeights(definition.id);
     if (definition.mode === 'bake') markRegenerationNeeded();
     else applyAll(definition.id);
     updateText();
@@ -484,6 +487,24 @@ function makeControl(definition) {
 }
 
 function formatValue(definition, value) { return definition.type === 'range' ? Number(value).toFixed(definition.step < .01 ? 3 : definition.step < 1 ? 2 : 0) : ''; }
+function normalizeHeritageWeights(changedId) {
+  const chosen = THREE.MathUtils.clamp(Number(preset.values[changedId]) || 0, 0, 1);
+  const others = HERITAGE_IDS.filter((id) => id !== changedId);
+  const otherTotal = others.reduce((sum, id) => sum + Math.max(0, Number(preset.values[id]) || 0), 0);
+  const remainder = 1 - chosen;
+  preset.values[changedId] = chosen;
+  for (const id of others) {
+    preset.values[id] = otherTotal > 0 ? remainder * Math.max(0, Number(preset.values[id]) || 0) / otherTotal : remainder / 2;
+  }
+  for (const id of HERITAGE_IDS) {
+    const heritageInput = document.querySelector(`#control-${id}`);
+    if (!heritageInput) continue;
+    heritageInput.value = preset.values[id];
+    const heritageDefinition = definitions.find((definition) => definition.id === id);
+    const heritageOutput = heritageInput.parentElement?.querySelector('output');
+    if (heritageOutput) heritageOutput.textContent = formatValue(heritageDefinition, preset.values[id]);
+  }
+}
 function refreshControls() { for (const definition of definitions) { const input = document.querySelector(`#control-${definition.id}`); if (input) { input.value = preset.values[definition.id]; input.dispatchEvent(new Event('input')); } } }
 function markRegenerationNeeded() {
   regenerationNeeded = true;
@@ -534,11 +555,34 @@ function appearanceVariation() {
 }
 
 async function newRandomPatient() {
-  const patientSeed = nextSeed(preset.patient?.seed ?? preset.values.seed);
-  const patient = generatePatient({ seed: patientSeed });
-  preset = patientToCharacterPreset(patient, preset, definitions);
+  const previousPreset = preset;
+  const previousArchetype = previousPreset.patient?.appearance?.faceArchetype;
+  const previousOrigin = previousPreset.patient?.identity?.origin?.id;
+  const excludedSeeds = [previousPreset.patient?.seed, previousPreset.values.seed].filter(Boolean);
+  let best = null;
+
+  // "New random patient" should feel like casting a different person, not
+  // merely accepting the next nearby draw. Sample a small slate and select the
+  // face farthest from the one on screen, with modest bonuses for a different
+  // broad archetype and ancestry macro. The winning seed is still recorded, so
+  // the result remains exactly reproducible.
+  for (let attempt = 0; attempt < 16; attempt += 1) {
+    const patientSeed = randomSeed(excludedSeeds);
+    excludedSeeds.push(patientSeed);
+    const patient = generatePatient({ seed: patientSeed });
+    const candidate = patientToCharacterPreset(patient, previousPreset, definitions);
+    const anatomyDistance = faceIdentityDistance(previousPreset, candidate, definitions);
+    const archetypeBonus = candidate.patient.appearance.faceArchetype !== previousArchetype ? 0.09 : 0;
+    const originBonus = candidate.patient.identity.origin.id !== previousOrigin ? 0.025 : 0;
+    const score = anatomyDistance + archetypeBonus + originBonus;
+    if (!best || score > best.score) best = { candidate, score, anatomyDistance };
+  }
+
+  preset = best.candidate;
   refreshControls();
   applyPresetRestingFace();
+  ui.status.textContent = `Casting a distinct patient · anatomy distance ${best.anatomyDistance.toFixed(2)}…`;
+  ui.status.className = 'status warn';
   await regenerateCharacter();
 }
 

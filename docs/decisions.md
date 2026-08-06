@@ -13,7 +13,7 @@ MKULTRA, and Spice Voyager, the 1880s–90s medical game won because:
    James siblings, Galton, and the battle for consciousness — this game's
    exact milieu. Game research is book research; the game is book publicity.
 2. **Proven loop.** The Apothecary Simulator already validated the
-   consultation loop and exposed its failure mode (ungrounded drift).
+   consultation loop and exposed its failure mode (ungrounded drift/sort of boring).
 3. **Cheapest writing-as-gameplay.** A graded case note is 150 words, not a
    five-act play.
 4. **Engine fit.** Uses the interior/examine/library half of the Darwin
@@ -24,23 +24,7 @@ MKULTRA, and Spice Voyager, the 1880s–90s medical game won because:
 Shakespeare remains the best pure experiment in an LLM-native mechanic
 (collaborative playwriting with resistant co-authors); shelved, not killed.
 Plague simulator's deterministic-model-under-LLM architecture was adopted
-here instead. Cybernetic Spies and Spice Voyager: shelved. MKULTRA-scale
-"short, finished, formally coherent piece" is the sizing model for the
-anthropometric lab episode.
-
-## Rules adopted
-
-- **Two durable results per phase** (from the GPT critique): each phase must
-  produce at least two of — a complete short playable experience, an essay,
-  classroom evidence, book material, a reusable capability. Open-ended polish
-  counts as zero.
-- **Darwin visual scope is frozen** except for bugs and legibility/perf
-  problems. Darwin's remaining budget goes to its pedagogical spine (NPCs,
-  assessment loop, classroom deployment).
-- **Deterministic ground truth beneath every LLM surface.** The LLM renders;
-  the sim decides.
-- **New repo, not a fork; copy modules on demand; no speculative engine
-  extraction.** See [engine-reuse.md](engine-reuse.md).
+here instead. Cybernetic Spies and Spice Voyager: shelved.
 
 ## Leading proposals (2026-08-05, Ben's second pass — not yet final)
 
@@ -50,83 +34,20 @@ anthropometric lab episode.
 2. **Player**: a young M.D. hanging a shingle in NYC after a falling-out
    with Cattell's Columbia program. Beard appears only as a referenced
    presence (he died in 1883, so a direct protégé would be middle-aged by
-   the mid-1890s). Proposed falling-out seed: the player saw early what
-   Wissler proved in 1901 — Cattell's mental tests predict nothing.
-   Male and female versions of the same character, differentiated by mentor
-   lineage and by how the reputation system treats them: the male version
-   under an aging Beard intimate (A.D. Rockwell, Beard's real co-author,
-   still practicing in NYC), the female version under Mary Putnam Jacobi
-   (real, NYC, the era's sharpest critic of rest-cure reasoning; roughly one
-   in twenty US physicians were women by 1900). Mentors real, player and
+   the mid-1890s). Possibly the option to play as either
+   male or female versions of the same character, differentiated in part by how the reputation system treats them. Mentors real, player and
    patients composite.
 3. **Patients**: procedurally generated composites — the
    [historical-persona-generator](../../historical-persona-generator/)
    becomes the upstream, recombining real case-record material so patients
    are historically grounded but never stock. See research.md.
 4. **Patient rendering**: hybrid. Mid-fidelity 3D bodies carry staging and
-   symptoms (gait, tremor, posture, pallor — procedural-animation territory
-   the Darwin engine is genuinely good at); faces and emotion live in a 2D
-   period-portrait layer (cabinet-card / albumen-print style, generated per
-   patient with a small expression set, diegetic as the case-file
-   photograph). Do NOT put realistic 3D facial animation on the critical
-   path — it is the one asset class agent+Blender pipelines cannot reliably
-   deliver, and the uncanny valley punishes near-misses hardest in a game
-   about reading patients.
+   symptoms (gait, tremor, posture, pallor, etc).
 
-## Mockup review (2026-08-05)
-
-Three Claude HTML concepts (Case File / Examination / Desk — published
-artifact "first-three-concepts") plus seven GPT image mockups in `mockups/`.
-Convergent architecture across both sets: 3D world view + observation
-annotations + 2D portrait plate + casebook commit layer + queue and Herald
-as physical objects.
-
-Ben's calls after the review (these override the first-pass takes below):
-
-- **Core patient-facing view**: hybrid of "GOTMA the Game mockup 1" and
-  "version 2" — patient front-facing and central in the painted/3D room,
-  case notebook rail left, instrument/action verbs right, dialogue band
-  below. The from-behind window shot is a *moment* (arrivals, key beats),
-  not the default camera. Filler text in those mockups is placeholder; judge
-  layout only.
-- **Portrait pipeline — generated art only.** Hand-authored SVG/Canvas
-  portraits were mockup placeholders and are dead for production; nothing
-  procedural approaches the AI-generated painterly style (see the Ostrander
-  card). Two tiers, one locked style (muted palette, dark ground, flat
-  light; never hyperreal — slop risk):
-  1. Anchor patients (~8–12): a generated expression set each (~6–12
-     states), produced by reference-conditioned edits of one canonical
-     neutral portrait, one human curation pass. Expression taxonomy is
-     locked to the affect tags the encounter route emits — portraits and
-     prompts share one vocabulary.
-  2. Procedural minors: unanimated stock portraits (~24) in the same style,
-     assigned by the casting system.
-- **3D faces**: coarse acting only (gaze, head tilt, posture) at medium
-  distance; camera never goes closer than the 3D face survives. Close-up
-  emotion always lives on the static generated portrait badge. Body acting
-  (hands, tremor, posture) stays in 3D.
-- **Reputation is in.** Not a header scoreboard — a casting input: standing
-  determines the social strata of incoming patients and routes word-of-mouth
-  through the contagion graph (referrals travel within a stratum). Make it
-  plural per William James's "social selves" (Principles, ch. X): separate
-  standing with society patients, the medical establishment, the psychical
-  circle, the ward. Different doors open per audience.
-
-Still adopted from the first pass:
-
-- Verb-tagged stances (QUESTION / REASSURE / TREATMENT …) — player picks
-  the stance, LLM voices the line; stance history feeds assessment.
-- Casebook right page carries retrospective notes and the next-appointment
-  slip — the case page is the longitudinal timeline.
-- A differential list may appear as the player's own accumulating notebook
-  reference, but *committing* a diagnosis stays a written/inked act, never
-  a list click.
-- Full Art Nouveau chrome ("interesting but impossible"): steal plate
-  borders and chapter-screen ornament only.
 
 ## 2026-08-06 — UI modes and the 1896 Character Lab
 
-**Mode architecture (Ben's call).** Three modes, per design.md "UI modes":
+**Mode architecture (Ben's call, / not yet pinned down though! -Ben / ).** Three modes, per design.md "UI modes":
 patient mode (first-person desk view, button-rich; reference images now the
 two "NEW patient mode" mockups — see the dialogue-architecture section
 below), examination mode (static
@@ -137,7 +58,7 @@ traversal areas).
 **Character lab assessment** (`character-lab/`, built by GPT 5.6; reviewed by
 Claude 2026-08-06):
 
-What is real and right:
+
 - MPFB (free MakeHuman-in-Blender) parametric body + face; macro sliders
   (gender/age/height/weight/muscle/proportions/phenotype) and real face
   morphs, exported as **named GLB morph targets** the runtime can drive.
@@ -171,7 +92,7 @@ expression morph export; map persona-generator output → preset JSON; run
 GLBs through the Darwin optimize pipeline. The portrait-card decision stands
 — the lab serves scene-distance bodies, not close-up emotion.
 
-**Lab overhaul (Claude, 2026-08-06 pm).** The plan above is largely done:
+**Lab overhaul (Claude, 2026-08-06 pm).** The plan above is partly done:
 costume moved out of Blender into a live procedural three.js layer
 (`character-lab/src/costume.js` — skirt with seated lap drape, leg-of-mutton
 sleeves, cuffs, collar, buttons, four hair styles; rebuilt on slider input,
@@ -251,12 +172,6 @@ collapses trust, ends the encounter, and writes a `scandal` event to the
 contagion graph, which the weekly Herald column and the society-strata
 reputation both read next tick.
 
-**No refusal path.** The contract has no "I don't understand" slot. Every input
-is classified into the appraisal taxonomy, and the persona is a person in a
-room in 1896 who cannot fail to parse the player — only be frightened,
-confused, offended or amused. Player anachronism becomes in-fiction
-consequence: ask about the telephone in her pocket and she asks what you mean,
-and it costs standing for talking gibberish.
 
 ## Still open
 

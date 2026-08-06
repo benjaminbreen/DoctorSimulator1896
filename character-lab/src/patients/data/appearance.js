@@ -10,6 +10,61 @@ export const FACE_ARCHETYPES = [
   { id: 'tapered', weight: 12, headShape: 'invertedtriangular', headWidth: 0.18, faceHeight: 0.16, headDepth: -0.04, jawWidth: -0.36, chinHeight: 0.22, chinProminence: 0.06, noseWidth: -0.12, noseLength: 0.18, noseVolume: -0.10, eyeSize: 0.12, eyeSpacing: 0.06, mouthWidth: -0.12, lipFullness: 0.12, cheekVolume: -0.06, cheekboneProminence: 0.30 },
 ];
 
+/** Secondary landmark structure layered over the broad head archetypes. These
+ * dimensions use MakeHuman's detailed targets and are intentionally general
+ * anatomical correlations rather than ancestry labels. */
+export const FACE_DETAIL_CENTERS = {
+  'fine-oval': {
+    headAngle: -0.08, headBackDepth: -0.05, noseDepth: 0.12, noseBridge: 0.18, noseCurve: -0.12,
+    noseTipAngle: 0.08, nostrilWidth: -0.14, chinPrognathism: -0.02, eyeVerticalPosition: 0.08,
+    eyeDepth: 0.10, eyeHeightInner: 0.02, eyeHeightCenter: 0.10, eyeHeightOuter: 0.04,
+    epicanthus: -0.12, eyeFold: 0.14, browAngle: 0.12, mouthVerticalPosition: -0.04,
+    mouthDepth: -0.05, cupidBow: 0.24, philtrumVolume: 0.12, cheekHeight: 0.18, cheekInnerVolume: -0.08,
+  },
+  'soft-round': {
+    headAngle: 0.10, headBackDepth: 0.18, noseDepth: -0.12, noseBridge: -0.10, noseCurve: -0.08,
+    noseTipAngle: 0.18, nostrilWidth: 0.12, chinPrognathism: -0.14, eyeVerticalPosition: 0.04,
+    eyeDepth: -0.06, eyeHeightInner: 0.15, eyeHeightCenter: 0.20, eyeHeightOuter: 0.10,
+    epicanthus: 0.05, eyeFold: -0.05, browAngle: -0.08, mouthVerticalPosition: 0.08,
+    mouthDepth: 0.06, cupidBow: -0.04, philtrumVolume: -0.10, cheekHeight: -0.04, cheekInnerVolume: 0.18,
+  },
+  'broad-square': {
+    headAngle: 0.15, headBackDepth: 0.10, noseDepth: 0.20, noseBridge: 0.12, noseCurve: 0.14,
+    noseTipAngle: -0.08, nostrilWidth: 0.20, chinPrognathism: 0.18, eyeVerticalPosition: -0.08,
+    eyeDepth: 0.14, eyeHeightInner: -0.08, eyeHeightCenter: -0.10, eyeHeightOuter: -0.04,
+    epicanthus: -0.08, eyeFold: 0.06, browAngle: -0.12, mouthVerticalPosition: -0.08,
+    mouthDepth: 0.14, cupidBow: -0.12, philtrumVolume: 0.12, cheekHeight: 0.08, cheekInnerVolume: -0.12,
+  },
+  'long-angular': {
+    headAngle: -0.12, headBackDepth: 0.05, noseDepth: 0.22, noseBridge: 0.22, noseCurve: 0.20,
+    noseTipAngle: -0.16, nostrilWidth: -0.04, chinPrognathism: 0.12, eyeVerticalPosition: 0.12,
+    eyeDepth: 0.08, eyeHeightInner: -0.08, eyeHeightCenter: 0.02, eyeHeightOuter: -0.06,
+    epicanthus: -0.06, eyeFold: 0.16, browAngle: 0.06, mouthVerticalPosition: -0.16,
+    mouthDepth: 0.08, cupidBow: 0.14, philtrumVolume: 0.22, cheekHeight: 0.12, cheekInnerVolume: -0.18,
+  },
+  'high-cheeked': {
+    headAngle: -0.06, headBackDepth: -0.03, noseDepth: 0.06, noseBridge: 0.08, noseCurve: -0.06,
+    noseTipAngle: 0.04, nostrilWidth: -0.02, chinPrognathism: 0.02, eyeVerticalPosition: 0.08,
+    eyeDepth: -0.02, eyeHeightInner: 0.06, eyeHeightCenter: 0.12, eyeHeightOuter: 0.03,
+    epicanthus: 0.12, eyeFold: 0.10, browAngle: 0.10, mouthVerticalPosition: -0.02,
+    mouthDepth: 0.02, cupidBow: 0.16, philtrumVolume: 0.06, cheekHeight: 0.30, cheekInnerVolume: -0.16,
+  },
+  'strong-jaw': {
+    headAngle: 0.18, headBackDepth: 0.08, noseDepth: 0.14, noseBridge: 0.04, noseCurve: 0.08,
+    noseTipAngle: -0.10, nostrilWidth: 0.18, chinPrognathism: 0.24, eyeVerticalPosition: -0.10,
+    eyeDepth: 0.12, eyeHeightInner: -0.04, eyeHeightCenter: -0.06, eyeHeightOuter: -0.02,
+    epicanthus: -0.06, eyeFold: 0.02, browAngle: -0.16, mouthVerticalPosition: -0.08,
+    mouthDepth: 0.16, cupidBow: -0.08, philtrumVolume: 0.04, cheekHeight: -0.04, cheekInnerVolume: 0.08,
+  },
+  tapered: {
+    headAngle: -0.10, headBackDepth: -0.08, noseDepth: -0.02, noseBridge: 0.06, noseCurve: -0.12,
+    noseTipAngle: 0.14, nostrilWidth: -0.08, chinPrognathism: -0.08, eyeVerticalPosition: 0.10,
+    eyeDepth: -0.04, eyeHeightInner: 0.12, eyeHeightCenter: 0.16, eyeHeightOuter: 0.08,
+    epicanthus: 0.14, eyeFold: 0.12, browAngle: 0.14, mouthVerticalPosition: 0.04,
+    mouthDepth: -0.02, cupidBow: 0.20, philtrumVolume: 0.08, cheekHeight: 0.22, cheekInnerVolume: -0.04,
+  },
+};
+
 export const HAIR_STYLES = [
   { id: 'center-parted-bun', weight: 18, ageWeights: [1.12, 1.05, 0.96], classes: ['elite', 'affluent', 'comfortable', 'sponsored'] },
   { id: 'side-parted-bun', weight: 12, ageWeights: [1.12, 1.06, 0.78], classes: ['elite', 'affluent', 'comfortable'] },
@@ -51,4 +106,12 @@ export const FACE_VALUE_IDS = [
   'headWidth', 'faceHeight', 'headDepth', 'noseWidth', 'noseLength', 'noseVolume',
   'jawWidth', 'chinHeight', 'chinProminence', 'eyeSize', 'eyeSpacing', 'mouthWidth',
   'lipFullness', 'cheekVolume', 'cheekboneProminence',
+];
+
+export const FACE_DETAIL_IDS = [
+  'headAngle', 'headBackDepth', 'noseDepth', 'noseBridge', 'noseCurve', 'noseTipAngle',
+  'nostrilWidth', 'chinPrognathism', 'eyeVerticalPosition', 'eyeDepth', 'eyeHeightInner',
+  'eyeHeightCenter', 'eyeHeightOuter', 'epicanthus', 'eyeFold', 'browAngle',
+  'mouthVerticalPosition', 'mouthDepth', 'cupidBow', 'philtrumVolume', 'cheekHeight',
+  'cheekInnerVolume',
 ];
