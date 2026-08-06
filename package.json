@@ -1,0 +1,19 @@
+{
+  "name": "ghosts-character-lab",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "lab": "vite character-lab --host 127.0.0.1",
+    "lab:build": "vite build character-lab --outDir ../dist/character-lab --emptyOutDir",
+    "character:generate": "make character",
+    "character:validate": "node scripts/characters/validate-preset.mjs",
+    "test": "npm run character:validate && npm run lab:build"
+  },
+  "dependencies": {
+    "three": "^0.179.1"
+  },
+  "devDependencies": {
+    "vite": "^7.1.1"
+  }
+}

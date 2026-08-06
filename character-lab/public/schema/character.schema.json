@@ -1,0 +1,111 @@
+{
+  "version": 2,
+  "groups": [
+    {
+      "id": "identity", "label": "Identity & build", "mode": "bake",
+      "parameters": [
+        {"id":"seed","label":"Variation seed","type":"range","min":1,"max":9999,"step":1,"default":1896},
+        {"id":"gender","label":"Feminine ↔ masculine","type":"range","min":0,"max":1,"step":0.01,"default":0.12},
+        {"id":"age","label":"Apparent age","type":"range","min":0.18,"max":0.9,"step":0.01,"default":0.55},
+        {"id":"height","label":"Stature","type":"range","min":0.2,"max":0.8,"step":0.01,"default":0.46},
+        {"id":"weight","label":"Body mass","type":"range","min":0.2,"max":0.82,"step":0.01,"default":0.48},
+        {"id":"muscle","label":"Muscularity","type":"range","min":0.18,"max":0.78,"step":0.01,"default":0.35},
+        {"id":"proportions","label":"Body proportions","type":"range","min":0.25,"max":0.75,"step":0.01,"default":0.48},
+        {"id":"shoulderWidth","label":"Shoulder width","type":"range","min":-1,"max":1,"step":0.01,"default":-0.12},
+        {"id":"torsoLength","label":"Torso length","type":"range","min":-1,"max":1,"step":0.01,"default":0.05}
+      ]
+    },
+    {
+      "id": "heritage", "label": "Skin & phenotype", "mode": "bake",
+      "parameters": [
+        {"id":"african","label":"African target weight","type":"range","min":0,"max":1,"step":0.01,"default":0.04},
+        {"id":"asian","label":"Asian target weight","type":"range","min":0,"max":1,"step":0.01,"default":0.03},
+        {"id":"caucasian","label":"European target weight","type":"range","min":0,"max":1,"step":0.01,"default":0.93},
+        {"id":"skinTone","label":"Skin tone","type":"color","default":"#b98569","mode":"live"},
+        {"id":"skinRoughness","label":"Skin roughness","type":"range","min":0.35,"max":0.9,"step":0.01,"default":0.67,"mode":"live"}
+      ]
+    },
+    {
+      "id": "face", "label": "Face", "mode": "bake",
+      "parameters": [
+        {"id":"noseWidth","label":"Nose width","type":"range","min":-1,"max":1,"step":0.01,"default":-0.08},
+        {"id":"noseLength","label":"Nose length","type":"range","min":-1,"max":1,"step":0.01,"default":0.12},
+        {"id":"noseVolume","label":"Nose volume","type":"range","min":-1,"max":1,"step":0.01,"default":-0.04},
+        {"id":"jawWidth","label":"Jaw width","type":"range","min":-1,"max":1,"step":0.01,"default":-0.1},
+        {"id":"chinHeight","label":"Chin height","type":"range","min":-1,"max":1,"step":0.01,"default":-0.06},
+        {"id":"eyeSize","label":"Eye size","type":"range","min":-1,"max":1,"step":0.01,"default":-0.08},
+        {"id":"eyeSpacing","label":"Eye spacing","type":"range","min":-1,"max":1,"step":0.01,"default":0.02},
+        {"id":"browHeight","label":"Brow height","type":"range","min":-1,"max":1,"step":0.01,"default":-0.04},
+        {"id":"mouthWidth","label":"Mouth width","type":"range","min":-1,"max":1,"step":0.01,"default":-0.12},
+        {"id":"cheekVolume","label":"Cheek volume","type":"range","min":-1,"max":1,"step":0.01,"default":0.04},
+        {"id":"faceAsymmetry","label":"Facial asymmetry","type":"range","min":0,"max":0.35,"step":0.01,"default":0.07}
+      ]
+    },
+    {
+      "id": "hair", "label": "Hair", "mode": "live",
+      "parameters": [
+        {"id":"hairStyle","label":"Style","type":"select","options":["center-parted-bun","low-bun","short-parted","swept-back"],"default":"center-parted-bun"},
+        {"id":"hairColor","label":"Hair color","type":"color","default":"#0d0908"},
+        {"id":"hairVolume","label":"Hair volume","type":"range","min":0.75,"max":1.35,"step":0.01,"default":0.96},
+        {"id":"hairHeight","label":"Crown height","type":"range","min":0.8,"max":1.3,"step":0.01,"default":1.0},
+        {"id":"sideVolume","label":"Side volume","type":"range","min":0.7,"max":1.4,"step":0.01,"default":1.0},
+        {"id":"partWidth","label":"Part width","type":"range","min":0,"max":1,"step":0.01,"default":0.28},
+        {"id":"bunSize","label":"Bun size","type":"range","min":0.65,"max":1.5,"step":0.01,"default":0.92}
+      ]
+    },
+    {
+      "id": "dress", "label": "1890s dress", "mode": "live",
+      "parameters": [
+        {"id":"dressColor","label":"Dress color","type":"color","default":"#171525"},
+        {"id":"trimColor","label":"Trim color","type":"color","default":"#4f4333"},
+        {"id":"fabricRoughness","label":"Fabric roughness","type":"range","min":0.35,"max":1,"step":0.01,"default":0.82},
+        {"id":"bodiceFit","label":"Bodice fit","type":"range","min":0.82,"max":1.18,"step":0.01,"default":0.96},
+        {"id":"waistHeight","label":"Waist height","type":"range","min":-0.12,"max":0.12,"step":0.005,"default":0.03},
+        {"id":"skirtFullness","label":"Skirt fullness","type":"range","min":0.72,"max":1.5,"step":0.01,"default":1.08},
+        {"id":"skirtLength","label":"Skirt length","type":"range","min":0.82,"max":1.12,"step":0.01,"default":1.0},
+        {"id":"skirtDrape","label":"Lap drape (seated)","type":"range","min":0,"max":1,"step":0.01,"default":0.62},
+        {"id":"bustleAmount","label":"Rear fullness","type":"range","min":0,"max":0.55,"step":0.01,"default":0.12},
+        {"id":"sleeveVolume","label":"Sleeve-head volume","type":"range","min":0.65,"max":1.55,"step":0.01,"default":0.82},
+        {"id":"sleeveLength","label":"Sleeve length","type":"range","min":0.75,"max":1.05,"step":0.01,"default":0.98},
+        {"id":"collarHeight","label":"Collar height","type":"range","min":0.25,"max":1.4,"step":0.01,"default":0.86},
+        {"id":"collarSpread","label":"Collar spread","type":"range","min":0.65,"max":1.45,"step":0.01,"default":0.92},
+        {"id":"buttonCount","label":"Button count","type":"range","min":4,"max":9,"step":1,"default":6},
+        {"id":"buttonSpacing","label":"Button spacing","type":"range","min":0.7,"max":1.35,"step":0.01,"default":0.95}
+      ]
+    },
+    {
+      "id": "pose", "label": "Pose & bearing", "mode": "live",
+      "parameters": [
+        {"id":"seated","label":"Seated (Blender pose)","type":"range","min":0,"max":1,"step":1,"default":1,"mode":"bake"},
+        {"id":"kneesTogether","label":"Knees together","type":"range","min":0,"max":1,"step":0.01,"default":0.72},
+        {"id":"posture","label":"Erect ↔ slouched","type":"range","min":-1,"max":1,"step":0.01,"default":0.16},
+        {"id":"headTilt","label":"Head tilt","type":"range","min":-0.25,"max":0.25,"step":0.01,"default":-0.04},
+        {"id":"headTurn","label":"Head turn","type":"range","min":-0.45,"max":0.45,"step":0.01,"default":0.03},
+        {"id":"handTension","label":"Hand tension","type":"range","min":0,"max":1,"step":0.01,"default":0.28}
+      ]
+    },
+    {
+      "id": "performance", "label": "Idle & performance", "mode": "live",
+      "parameters": [
+        {"id":"idleMode","label":"Animation source","type":"select","options":["procedural","clip","clip+procedural"],"default":"procedural"},
+        {"id":"breathing","label":"Breathing amplitude","type":"range","min":0,"max":1,"step":0.01,"default":0.22},
+        {"id":"breathingRate","label":"Breaths per minute","type":"range","min":6,"max":26,"step":0.5,"default":13},
+        {"id":"fidget","label":"Fidget amplitude","type":"range","min":0,"max":1,"step":0.01,"default":0.1},
+        {"id":"gazeDrift","label":"Gaze drift","type":"range","min":0,"max":1,"step":0.01,"default":0.18},
+        {"id":"weightShift","label":"Weight shift","type":"range","min":0,"max":1,"step":0.01,"default":0.32},
+        {"id":"tremor","label":"Hand tremor (symptom)","type":"range","min":0,"max":1,"step":0.01,"default":0.14},
+        {"id":"gestureSpeed","label":"Gesture speed","type":"range","min":0.6,"max":1.6,"step":0.01,"default":1.0}
+      ]
+    },
+    {
+      "id": "render", "label": "Lighting & camera", "mode": "live",
+      "parameters": [
+        {"id":"keyIntensity","label":"Lamp intensity","type":"range","min":0.2,"max":3,"step":0.01,"default":1.35},
+        {"id":"fillIntensity","label":"Window fill","type":"range","min":0,"max":2,"step":0.01,"default":0.44},
+        {"id":"warmth","label":"Warmth","type":"range","min":0,"max":1,"step":0.01,"default":0.78},
+        {"id":"exposure","label":"Exposure","type":"range","min":-1.5,"max":1.5,"step":0.01,"default":0.05},
+        {"id":"cameraFov","label":"Camera field of view","type":"range","min":24,"max":58,"step":1,"default":38}
+      ]
+    }
+  ]
+}

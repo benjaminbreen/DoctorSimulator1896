@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#17120d" />
+    <title>1896 Character Lab</title>
+  </head>
+  <body>
+    <div id="app">
+      <header class="lab-header">
+        <div>
+          <p class="eyebrow">Ghosts of the Machine Age</p>
+          <h1>1896 Character Lab</h1>
+        </div>
+        <div class="header-actions">
+          <span id="model-status" class="status">Loading model…</span>
+          <button id="randomize" type="button">Seeded variation</button>
+          <button id="reset" type="button">Reset</button>
+          <button id="export" class="primary" type="button">Export preset</button>
+        </div>
+      </header>
+      <main class="workspace">
+        <aside class="controls-panel">
+          <div class="controls-intro">
+            <label for="control-search">Parameters</label>
+            <input id="control-search" type="search" placeholder="Search sliders…" />
+            <p><span class="live-key"></span> live preview <span class="bake-key"></span> Blender regenerate</p>
+          </div>
+          <div id="controls"></div>
+        </aside>
+        <section class="stage-wrap">
+          <canvas id="stage"></canvas>
+          <div class="stage-tools">
+            <button data-view="clinic" class="active">Clinic</button>
+            <button data-view="full">Full figure</button>
+            <button data-view="portrait">Head</button>
+            <button data-view="exam">Examination</button>
+            <button id="toggle-grid">Grid</button>
+            <button id="toggle-motion" class="active">Idle motion</button>
+            <select id="animation-select" aria-label="Animation clip"><option>Loading animation…</option></select>
+          </div>
+          <div class="stage-perform">
+            <span class="perform-label">Perform</span>
+            <button data-gesture="nod">Nod</button>
+            <button data-gesture="shake">Shake head</button>
+            <button data-gesture="sigh">Sigh</button>
+            <button data-gesture="glance">Glance away</button>
+          </div>
+          <div id="stage-hint">Drag to orbit · wheel to zoom · double-click to reset view</div>
+          <div id="fallback" hidden>
+            <h2>Procedural preview mode</h2>
+            <p>The Blender GLB has not been generated yet. The live mannequin still exposes the clothing and staging controls.</p>
+          </div>
+        </section>
+        <aside class="inspector-panel">
+          <section>
+            <p class="eyebrow">Current subject</p>
+            <h2 id="subject-name">Mrs. Ostrander</h2>
+            <p id="subject-summary"></p>
+          </section>
+          <section>
+            <h3>Pipeline state</h3>
+            <dl id="pipeline-state"></dl>
+          </section>
+          <section>
+            <h3>Preset JSON</h3>
+            <textarea id="preset-json" spellcheck="false"></textarea>
+            <div class="row">
+              <button id="apply-json">Apply JSON</button>
+              <button id="copy-json">Copy</button>
+            </div>
+          </section>
+          <section class="command-card">
+            <h3>Regenerate command</h3>
+            <code id="generate-command"></code>
+          </section>
+        </aside>
+      </main>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

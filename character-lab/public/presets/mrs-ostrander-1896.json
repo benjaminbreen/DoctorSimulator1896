@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 2,
+  "id": "mrs-ostrander-1896",
+  "name": "Mrs. Ostrander",
+  "description": "A restrained middle-aged patient in an austere, unfashionably narrow-sleeved day dress, New York, March 1896.",
+  "values": {
+    "seed": 1896, "gender": 0.12, "age": 0.55, "height": 0.46, "weight": 0.48, "muscle": 0.35, "proportions": 0.48,
+    "shoulderWidth": -0.12, "torsoLength": 0.05, "african": 0.04, "asian": 0.03, "caucasian": 0.93,
+    "skinTone": "#b98569", "skinRoughness": 0.67, "noseWidth": -0.08, "noseLength": 0.12, "noseVolume": -0.04,
+    "jawWidth": -0.1, "chinHeight": -0.06, "eyeSize": -0.08, "eyeSpacing": 0.02, "browHeight": -0.04,
+    "mouthWidth": -0.12, "cheekVolume": 0.04, "faceAsymmetry": 0.07,
+    "hairStyle": "center-parted-bun", "hairColor": "#0d0908", "hairVolume": 0.96, "hairHeight": 1.0,
+    "sideVolume": 1.0, "partWidth": 0.28, "bunSize": 0.92,
+    "dressColor": "#171525", "trimColor": "#4f4333", "fabricRoughness": 0.82, "bodiceFit": 0.96,
+    "waistHeight": 0.03, "skirtFullness": 1.08, "skirtLength": 1.0, "skirtDrape": 0.62, "bustleAmount": 0.12,
+    "sleeveVolume": 0.82, "sleeveLength": 0.98, "collarHeight": 0.86, "collarSpread": 0.92,
+    "buttonCount": 6, "buttonSpacing": 0.95,
+    "seated": 1, "kneesTogether": 0.72, "posture": 0.16, "headTilt": -0.04, "headTurn": 0.03, "handTension": 0.28,
+    "idleMode": "procedural", "breathing": 0.22, "breathingRate": 13, "fidget": 0.1, "gazeDrift": 0.18,
+    "weightShift": 0.32, "tremor": 0.14, "gestureSpeed": 1.0,
+    "keyIntensity": 1.35, "fillIntensity": 0.44, "warmth": 0.78, "exposure": 0.05, "cameraFov": 38
+  }
+}
