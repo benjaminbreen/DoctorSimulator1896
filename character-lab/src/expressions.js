@@ -1,52 +1,128 @@
 import * as THREE from 'three';
 
-/* Animated facial expressions as runtime-computed morph targets.
+/* Runtime facial expressions for the identity-baked character mesh.
 
-   The GLB ships identity-baked with no face bones, so expressions are built
-   here: mouth corners are located on the actual bind-pose head geometry
-   (widest lip-band vertices), and a displacement field — corner lift, cheek
-   mound, faint lower-lid raise, sealed lip centre — is written into a fresh
-   morph target. Because the field is measured per face, the same code smiles
-   correctly on every generated head, and iteration needs no Blender rebuild.
+   A believable smile is not an upward translation of the whole mouth. AU12
+   pulls the mouth corners superolaterally and slightly back while the lip
+   centre stays comparatively quiet. In a stronger (Duchenne-like) smile, AU6
+   raises the cheeks and lower lids while the upper lids descend a little. The
+   eyeballs themselves never rotate upward; that exposes superior sclera and
+   produces the familiar startled/uncanny look.
 
-   Anatomy of the smile (closed-lip, Duchenne-leaning):
-   - zygomaticus pull: corners travel up, outward, and slightly back
-   - cheek mass rises and puffs a touch forward (nasolabial deepening)
-   - lower lids rise faintly (the eye "smiles")
-   - the lip centre is damped so the mouth stays sealed
+   Mouth and eye/cheek motion are separate morphs. This lets a restrained smile
+   remain mostly oral, gives a full smile a delayed eye component, and leaves a
+   clean foundation for later expression sliders or authored Blender morphs.
 */
 
+const clamp01 = (value) => THREE.MathUtils.clamp(value, 0, 1);
 const gauss = (distance, sigma) => Math.exp(-(distance * distance) / (2 * sigma * sigma));
-const smooth = (x) => x * x * (3 - 2 * x);
+const smooth = (value) => {
+  const x = clamp01(value);
+  return x * x * (3 - 2 * x);
+};
+
+function findFaceMeshes(model) {
+  let body = null;
+  let eyes = null;
+  model.traverse((object) => {
+    if (!object.isMesh) return;
+    const name = object.name.toLowerCase();
+    if (name === 'human_body') body = object;
+    else if (!eyes && (name === 'eyes' || name.includes('eyeball'))) eyes = object;
+    else if (!body && object.isSkinnedMesh && (object.geometry?.attributes?.position?.count || 0) > 5000) body = object;
+  });
+  return { body, eyes };
+}
+
+function eyeCentresInBodySpace(model, body, eyes) {
+  if (!eyes?.geometry?.attributes?.position) return null;
+  model.updateMatrixWorld(true);
+  const toBody = body.matrixWorld.clone().invert().multiply(eyes.matrixWorld);
+  const position = eyes.geometry.attributes.position;
+  const sums = [new THREE.Vector3(), new THREE.Vector3()];
+  const counts = [0, 0];
+  const point = new THREE.Vector3();
+  for (let i = 0; i < position.count; i++) {
+    point.fromBufferAttribute(position, i).applyMatrix4(toBody);
+    const side = point.x < 0 ? 0 : 1;
+    sums[side].add(point);
+    counts[side] += 1;
+  }
+  if (!counts[0] || !counts[1]) return null;
+  return sums.map((sum, side) => sum.multiplyScalar(1 / counts[side]));
+}
+
+function faceSurfaceZ(position, eye) {
+  let surfaceZ = -Infinity;
+  for (let i = 0; i < position.count; i++) {
+    if (Math.abs(position.getX(i) - eye.x) > 0.025) continue;
+    if (Math.abs(position.getY(i) - eye.y) > 0.020) continue;
+    surfaceZ = Math.max(surfaceZ, position.getZ(i));
+  }
+  return Number.isFinite(surfaceZ) ? surfaceZ : eye.z + 0.008;
+}
+
+function appendRelativeMorph(body, delta, name) {
+  const geometry = body.geometry;
+  if (!geometry.morphAttributes.position) {
+    geometry.morphAttributes.position = [];
+    geometry.morphTargetsRelative = true;
+  }
+  // All morphs added by this module are relative. Avoid mixing them with an
+  // authored absolute target, should the source GLB gain one in the future.
+  if (!geometry.morphTargetsRelative) return null;
+  const attribute = new THREE.Float32BufferAttribute(delta, 3);
+  attribute.name = name;
+  geometry.morphAttributes.position.push(attribute);
+  return name;
+}
+
+function episodeEnvelope(episode, elapsed, delay = 0) {
+  const t = elapsed - delay;
+  if (t <= 0) return 0;
+  const { attack, hold, release, peak } = episode;
+  if (t < attack) return peak * smooth(t / attack);
+  if (t < attack + hold) return peak;
+  if (t < attack + hold + release) return peak * smooth(1 - (t - attack - hold) / release);
+  return 0;
+}
+
+export function smileEyeIntensity(smile) {
+  // AU6 usually joins after the oral smile is already legible. Suppressing it
+  // at low values avoids turning every polite smile into a fixed squint.
+  return 0.78 * smooth((clamp01(smile) - 0.16) / 0.84);
+}
 
 export function createExpressions(model) {
-  let body = null;
-  model.traverse((object) => {
-    if (!object.isSkinnedMesh) return;
-    if (object.name === 'Human_Body') body = object;
-    else if (!body && (object.geometry?.attributes?.position?.count || 0) > 5000) body = object;
-  });
+  const { body, eyes } = findFaceMeshes(model);
   if (!body) return null;
   const geometry = body.geometry;
   const position = geometry.attributes.position;
 
-  /* --- landmarks in bind space (Y-up, face toward +Z) --- */
+  /* Landmarks in bind space (Y-up, face toward +Z). */
   let maxY = -Infinity;
   for (let i = 0; i < position.count; i++) maxY = Math.max(maxY, position.getY(i));
   const bandMin = maxY - 0.17;
 
-  let noseZ = -Infinity; let noseY = 0;
+  let noseZ = -Infinity;
+  let noseY = 0;
   for (let i = 0; i < position.count; i++) {
     const y = position.getY(i);
     if (y < bandMin) continue;
     const z = position.getZ(i);
-    if (z > noseZ) { noseZ = z; noseY = y; }
+    if (z > noseZ) {
+      noseZ = z;
+      noseY = y;
+    }
   }
 
-  // mouth corners: widest points of the lip band. The z window stays shallow
-  // and |x| is capped, otherwise the cheek silhouette wins and the smile pulls
-  // ~10 cm wide instead of ~5 cm (measured on generated heads).
-  let cornerR = null; let cornerL = null; let maxX = -Infinity; let minX = Infinity;
+  // The widest front-facing points in the shallow lip band are stable across
+  // the generated face shapes. The x cap prevents the cheek silhouette from
+  // being mistaken for a mouth corner.
+  let cornerR = null;
+  let cornerL = null;
+  let maxX = -Infinity;
+  let minX = Infinity;
   for (let i = 0; i < position.count; i++) {
     const y = position.getY(i);
     if (y < noseY - 0.045 || y > noseY - 0.015) continue;
@@ -54,94 +130,136 @@ export function createExpressions(model) {
     if (z < noseZ - 0.028) continue;
     const x = position.getX(i);
     if (Math.abs(x) > 0.042) continue;
-    if (x > maxX) { maxX = x; cornerR = new THREE.Vector3(x, y, z); }
-    if (x < minX) { minX = x; cornerL = new THREE.Vector3(x, y, z); }
+    if (x > maxX) {
+      maxX = x;
+      cornerR = new THREE.Vector3(x, y, z);
+    }
+    if (x < minX) {
+      minX = x;
+      cornerL = new THREE.Vector3(x, y, z);
+    }
   }
   if (!cornerL || !cornerR) return null;
+
   const mouthY = (cornerL.y + cornerR.y) / 2;
-
-  /* --- smile displacement field ---
-     The mouth is treated as a sealed lip LINE: displacement depends on lateral
-     position along that line and is symmetric above/below the seam, so upper
-     and lower lip always travel together and the mouth cannot open. (The first
-     version used radial gaussians whose cheek term reached the upper lip only
-     — the seam split and produced a rictus.) */
-  const delta = new Float32Array(position.count * 3);
-  const vertex = new THREE.Vector3();
-  // wider than the landmark band: crown-to-mouth is ~17-19 cm, and a 0.17 cutoff
-  // silently excluded the lips on some heads (frozen mouth, moving cheeks)
-  const fieldMin = maxY - 0.26;
-  const halfWidth = Math.max(0.018, (cornerR.x - cornerL.x) / 2);
   const cornerZ = (cornerL.z + cornerR.z) / 2;
-  const cheeks = [
-    { sign: 1, at: cornerR.clone().add(new THREE.Vector3(0.010, 0.042, -0.010)) },
-    { sign: -1, at: cornerL.clone().add(new THREE.Vector3(-0.010, 0.042, -0.010)) },
+  const halfWidth = Math.max(0.018, (cornerR.x - cornerL.x) / 2);
+  const fieldMin = maxY - 0.26;
+  const eyeCentres = eyeCentresInBodySpace(model, body, eyes) || [
+    cornerL.clone().add(new THREE.Vector3(-0.007, 0.061, -0.005)),
+    cornerR.clone().add(new THREE.Vector3(0.007, 0.061, -0.005)),
   ];
-  const lids = [
-    cornerR.clone().add(new THREE.Vector3(0.007, 0.058, -0.004)),
-    cornerL.clone().add(new THREE.Vector3(-0.007, 0.058, -0.004)),
-  ];
+  const eyeLandmarks = eyeCentres.map((centre) => ({
+    centre,
+    surfaceZ: faceSurfaceZ(position, centre),
+  }));
+
+  const mouthDelta = new Float32Array(position.count * 3);
+  const eyeDelta = new Float32Array(position.count * 3);
+
   for (let i = 0; i < position.count; i++) {
+    const x = position.getX(i);
     const y = position.getY(i);
-    if (y < fieldMin) continue;
-    vertex.set(position.getX(i), y, position.getZ(i));
-    if (vertex.z < noseZ - 0.1) continue; // front half of the head only
-    let dx = 0; let dy = 0; let dz = 0;
-    const sign = Math.sign(vertex.x) || 1;
+    const z = position.getZ(i);
+    if (y < fieldMin || z < noseZ - 0.1) continue;
+    const sign = Math.sign(x) || 1;
 
-    // sealed lip line: bend the whole closed mouth upward toward the corners
-    const lateral = Math.min(1.3, Math.abs(vertex.x) / (halfWidth * 1.12));
-    const lipWeight = gauss(y - mouthY, 0.011) * gauss(vertex.z - cornerZ, 0.02);
-    const curve = lateral ** 1.7;
-    dy += 0.0058 * curve * lipWeight;
-    dx += sign * 0.0026 * curve * lipWeight;
-    dz -= 0.0015 * curve * lipWeight;
-    dy += 0.0008 * (1 - Math.min(1, lateral)) * lipWeight; // faint centre press
+    /* AU12: a pronounced corner pull, not a uniformly raised mouth. The lip
+       compression term thins the vermilion toward its seam and prevents an
+       inflated/rubber-mouth silhouette at full intensity. */
+    const lateral = Math.min(1.25, Math.abs(x) / (halfWidth * 1.10));
+    const lipWeight = gauss(y - mouthY, 0.0095) * gauss(z - cornerZ, 0.018);
+    const cornerFactor = smooth((lateral - 0.24) / 0.76);
+    const centreFactor = 1 - smooth(lateral / 0.58);
+    let mouthDx = sign * 0.0044 * cornerFactor * lipWeight;
+    let mouthDy = (0.0090 * cornerFactor - 0.00035 * centreFactor) * lipWeight;
+    let mouthDz = -0.0021 * (0.30 + 0.70 * cornerFactor) * lipWeight;
+    const lipSide = Math.tanh((y - mouthY) / 0.0032);
+    mouthDy -= lipSide * 0.00115 * (0.45 + 0.55 * cornerFactor) * lipWeight;
 
-    // cheek mound, masked strictly above the lip line
-    const aboveLips = smooth(THREE.MathUtils.clamp((y - (mouthY + 0.006)) / 0.014, 0, 1));
-    for (const cheek of cheeks) {
-      const wCheek = gauss(vertex.distanceTo(cheek.at), 0.024) * aboveLips;
-      dy += 0.0034 * wCheek;
-      dx += cheek.sign * 0.0012 * wCheek;
-      dz += 0.0010 * wCheek;
+    // Soft nasolabial/cheek recruitment accompanies the oral pull, but the
+    // stronger orbital cheek mound remains in the independent AU6 target.
+    for (const corner of [cornerL, cornerR]) {
+      const cheekX = corner.x + Math.sign(corner.x) * 0.010;
+      const cheekY = corner.y + 0.035;
+      const w = gauss(x - cheekX, 0.022) * gauss(y - cheekY, 0.025)
+        * gauss(z - (corner.z - 0.010), 0.025) * smooth((y - mouthY) / 0.012);
+      mouthDy += 0.0017 * w;
+      mouthDx += Math.sign(corner.x) * 0.0007 * w;
+      mouthDz += 0.0005 * w;
     }
-    for (const lid of lids) dy += 0.0024 * gauss(vertex.distanceTo(lid), 0.013); // lower-lid rise: the eye "smiles"
+    mouthDelta[i * 3] = mouthDx;
+    mouthDelta[i * 3 + 1] = mouthDy;
+    mouthDelta[i * 3 + 2] = mouthDz;
 
-    delta[i * 3] = dx;
-    delta[i * 3 + 1] = dy;
-    delta[i * 3 + 2] = dz;
+    /* AU6: lower lid rises, upper lid lowers slightly, and the malar cheek
+       bulges. Moving both lids toward the iris narrows the palpebral aperture;
+       it never exposes extra white above the iris. */
+    let eyeDx = 0;
+    let eyeDy = 0;
+    let eyeDz = 0;
+    for (const eye of eyeLandmarks) {
+      const { centre, surfaceZ } = eye;
+      const xWeight = gauss(x - centre.x, 0.018);
+      const zWeight = gauss(z - surfaceZ, 0.014);
+      const lowerLid = xWeight * gauss(y - (centre.y - 0.0060), 0.0048) * zWeight;
+      const upperLid = xWeight * gauss(y - (centre.y + 0.0062), 0.0045) * zWeight;
+      eyeDy += 0.00135 * lowerLid;
+      eyeDy -= 0.00080 * upperLid;
+      eyeDz += 0.00040 * lowerLid;
+
+      const cheekX = centre.x + Math.sign(centre.x) * 0.003;
+      const cheekY = centre.y - 0.021;
+      const cheek = gauss(x - cheekX, 0.025) * gauss(y - cheekY, 0.020)
+        * gauss(z - (surfaceZ - 0.013), 0.027);
+      eyeDy += 0.00245 * cheek;
+      eyeDx += Math.sign(centre.x) * 0.00055 * cheek;
+      eyeDz += 0.00075 * cheek;
+    }
+    eyeDelta[i * 3] = eyeDx;
+    eyeDelta[i * 3 + 1] = eyeDy;
+    eyeDelta[i * 3 + 2] = eyeDz;
   }
 
-  const attribute = new THREE.Float32BufferAttribute(delta, 3);
-  attribute.name = 'expr_smile';
-  if (!geometry.morphAttributes.position) {
-    geometry.morphAttributes.position = [];
-    geometry.morphTargetsRelative = true;
-  }
-  geometry.morphAttributes.position.push(attribute);
+  const mouthName = appendRelativeMorph(body, mouthDelta, 'expr_smile_mouth');
+  const eyeName = appendRelativeMorph(body, eyeDelta, 'expr_smile_eyes');
+  if (!mouthName || !eyeName) return null;
   body.updateMorphTargets();
-  const index = body.morphTargetDictionary['expr_smile'];
+  const mouthIndex = body.morphTargetDictionary[mouthName];
+  const eyeIndex = body.morphTargetDictionary[eyeName];
 
-  /* --- performance --- */
   let episode = null;
   function play(name = 'smile', speed = 1, intensity = 1) {
     if (name !== 'smile') return;
-    episode = { t0: null, attack: 0.38 / speed, hold: 1.4 / speed, release: 0.85 / speed, peak: intensity };
+    const safeSpeed = Math.max(0.1, speed);
+    episode = {
+      t0: null,
+      attack: 0.54 / safeSpeed,
+      hold: 1.25 / safeSpeed,
+      release: 0.72 / safeSpeed,
+      peak: clamp01(intensity),
+    };
   }
+
   function update(dt, t, values) {
-    let value = values.smile ?? 0;
+    const sliderMouth = clamp01(values.smile ?? 0);
+    let mouth = sliderMouth;
+    let eye = smileEyeIntensity(sliderMouth);
     if (episode) {
       if (episode.t0 == null) episode.t0 = t;
-      const e = t - episode.t0;
-      const { attack, hold, release, peak } = episode;
-      if (e < attack) value = Math.max(value, peak * smooth(e / attack));
-      else if (e < attack + hold) value = Math.max(value, peak);
-      else if (e < attack + hold + release) value = Math.max(value, peak * smooth(1 - (e - attack - hold) / release));
-      else episode = null;
+      const elapsed = t - episode.t0;
+      mouth = Math.max(mouth, episodeEnvelope(episode, elapsed));
+      // The eye smile follows the mouth by a few frames and peaks lower.
+      eye = Math.max(eye, smileEyeIntensity(episodeEnvelope(episode, elapsed, 0.09)));
+      if (elapsed > episode.attack + episode.hold + episode.release + 0.09) episode = null;
     }
-    if (value > 0.03) value *= 1 + Math.sin(t * 0.9) * 0.02; // held smiles breathe a little
-    body.morphTargetInfluences[index] = THREE.MathUtils.clamp(value, 0, 1);
+    body.morphTargetInfluences[mouthIndex] = clamp01(mouth);
+    body.morphTargetInfluences[eyeIndex] = clamp01(eye);
   }
-  return { play, update, landmarks: { cornerL, cornerR, noseY, noseZ } };
+
+  return {
+    play,
+    update,
+    landmarks: { cornerL, cornerR, noseY, noseZ, eyes: eyeLandmarks },
+  };
 }
