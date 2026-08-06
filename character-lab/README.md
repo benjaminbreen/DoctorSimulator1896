@@ -16,15 +16,17 @@ the MakeHuman system assets pack installed (override with `make BLENDER=…`).
 
 ## How it fits together
 
-- `public/presets/*.json` — the contract. One preset = one patient. 76 values.
+- `public/presets/*.json` — the contract. One preset = one patient. 83 values.
 - `scripts/characters/generate_patient.py` — Blender build: MPFB body, face
   and body identity baked before fitted attachments, game rig, seated pose, two idle
   clips (ClinicIdle, RestlessIdle) stashed via NLA. **No costume** — the body
   ships in the recolored base garment only.
-- `src/costume.js` — procedural 1890s costume + hair, built at the rest pose
-  and attached to bones, rebuilt live when sliders move: skirt (standing or
-  seated with lap drape), leg-of-mutton sleeves, cuffs, collar, buttons, hair
-  cap/part/side masses/bun styles.
+- `src/costume.js` — procedural 1890s costume built at the rest pose and
+  attached to bones, rebuilt live when sliders move: skirt (standing or seated
+  with lap drape), leg-of-mutton sleeves, cuffs, collar and buttons.
+- `src/hair/` — modular period-hair system: scalp sampling, anatomical
+  style-specific hairlines, true open parts, textured under-shells,
+  directional locks, alpha-tested wisps, waves, chignons and coiled buns.
 - `src/idle.js` — layered procedural performance: breathing (rate and
   amplitude), weight shift, fidget, gaze saccades, hand tension (curls real
   finger bones), hand tremor (symptom display), knee adduction, plus one-shot
@@ -47,6 +49,7 @@ rules, and `public/schema/patient.schema.json` for the record contract.
 
 ```
 npm run patient:test          # determinism, coherence and render-contract tests
+npm run hair:test             # hairline bounds and deterministic geometry tests
 npm run patient:audit -- 2000 # inspect generated distributions
 ```
 
@@ -85,7 +88,7 @@ and gestures layer on top), `clip+procedural` (both).
 
 - Base garment is still a recolored MakeHuman suit; the procedural layers
   cover most of it, but a real bodice/skirt garment remains the asset gap.
-- No expression morphs yet. Add MakeHuman expression
-  targets in the Blender build, keyed to the game's affect vocabulary.
+- Facial expressions currently use runtime-computed morphs; authored Blender
+  targets remain the longer-term route for a larger affect vocabulary.
 - GLB is unoptimized (~32k tris, ~8 MB); run the Darwin gltf-transform pass
   before game use.

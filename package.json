@@ -9,8 +9,9 @@
     "character:generate": "make character",
     "character:validate": "node scripts/characters/validate-preset.mjs",
     "patient:test": "node --test tests/patient-generator.test.mjs",
+    "hair:test": "node --test tests/hair-geometry.test.mjs",
     "patient:audit": "node scripts/characters/audit-patients.mjs",
-    "test": "npm run character:validate && npm run patient:test && npm run lab:build"
+    "test": "npm run character:validate && npm run patient:test && npm run hair:test && npm run lab:build"
   },
   "dependencies": {
     "three": "^0.179.1"

@@ -24,7 +24,8 @@ const ui = {
 /* ids that require rebuilding costume geometry (vs material-only or animation values) */
 const COSTUME_GEOMETRY_IDS = new Set(['bodiceFit', 'waistHeight', 'skirtFullness', 'skirtLength', 'skirtDrape',
   'bustleAmount', 'sleeveVolume', 'sleeveLength', 'collarHeight', 'collarSpread', 'buttonSpacing', 'buttonCount',
-  'outfitStyle', 'hairStyle', 'hairVolume', 'partWidth', 'bunSize', 'hairHeight', 'sideVolume']);
+  'outfitStyle', 'hairStyle', 'hairVolume', 'partWidth', 'bunSize', 'hairHeight', 'sideVolume',
+  'hairlineHeight', 'templeRecession', 'wispAmount', 'waveAmount']);
 
 const renderer = new THREE.WebGLRenderer({ canvas: ui.canvas, antialias: true, alpha: false });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -306,7 +307,7 @@ function applyAll(changedId = null) {
     setEyeColor(v.eyeColor);
     if (costume) {
       costume.materials.dress.color.set(v.dressColor); setSurfaceFinish(costume.materials.dress, v.fabricRoughness, 1);
-      costume.materials.trim.color.set(v.trimColor); costume.materials.hair.color.set(v.hairColor);
+      costume.materials.trim.color.set(v.trimColor); costume.updateHair(v);
     }
     if (changedId === null || COSTUME_GEOMETRY_IDS.has(changedId)) costumeDirty = true;
   }

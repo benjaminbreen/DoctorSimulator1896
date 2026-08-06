@@ -96,13 +96,18 @@ export function patientToCharacterPreset(patient, basePreset, definitions) {
   const hairCandidates = HAIR_STYLES.filter((style) => style.classes.includes(patient.social.classId)
     && patient.identity.age <= (style.maxAge ?? 120));
   values.hairStyle = hairRandom.weighted(hairCandidates).id;
-  const greying = patient.identity.age >= 52 && hairRandom.chance(Math.min(0.85, (patient.identity.age - 45) / 32));
-  values.hairColor = greying ? hairRandom.pick(['#49423c', '#625c54', '#7a746a', '#918a80']) : hairRandom.pick(origin.hairColors);
+  values.hairColor = hairRandom.pick(origin.hairColors);
   values.hairVolume = clamped(definitions, 'hairVolume', 1 + jitter(hairRandom, 0.22));
   values.hairHeight = clamped(definitions, 'hairHeight', 1 + jitter(hairRandom, 0.18));
   values.sideVolume = clamped(definitions, 'sideVolume', 1.02 + jitter(hairRandom, 0.24));
   values.partWidth = clamped(definitions, 'partWidth', 0.28 + jitter(hairRandom, 0.22));
   values.bunSize = clamped(definitions, 'bunSize', 1 + jitter(hairRandom, 0.28));
+  values.hairlineHeight = clamped(definitions, 'hairlineHeight', jitter(hairRandom, 0.20));
+  values.templeRecession = clamped(definitions, 'templeRecession', 0.12 + Math.max(0, patient.identity.age - 44) / 115 + jitter(hairRandom, 0.12));
+  values.wispAmount = clamped(definitions, 'wispAmount', 0.48 + jitter(hairRandom, 0.28));
+  values.waveAmount = clamped(definitions, 'waveAmount', 0.38 + jitter(hairRandom, 0.34));
+  values.strandContrast = clamped(definitions, 'strandContrast', 0.42 + jitter(hairRandom, 0.24));
+  values.greyAmount = clamped(definitions, 'greyAmount', Math.max(0, patient.identity.age - 42) / 38 + jitter(hairRandom, 0.13));
 
   values.outfitStyle = outfitFor(patient, dressRandom);
   [values.dressColor, values.trimColor] = paletteFor(values.outfitStyle, dressRandom);
@@ -130,10 +135,9 @@ export function patientToCharacterPreset(patient, basePreset, definitions) {
     appearance: {
       faceArchetype: face.id, bodyMass: values.weight, stature: values.height,
       skinTone: values.skinTone, eyeColor: values.eyeColor, hairColor: values.hairColor,
-      hairStyle: values.hairStyle, outfitStyle: values.outfitStyle,
+      hairStyle: values.hairStyle, greyAmount: values.greyAmount, outfitStyle: values.outfitStyle,
       dressColor: values.dressColor, trimColor: values.trimColor,
     },
   };
   return preset;
 }
-
