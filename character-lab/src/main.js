@@ -103,6 +103,10 @@ function makeClinic() {
   const hemi = new THREE.HemisphereLight('#a9bfd5', '#2b1a10', 0.9); hemi.name = 'FillLight'; scene.add(hemi);
   const key = new THREE.SpotLight('#ffd8a0', 65, 9, Math.PI * 0.36, 0.92, 1.15);
   key.name = 'KeyLight'; key.position.set(-1.5, 3.2, 2.2); key.target.position.set(0, 1.1, 0); key.castShadow = true; key.shadow.radius = 7; key.shadow.mapSize.set(1024, 1024); scene.add(key, key.target);
+  const faceFill = new THREE.SpotLight('#d8c3aa', 3, 7, Math.PI * 0.48, 0.98, 1.2);
+  faceFill.name = 'B2FaceFill'; faceFill.position.set(1.25, 2.35, 3.1); faceFill.target.position.set(0, 1.48, 0); faceFill.visible = false; scene.add(faceFill, faceFill.target);
+  const rim = new THREE.DirectionalLight('#8fa1b2', 0.3);
+  rim.name = 'B2RimLight'; rim.position.set(2.2, 2.5, -1.8); rim.visible = false; scene.add(rim);
 }
 
 function addMesh(parent, name, geometry, mat, position, scale = [1, 1, 1]) {
@@ -173,7 +177,7 @@ function disposeLoadedCharacter() {
 
 function updateRenderToggle() {
   if (!ui.renderToggle) return;
-  ui.renderToggle.textContent = renderStyle === 'stylized' ? 'Renderer B · Stylized' : 'Renderer A · Current';
+  ui.renderToggle.textContent = renderStyle === 'stylized' ? 'Renderer B2 · Anatomical' : 'Renderer A · Current';
   ui.renderToggle.classList.toggle('active', renderStyle === 'stylized');
   ui.renderToggle.disabled = renderSwitchBusy;
 }
@@ -189,7 +193,7 @@ async function loadCharacter() {
     if (renderStyle === 'stylized') prepareStylizedModel(model, preset.values);
     characterRoot.add(model); animationClips = gltf.animations;
     setupAnimations();
-    const label = renderStyle === 'stylized' ? 'B stylized proxy' : 'A current mesh';
+    const label = renderStyle === 'stylized' ? 'B2 anatomical mesh' : 'A current mesh';
     ui.status.textContent = `${label} · ${countTriangles(model).toLocaleString()} triangles · ${animationClips.length} clip${animationClips.length === 1 ? '' : 's'}`; ui.status.className = 'status ok';
   } catch (error) {
     model = makeFallbackHuman(); characterRoot.add(model); isFallback = true;
@@ -361,10 +365,25 @@ function applyAll(changedId = null) {
     }
     if (changedId === null || COSTUME_GEOMETRY_IDS.has(changedId)) costumeDirty = true;
   }
-  const key = scene.getObjectByName('KeyLight'); const fill = scene.getObjectByName('FillLight');
-  if (key) { key.intensity = 48 * v.keyIntensity; key.color.setHSL(0.105, .58, .62 + (1 - v.warmth) * .1); }
-  if (fill) fill.intensity = 0.62 + v.fillIntensity * 0.9;
-  renderer.toneMappingExposure = 2 ** v.exposure; camera.fov = v.cameraFov; camera.updateProjectionMatrix();
+  const key = scene.getObjectByName('KeyLight');
+  const fill = scene.getObjectByName('FillLight');
+  const faceFill = scene.getObjectByName('B2FaceFill');
+  const rim = scene.getObjectByName('B2RimLight');
+  const b2 = renderStyle === 'stylized';
+  const softness = THREE.MathUtils.clamp(v.stylizedLightSoftness ?? 0.78, 0, 1);
+  if (key) {
+    key.intensity = (b2 ? THREE.MathUtils.lerp(39, 29, softness) : 48) * v.keyIntensity;
+    key.color.setHSL(0.105, b2 ? .42 : .58, (b2 ? .67 : .62) + (1 - v.warmth) * .1);
+    key.penumbra = b2 ? THREE.MathUtils.lerp(.9, .995, softness) : .92;
+    key.shadow.radius = b2 ? THREE.MathUtils.lerp(7, 15, softness) : 7;
+  }
+  if (fill) fill.intensity = b2 ? 0.38 + v.fillIntensity * 0.55 : 0.62 + v.fillIntensity * 0.9;
+  if (faceFill) {
+    faceFill.visible = b2;
+    faceFill.intensity = (0.65 + softness * 1.75) * (0.65 + v.fillIntensity * 0.45);
+  }
+  if (rim) { rim.visible = b2; rim.intensity = 0.14 + softness * 0.14; }
+  renderer.toneMappingExposure = 2 ** (v.exposure + (b2 ? -0.08 : 0)); camera.fov = v.cameraFov; camera.updateProjectionMatrix();
   if (changedId === 'idleMode') syncIdleMode();
   updateText();
 }
@@ -435,7 +454,7 @@ function updateText() {
   ui.json.value = JSON.stringify(preset, null, 2);
   ui.command.textContent = `npm run character:generate -- character-lab/public/presets/${preset.id}.json`;
   const baked = definitions.filter((d) => d.mode === 'bake').length; const live = definitions.length - baked;
-  ui.pipeline.innerHTML = `<dt>Tunable values</dt><dd>${definitions.length}</dd><dt>Live controls</dt><dd>${live}</dd><dt>Blender controls</dt><dd>${baked}</dd><dt>Renderer</dt><dd>${renderStyle === 'stylized' ? 'B · stylized proxy' : 'A · current'}</dd><dt>Regeneration</dt><dd>${regenerationNeeded ? 'needed' : 'current'}</dd><dt>Deterministic seed</dt><dd>${preset.values.seed}</dd><dt>Target runtime</dt><dd>Three.js / GLB</dd>`;
+  ui.pipeline.innerHTML = `<dt>Tunable values</dt><dd>${definitions.length}</dd><dt>Live controls</dt><dd>${live}</dd><dt>Blender controls</dt><dd>${baked}</dd><dt>Renderer</dt><dd>${renderStyle === 'stylized' ? 'B2 · anatomical' : 'A · current'}</dd><dt>Regeneration</dt><dd>${regenerationNeeded ? 'needed' : 'current'}</dd><dt>Deterministic seed</dt><dd>${preset.values.seed}</dd><dt>Target runtime</dt><dd>Three.js / GLB</dd>`;
 }
 
 async function randomize() {
@@ -482,7 +501,7 @@ async function toggleRenderStyle() {
   renderStyle = renderStyle === 'current' ? 'stylized' : 'current';
   sessionStorage.setItem('characterLabRenderStyle', renderStyle);
   updateRenderToggle();
-  ui.status.textContent = `Loading renderer ${renderStyle === 'stylized' ? 'B' : 'A'}…`;
+  ui.status.textContent = `Loading renderer ${renderStyle === 'stylized' ? 'B2' : 'A'}…`;
   ui.status.className = 'status';
   await loadCharacter();
   renderSwitchBusy = false;

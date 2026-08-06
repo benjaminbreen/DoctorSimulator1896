@@ -16,7 +16,7 @@ the MakeHuman system assets pack installed (override with `make BLENDER=…`).
 
 ## How it fits together
 
-- `public/presets/*.json` — the contract. One preset = one patient. 86 values.
+- `public/presets/*.json` — the contract. One preset = one patient. 100 values.
 - `scripts/characters/generate_patient.py` — Blender build: MPFB body, face
   and body identity baked before fitted attachments, game rig, seated pose, two idle
   clips (ClinicIdle, RestlessIdle) stashed via NLA. **No costume** — the body
@@ -27,9 +27,10 @@ the MakeHuman system assets pack installed (override with `make BLENDER=…`).
 - `src/hair/` — modular period-hair system: scalp sampling, anatomical
   style-specific hairlines, true open parts, textured under-shells,
   directional locks, alpha-tested wisps, waves, chignons and coiled buns.
-- `src/stylized.js` — Renderer B treatment for MPFB's supported `female1605`
-  proxy: deterministic plane tones, flat-shaded skin and garments, softened
-  eye whites and restrained roughness. Renderer A remains unchanged.
+- `src/stylized.js` — Renderer B2 treatment for MPFB's fitted generic female
+  proxy: a protected mid-density topology, anatomy-guided facial planes,
+  capillary colour, procedural skin microstructure, softened eye whites and a
+  dedicated portrait-light response. Renderer A remains unchanged.
 - `src/idle.js` — layered procedural performance: breathing (rate and
   amplitude), weight shift, fidget, gaze saccades, hand tension (curls real
   finger bones), hand tremor (symptom display), knee adduction, plus one-shot
@@ -56,9 +57,11 @@ The stage toggle switches one patient preset between two separately exported,
 equally rigged interpretations:
 
 - **A · Current** uses the MPFB basemesh.
-- **B · Stylized** uses MPFB's fitted `female1605` proxy and a lower-detail
-  procedural costume. It is derived after identity targets are baked, so seed,
-  proportions, skeleton, pose, clips and patient metadata remain shared.
+- **B · Stylized** fits MPFB's generic female proxy, then uses protected
+  decimation to target roughly 10.5k body triangles while retaining the full
+  head, neck, hand and finger regions. It is derived after identity targets are
+  baked, so seed, proportions, skeleton, pose, clips and patient metadata remain
+  shared. Smile, sadness and fatigue are computed on either topology.
 
 `character:generate` and the local regeneration endpoint produce/cache both
 GLBs together. B is an additive experiment and does not overwrite A.
@@ -105,7 +108,8 @@ and gestures layer on top), `clip+procedural` (both).
 
 - Base garment is still a recolored MakeHuman suit; the procedural layers
   cover most of it, but a real bodice/skirt garment remains the asset gap.
-- Facial expressions currently use runtime-computed morphs; authored Blender
-  targets remain the longer-term route for a larger affect vocabulary.
+- Facial expressions currently use runtime-computed morphs (coordinated smile,
+  sadness and fatigue); authored Blender targets remain the longer-term route
+  for nuanced speech and a larger affect vocabulary.
 - GLB is unoptimized (~32k tris, ~8 MB); run the Darwin gltf-transform pass
   before game use.

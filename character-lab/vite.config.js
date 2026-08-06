@@ -7,7 +7,7 @@ const labRoot = import.meta.dirname;
 const projectRoot = path.resolve(labRoot, '..');
 const generatedDir = path.join(labRoot, '.generated');
 const cacheDir = path.join(generatedDir, 'cache');
-const pipelineVersion = 'dual-renderer-v3';
+const pipelineVersion = 'b2-anatomical-renderer-v4';
 const blender = process.env.BLENDER || '/Applications/Blender.app/Contents/MacOS/Blender';
 let activeGeneration = null;
 

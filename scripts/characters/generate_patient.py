@@ -263,14 +263,60 @@ def export_glb(output, objects=None):
     )
 
 
+def protect_and_decimate_stylized_proxy(proxy):
+    """Create a mid-density topology without sacrificing expressive regions.
+
+    MPFB ships a 3k-triangle proxy and a 27k-triangle generic proxy, but no
+    useful middle LOD. Start from the generic topology and preferentially keep
+    the head, neck, hands and fingers while collapsing the clothed body more
+    aggressively. The modifier runs before the armature and interpolates all
+    deformation weights onto the resulting vertices.
+    """
+    protected_names = {"head", "neck_01", "hand_l", "hand_r"}
+    protected_names.update(
+        group.name for group in proxy.vertex_groups
+        if any(token in group.name for token in ("thumb_", "index_", "middle_", "ring_", "pinky_"))
+    )
+    protected_indices = {
+        proxy.vertex_groups[name].index for name in protected_names
+        if proxy.vertex_groups.get(name)
+    }
+    weights = []
+    for vertex in proxy.data.vertices:
+        weight = max(
+            (membership.weight for membership in vertex.groups if membership.group in protected_indices),
+            default=0.0,
+        )
+        weights.append(weight)
+    protection = proxy.vertex_groups.new(name="B2_DetailProtection")
+    for index, weight in enumerate(weights):
+        if weight > 0.001:
+            protection.add([index], weight, "REPLACE")
+
+    modifier = proxy.modifiers.new("B2_MidDensity", "DECIMATE")
+    modifier.decimate_type = "COLLAPSE"
+    modifier.ratio = 0.38
+    modifier.vertex_group = protection.name
+    modifier.invert_vertex_group = True
+    modifier.vertex_group_factor = 2.0
+    modifier.use_collapse_triangulate = True
+    bpy.context.view_layer.objects.active = proxy
+    proxy.select_set(True)
+    while proxy.modifiers.find(modifier.name) > 0:
+        bpy.ops.object.modifier_move_up(modifier=modifier.name)
+    bpy.ops.object.modifier_apply(modifier=modifier.name)
+    if proxy.vertex_groups.get(protection.name):
+        proxy.vertex_groups.remove(proxy.vertex_groups[protection.name])
+
+
 def add_stylized_proxy(HumanService, AssetService, base, values):
-    """Fit MPFB's supported low-poly female topology to the finalized identity.
+    """Fit MPFB's supported generic female topology to the finalized identity.
 
     This is not a decimated copy or a hand-built replacement human. The proxy is
     fitted by MPFB to the same baked targets and receives weights from the same
     game-engine rig, so A and B remain the same generated patient.
     """
-    proxy_path = find_asset(AssetService, "female1605.proxy", "proxymeshes")
+    proxy_path = find_asset(AssetService, "female_generic.proxy", "proxymeshes")
     proxy = HumanService.add_mhclo_asset(
         proxy_path,
         base,
@@ -283,9 +329,10 @@ def add_stylized_proxy(HumanService, AssetService, base, values):
         import_weights=True,
     )
     if not proxy:
-        raise RuntimeError("MPFB failed to create the female1605 stylized proxy")
+        raise RuntimeError("MPFB failed to create the female_generic stylized proxy")
     proxy.name = "Human_Body_Stylized"
-    proxy.data.name = "female1605_stylized"
+    proxy.data.name = "female_generic_b2"
+    protect_and_decimate_stylized_proxy(proxy)
     proxy.data.materials.clear()
     proxy.data.materials.append(material("Stylized_Skin_Base", values["skinTone"], 0.92))
     for polygon in proxy.data.polygons:

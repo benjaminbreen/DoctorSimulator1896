@@ -47,6 +47,17 @@ function ageMorph(age) {
   return 0.5 + ((age - 16) / 60) * 0.4;
 }
 
+function lipColorForSkin(skinTone, random) {
+  const channels = [1, 3, 5].map((index) => parseInt(skinTone.slice(index, index + 2), 16));
+  const variation = random.bell() * 10;
+  const tinted = [
+    channels[0] * 0.72 + 35 + variation,
+    channels[1] * 0.55 + 15 + variation * 0.35,
+    channels[2] * 0.58 + 18 + variation * 0.45,
+  ].map((value) => Math.round(Math.min(255, Math.max(0, value))));
+  return `#${tinted.map((value) => value.toString(16).padStart(2, '0')).join('')}`;
+}
+
 function bodyMass(patient, random) {
   const classCenter = { elite: 0.56, affluent: 0.53, comfortable: 0.49, sponsored: 0.44 }[patient.social.classId];
   const ageAdjustment = patient.identity.age > 50 ? 0.035 : patient.identity.age < 23 ? -0.035 : 0;
@@ -109,9 +120,21 @@ export function patientToCharacterPreset(patient, basePreset, definitions) {
   values.waveAmount = clamped(definitions, 'waveAmount', 0.38 + jitter(hairRandom, 0.34));
   values.strandContrast = clamped(definitions, 'strandContrast', 0.42 + jitter(hairRandom, 0.24));
   values.greyAmount = clamped(definitions, 'greyAmount', Math.max(0, patient.identity.age - 42) / 38 + jitter(hairRandom, 0.13));
-  values.stylizedPlaneContrast = clamped(definitions, 'stylizedPlaneContrast', 0.44 + jitter(stylizedRandom, 0.18));
-  values.stylizedEyeContrast = clamped(definitions, 'stylizedEyeContrast', 0.3 + jitter(stylizedRandom, 0.16));
-  values.stylizedSurfaceRoughness = clamped(definitions, 'stylizedSurfaceRoughness', 0.92 + jitter(stylizedRandom, 0.08));
+  values.stylizedPlaneContrast = clamped(definitions, 'stylizedPlaneContrast', 0.3 + jitter(stylizedRandom, 0.12));
+  values.stylizedTriangleBlend = clamped(definitions, 'stylizedTriangleBlend', 0.36 + jitter(stylizedRandom, 0.14));
+  values.stylizedSkinDetail = clamped(definitions, 'stylizedSkinDetail', 0.42 + jitter(stylizedRandom, 0.14));
+  values.stylizedPoreScale = clamped(definitions, 'stylizedPoreScale', 1 + jitter(stylizedRandom, 0.38));
+  values.stylizedPigmentVariation = clamped(definitions, 'stylizedPigmentVariation', 0.3 + jitter(stylizedRandom, 0.16));
+  values.stylizedFreckleAmount = clamped(definitions, 'stylizedFreckleAmount', 0.08 + Math.max(0, jitter(stylizedRandom, 0.16)));
+  values.stylizedSkinWarmth = clamped(definitions, 'stylizedSkinWarmth', 0.28 + jitter(stylizedRandom, 0.12));
+  values.stylizedCheekBlush = clamped(definitions, 'stylizedCheekBlush', 0.42 + jitter(stylizedRandom, 0.18));
+  values.stylizedNoseRedness = clamped(definitions, 'stylizedNoseRedness', 0.3 + jitter(stylizedRandom, 0.16));
+  values.stylizedForeheadWarmth = clamped(definitions, 'stylizedForeheadWarmth', 0.18 + jitter(stylizedRandom, 0.12));
+  values.stylizedLipTint = clamped(definitions, 'stylizedLipTint', 0.52 + jitter(stylizedRandom, 0.15));
+  values.stylizedLipColor = lipColorForSkin(values.skinTone, stylizedRandom);
+  values.stylizedEyeContrast = clamped(definitions, 'stylizedEyeContrast', 0.3 + jitter(stylizedRandom, 0.12));
+  values.stylizedSurfaceRoughness = clamped(definitions, 'stylizedSurfaceRoughness', 0.82 + jitter(stylizedRandom, 0.08));
+  values.stylizedLightSoftness = clamped(definitions, 'stylizedLightSoftness', 0.78 + jitter(stylizedRandom, 0.12));
 
   values.outfitStyle = outfitFor(patient, dressRandom);
   [values.dressColor, values.trimColor] = paletteFor(values.outfitStyle, dressRandom);
@@ -129,6 +152,10 @@ export function patientToCharacterPreset(patient, basePreset, definitions) {
   values.kneesTogether = clamped(definitions, 'kneesTogether', 0.74 + jitter(performanceRandom, 0.12));
   values.headTilt = clamped(definitions, 'headTilt', jitter(performanceRandom, 0.09));
   values.headTurn = clamped(definitions, 'headTurn', jitter(performanceRandom, 0.16));
+  const sadPresentations = new Set(['melancholic-withdrawal', 'bereavement-visions', 'postpartum-disturbance']);
+  const tiredPresentations = new Set(['neurasthenic-exhaustion', 'persistent-insomnia', 'morphine-habit', 'postpartum-disturbance']);
+  values.sadness = clamped(definitions, 'sadness', (sadPresentations.has(patient.clinical.id) ? 0.42 : 0.03) * severity + jitter(performanceRandom, 0.05));
+  values.fatigueExpression = clamped(definitions, 'fatigueExpression', (tiredPresentations.has(patient.clinical.id) ? 0.54 : 0.05) * severity + jitter(performanceRandom, 0.07));
   values.seated = 1;
   values.idleMode = 'procedural';
 

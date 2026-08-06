@@ -111,7 +111,9 @@
         {"id":"weightShift","label":"Weight shift","type":"range","min":0,"max":3,"step":0.01,"default":1.0},
         {"id":"tremor","label":"Hand tremor (symptom)","type":"range","min":0,"max":2,"step":0.01,"default":0.5},
         {"id":"gestureSpeed","label":"Gesture speed","type":"range","min":0.6,"max":1.6,"step":0.01,"default":1.0},
-        {"id":"smile","label":"Resting smile","type":"range","min":0,"max":1,"step":0.01,"default":0}
+        {"id":"smile","label":"Resting smile","type":"range","min":0,"max":1,"step":0.01,"default":0},
+        {"id":"sadness","label":"Resting sadness","type":"range","min":0,"max":1,"step":0.01,"default":0},
+        {"id":"fatigueExpression","label":"Facial fatigue","type":"range","min":0,"max":1,"step":0.01,"default":0}
       ]
     },
     {
@@ -127,9 +129,21 @@
     {
       "id": "stylized", "label": "Renderer B · stylized", "mode": "live",
       "parameters": [
-        {"id":"stylizedPlaneContrast","label":"Facial plane contrast","type":"range","min":0,"max":1,"step":0.01,"default":0.42},
-        {"id":"stylizedEyeContrast","label":"Eye-white contrast","type":"range","min":0,"max":1,"step":0.01,"default":0.34},
-        {"id":"stylizedSurfaceRoughness","label":"Stylized surface roughness","type":"range","min":0.55,"max":1,"step":0.01,"default":0.9}
+        {"id":"stylizedPlaneContrast","label":"Anatomical plane definition","type":"range","min":0,"max":1,"step":0.01,"default":0.3},
+        {"id":"stylizedTriangleBlend","label":"Triangle smoothing blend","type":"range","min":0,"max":1,"step":0.01,"default":0.36},
+        {"id":"stylizedSkinDetail","label":"Skin micro-detail","type":"range","min":0,"max":1,"step":0.01,"default":0.42},
+        {"id":"stylizedPoreScale","label":"Pore / texture scale","type":"range","min":0.35,"max":2.5,"step":0.01,"default":1},
+        {"id":"stylizedPigmentVariation","label":"Pigment variation","type":"range","min":0,"max":1,"step":0.01,"default":0.3},
+        {"id":"stylizedFreckleAmount","label":"Freckles / small marks","type":"range","min":0,"max":1,"step":0.01,"default":0.08},
+        {"id":"stylizedSkinWarmth","label":"Skin warmth / capillary color","type":"range","min":-1,"max":1,"step":0.01,"default":0.28},
+        {"id":"stylizedCheekBlush","label":"Cheek blush","type":"range","min":0,"max":1,"step":0.01,"default":0.42},
+        {"id":"stylizedNoseRedness","label":"Nose redness","type":"range","min":0,"max":1,"step":0.01,"default":0.3},
+        {"id":"stylizedForeheadWarmth","label":"Forehead warmth","type":"range","min":0,"max":1,"step":0.01,"default":0.18},
+        {"id":"stylizedLipTint","label":"Natural lip tint","type":"range","min":0,"max":1,"step":0.01,"default":0.52},
+        {"id":"stylizedLipColor","label":"Lip color","type":"color","default":"#b66d68"},
+        {"id":"stylizedEyeContrast","label":"Eye-white contrast","type":"range","min":0,"max":1,"step":0.01,"default":0.3},
+        {"id":"stylizedSurfaceRoughness","label":"Stylized surface roughness","type":"range","min":0.55,"max":1,"step":0.01,"default":0.82},
+        {"id":"stylizedLightSoftness","label":"Portrait light softness","type":"range","min":0,"max":1,"step":0.01,"default":0.78}
       ]
     }
   ]

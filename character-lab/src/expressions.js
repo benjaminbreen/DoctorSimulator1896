@@ -156,6 +156,9 @@ export function createExpressions(model) {
 
   const mouthDelta = new Float32Array(position.count * 3);
   const eyeDelta = new Float32Array(position.count * 3);
+  const sadMouthDelta = new Float32Array(position.count * 3);
+  const sadBrowDelta = new Float32Array(position.count * 3);
+  const fatigueDelta = new Float32Array(position.count * 3);
 
   for (let i = 0; i < position.count; i++) {
     const x = position.getX(i);
@@ -192,12 +195,25 @@ export function createExpressions(model) {
     mouthDelta[i * 3 + 1] = mouthDy;
     mouthDelta[i * 3 + 2] = mouthDz;
 
+    /* Sadness: AU15 depresses the corners while the central lip stays nearly
+       still. Keeping this separate from the brow lets a generated patient be
+       subdued rather than permanently theatrical. */
+    sadMouthDelta[i * 3] = -sign * 0.0013 * cornerFactor * lipWeight;
+    sadMouthDelta[i * 3 + 1] = (-0.0064 * cornerFactor + 0.0005 * centreFactor) * lipWeight;
+    sadMouthDelta[i * 3 + 2] = -0.0008 * cornerFactor * lipWeight;
+
     /* AU6: lower lid rises, upper lid lowers slightly, and the malar cheek
        bulges. Moving both lids toward the iris narrows the palpebral aperture;
        it never exposes extra white above the iris. */
     let eyeDx = 0;
     let eyeDy = 0;
     let eyeDz = 0;
+    let sadBrowDx = 0;
+    let sadBrowDy = 0;
+    let sadBrowDz = 0;
+    let fatigueDx = 0;
+    let fatigueDy = 0;
+    let fatigueDz = 0;
     for (const eye of eyeLandmarks) {
       const { centre, surfaceZ } = eye;
       const xWeight = gauss(x - centre.x, 0.018);
@@ -215,28 +231,61 @@ export function createExpressions(model) {
       eyeDy += 0.00245 * cheek;
       eyeDx += Math.sign(centre.x) * 0.00055 * cheek;
       eyeDz += 0.00075 * cheek;
+
+      // AU1+AU4: lift and draw together the inner brow, with a restrained
+      // outer-brow descent. The depth term keeps motion on the facial shell.
+      const side = Math.sign(centre.x) || 1;
+      const browZ = gauss(z - (surfaceZ - 0.005), 0.018);
+      const innerBrow = gauss(x - (centre.x - side * 0.010), 0.012)
+        * gauss(y - (centre.y + 0.019), 0.0075) * browZ;
+      const outerBrow = gauss(x - (centre.x + side * 0.013), 0.014)
+        * gauss(y - (centre.y + 0.018), 0.0085) * browZ;
+      sadBrowDy += 0.0037 * innerBrow - 0.0010 * outerBrow;
+      sadBrowDx -= side * 0.0008 * innerBrow;
+      sadBrowDz += 0.0005 * innerBrow;
+
+      // Fatigue is dominated by upper-lid droop and mild cheek descent, not
+      // an eyeball rotation or a generic downward translation of the face.
+      fatigueDy -= 0.0020 * upperLid;
+      fatigueDy += 0.00035 * lowerLid;
+      fatigueDy -= 0.00115 * cheek;
+      fatigueDz -= 0.00030 * cheek;
     }
     eyeDelta[i * 3] = eyeDx;
     eyeDelta[i * 3 + 1] = eyeDy;
     eyeDelta[i * 3 + 2] = eyeDz;
+    sadBrowDelta[i * 3] = sadBrowDx;
+    sadBrowDelta[i * 3 + 1] = sadBrowDy;
+    sadBrowDelta[i * 3 + 2] = sadBrowDz;
+    const fatigueMouth = 0.0013 * cornerFactor * lipWeight;
+    fatigueDelta[i * 3] = fatigueDx;
+    fatigueDelta[i * 3 + 1] = fatigueDy - fatigueMouth;
+    fatigueDelta[i * 3 + 2] = fatigueDz;
   }
 
   const mouthName = appendRelativeMorph(body, mouthDelta, 'expr_smile_mouth');
   const eyeName = appendRelativeMorph(body, eyeDelta, 'expr_smile_eyes');
-  if (!mouthName || !eyeName) return null;
+  const sadMouthName = appendRelativeMorph(body, sadMouthDelta, 'expr_sad_mouth');
+  const sadBrowName = appendRelativeMorph(body, sadBrowDelta, 'expr_sad_brow');
+  const fatigueName = appendRelativeMorph(body, fatigueDelta, 'expr_fatigue');
+  if (!mouthName || !eyeName || !sadMouthName || !sadBrowName || !fatigueName) return null;
   body.updateMorphTargets();
   const mouthIndex = body.morphTargetDictionary[mouthName];
   const eyeIndex = body.morphTargetDictionary[eyeName];
+  const sadMouthIndex = body.morphTargetDictionary[sadMouthName];
+  const sadBrowIndex = body.morphTargetDictionary[sadBrowName];
+  const fatigueIndex = body.morphTargetDictionary[fatigueName];
 
   let episode = null;
   function play(name = 'smile', speed = 1, intensity = 1) {
-    if (name !== 'smile') return;
+    if (!['smile', 'sadness', 'fatigue'].includes(name)) return;
     const safeSpeed = Math.max(0.1, speed);
     episode = {
+      name,
       t0: null,
-      attack: 0.54 / safeSpeed,
-      hold: 1.25 / safeSpeed,
-      release: 0.72 / safeSpeed,
+      attack: (name === 'fatigue' ? 0.82 : 0.54) / safeSpeed,
+      hold: (name === 'fatigue' ? 1.65 : 1.25) / safeSpeed,
+      release: (name === 'fatigue' ? 1.05 : 0.72) / safeSpeed,
       peak: clamp01(intensity),
     };
   }
@@ -245,21 +294,31 @@ export function createExpressions(model) {
     const sliderMouth = clamp01(values.smile ?? 0);
     let mouth = sliderMouth;
     let eye = smileEyeIntensity(sliderMouth);
+    let sadness = clamp01(values.sadness ?? 0);
+    let fatigue = clamp01(values.fatigueExpression ?? 0);
     if (episode) {
       if (episode.t0 == null) episode.t0 = t;
       const elapsed = t - episode.t0;
-      mouth = Math.max(mouth, episodeEnvelope(episode, elapsed));
-      // The eye smile follows the mouth by a few frames and peaks lower.
-      eye = Math.max(eye, smileEyeIntensity(episodeEnvelope(episode, elapsed, 0.09)));
-      if (elapsed > episode.attack + episode.hold + episode.release + 0.09) episode = null;
+      const performance = episodeEnvelope(episode, elapsed);
+      if (episode.name === 'smile') {
+        mouth = Math.max(mouth, performance);
+        // The eye smile follows the mouth by a few frames and peaks lower.
+        eye = Math.max(eye, smileEyeIntensity(episodeEnvelope(episode, elapsed, 0.09)));
+      } else if (episode.name === 'sadness') sadness = Math.max(sadness, performance);
+      else if (episode.name === 'fatigue') fatigue = Math.max(fatigue, performance);
+      if (elapsed > episode.attack + episode.hold + episode.release + 0.1) episode = null;
     }
     body.morphTargetInfluences[mouthIndex] = clamp01(mouth);
     body.morphTargetInfluences[eyeIndex] = clamp01(eye);
+    body.morphTargetInfluences[sadMouthIndex] = sadness;
+    body.morphTargetInfluences[sadBrowIndex] = sadness;
+    body.morphTargetInfluences[fatigueIndex] = fatigue;
   }
 
   return {
     play,
     update,
     landmarks: { cornerL, cornerR, noseY, noseZ, eyes: eyeLandmarks },
+    morphs: { mouthIndex, eyeIndex, sadMouthIndex, sadBrowIndex, fatigueIndex },
   };
 }
