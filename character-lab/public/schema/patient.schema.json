@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ghosts-machine-age.local/schema/patient.schema.json",
+  "title": "NYC 1896 Procedural Patient",
+  "type": "object",
+  "required": ["schemaVersion", "seed", "setting", "identity", "social", "clinical", "generation"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "seed": { "type": "integer", "minimum": 1 },
+    "setting": {
+      "type": "object",
+      "required": ["city", "year", "clinicType"],
+      "properties": {
+        "city": { "const": "New York" },
+        "year": { "const": 1896 },
+        "month": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "clinicType": { "type": "string" }
+      }
+    },
+    "identity": {
+      "type": "object",
+      "required": ["sex", "age", "birthYear", "givenName", "familyName", "displayName", "origin"],
+      "properties": {
+        "sex": { "const": "female" },
+        "age": { "type": "integer", "minimum": 16, "maximum": 76 },
+        "birthYear": { "type": "integer", "minimum": 1820, "maximum": 1880 },
+        "givenName": { "type": "string", "minLength": 1 },
+        "familyName": { "type": "string", "minLength": 1 },
+        "title": { "enum": ["Miss", "Mrs."] },
+        "displayName": { "type": "string", "minLength": 1 },
+        "fullName": { "type": "string", "minLength": 1 },
+        "origin": {
+          "type": "object",
+          "required": ["id", "label", "generation", "generationLabel"],
+          "properties": {
+            "id": { "type": "string" }, "label": { "type": "string" },
+            "generation": { "type": "integer", "minimum": 0 }, "generationLabel": { "type": "string" }
+          }
+        },
+        "religion": { "type": "string" },
+        "language": { "type": "string" }
+      }
+    },
+    "social": {
+      "type": "object",
+      "required": ["classId", "classLabel", "occupationId", "householdPosition", "household", "residence", "payer", "referralSource"],
+      "properties": {
+        "classId": { "enum": ["elite", "affluent", "comfortable", "sponsored"] },
+        "classLabel": { "type": "string" },
+        "occupationId": { "type": "string" },
+        "occupation": { "type": ["string", "null"] },
+        "householdPosition": { "type": "string" },
+        "household": { "type": "object" },
+        "residence": { "type": "string" },
+        "payer": { "type": "string" },
+        "referralSource": { "type": "string" }
+      }
+    },
+    "clinical": {
+      "type": "object",
+      "required": ["id", "periodCategory", "theme", "presentingComplaint", "symptoms", "duration", "severity", "affect", "performance"],
+      "properties": {
+        "id": { "type": "string" }, "periodCategory": { "type": "string" },
+        "theme": { "type": "string" }, "presentingComplaint": { "type": "string" },
+        "symptoms": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "duration": { "type": "string" }, "severity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "affect": { "type": "string" }, "flags": { "type": "array", "items": { "type": "string" } },
+        "performance": { "type": "object" }
+      }
+    },
+    "generation": { "type": "object" },
+    "appearance": { "type": "object" }
+  }
+}
+

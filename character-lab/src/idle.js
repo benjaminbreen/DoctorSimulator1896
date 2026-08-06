@@ -79,8 +79,9 @@ export function createIdle(bones) {
     // saccadic gaze retargeting
     if (t >= saccade.nextAt) {
       const big = Math.random() < 0.18;
-      saccade.targetY = (Math.random() - 0.5) * (big ? 0.5 : 0.22) * v.gazeDrift * 2;
-      saccade.targetX = (Math.random() - 0.5) * 0.1 * v.gazeDrift * 2;
+      const drift = Math.min(v.gazeDrift, 1.5); // keep large slider values from spinning the head
+      saccade.targetY = (Math.random() - 0.5) * (big ? 0.5 : 0.22) * drift * 2;
+      saccade.targetX = (Math.random() - 0.5) * 0.1 * drift * 2;
       saccade.nextAt = t + THREE.MathUtils.lerp(1.6, 5.2, Math.random());
     }
     const ease = 1 - Math.exp(-dt * 7);

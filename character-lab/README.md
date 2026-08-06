@@ -16,9 +16,9 @@ the MakeHuman system assets pack installed (override with `make BLENDER=…`).
 
 ## How it fits together
 
-- `public/presets/*.json` — the contract. One preset = one patient. 66 values.
+- `public/presets/*.json` — the contract. One preset = one patient. 76 values.
 - `scripts/characters/generate_patient.py` — Blender build: MPFB body, face
-  morphs (exported as GLB morph targets), game rig, seated pose, two idle
+  and body identity baked before fitted attachments, game rig, seated pose, two idle
   clips (ClinicIdle, RestlessIdle) stashed via NLA. **No costume** — the body
   ships in the recolored base garment only.
 - `src/costume.js` — procedural 1890s costume + hair, built at the rest pose
@@ -29,6 +29,26 @@ the MakeHuman system assets pack installed (override with `make BLENDER=…`).
   amplitude), weight shift, fidget, gaze saccades, hand tension (curls real
   finger bones), hand tremor (symptom display), knee adduction, plus one-shot
   gestures (nod, shake, sigh, glance) from the Perform row.
+- `src/patients/` — seeded NYC 1896 patient-domain generator plus the one-way
+  adapter into the render preset. Identity, household, clinic access, complaint,
+  clothing, appearance and performance remain linked in the exported JSON.
+
+## Procedural patients
+
+`Seeded variation` now generates a coherent patient rather than independently
+randomizing sliders. The demographic model first draws a social/access route to
+the clinic, then weights city origin profiles by that route. Clinical state is
+mapped into performance controls; class, occupation and mourning map into dress;
+age and origin map probabilistically into body and appearance.
+
+The patient-domain record is stored at the top-level `patient` key in every
+generated preset. See `src/patients/README.md` for module boundaries and extension
+rules, and `public/schema/patient.schema.json` for the record contract.
+
+```
+npm run patient:test          # determinism, coherence and render-contract tests
+npm run patient:audit -- 2000 # inspect generated distributions
+```
 
 ## Animation sources
 
@@ -48,12 +68,24 @@ and gestures layer on top), `clip+procedural` (both).
   current animation pose bakes into the geometry.
 - `window.__lab` in the viewer console exposes scene/bones/preset/idle for
   calibration probes.
+- Orange controls alter identity and require **Regenerate model**. In local
+  development the Vite endpoint runs headless Blender, atomically replaces the
+  GLB, saves the preset, and reloads the lab. Seeded variation does this
+  automatically. Blue controls remain immediate Three.js changes.
+- Identity morphs must be baked before adding the rig, eyes, teeth, proxy
+  garments, and other fitted assets. Replaying them on the skin alone causes
+  floating facial features and must never be used for character variation.
+- Seated rigs are aligned from the generated pelvis position to the 0.455 m
+  chair surface; never use a fixed vertical offset across body proportions.
+- Seed demographics use an explicit 1896 elite-clinic profile rather than
+  choosing MPFB ancestry targets uniformly. Hair and eye palettes are
+  conditional on that profile; both remain manually editable live controls.
 
 ## Known gaps
 
 - Base garment is still a recolored MakeHuman suit; the procedural layers
   cover most of it, but a real bodice/skirt garment remains the asset gap.
-- No expression morphs yet (identity morphs only). Add MakeHuman expression
+- No expression morphs yet. Add MakeHuman expression
   targets in the Blender build, keyed to the game's affect vocabulary.
-- GLB is unoptimized (~32k tris, ~11 MB); run the Darwin gltf-transform pass
+- GLB is unoptimized (~32k tris, ~8 MB); run the Darwin gltf-transform pass
   before game use.

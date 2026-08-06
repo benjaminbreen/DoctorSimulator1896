@@ -16,6 +16,7 @@
         <div class="header-actions">
           <span id="model-status" class="status">Loading model…</span>
           <button id="randomize" type="button">Seeded variation</button>
+          <button id="regenerate" type="button">Regenerate model</button>
           <button id="reset" type="button">Reset</button>
           <button id="export" class="primary" type="button">Export preset</button>
         </div>
@@ -46,6 +47,7 @@
             <button data-gesture="shake">Shake head</button>
             <button data-gesture="sigh">Sigh</button>
             <button data-gesture="glance">Glance away</button>
+            <button data-expression="smile">Smile</button>
           </div>
           <div id="stage-hint">Drag to orbit · wheel to zoom · double-click to reset view</div>
           <div id="fallback" hidden>
@@ -58,6 +60,10 @@
             <p class="eyebrow">Current subject</p>
             <h2 id="subject-name">Mrs. Ostrander</h2>
             <p id="subject-summary"></p>
+          </section>
+          <section id="patient-record-section" hidden>
+            <h3>Patient record</h3>
+            <div id="patient-record"></div>
           </section>
           <section>
             <h3>Pipeline state</h3>

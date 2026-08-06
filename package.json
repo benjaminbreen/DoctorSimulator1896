@@ -8,7 +8,9 @@
     "lab:build": "vite build character-lab --outDir ../dist/character-lab --emptyOutDir",
     "character:generate": "make character",
     "character:validate": "node scripts/characters/validate-preset.mjs",
-    "test": "npm run character:validate && npm run lab:build"
+    "patient:test": "node --test tests/patient-generator.test.mjs",
+    "patient:audit": "node scripts/characters/audit-patients.mjs",
+    "test": "npm run character:validate && npm run patient:test && npm run lab:build"
   },
   "dependencies": {
     "three": "^0.179.1"

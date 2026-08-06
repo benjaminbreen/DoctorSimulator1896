@@ -3,6 +3,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { findBones, createCostume } from './costume.js';
 import { createIdle } from './idle.js';
+import { createExpressions } from './expressions.js';
+import { generatePatient, nextSeed, patientToCharacterPreset } from './patients/index.js';
 import './style.css';
 
 const [schema, initialPreset] = await Promise.all([
@@ -13,14 +15,16 @@ let preset = structuredClone(initialPreset);
 const definitions = schema.groups.flatMap((group) => group.parameters.map((parameter) => ({ ...parameter, mode: parameter.mode || group.mode, group: group.id })));
 const ui = {
   canvas: document.querySelector('#stage'), controls: document.querySelector('#controls'), status: document.querySelector('#model-status'),
-  json: document.querySelector('#preset-json'), summary: document.querySelector('#subject-summary'), pipeline: document.querySelector('#pipeline-state'),
+  json: document.querySelector('#preset-json'), summary: document.querySelector('#subject-summary'), subjectName: document.querySelector('#subject-name'),
+  patientRecord: document.querySelector('#patient-record'), patientSection: document.querySelector('#patient-record-section'), pipeline: document.querySelector('#pipeline-state'),
   command: document.querySelector('#generate-command'), fallback: document.querySelector('#fallback'), search: document.querySelector('#control-search'),
+  regenerate: document.querySelector('#regenerate'), randomize: document.querySelector('#randomize'),
 };
 
 /* ids that require rebuilding costume geometry (vs material-only or animation values) */
 const COSTUME_GEOMETRY_IDS = new Set(['bodiceFit', 'waistHeight', 'skirtFullness', 'skirtLength', 'skirtDrape',
   'bustleAmount', 'sleeveVolume', 'sleeveLength', 'collarHeight', 'collarSpread', 'buttonSpacing', 'buttonCount',
-  'hairStyle', 'hairVolume', 'partWidth', 'bunSize', 'hairHeight', 'sideVolume', 'seated']);
+  'outfitStyle', 'hairStyle', 'hairVolume', 'partWidth', 'bunSize', 'hairHeight', 'sideVolume']);
 
 const renderer = new THREE.WebGLRenderer({ canvas: ui.canvas, antialias: true, alpha: false });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -54,9 +58,12 @@ let animationClips = [];
 let bones = null;
 let costume = null;
 let idle = null;
+let expressions = null;
 let isFallback = false;
 let costumeDirty = false;
 let lastCostumeBuild = 0;
+let regenerationNeeded = false;
+let regenerationBusy = false;
 const named = new Map();
 const materials = {};
 
@@ -71,16 +78,16 @@ function makeClinic() {
   floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; world.add(floor);
   const back = new THREE.Mesh(new THREE.PlaneGeometry(9, 4), material('ClinicWall', '#2b2116', 0.98));
   back.position.set(0, 2, -1.3); world.add(back);
-  const desk = new THREE.Mesh(new THREE.BoxGeometry(2.65, 0.66, 0.82), material('Desk', '#29170d', 0.65));
-  desk.position.set(0, 0.48, 0.9); desk.castShadow = true; desk.receiveShadow = true; desk.name = 'ClinicDesk'; world.add(desk);
+  const desk = new THREE.Mesh(new THREE.BoxGeometry(2.65, 0.46, 0.72), material('Desk', '#29170d', 0.65));
+  desk.position.set(0, 0.32, 0.9); desk.castShadow = true; desk.receiveShadow = true; desk.name = 'ClinicDesk'; world.add(desk);
   const chairMat = material('Chair', '#24150f', 0.8);
   const seat = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.05, 0.5), chairMat);
-  seat.position.set(0, 0.31, -0.06); seat.castShadow = true; seat.receiveShadow = true; world.add(seat);
-  const chairBack = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.9, 0.07), chairMat);
-  chairBack.position.set(0, 0.75, -0.32); chairBack.castShadow = true; world.add(chairBack);
+  seat.position.set(0, 0.425, -0.06); seat.castShadow = true; seat.receiveShadow = true; world.add(seat);
+  const chairBack = new THREE.Mesh(new THREE.BoxGeometry(0.56, 1.0, 0.07), chairMat);
+  chairBack.position.set(0, 0.95, -0.32); chairBack.castShadow = true; world.add(chairBack);
   for (const [x, z] of [[-0.24, -0.27], [0.24, -0.27], [-0.24, 0.15], [0.24, 0.15]]) {
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.3, 0.05), chairMat);
-    leg.position.set(x, 0.15, z); world.add(leg);
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.42, 0.05), chairMat);
+    leg.position.set(x, 0.21, z); world.add(leg);
   }
   const windowFrame = material('WindowFrame', '#17110c', 0.9);
   const glass = new THREE.Mesh(new THREE.PlaneGeometry(1.25, 1.45), new THREE.MeshBasicMaterial({ color: '#6e8094' }));
@@ -139,7 +146,7 @@ function indexModel(root) {
 
 async function loadCharacter() {
   try {
-    const gltf = await new GLTFLoader().loadAsync('/models/mrs-ostrander-1896.glb?v=5');
+    const gltf = await new GLTFLoader().loadAsync(`/models/mrs-ostrander-1896.glb?v=${Date.now()}`);
     model = gltf.scene; characterRoot.add(model); animationClips = gltf.animations;
     setupAnimations();
     ui.status.textContent = `GLB loaded · ${countTriangles(model).toLocaleString()} triangles · ${animationClips.length} clip${animationClips.length === 1 ? '' : 's'}`; ui.status.className = 'status ok';
@@ -156,8 +163,9 @@ async function loadCharacter() {
       model.updateMatrixWorld(true);
       idle = createIdle(bones);
       idle.captureRest();
-      costume = createCostume(characterRoot, bones);
+      costume = createCostume(characterRoot, bones, model);
       costume.rebuild(preset.values);
+      expressions = createExpressions(model);
     }
   }
   applyAll();
@@ -202,10 +210,74 @@ function countTriangles(root) {
 }
 
 function objectsLike(term) { return [...named].filter(([name]) => name.toLowerCase().includes(term.toLowerCase())).map(([, object]) => object); }
-function setMaterialLike(term, color, roughness) {
+function setSurfaceFinish(mat, value, oldMaximum) {
+  if (value == null || !('roughness' in mat)) return;
+  mat.roughness = Math.min(1, value);
+  const extra = THREE.MathUtils.clamp((value - oldMaximum) / (1.5 - oldMaximum), 0, 1);
+  if (!mat.userData.matteFinishUniform) {
+    const uniform = { value: 1 };
+    const previousCompile = mat.onBeforeCompile;
+    const previousCacheKey = mat.customProgramCacheKey.bind(mat);
+    mat.userData.matteFinishUniform = uniform;
+    mat.onBeforeCompile = (shader, renderer) => {
+      previousCompile.call(mat, shader, renderer);
+      shader.uniforms.matteSpecularScale = uniform;
+      shader.fragmentShader = `uniform float matteSpecularScale;\n${shader.fragmentShader}`.replace(
+        '#include <lights_fragment_end>',
+        '#include <lights_fragment_end>\nreflectedLight.directSpecular *= matteSpecularScale;\nreflectedLight.indirectSpecular *= matteSpecularScale;',
+      );
+    };
+    mat.customProgramCacheKey = () => `${previousCacheKey()}|matte-finish-v1`;
+    mat.needsUpdate = true;
+  }
+  // Values beyond the renderer's physical roughness limit reduce the residual
+  // specular response, so the expanded part of the slider remains visible.
+  mat.userData.matteFinishUniform.value = THREE.MathUtils.lerp(1, 0.28, extra);
+}
+
+function setMaterialLike(term, color, roughness, oldMaximum = 1) {
   for (const object of objectsLike(term)) if (object.isMesh) {
     const list = Array.isArray(object.material) ? object.material : [object.material];
-    for (const mat of list) { if (color && mat.color) mat.color.set(color); if (roughness != null && 'roughness' in mat) mat.roughness = roughness; }
+    for (const mat of list) { if (color && mat.color) mat.color.set(color); setSurfaceFinish(mat, roughness, oldMaximum); }
+  }
+}
+
+function setEyeColor(color) {
+  const eyes = named.get('Eyes');
+  if (!eyes?.isMesh) return;
+  const list = Array.isArray(eyes.material) ? eyes.material : [eyes.material];
+  for (const mat of list) {
+    if (!mat.map?.image) continue;
+    if (!mat.userData.eyeTintSource) {
+      const image = mat.map.image;
+      const canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height;
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      context.drawImage(image, 0, 0);
+      mat.userData.eyeTintSource = context.getImageData(0, 0, canvas.width, canvas.height);
+      mat.userData.eyeTintCanvas = canvas;
+      mat.map = mat.map.clone(); mat.map.image = canvas;
+    }
+    const source = mat.userData.eyeTintSource;
+    const output = new ImageData(new Uint8ClampedArray(source.data), source.width, source.height);
+    const target = [1, 3, 5].map((index) => parseInt(color.slice(index, index + 2), 16));
+    const targetLight = Math.max(1, target[0] * .299 + target[1] * .587 + target[2] * .114);
+    for (let index = 0; index < output.data.length; index += 4) {
+      const r = source.data[index], g = source.data[index + 1], b = source.data[index + 2];
+      const high = Math.max(r, g, b), low = Math.min(r, g, b), chroma = high - low;
+      const light = r * .299 + g * .587 + b * .114;
+      // The source asset has brown irises on a nearly neutral sclera. Select
+      // those chromatic midtones, preserving black pupils and white highlights.
+      const brown = r > g * 1.06 && g > b * .82;
+      const mask = brown ? Math.min(1, (chroma - 10) / 42) * Math.min(1, (218 - light) / 100) : 0;
+      if (mask <= 0) continue;
+      const contrast = THREE.MathUtils.clamp(light / targetLight, .42, 1.55);
+      for (let channel = 0; channel < 3; channel++) {
+        const tinted = THREE.MathUtils.clamp(target[channel] * contrast, 0, 255);
+        output.data[index + channel] = THREE.MathUtils.lerp(source.data[index + channel], tinted, mask * .94);
+      }
+    }
+    const context = mat.userData.eyeTintCanvas.getContext('2d'); context.putImageData(output, 0, 0);
+    mat.map.needsUpdate = true;
   }
 }
 
@@ -221,21 +293,21 @@ function rebuildCostumeNow() {
 function applyAll(changedId = null) {
   const v = preset.values;
   if (isFallback) {
-    setMaterialLike('dress', v.dressColor, v.fabricRoughness); setMaterialLike('trim', v.trimColor);
-    setMaterialLike('hair', v.hairColor); setMaterialLike('skin', v.skinTone, v.skinRoughness);
+    setMaterialLike('dress', v.dressColor, v.fabricRoughness, 1); setMaterialLike('trim', v.trimColor);
+    setMaterialLike('hair', v.hairColor); setMaterialLike('skin', v.skinTone, v.skinRoughness, .9);
     characterRoot.position.y = -0.2 * (v.seated >= 0.5 ? 1 : 0);
   } else {
     const skinTint = new THREE.Color('#ffffff').lerp(new THREE.Color(v.skinTone), 0.75);
-    setMaterialLike('human', skinTint, v.skinRoughness); setMaterialLike('.body', skinTint, v.skinRoughness);
-    setMaterialLike('garment', v.dressColor, v.fabricRoughness);
-    setMaterialLike('bodice', v.dressColor, v.fabricRoughness);
-    setMaterialLike('suit', v.dressColor, v.fabricRoughness);
+    setMaterialLike('human', skinTint, v.skinRoughness, .9); setMaterialLike('.body', skinTint, v.skinRoughness, .9);
+    setMaterialLike('garment', v.dressColor, v.fabricRoughness, 1);
+    setMaterialLike('bodice', v.dressColor, v.fabricRoughness, 1);
+    setMaterialLike('suit', v.dressColor, v.fabricRoughness, 1);
     setMaterialLike('shoes', '#211713');
+    setEyeColor(v.eyeColor);
     if (costume) {
-      costume.materials.dress.color.set(v.dressColor); costume.materials.dress.roughness = v.fabricRoughness;
+      costume.materials.dress.color.set(v.dressColor); setSurfaceFinish(costume.materials.dress, v.fabricRoughness, 1);
       costume.materials.trim.color.set(v.trimColor); costume.materials.hair.color.set(v.hairColor);
     }
-    applyMorphs(v);
     if (changedId === null || COSTUME_GEOMETRY_IDS.has(changedId)) costumeDirty = true;
   }
   const key = scene.getObjectByName('KeyLight'); const fill = scene.getObjectByName('FillLight');
@@ -244,16 +316,6 @@ function applyAll(changedId = null) {
   renderer.toneMappingExposure = 2 ** v.exposure; camera.fov = v.cameraFov; camera.updateProjectionMatrix();
   if (changedId === 'idleMode') syncIdleMode();
   updateText();
-}
-
-function applyMorphs(v) {
-  const aliases = { noseWidth: ['noseWidth'], noseLength: ['noseLength'], noseVolume: ['noseVolume'], jawWidth: ['jawWidth'], chinHeight: ['chinHeight'], eyeSize: ['eyeSize_L', 'eyeSize_R'], eyeSpacing: ['eyeSpacing_L', 'eyeSpacing_R'], browHeight: ['browHeight'], mouthWidth: ['mouthWidth'], cheekVolume: ['cheekVolume_L', 'cheekVolume_R'], shoulderWidth: ['shoulderWidth'], torsoLength: ['torsoLength'] };
-  model.traverse((object) => {
-    if (!object.morphTargetDictionary) return;
-    for (const [id, names] of Object.entries(aliases)) for (const name of names) {
-      const index = object.morphTargetDictionary[name]; if (index != null) object.morphTargetInfluences[index] = Math.max(0, Math.abs(v[id]));
-    }
-  });
 }
 
 function buildControls() {
@@ -274,28 +336,85 @@ function makeControl(definition) {
   if (definition.type === 'select') for (const value of definition.options) { const option = document.createElement('option'); option.value = value; option.textContent = value.replaceAll('-', ' '); input.append(option); }
   else { input.type = definition.type; if (definition.type === 'range') for (const key of ['min', 'max', 'step']) input[key] = definition[key]; }
   input.value = preset.values[definition.id]; output.textContent = formatValue(definition, input.value);
-  input.oninput = () => { preset.values[definition.id] = definition.type === 'range' ? Number(input.value) : input.value; output.textContent = formatValue(definition, input.value); applyAll(definition.id); };
+  const applyInput = () => {
+    preset.values[definition.id] = definition.type === 'range' ? Number(input.value) : input.value;
+    output.textContent = formatValue(definition, input.value);
+    if (definition.mode === 'bake') markRegenerationNeeded();
+    else applyAll(definition.id);
+    updateText();
+  };
+  input.oninput = applyInput;
+  if (definition.type === 'select') input.onchange = applyInput;
   row.append(label, output, input); return row;
 }
 
 function formatValue(definition, value) { return definition.type === 'range' ? Number(value).toFixed(definition.step < .01 ? 3 : definition.step < 1 ? 2 : 0) : ''; }
 function refreshControls() { for (const definition of definitions) { const input = document.querySelector(`#control-${definition.id}`); if (input) { input.value = preset.values[definition.id]; input.dispatchEvent(new Event('input')); } } }
+function markRegenerationNeeded() {
+  regenerationNeeded = true;
+  ui.regenerate?.classList.add('needed');
+  if (!regenerationBusy) { ui.status.textContent = 'Identity changes waiting for Blender'; ui.status.className = 'status warn'; }
+}
+function addRecordField(list, label, value) {
+  const term = document.createElement('dt'); term.textContent = label;
+  const description = document.createElement('dd'); description.textContent = value;
+  list.append(term, description);
+}
+function renderPatientRecord(patient) {
+  ui.patientSection.hidden = !patient;
+  ui.patientRecord.replaceChildren();
+  if (!patient) return;
+  const wrapper = document.createElement('div'); wrapper.className = 'patient-record';
+  const list = document.createElement('dl');
+  addRecordField(list, 'Age', `${patient.identity.age} · born ${patient.identity.birthYear}`);
+  addRecordField(list, 'Origin', `${patient.identity.origin.label} · ${patient.identity.origin.generationLabel}`);
+  addRecordField(list, 'Language', patient.identity.language);
+  addRecordField(list, 'Household', patient.social.householdPosition);
+  addRecordField(list, 'Residence', patient.social.residence);
+  addRecordField(list, 'Access', `${patient.social.payer} · ${patient.social.referralSource}`);
+  const clinicalLabel = document.createElement('p'); clinicalLabel.className = 'clinical-label'; clinicalLabel.textContent = patient.clinical.periodCategory;
+  const complaint = document.createElement('p'); complaint.className = 'complaint'; complaint.textContent = `“${patient.clinical.presentingComplaint}”`;
+  const provenance = document.createElement('p'); provenance.className = 'provenance'; provenance.textContent = 'Fictional, seeded patient · clinic-weighted demographic model';
+  wrapper.append(list, clinicalLabel, complaint, provenance); ui.patientRecord.append(wrapper);
+}
 function updateText() {
+  ui.subjectName.textContent = preset.name;
   ui.summary.textContent = preset.description;
+  renderPatientRecord(preset.patient);
   ui.json.value = JSON.stringify(preset, null, 2);
   ui.command.textContent = `npm run character:generate -- character-lab/public/presets/${preset.id}.json`;
   const baked = definitions.filter((d) => d.mode === 'bake').length; const live = definitions.length - baked;
-  ui.pipeline.innerHTML = `<dt>Tunable values</dt><dd>${definitions.length}</dd><dt>Live controls</dt><dd>${live}</dd><dt>Blender controls</dt><dd>${baked}</dd><dt>Deterministic seed</dt><dd>${preset.values.seed}</dd><dt>Target runtime</dt><dd>Three.js / GLB</dd>`;
+  ui.pipeline.innerHTML = `<dt>Tunable values</dt><dd>${definitions.length}</dd><dt>Live controls</dt><dd>${live}</dd><dt>Blender controls</dt><dd>${baked}</dd><dt>Regeneration</dt><dd>${regenerationNeeded ? 'needed' : 'current'}</dd><dt>Deterministic seed</dt><dd>${preset.values.seed}</dd><dt>Target runtime</dt><dd>Three.js / GLB</dd>`;
 }
 
-function randomize() {
-  let seed = (Number(preset.values.seed) + 1) >>> 0; const random = () => ((seed = Math.imul(seed ^ seed >>> 15, 1 | seed), seed ^= seed + Math.imul(seed ^ seed >>> 7, 61 | seed), ((seed ^ seed >>> 14) >>> 0) / 4294967296));
-  for (const definition of definitions) if (definition.type === 'range' && !['seated', 'cameraFov'].includes(definition.id)) {
-    const span = definition.max - definition.min; const center = Number(definition.default); preset.values[definition.id] = Math.min(definition.max, Math.max(definition.min, center + (random() - .5) * span * .22));
+async function randomize() {
+  const patient = generatePatient({ seed: nextSeed(preset.values.seed) });
+  preset = patientToCharacterPreset(patient, preset, definitions);
+  refreshControls();
+  await regenerateCharacter();
+}
+
+async function regenerateCharacter() {
+  if (regenerationBusy) return;
+  regenerationBusy = true;
+  ui.status.textContent = 'Blender is fitting a complete character…'; ui.status.className = 'status warn';
+  for (const button of [ui.regenerate, ui.randomize]) if (button) button.disabled = true;
+  document.querySelectorAll('#controls input, #controls select').forEach((control) => { control.disabled = true; });
+  try {
+    const response = await fetch('/api/regenerate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(preset),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || `Regeneration failed (${response.status})`);
+    regenerationNeeded = false;
+    ui.status.textContent = `Character rebuilt in ${result.seconds.toFixed(1)}s · reloading…`; ui.status.className = 'status ok';
+    window.location.reload();
+  } catch (error) {
+    ui.status.textContent = error.message; ui.status.className = 'status warn';
+    regenerationBusy = false;
+    for (const button of [ui.regenerate, ui.randomize]) if (button) button.disabled = false;
+    document.querySelectorAll('#controls input, #controls select').forEach((control) => { control.disabled = false; });
   }
-  const raceTotal = preset.values.african + preset.values.asian + preset.values.caucasian || 1;
-  for (const id of ['african', 'asian', 'caucasian']) preset.values[id] /= raceTotal;
-  preset.values.seed = seed % 9999 || 1; refreshControls();
 }
 
 const views = {
@@ -307,7 +426,8 @@ const views = {
 function setView(name) { camera.position.set(...views[name][0]); orbit.target.set(...views[name][1]); orbit.update(); document.querySelectorAll('[data-view]').forEach((button) => button.classList.toggle('active', button.dataset.view === name)); }
 
 makeClinic(); buildControls(); await loadCharacter(); updateText(); setView('clinic');
-document.querySelector('#randomize').onclick = randomize;
+ui.randomize.onclick = randomize;
+ui.regenerate.onclick = regenerateCharacter;
 document.querySelector('#reset').onclick = () => { preset = structuredClone(initialPreset); refreshControls(); setView('clinic'); };
 document.querySelector('#export').onclick = () => { const link = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([JSON.stringify(preset, null, 2)], { type: 'application/json' })), download: `${preset.id}.json` }); link.click(); URL.revokeObjectURL(link.href); };
 document.querySelector('#apply-json').onclick = () => { try { preset = JSON.parse(ui.json.value); refreshControls(); } catch { ui.json.setCustomValidity('Invalid JSON'); ui.json.reportValidity(); } };
@@ -316,11 +436,12 @@ document.querySelector('#toggle-grid').onclick = (event) => { grid.visible = !gr
 document.querySelector('#toggle-motion').onclick = (event) => { motionEnabled = !motionEnabled; syncIdleMode(); event.currentTarget.classList.toggle('active', motionEnabled); };
 document.querySelectorAll('[data-view]').forEach((button) => button.onclick = () => setView(button.dataset.view));
 document.querySelectorAll('[data-gesture]').forEach((button) => button.onclick = () => idle?.playGesture(button.dataset.gesture, preset.values.gestureSpeed || 1));
+document.querySelectorAll('[data-expression]').forEach((button) => button.onclick = () => expressions?.play(button.dataset.expression, preset.values.gestureSpeed || 1));
 ui.canvas.ondblclick = () => setView('clinic');
 ui.search.oninput = () => { const term = ui.search.value.toLowerCase(); document.querySelectorAll('.control').forEach((row) => row.hidden = !row.dataset.search.includes(term)); document.querySelectorAll('.control-group').forEach((group) => group.hidden = ![...group.querySelectorAll('.control')].some((row) => !row.hidden)); };
 
 /* console access for calibration and debugging */
-window.__lab = { scene, get bones() { return bones; }, get model() { return model; }, get preset() { return preset; }, get idle() { return idle; }, get costume() { return costume; }, THREE, applyAll, rebuildCostumeNow };
+window.__lab = { scene, get bones() { return bones; }, get model() { return model; }, get preset() { return preset; }, get idle() { return idle; }, get costume() { return costume; }, get expressions() { return expressions; }, THREE, applyAll, rebuildCostumeNow };
 
 const clock = new THREE.Clock();
 function frame() {
@@ -329,9 +450,10 @@ function frame() {
   if (costumeDirty && performance.now() - lastCostumeBuild > 90) rebuildCostumeNow();
   if (motionEnabled && !isFallback) {
     const mode = preset.values.idleMode || 'procedural';
-    if (mixer) mixer.update(mode === 'procedural' ? 0 : delta * (0.72 + preset.values.breathing * 0.9));
+    if (mixer) mixer.update(mode === 'procedural' ? 0 : delta * (0.72 + Math.min(preset.values.breathing, 1.2) * 0.9));
     if (idle) idle.update(delta, elapsed, preset.values, mode);
   }
+  if (expressions && !isFallback) expressions.update(delta, elapsed, preset.values);
   orbit.update(); renderer.render(scene, camera); requestAnimationFrame(frame);
 }
 function resize() { const width = ui.canvas.clientWidth; const height = ui.canvas.clientHeight; renderer.setSize(width, height, false); camera.aspect = width / height; camera.updateProjectionMatrix(); }

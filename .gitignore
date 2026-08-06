@@ -1,6 +1,7 @@
 node_modules/
 .next/
 dist/
+character-lab/.generated/
 .DS_Store
 *.log
 *.blend1

@@ -89,11 +89,15 @@ def load_signed_target(TargetService, targets_root, base, parameter_id, value, p
 def add_face_targets(TargetService, LocationService, base, values):
     root = LocationService.get_mpfb_data("targets")
     mappings = {
+        "headWidth": ("head/head-scale-horiz-incr.target.gz", "head/head-scale-horiz-decr.target.gz"),
+        "faceHeight": ("head/head-scale-vert-incr.target.gz", "head/head-scale-vert-decr.target.gz"),
+        "headDepth": ("head/head-scale-depth-incr.target.gz", "head/head-scale-depth-decr.target.gz"),
         "noseWidth": ("nose/nose-scale-horiz-incr.target.gz", "nose/nose-scale-horiz-decr.target.gz"),
         "noseLength": ("nose/nose-scale-vert-incr.target.gz", "nose/nose-scale-vert-decr.target.gz"),
         "noseVolume": ("nose/nose-volume-incr.target.gz", "nose/nose-volume-decr.target.gz"),
         "jawWidth": ("chin/chin-width-incr.target.gz", "chin/chin-width-decr.target.gz"),
         "chinHeight": ("chin/chin-height-incr.target.gz", "chin/chin-height-decr.target.gz"),
+        "chinProminence": ("chin/chin-prominent-incr.target.gz", "chin/chin-prominent-decr.target.gz"),
         "browHeight": ("eyebrows/eyebrows-trans-up.target.gz", "eyebrows/eyebrows-trans-down.target.gz"),
         "mouthWidth": ("mouth/mouth-scale-horiz-incr.target.gz", "mouth/mouth-scale-horiz-decr.target.gz"),
         "shoulderWidth": ("torso/measure-shoulder-dist-incr.target.gz", "torso/measure-shoulder-dist-decr.target.gz"),
@@ -105,12 +109,23 @@ def add_face_targets(TargetService, LocationService, base, values):
         "eyeSize": ("eyes/{side}-eye-scale-incr.target.gz", "eyes/{side}-eye-scale-decr.target.gz"),
         "eyeSpacing": ("eyes/{side}-eye-trans-out.target.gz", "eyes/{side}-eye-trans-in.target.gz"),
         "cheekVolume": ("cheek/{side}-cheek-volume-incr.target.gz", "cheek/{side}-cheek-volume-decr.target.gz"),
+        "cheekboneProminence": ("cheek/{side}-cheek-bones-incr.target.gz", "cheek/{side}-cheek-bones-decr.target.gz"),
     }
     for parameter_id, templates in paired.items():
         for side in ("l", "r"):
             load_signed_target(TargetService, root, base, f"{parameter_id}_{side.upper()}", values.get(parameter_id, 0), *(template.format(side=side) for template in templates))
     asymmetry = values.get("faceAsymmetry", 0)
     load_signed_target(TargetService, root, base, "faceAsymmetry", asymmetry, "asym/asym-cheek-1-r.target.gz")
+    lip_value = values.get("lipFullness", 0)
+    for lip in ("upperlip", "lowerlip"):
+        load_signed_target(
+            TargetService, root, base, f"lipFullness_{lip}", lip_value,
+            f"mouth/mouth-{lip}-volume-incr.target.gz", f"mouth/mouth-{lip}-volume-decr.target.gz"
+        )
+    head_shape = values.get("headShape", "oval")
+    shape_path = os.path.join(root, "head", f"head-{head_shape}.target.gz")
+    if os.path.exists(shape_path):
+        TargetService.load_target(base, shape_path, weight=values.get("headShapeStrength", 0.45), name="headShape")
 
 
 def pose_character(rig, values):
@@ -148,8 +163,13 @@ def pose_character(rig, values):
         else:
             print(f"WARN pose bone not found: {name}")
     if seated:
-        # Drop the whole armature so the hips land on a 0.45 m chair seat.
-        rig.location.z -= 0.50
+        # Align the finalized pelvis to the chair. Body height and proportions
+        # change its position, so a fixed rig offset makes some seeds sink.
+        bpy.context.view_layer.update()
+        pelvis = rig.pose.bones.get("pelvis")
+        if pelvis:
+            pelvis_world_z = (rig.matrix_world @ pelvis.head).z
+            rig.location.z += 0.455 - pelvis_world_z
     bpy.context.view_layer.update()
     return posed
 
@@ -310,6 +330,10 @@ def main():
     skin_path = find_asset(AssetService, "middleage_caucasian_female.mhmat", "skins")
     HumanService.set_character_skin(skin_path, base, skin_type="GAMEENGINE")
     add_face_targets(TargetService, LocationService, base, values)
+    # Identity is finalized before fitting the rig, eyes, teeth, hair proxies,
+    # and garments. This prevents runtime skin-only morphs from pulling the
+    # face away from its attachments.
+    TargetService.bake_targets(base)
     rig = HumanService.add_builtin_rig(base, "game_engine")
     rig.name = "Patient_Rig"
     add_asset(HumanService, AssetService, base, "eyes", "low-poly.mhclo", "Eyes", "Eyes")
