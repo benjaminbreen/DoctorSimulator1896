@@ -11,16 +11,16 @@ export const FACE_ARCHETYPES = [
 ];
 
 export const HAIR_STYLES = [
-  { id: 'center-parted-bun', weight: 18, classes: ['elite', 'affluent', 'comfortable', 'sponsored'] },
-  { id: 'side-parted-bun', weight: 12, classes: ['elite', 'affluent', 'comfortable'] },
-  { id: 'low-bun', weight: 18, classes: ['affluent', 'comfortable', 'sponsored'] },
-  { id: 'coiled-bun', weight: 9, classes: ['elite', 'affluent', 'comfortable'] },
-  { id: 'loose-chignon', weight: 11, classes: ['elite', 'affluent'] },
-  { id: 'swept-back', weight: 10, classes: ['affluent', 'comfortable', 'sponsored'] },
-  { id: 'pompadour', weight: 5, classes: ['elite', 'affluent'], maxAge: 48 },
-  { id: 'braided-crown', weight: 5, classes: ['comfortable', 'sponsored'] },
-  { id: 'cropped-waves', weight: 3, classes: ['elite', 'affluent', 'comfortable'] },
-  { id: 'short-parted', weight: 2, classes: ['elite', 'affluent', 'comfortable', 'sponsored'] },
+  { id: 'center-parted-bun', weight: 18, ageWeights: [1.12, 1.05, 0.96], classes: ['elite', 'affluent', 'comfortable', 'sponsored'] },
+  { id: 'side-parted-bun', weight: 12, ageWeights: [1.12, 1.06, 0.78], classes: ['elite', 'affluent', 'comfortable'] },
+  { id: 'low-bun', weight: 18, ageWeights: [0.92, 1.04, 1.20], classes: ['affluent', 'comfortable', 'sponsored'] },
+  { id: 'coiled-bun', weight: 9, ageWeights: [0.72, 1.02, 1.28], classes: ['elite', 'affluent', 'comfortable'] },
+  { id: 'loose-chignon', weight: 11, ageWeights: [1.24, 1.02, 0.68], classes: ['elite', 'affluent'] },
+  { id: 'swept-back', weight: 10, ageWeights: [1.08, 1.04, 0.88], classes: ['affluent', 'comfortable', 'sponsored'] },
+  { id: 'pompadour', weight: 5, ageWeights: [1.26, 0.72, 0.18], classes: ['elite', 'affluent'], maxAge: 48 },
+  { id: 'braided-crown', weight: 5, ageWeights: [1.10, 1.0, 0.78], classes: ['comfortable', 'sponsored'] },
+  { id: 'cropped-waves', weight: 3, ageWeights: [0.62, 0.88, 1.08], classes: ['elite', 'affluent', 'comfortable'] },
+  { id: 'short-parted', weight: 2, ageWeights: [0.48, 0.80, 1.12], classes: ['elite', 'affluent', 'comfortable', 'sponsored'] },
 ];
 
 export const OUTFIT_RULES = [
@@ -52,4 +52,3 @@ export const FACE_VALUE_IDS = [
   'jawWidth', 'chinHeight', 'chinProminence', 'eyeSize', 'eyeSpacing', 'mouthWidth',
   'lipFullness', 'cheekVolume', 'cheekboneProminence',
 ];
-

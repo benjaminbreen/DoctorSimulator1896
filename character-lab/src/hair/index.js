@@ -1,9 +1,12 @@
 import * as THREE from 'three';
 import { getHairProfile } from './profiles.js';
 import {
-  buildFlowRibbons, buildHairlineWisps, buildHairShells, sampleScalp, scalpPoint,
+  buildFlowRibbons, buildHairlineWisps, buildHairShells, findBodyMesh, sampleScalp,
+  scalpPoint, scalpShadeFactor,
 } from './geometry.js';
 import { createHairMaterials } from './materials.js';
+import { resolveHairPalette } from './palette.js';
+import { refreshSkinOverlay } from '../stylized.js';
 
 const worldPosition = (bone, target = new THREE.Vector3()) => bone.getWorldPosition(target);
 
@@ -18,6 +21,12 @@ export function createHairSystem(scene, bones, model) {
   let scalpCache = null;
 
   function add(name, geometry, material = materials.base) {
+    // vertexColors materials read a color attribute; masses and coils built
+    // from primitives don't carry one, and a missing attribute renders black.
+    if (material.vertexColors && !geometry.getAttribute('color')) {
+      const count = geometry.getAttribute('position').count;
+      geometry.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(count * 3).fill(1), 3));
+    }
     const mesh = new THREE.Mesh(geometry, material);
     mesh.name = name;
     mesh.castShadow = true;
@@ -73,7 +82,8 @@ export function createHairSystem(scene, bones, model) {
 
   function addBackMass(profile, values, frame, scalp) {
     if (['cropped-waves', 'short-parted'].includes(profile.mass)) return;
-    const row = profile.mass === 'low-bun' || profile.mass === 'chignon' ? 0.86 : 0.58;
+    const row = profile.flowAnchorRow
+      ?? (profile.mass === 'low-bun' || profile.mass === 'chignon' ? 0.86 : 0.58);
     const surface = scalpPoint(scalp, Math.PI, row * (scalp.ROWS - 1));
     const outward = surface.clone().sub(frame.centre).normalize();
     const radius = 0.044 * (values.bunSize ?? 0.92);
@@ -148,6 +158,77 @@ export function createHairSystem(scene, bones, model) {
     add('Hair_BraidedCrown', tubeFromPoints(points, 0.0075, 72), materials.strand);
   }
 
+  /** Paint the hairline as a smooth root-shadow gradient in the shared skin
+   * overlay texture. Runs at rest pose during rebuild, so the painted band and
+   * the raycast-fitted shell agree exactly. */
+  function paintScalpShading(values, frame, profile) {
+    const body = findBodyMesh(model);
+    const overlay = body?.userData?.faceOverlay;
+    const uv = body?.geometry?.attributes?.uv;
+    if (!overlay || !uv || typeof body.getVertexPosition !== 'function') return;
+    const size = overlay.size;
+    if (!overlay.scalpMask) overlay.scalpMask = new Float32Array(size * size);
+    overlay.scalpMask.fill(0);
+    const position = body.geometry.attributes.position;
+    const world = new THREE.Vector3();
+    for (let vertex = 0; vertex < position.count; vertex++) {
+      body.getVertexPosition(vertex, world).applyMatrix4(body.matrixWorld);
+      const shade = scalpShadeFactor(scalpCache, frame, profile, values, world);
+      if (shade < 0.02) continue;
+      const centreX = Math.round(THREE.MathUtils.clamp(uv.getX(vertex), 0, 1) * (size - 1));
+      const centreY = Math.round(THREE.MathUtils.clamp(uv.getY(vertex), 0, 1) * (size - 1));
+      const radius = 3;
+      for (let y = Math.max(0, centreY - radius); y <= Math.min(size - 1, centreY + radius); y++) {
+        for (let x = Math.max(0, centreX - radius); x <= Math.min(size - 1, centreX + radius); x++) {
+          const falloff = Math.exp(-((x - centreX) ** 2 + (y - centreY) ** 2) / (2 * 1.7 * 1.7));
+          const offset = y * size + x;
+          overlay.scalpMask[offset] = Math.max(overlay.scalpMask[offset], shade * falloff);
+        }
+      }
+    }
+    // Vertex splats under-sample the texture and read as comb teeth along the
+    // hairline; a blur pass fuses them into one smooth band.
+    const blurred = overlay.scalpMask;
+    const scratch = new Float32Array(blurred.length);
+    for (let pass = 0; pass < 2; pass++) {
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          let total = 0;
+          let weight = 0;
+          for (let dx = -2; dx <= 2; dx++) {
+            const sx = x + dx;
+            if (sx < 0 || sx >= size) continue;
+            total += blurred[y * size + sx];
+            weight += 1;
+          }
+          scratch[y * size + x] = total / weight;
+        }
+      }
+      for (let x = 0; x < size; x++) {
+        for (let y = 0; y < size; y++) {
+          let total = 0;
+          let weight = 0;
+          for (let dy = -2; dy <= 2; dy++) {
+            const sy = y + dy;
+            if (sy < 0 || sy >= size) continue;
+            total += scratch[sy * size + x];
+            weight += 1;
+          }
+          blurred[y * size + x] = total / weight;
+        }
+      }
+    }
+    const palette = resolveHairPalette(values);
+    const root = new THREE.Color(palette.root).lerp(new THREE.Color(palette.base), 0.30);
+    const skin = new THREE.Color(values.skinTone || '#c99378');
+    overlay.scalpTint = [
+      THREE.MathUtils.clamp(root.r / Math.max(0.04, skin.r), 0.18, 1),
+      THREE.MathUtils.clamp(root.g / Math.max(0.04, skin.g), 0.18, 1),
+      THREE.MathUtils.clamp(root.b / Math.max(0.04, skin.b), 0.18, 1),
+    ];
+    refreshSkinOverlay(model, values);
+  }
+
   function rebuild(values) {
     disposePieces();
     materials.update(values);
@@ -166,6 +247,7 @@ export function createHairSystem(scene, bones, model) {
     addCroppedWaves(profile, values, frame, scalpCache);
     addPompadour(profile, values, frame, scalpCache);
     addBraidedCrown(profile, values, frame, scalpCache);
+    paintScalpShading(values, frame, profile);
   }
 
   return {

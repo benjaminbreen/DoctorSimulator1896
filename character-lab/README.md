@@ -19,6 +19,20 @@ character without facial controls.
 
 ## How it fits together
 
+The header keeps patient generation separate from asset baking:
+
+- **Appearance variation** advances the appearance seed and rerolls the current
+  patient's body, face, hair, palette, clothing, and surface controls without
+  replacing her identity, case record, or clinically derived performance.
+- **New random patient** advances the patient seed, creates a new identity,
+  household, clinical presentation, appearance, and performance profile, then
+  immediately rebuilds both Blender renderers so the visible person matches.
+- **Regenerate model** sends manually tuned or appearance-variation controls to
+  Blender when the user is ready.
+- Each generated renderer-A patient receives a coherent resting-face signature
+  assembled from all 52 available MPFB units. **Surprise me** below the atomic
+  debugger rerolls only that signature live; performances layer over it.
+
 - `public/presets/*.json` — the contract. One preset = one patient. 100 values.
 - `scripts/characters/generate_patient.py` — Blender build: MPFB body, face
   and body identity baked before fitted attachments, all installed ARKit-named
@@ -31,10 +45,13 @@ character without facial controls.
 - `src/hair/` — modular period-hair system: scalp sampling, anatomical
   style-specific hairlines, true open parts, textured under-shells,
   directional locks, alpha-tested wisps, waves, chignons and coiled buns.
-- `src/stylized.js` — Renderer B2 treatment for MPFB's fitted generic female
-  proxy: a protected mid-density topology, anatomy-guided facial planes,
-  capillary colour, procedural skin microstructure, softened eye whites and a
-  dedicated portrait-light response. Renderer A remains unchanged.
+- `src/stylized.js` — shared live skin treatment for both renderer topologies:
+  anatomy-guided facial colour, capillary colour, procedural microstructure,
+  pore scale, pigment variation, lip tint, and eye-white contrast. Freckles and
+  lip pigment use a landmark-derived UV overlay so their edges are independent
+  of either renderer's triangles. B also uses this module for its stronger
+  faceted-normal and portrait-light treatment;
+  A preserves its original indexed topology, diffuse texture, and morphs.
 - `src/idle.js` — layered procedural performance: breathing (rate and
   amplitude), weight shift, fidget, gaze saccades, hand tension (curls real
   finger bones), hand tremor (symptom display), knee adduction, plus one-shot
@@ -58,6 +75,14 @@ age and origin map probabilistically into body and appearance.
 The patient-domain record is stored at the top-level `patient` key in every
 generated preset. See `src/patients/README.md` for module boundaries and extension
 rules, and `public/schema/patient.schema.json` for the record contract.
+
+Skin-rendering values are generated as identity consequences, not renderer-B
+decoration. Older patients trend toward more micro-detail, larger visible pore
+scale, greater pigment unevenness, a rougher/more matte surface, less saturated
+lips, and lower eye-white contrast. Seeded variation remains broad enough that
+age does not produce identical surfaces. Every value remains live and editable
+in the **Skin rendering · A and B** control group. The `stylized…` JSON prefixes
+are retained for preset compatibility even though the controls are now shared.
 
 ## A/B renderers
 
@@ -120,6 +145,10 @@ and gestures layer on top), `clip+procedural` (both).
   is based on required sentinel names and not that number.
 - A face unit must be written to every fitted mesh that exports that name.
   Driving only the body recreates the floating-feature problem for expressions.
+- Renderer A's skin pass must not call `toNonIndexed()`, decimate, or otherwise
+  split vertices: its complete MPFB morph library depends on stable topology.
+  A's smoothing slider blends toward a topology-safe quantized normal field;
+  B can use true per-triangle normals on its expression-free body proxy.
 
 ## Known gaps
 

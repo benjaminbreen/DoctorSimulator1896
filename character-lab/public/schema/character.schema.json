@@ -4,7 +4,7 @@
     {
       "id": "identity", "label": "Identity & build", "mode": "bake",
       "parameters": [
-        {"id":"seed","label":"Variation seed","type":"range","min":1,"max":9999,"step":1,"default":1896},
+        {"id":"seed","label":"Appearance seed","type":"range","min":1,"max":9999,"step":1,"default":1896},
         {"id":"gender","label":"Feminine ↔ masculine","type":"range","min":0,"max":1,"step":0.01,"default":0.12},
         {"id":"age","label":"Apparent age","type":"range","min":0.5,"max":0.9,"step":0.01,"default":0.55},
         {"id":"height","label":"Stature","type":"range","min":0.2,"max":0.8,"step":0.01,"default":0.46},
@@ -54,10 +54,12 @@
       "id": "hair", "label": "Hair", "mode": "live",
       "parameters": [
         {"id":"hairStyle","label":"Style","type":"select","options":["center-parted-bun","side-parted-bun","low-bun","coiled-bun","loose-chignon","swept-back","pompadour","braided-crown","cropped-waves","short-parted"],"default":"center-parted-bun"},
+        {"id":"hairShade","label":"Natural shade","type":"select","options":["black","soft-black","dark-brown","medium-brown","chestnut","auburn","ash-brown","dark-blonde","golden-blonde","custom"],"default":"custom"},
         {"id":"hairColor","label":"Hair color","type":"color","default":"#0d0908"},
         {"id":"hairVolume","label":"Hair volume","type":"range","min":0.75,"max":1.35,"step":0.01,"default":0.96},
         {"id":"hairHeight","label":"Crown height","type":"range","min":0.8,"max":1.3,"step":0.01,"default":1.0},
         {"id":"sideVolume","label":"Side volume","type":"range","min":0.7,"max":1.4,"step":0.01,"default":1.0},
+        {"id":"flowSweep","label":"Drawn-back sweep","type":"range","min":0,"max":1,"step":0.01,"default":0.68},
         {"id":"partWidth","label":"Part width","type":"range","min":0,"max":1,"step":0.01,"default":0.28},
         {"id":"bunSize","label":"Bun size","type":"range","min":0.65,"max":1.5,"step":0.01,"default":0.92},
         {"id":"hairlineHeight","label":"Hairline height","type":"range","min":-1,"max":1,"step":0.01,"default":0},
@@ -127,7 +129,7 @@
       ]
     },
     {
-      "id": "stylized", "label": "Renderer B · stylized", "mode": "live",
+      "id": "stylized", "label": "Skin rendering · A and B", "mode": "live",
       "parameters": [
         {"id":"stylizedPlaneContrast","label":"Anatomical plane definition","type":"range","min":0,"max":1,"step":0.01,"default":0.3},
         {"id":"stylizedTriangleBlend","label":"Triangle smoothing blend","type":"range","min":0,"max":1,"step":0.01,"default":0.36},
@@ -142,8 +144,8 @@
         {"id":"stylizedLipTint","label":"Natural lip tint","type":"range","min":0,"max":1,"step":0.01,"default":0.52},
         {"id":"stylizedLipColor","label":"Lip color","type":"color","default":"#b66d68"},
         {"id":"stylizedEyeContrast","label":"Eye-white contrast","type":"range","min":0,"max":1,"step":0.01,"default":0.3},
-        {"id":"stylizedSurfaceRoughness","label":"Stylized surface roughness","type":"range","min":0.55,"max":1,"step":0.01,"default":0.82},
-        {"id":"stylizedLightSoftness","label":"Portrait light softness","type":"range","min":0,"max":1,"step":0.01,"default":0.78}
+        {"id":"stylizedSurfaceRoughness","label":"Skin surface roughness","type":"range","min":0.55,"max":1,"step":0.01,"default":0.82},
+        {"id":"stylizedLightSoftness","label":"Portrait light softness (B)","type":"range","min":0,"max":1,"step":0.01,"default":0.78}
       ]
     }
   ]

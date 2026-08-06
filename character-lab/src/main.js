@@ -4,8 +4,10 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { findBones, createCostume } from './costume.js';
 import { createIdle } from './idle.js';
 import { createExpressions } from './expressions.js';
-import { generatePatient, nextSeed, patientToCharacterPreset } from './patients/index.js';
-import { prepareStylizedModel, styleProceduralCostume, updateStylizedModel } from './stylized.js';
+import {
+  generatePatient, generateRestingFaceSignature, nextSeed, patientToCharacterPreset,
+} from './patients/index.js';
+import { prepareSkinModel, styleProceduralCostume, updateSkinModel } from './stylized.js';
 import './style.css';
 
 const [schema, initialPreset] = await Promise.all([
@@ -19,16 +21,18 @@ const ui = {
   json: document.querySelector('#preset-json'), summary: document.querySelector('#subject-summary'), subjectName: document.querySelector('#subject-name'),
   patientRecord: document.querySelector('#patient-record'), patientSection: document.querySelector('#patient-record-section'), pipeline: document.querySelector('#pipeline-state'),
   command: document.querySelector('#generate-command'), fallback: document.querySelector('#fallback'), search: document.querySelector('#control-search'),
-  regenerate: document.querySelector('#regenerate'), randomize: document.querySelector('#randomize'), renderToggle: document.querySelector('#render-toggle'),
+  regenerate: document.querySelector('#regenerate'), randomize: document.querySelector('#randomize'), newPatient: document.querySelector('#new-patient'),
+  renderToggle: document.querySelector('#render-toggle'),
   expressionDriver: document.querySelector('#expression-driver'), faceUnitSelect: document.querySelector('#face-unit-select'),
   faceUnitValue: document.querySelector('#face-unit-value'), faceUnitOutput: document.querySelector('#face-unit-output'), faceUnitReset: document.querySelector('#face-unit-reset'),
+  faceUnitSurprise: document.querySelector('#face-unit-surprise'),
 };
 
 /* ids that require rebuilding costume geometry (vs material-only or animation values) */
 const COSTUME_GEOMETRY_IDS = new Set(['bodiceFit', 'waistHeight', 'skirtFullness', 'skirtLength', 'skirtDrape',
   'bustleAmount', 'sleeveVolume', 'sleeveLength', 'collarHeight', 'collarSpread', 'buttonSpacing', 'buttonCount',
   'outfitStyle', 'hairStyle', 'hairVolume', 'partWidth', 'bunSize', 'hairHeight', 'sideVolume',
-  'hairlineHeight', 'templeRecession', 'wispAmount', 'waveAmount']);
+  'hairlineHeight', 'templeRecession', 'wispAmount', 'waveAmount', 'flowSweep', 'greyAmount']);
 
 const renderer = new THREE.WebGLRenderer({ canvas: ui.canvas, antialias: true, alpha: false });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -182,10 +186,12 @@ function refreshFaceUnitDebugger() {
   ui.faceUnitSelect.replaceChildren();
   if (expressions?.mode === 'mpfb-faceunits' && units.length) {
     for (const unit of units) ui.faceUnitSelect.append(new Option(unit, unit));
-    ui.expressionDriver.textContent = `MPFB named morphs · ${units.length} targets discovered on the body`;
+    const restingCount = Object.keys(expressions.restingFace || {}).length;
+    ui.expressionDriver.textContent = `MPFB named morphs · ${units.length} targets · ${restingCount} active resting offsets`;
     ui.faceUnitSelect.disabled = false;
     ui.faceUnitValue.disabled = false;
     ui.faceUnitReset.disabled = false;
+    ui.faceUnitSurprise.disabled = false;
   } else {
     ui.faceUnitSelect.append(new Option('Legacy procedural fallback', ''));
     ui.expressionDriver.textContent = renderStyle === 'stylized'
@@ -194,6 +200,7 @@ function refreshFaceUnitDebugger() {
     ui.faceUnitSelect.disabled = true;
     ui.faceUnitValue.disabled = true;
     ui.faceUnitReset.disabled = true;
+    ui.faceUnitSurprise.disabled = true;
   }
   ui.faceUnitValue.value = 0;
   ui.faceUnitOutput.textContent = '0.00';
@@ -213,6 +220,25 @@ function clearFaceUnitDebug() {
   ui.faceUnitOutput.textContent = '0.00';
 }
 
+function applyPresetRestingFace() {
+  expressions?.setRestingFace?.(preset.patient?.appearance?.restingFace || {});
+}
+
+function surpriseFace() {
+  if (!expressions?.setRestingFace || expressions.mode !== 'mpfb-faceunits') return;
+  const appearance = preset.patient?.appearance;
+  if (!appearance) return;
+  const faceSignatureSeed = nextSeed(appearance.faceSignatureSeed ?? preset.values.seed);
+  appearance.faceSignatureSeed = faceSignatureSeed;
+  appearance.restingFace = generateRestingFaceSignature(faceSignatureSeed, { dramatic: true });
+  clearFaceUnitDebug();
+  expressions.setRestingFace(appearance.restingFace);
+  ui.expressionDriver.textContent = `MPFB named morphs · ${expressions.availableUnits.length} targets · ${Object.keys(expressions.restingFace).length} active resting offsets`;
+  updateText();
+  ui.status.textContent = `Resting-face signature ${faceSignatureSeed} applied`;
+  ui.status.className = 'status ok';
+}
+
 function updateRenderToggle() {
   if (!ui.renderToggle) return;
   ui.renderToggle.textContent = renderStyle === 'stylized' ? 'Renderer B2 · Anatomical' : 'Renderer A · Current';
@@ -228,7 +254,6 @@ async function loadCharacter() {
   try {
     const gltf = await new GLTFLoader().loadAsync(`/models/mrs-ostrander-1896${suffix}.glb?v=${Date.now()}`);
     model = gltf.scene;
-    if (renderStyle === 'stylized') prepareStylizedModel(model, preset.values);
     characterRoot.add(model); animationClips = gltf.animations;
     setupAnimations();
     const label = renderStyle === 'stylized' ? 'B2 anatomical mesh' : 'A current mesh';
@@ -239,6 +264,7 @@ async function loadCharacter() {
   }
   indexModel(model);
   if (!isFallback) {
+    prepareSkinModel(model, preset.values, { stylized: renderStyle === 'stylized' });
     bones = findBones(model);
     if (bones.pelvis) {
       // hold the authored pose at frame 0, then treat it as the procedural rest pose
@@ -249,7 +275,7 @@ async function loadCharacter() {
       costume = createCostume(characterRoot, bones, model, { renderStyle });
       costume.rebuild(preset.values);
       if (renderStyle === 'stylized') styleProceduralCostume(costume, preset.values);
-      expressions = createExpressions(model);
+      expressions = createExpressions(model, { restingFace: preset.patient?.appearance?.restingFace });
       refreshFaceUnitDebugger();
     }
   }
@@ -394,12 +420,12 @@ function applyAll(changedId = null) {
     setMaterialLike('suit', v.dressColor, v.fabricRoughness, 1);
     setMaterialLike('shoes', '#211713');
     setEyeColor(v.eyeColor);
+    updateSkinModel(model, v);
     if (costume) {
       costume.materials.dress.color.set(v.dressColor); setSurfaceFinish(costume.materials.dress, v.fabricRoughness, 1);
       costume.materials.trim.color.set(v.trimColor); costume.updateHair(v);
     }
     if (renderStyle === 'stylized') {
-      updateStylizedModel(model, v);
       styleProceduralCostume(costume, v);
     }
     if (changedId === null || COSTUME_GEOMETRY_IDS.has(changedId)) costumeDirty = true;
@@ -494,13 +520,25 @@ function updateText() {
   ui.command.textContent = `npm run character:generate -- character-lab/public/presets/${preset.id}.json`;
   const baked = definitions.filter((d) => d.mode === 'bake').length; const live = definitions.length - baked;
   const expressionMode = expressions?.mode === 'mpfb-faceunits' ? `MPFB named · ${expressions.availableUnits.length}` : 'legacy procedural';
-  ui.pipeline.innerHTML = `<dt>Tunable values</dt><dd>${definitions.length}</dd><dt>Live controls</dt><dd>${live}</dd><dt>Blender controls</dt><dd>${baked}</dd><dt>Renderer</dt><dd>${renderStyle === 'stylized' ? 'B2 · anatomical' : 'A · current'}</dd><dt>Facial driver</dt><dd>${expressionMode}</dd><dt>Regeneration</dt><dd>${regenerationNeeded ? 'needed' : 'current'}</dd><dt>Deterministic seed</dt><dd>${preset.values.seed}</dd><dt>Target runtime</dt><dd>Three.js / GLB</dd>`;
+  ui.pipeline.innerHTML = `<dt>Tunable values</dt><dd>${definitions.length}</dd><dt>Live controls</dt><dd>${live}</dd><dt>Blender controls</dt><dd>${baked}</dd><dt>Renderer</dt><dd>${renderStyle === 'stylized' ? 'B2 · anatomical' : 'A · current'}</dd><dt>Facial driver</dt><dd>${expressionMode}</dd><dt>Regeneration</dt><dd>${regenerationNeeded ? 'needed' : 'current'}</dd><dt>Patient seed</dt><dd>${preset.patient?.seed ?? 'legacy'}</dd><dt>Appearance seed</dt><dd>${preset.values.seed}</dd><dt>Face signature</dt><dd>${preset.patient?.appearance?.faceSignatureSeed ?? 'neutral'}</dd><dt>Target runtime</dt><dd>Three.js / GLB</dd>`;
 }
 
-async function randomize() {
-  const patient = generatePatient({ seed: nextSeed(preset.values.seed) });
+function appearanceVariation() {
+  const patient = preset.patient ?? generatePatient({ seed: preset.values.seed });
+  const appearanceSeed = nextSeed(preset.values.seed);
+  preset = patientToCharacterPreset(patient, preset, definitions, { appearanceSeed });
+  refreshControls();
+  applyPresetRestingFace();
+  ui.status.textContent = `Appearance variation ${appearanceSeed} ready · regenerate for baked anatomy`;
+  ui.status.className = 'status warn';
+}
+
+async function newRandomPatient() {
+  const patientSeed = nextSeed(preset.patient?.seed ?? preset.values.seed);
+  const patient = generatePatient({ seed: patientSeed });
   preset = patientToCharacterPreset(patient, preset, definitions);
   refreshControls();
+  applyPresetRestingFace();
   await regenerateCharacter();
 }
 
@@ -508,7 +546,7 @@ async function regenerateCharacter() {
   if (regenerationBusy) return;
   regenerationBusy = true;
   ui.status.textContent = 'Blender is fitting a complete character…'; ui.status.className = 'status warn';
-  for (const button of [ui.regenerate, ui.randomize]) if (button) button.disabled = true;
+  for (const button of [ui.regenerate, ui.randomize, ui.newPatient]) if (button) button.disabled = true;
   document.querySelectorAll('#controls input, #controls select').forEach((control) => { control.disabled = true; });
   try {
     const response = await fetch('/api/regenerate', {
@@ -522,7 +560,7 @@ async function regenerateCharacter() {
   } catch (error) {
     ui.status.textContent = error.message; ui.status.className = 'status warn';
     regenerationBusy = false;
-    for (const button of [ui.regenerate, ui.randomize]) if (button) button.disabled = false;
+    for (const button of [ui.regenerate, ui.randomize, ui.newPatient]) if (button) button.disabled = false;
     document.querySelectorAll('#controls input, #controls select').forEach((control) => { control.disabled = false; });
   }
 }
@@ -550,11 +588,12 @@ async function toggleRenderStyle() {
 }
 
 makeClinic(); buildControls(); updateRenderToggle(); await loadCharacter(); updateText(); setView('clinic');
-ui.randomize.onclick = randomize;
+ui.randomize.onclick = appearanceVariation;
+ui.newPatient.onclick = newRandomPatient;
 ui.regenerate.onclick = regenerateCharacter;
-document.querySelector('#reset').onclick = () => { preset = structuredClone(initialPreset); refreshControls(); setView('clinic'); };
+document.querySelector('#reset').onclick = () => { preset = structuredClone(initialPreset); refreshControls(); applyPresetRestingFace(); setView('clinic'); };
 document.querySelector('#export').onclick = () => { const link = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([JSON.stringify(preset, null, 2)], { type: 'application/json' })), download: `${preset.id}.json` }); link.click(); URL.revokeObjectURL(link.href); };
-document.querySelector('#apply-json').onclick = () => { try { preset = JSON.parse(ui.json.value); refreshControls(); } catch { ui.json.setCustomValidity('Invalid JSON'); ui.json.reportValidity(); } };
+document.querySelector('#apply-json').onclick = () => { try { preset = JSON.parse(ui.json.value); refreshControls(); applyPresetRestingFace(); } catch { ui.json.setCustomValidity('Invalid JSON'); ui.json.reportValidity(); } };
 document.querySelector('#copy-json').onclick = () => navigator.clipboard.writeText(ui.json.value);
 document.querySelector('#toggle-grid').onclick = (event) => { grid.visible = !grid.visible; event.currentTarget.classList.toggle('active', grid.visible); };
 document.querySelector('#toggle-motion').onclick = (event) => { motionEnabled = !motionEnabled; syncIdleMode(); event.currentTarget.classList.toggle('active', motionEnabled); };
@@ -565,6 +604,7 @@ document.querySelectorAll('[data-expression]').forEach((button) => button.onclic
 ui.faceUnitSelect.onchange = applyFaceUnitDebug;
 ui.faceUnitValue.oninput = applyFaceUnitDebug;
 ui.faceUnitReset.onclick = clearFaceUnitDebug;
+ui.faceUnitSurprise.onclick = surpriseFace;
 ui.canvas.ondblclick = () => setView('clinic');
 ui.search.oninput = () => { const term = ui.search.value.toLowerCase(); document.querySelectorAll('.control').forEach((row) => row.hidden = !row.dataset.search.includes(term)); document.querySelectorAll('.control-group').forEach((group) => group.hidden = ![...group.querySelectorAll('.control')].some((row) => !row.hidden)); };
 

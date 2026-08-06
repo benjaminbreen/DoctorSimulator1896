@@ -15,7 +15,8 @@
         </div>
         <div class="header-actions">
           <span id="model-status" class="status">Loading model…</span>
-          <button id="randomize" type="button">Seeded variation</button>
+          <button id="randomize" type="button" title="Reroll appearance controls while keeping the current patient record">Appearance variation</button>
+          <button id="new-patient" type="button" title="Generate a new identity, history, clinical presentation, and appearance">New random patient</button>
           <button id="regenerate" type="button">Regenerate model</button>
           <button id="reset" type="button">Reset</button>
           <button id="export" class="primary" type="button">Export preset</button>
@@ -82,6 +83,7 @@
               <output id="face-unit-output" for="face-unit-value">0.00</output>
             </div>
             <button id="face-unit-reset" type="button">Return to performance</button>
+            <button id="face-unit-surprise" type="button">Surprise me</button>
           </section>
           <section>
             <h3>Preset JSON</h3>

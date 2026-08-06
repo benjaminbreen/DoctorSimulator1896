@@ -385,12 +385,13 @@ function collectNamedMorphs(model) {
   return { availableUnits, bindings };
 }
 
-function createNamedExpressions(model) {
+function createNamedExpressions(model, initialRestingFace = {}) {
   const named = collectNamedMorphs(model);
   if (!named) return null;
   const { availableUnits, bindings } = named;
   let episode = null;
   let debugUnit = null;
+  let restingFace = new Map();
   const appliedUnits = new Set();
 
   function writeUnit(name, value) {
@@ -416,6 +417,13 @@ function createNamedExpressions(model) {
       writeUnit(name, value);
       appliedUnits.add(name);
     }
+  }
+
+  function setRestingFace(signature = {}) {
+    restingFace = new Map(Object.entries(signature)
+      .filter(([name, value]) => bindings.has(name) && Number(value) > 0)
+      .map(([name, value]) => [name, clamp01(Number(value))]));
+    if (!debugUnit) applyWeights(new Map(restingFace));
   }
 
   function play(name = 'smile', speed = 1, intensity = 1) {
@@ -454,7 +462,7 @@ function createNamedExpressions(model) {
       if (elapsed > episode.attack + episode.hold + episode.release + 0.1) episode = null;
     }
 
-    const weights = new Map();
+    const weights = new Map(restingFace);
     addRecipe(weights, EXPRESSION_RECIPES.smileMouth, smile);
     addRecipe(weights, EXPRESSION_RECIPES.smileEyes, smileEyes);
     addRecipe(weights, EXPRESSION_RECIPES.sadness, sadness);
@@ -471,8 +479,10 @@ function createNamedExpressions(model) {
 
   function clearDebug() {
     debugUnit = null;
-    applyWeights(new Map());
+    applyWeights(new Map(restingFace));
   }
+
+  setRestingFace(initialRestingFace);
 
   return {
     mode: 'mpfb-faceunits',
@@ -481,10 +491,12 @@ function createNamedExpressions(model) {
     availableUnits,
     setDebugUnit,
     clearDebug,
+    setRestingFace,
     get debugUnit() { return debugUnit ? { ...debugUnit } : null; },
+    get restingFace() { return Object.fromEntries(restingFace); },
   };
 }
 
-export function createExpressions(model) {
-  return createNamedExpressions(model) || createLegacyExpressions(model);
+export function createExpressions(model, options = {}) {
+  return createNamedExpressions(model, options.restingFace) || createLegacyExpressions(model);
 }

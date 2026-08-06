@@ -15,7 +15,14 @@ The pipeline has two deliberately separate layers:
 
 The resulting preset stores the source record at `preset.patient`. This keeps a
 generated model, its case data, and its seed together without adding narrative
-fields to the 76-value render schema.
+fields to the 100-value render schema.
+
+Patient and appearance seeds are deliberately distinct. A new patient seed
+creates a new identity and case. An appearance seed can be advanced while
+keeping that record fixed, producing another visual interpretation of the same
+patient. Appearance variation waits for **Regenerate model**; **New random
+patient** regenerates the GLBs immediately so the displayed anatomy and fitted
+features match the new record.
 
 ## Data modules
 
@@ -35,6 +42,9 @@ fields to the 76-value render schema.
   census sample.
 - Never derive temperament or diagnosis from ancestry.
 - Appearance profiles move probabilities; they do not impose hard gates.
+- Age may shift visible skin-surface distributions such as texture, pigment
+  variation, lip saturation, and eye-white contrast, but seeded variation must
+  remain substantial and the values must stay manually editable.
 - Give a new subsystem its own stable random-stream label. Never consume extra
   draws from an unrelated subsystem.
 - Period diagnostic language belongs in `periodCategory`; neutral game-facing
@@ -50,4 +60,3 @@ npm run patient:audit -- 2000
 
 The audit is intentionally human-readable. Historical distribution errors tend
 to be plausible-looking and cannot all be caught by unit assertions.
-

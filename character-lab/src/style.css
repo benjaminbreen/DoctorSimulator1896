@@ -74,7 +74,8 @@ h1 { font-size: 1.45rem; letter-spacing: 0.08em; }
 .debug-slider-row { display: grid; grid-template-columns: 1fr 38px; gap: 8px; align-items: center; margin: 8px 0; }
 .debug-slider-row input { width: 100%; accent-color: var(--gold); }
 .debug-slider-row output { color: #c5b17d; font-size: 0.64rem; text-align: right; }
-#face-unit-reset { width: 100%; font-size: 0.66rem; }
+#face-unit-reset, #face-unit-surprise { width: 100%; font-size: 0.66rem; }
+#face-unit-surprise { margin-top: 7px; color: var(--gold-bright); }
 .row { display: flex; gap: 7px; margin-top: 7px; }
 .row button { flex: 1; }
 textarea {

@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { generatePatient, patientToCharacterPreset } from '../character-lab/src/patients/index.js';
+import {
+  FACE_UNIT_NAMES, FACE_UNIT_PAIRS, generatePatient, generateRestingFaceSignature, patientToCharacterPreset,
+} from '../character-lab/src/patients/index.js';
 
 const schema = JSON.parse(await readFile(new URL('../character-lab/public/schema/character.schema.json', import.meta.url)));
 const basePreset = JSON.parse(await readFile(new URL('../character-lab/public/presets/mrs-ostrander-1896.json', import.meta.url)));
@@ -30,6 +32,48 @@ test('domain generation is independent from appearance generation', () => {
   const before = structuredClone(patient);
   patientToCharacterPreset(patient, basePreset, definitions);
   assert.deepEqual(patient, before);
+});
+
+test('appearance seeds reroll rendering without replacing the patient', () => {
+  const patient = generatePatient({ seed: 227 });
+  const first = patientToCharacterPreset(patient, basePreset, definitions, { appearanceSeed: 701 });
+  const second = patientToCharacterPreset(patient, basePreset, definitions, { appearanceSeed: 702 });
+  assert.equal(first.name, second.name);
+  assert.equal(first.patient.seed, patient.seed);
+  assert.equal(second.patient.seed, patient.seed);
+  assert.equal(first.patient.clinical.presentingComplaint, second.patient.clinical.presentingComplaint);
+  assert.equal(first.values.seed, 701);
+  assert.equal(second.values.seed, 702);
+  assert.equal(first.patient.appearance.seed, 701);
+  assert.equal(second.patient.appearance.seed, 702);
+  assert.equal(first.values.fidget, second.values.fidget);
+  assert.equal(first.values.tremor, second.values.tremor);
+  assert.notDeepEqual(first.patient.appearance, second.patient.appearance);
+  assert.notEqual(first.values.headWidth, second.values.headWidth);
+});
+
+test('resting-face signatures cover all units with predominantly bilateral variation', () => {
+  assert.equal(FACE_UNIT_NAMES.length, 52);
+  assert.deepEqual(generateRestingFaceSignature(814), generateRestingFaceSignature(814));
+  let activePairs = 0;
+  let bilateralPairs = 0;
+  for (let seed = 1; seed <= 600; seed += 1) {
+    const signature = generateRestingFaceSignature(seed);
+    assert.deepEqual(Object.keys(signature).sort(), [...FACE_UNIT_NAMES].sort());
+    assert.ok(Object.values(signature).every((value) => value >= 0 && value <= 0.72));
+    assert.equal(signature.tongueOut, 0);
+    assert.ok(!(signature.jawOpen > 0 && signature.mouthClose > 0));
+    assert.ok(!((signature.eyeWideLeft > 0 || signature.eyeWideRight > 0)
+      && (signature.cheekSquintLeft > 0 || signature.cheekSquintRight > 0)));
+    assert.ok(!((signature.browDownLeft > 0 || signature.browDownRight > 0) && signature.browInnerUp > 0));
+    for (const [left, right] of FACE_UNIT_PAIRS) {
+      if (signature[left] === 0 && signature[right] === 0) continue;
+      activePairs += 1;
+      if (Math.abs(signature[left] - signature[right]) / Math.max(signature[left], signature[right]) <= 0.23) bilateralPairs += 1;
+    }
+  }
+  const bilateralRate = bilateralPairs / activePairs;
+  assert.ok(bilateralRate > 0.70 && bilateralRate < 0.86, `bilateral rate ${bilateralRate}`);
 });
 
 test('2,000 generated patients remain coherent and inside the render contract', () => {
@@ -75,3 +119,22 @@ test('clinical state changes performance rather than acting as biography-only fl
   assert.ok(mean('melancholic-withdrawal', 'posture') < mean('traumatic-fright', 'posture') - 0.2);
 });
 
+test('generated skin rendering changes coherently with age', () => {
+  const young = [];
+  const older = [];
+  for (let seed = 1; seed <= 5000 && (young.length < 180 || older.length < 180); seed += 1) {
+    const patient = generatePatient({ seed });
+    const preset = patientToCharacterPreset(patient, basePreset, definitions);
+    if (patient.identity.age <= 29 && young.length < 180) young.push(preset.values);
+    if (patient.identity.age >= 57 && older.length < 180) older.push(preset.values);
+  }
+  assert.equal(young.length, 180);
+  assert.equal(older.length, 180);
+  const mean = (list, field) => list.reduce((sum, values) => sum + values[field], 0) / list.length;
+  assert.ok(mean(older, 'stylizedSkinDetail') > mean(young, 'stylizedSkinDetail') + 0.20);
+  assert.ok(mean(older, 'stylizedPigmentVariation') > mean(young, 'stylizedPigmentVariation') + 0.20);
+  assert.ok(mean(older, 'stylizedPoreScale') > mean(young, 'stylizedPoreScale') + 0.20);
+  assert.ok(mean(older, 'stylizedSurfaceRoughness') > mean(young, 'stylizedSurfaceRoughness') + 0.07);
+  assert.ok(mean(older, 'stylizedLipTint') < mean(young, 'stylizedLipTint') - 0.07);
+  assert.ok(mean(older, 'stylizedEyeContrast') < mean(young, 'stylizedEyeContrast') - 0.06);
+});

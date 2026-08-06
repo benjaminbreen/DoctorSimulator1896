@@ -3,6 +3,8 @@ import { getOriginProfile } from './data/demographics.js';
 import {
   DRESS_PALETTES, FACE_ARCHETYPES, FACE_VALUE_IDS, HAIR_STYLES, OUTFIT_RULES,
 } from './data/appearance.js';
+import { nearestHairShade } from '../hair/palette.js';
+import { generateRestingFaceSignature } from './faceSignature.js';
 
 const NEUTRAL_PERFORMANCE = {
   posture: 0.1, breathing: 1, breathingRate: 13, fidget: 0.85, gazeDrift: 0.9,
@@ -47,6 +49,10 @@ function ageMorph(age) {
   return 0.5 + ((age - 16) / 60) * 0.4;
 }
 
+function skinAge(age) {
+  return Math.min(1, Math.max(0, (age - 18) / 58));
+}
+
 function lipColorForSkin(skinTone, random) {
   const channels = [1, 3, 5].map((index) => parseInt(skinTone.slice(index, index + 2), 16));
   const variation = random.bell() * 10;
@@ -65,24 +71,41 @@ function bodyMass(patient, random) {
   return classCenter + ageAdjustment + complaintAdjustment + jitter(random, 0.16);
 }
 
+function hairStyleWeight(style, age) {
+  const band = age < 30 ? 0 : age < 50 ? 1 : 2;
+  return style.weight * (style.ageWeights?.[band] ?? 1);
+}
+
+function groomingDisarray(patient, random) {
+  const classPolish = { elite: 0.78, affluent: 0.66, comfortable: 0.50, sponsored: 0.38 }[patient.social.classId];
+  const performance = patient.clinical.performance || NEUTRAL_PERFORMANCE;
+  const agitation = Math.max(0, (performance.fidget - 0.7) / 1.1) * 0.18;
+  const fatigue = ['weary', 'sad'].includes(patient.clinical.affect) ? 0.10 : 0;
+  return Math.min(1, Math.max(0, 0.54 - classPolish * 0.46 + agitation + fatigue + jitter(random, 0.17)));
+}
+
 function descriptionFor(patient) {
   const work = patient.social.occupation ?? patient.social.householdPosition;
   return `${patient.identity.age}-year-old ${patient.identity.origin.label} ${work} from ${patient.social.residence}, presenting with ${patient.clinical.presentingComplaint}.`;
 }
 
 /** Map a domain patient onto the existing Blender/Three.js preset contract. */
-export function patientToCharacterPreset(patient, basePreset, definitions) {
+export function patientToCharacterPreset(patient, basePreset, definitions, options = {}) {
   const preset = structuredClone(basePreset);
   const values = preset.values;
-  const faceRandom = createRandom(patient.seed, 'appearance.face');
-  const bodyRandom = createRandom(patient.seed, 'appearance.body');
-  const hairRandom = createRandom(patient.seed, 'appearance.hair');
-  const dressRandom = createRandom(patient.seed, 'appearance.dress');
-  const stylizedRandom = createRandom(patient.seed, 'appearance.stylized');
-  const performanceRandom = createRandom(patient.seed, 'appearance.performance');
+  const appearanceSeed = Number(options.appearanceSeed ?? patient.seed);
+  const faceRandom = createRandom(appearanceSeed, 'appearance.face');
+  const bodyRandom = createRandom(appearanceSeed, 'appearance.body');
+  const hairRandom = createRandom(appearanceSeed, 'appearance.hair');
+  const dressRandom = createRandom(appearanceSeed, 'appearance.dress');
+  const stylizedRandom = createRandom(appearanceSeed, 'appearance.stylized');
+  // Performance belongs to the patient's clinical record, not to an alternate
+  // visual interpretation of that patient.
+  const performanceRandom = createRandom(Number(options.performanceSeed ?? patient.seed), 'appearance.performance');
   const origin = getOriginProfile(patient.identity.origin.id);
+  const surfaceAge = skinAge(patient.identity.age);
 
-  values.seed = patient.seed;
+  values.seed = appearanceSeed;
   values.gender = clamped(definitions, 'gender', 0.04 + jitter(bodyRandom, 0.05));
   values.age = clamped(definitions, 'age', ageMorph(patient.identity.age));
   values.height = clamped(definitions, 'height', 0.48 + jitter(bodyRandom, 0.28));
@@ -96,7 +119,7 @@ export function patientToCharacterPreset(patient, basePreset, definitions) {
   [values.african, values.asian, values.caucasian] = origin.heritage;
   values.skinTone = bodyRandom.pick(origin.skinTones);
   values.eyeColor = bodyRandom.pick(origin.eyeColors);
-  values.skinRoughness = clamped(definitions, 'skinRoughness', 1.28 + jitter(bodyRandom, 0.28));
+  values.skinRoughness = clamped(definitions, 'skinRoughness', 1.02 + surfaceAge * 0.32 + jitter(bodyRandom, 0.18));
 
   const face = faceRandom.weighted(FACE_ARCHETYPES);
   values.headShape = face.headShape;
@@ -107,33 +130,39 @@ export function patientToCharacterPreset(patient, basePreset, definitions) {
 
   const hairCandidates = HAIR_STYLES.filter((style) => style.classes.includes(patient.social.classId)
     && patient.identity.age <= (style.maxAge ?? 120));
-  values.hairStyle = hairRandom.weighted(hairCandidates).id;
+  values.hairStyle = hairRandom.weighted(hairCandidates, (style) => hairStyleWeight(style, patient.identity.age)).id;
   values.hairColor = hairRandom.pick(origin.hairColors);
+  values.hairShade = nearestHairShade(values.hairColor);
   values.hairVolume = clamped(definitions, 'hairVolume', 1 + jitter(hairRandom, 0.22));
   values.hairHeight = clamped(definitions, 'hairHeight', 1 + jitter(hairRandom, 0.18));
   values.sideVolume = clamped(definitions, 'sideVolume', 1.02 + jitter(hairRandom, 0.24));
+  const styleSweep = {
+    'loose-chignon': 0.48, 'cropped-waves': 0.34, 'short-parted': 0.38,
+    pompadour: 0.82, 'swept-back': 0.92, 'low-bun': 0.74,
+  }[values.hairStyle] ?? 0.68;
+  values.flowSweep = clamped(definitions, 'flowSweep', styleSweep + jitter(hairRandom, 0.12));
   values.partWidth = clamped(definitions, 'partWidth', 0.28 + jitter(hairRandom, 0.22));
   values.bunSize = clamped(definitions, 'bunSize', 1 + jitter(hairRandom, 0.28));
   values.hairlineHeight = clamped(definitions, 'hairlineHeight', jitter(hairRandom, 0.20));
   values.templeRecession = clamped(definitions, 'templeRecession', 0.12 + Math.max(0, patient.identity.age - 44) / 115 + jitter(hairRandom, 0.12));
-  values.wispAmount = clamped(definitions, 'wispAmount', 0.48 + jitter(hairRandom, 0.28));
+  values.wispAmount = clamped(definitions, 'wispAmount', 0.24 + groomingDisarray(patient, hairRandom) * 0.58);
   values.waveAmount = clamped(definitions, 'waveAmount', 0.38 + jitter(hairRandom, 0.34));
   values.strandContrast = clamped(definitions, 'strandContrast', 0.42 + jitter(hairRandom, 0.24));
   values.greyAmount = clamped(definitions, 'greyAmount', Math.max(0, patient.identity.age - 42) / 38 + jitter(hairRandom, 0.13));
-  values.stylizedPlaneContrast = clamped(definitions, 'stylizedPlaneContrast', 0.3 + jitter(stylizedRandom, 0.12));
-  values.stylizedTriangleBlend = clamped(definitions, 'stylizedTriangleBlend', 0.36 + jitter(stylizedRandom, 0.14));
-  values.stylizedSkinDetail = clamped(definitions, 'stylizedSkinDetail', 0.42 + jitter(stylizedRandom, 0.14));
-  values.stylizedPoreScale = clamped(definitions, 'stylizedPoreScale', 1 + jitter(stylizedRandom, 0.38));
-  values.stylizedPigmentVariation = clamped(definitions, 'stylizedPigmentVariation', 0.3 + jitter(stylizedRandom, 0.16));
-  values.stylizedFreckleAmount = clamped(definitions, 'stylizedFreckleAmount', 0.08 + Math.max(0, jitter(stylizedRandom, 0.16)));
-  values.stylizedSkinWarmth = clamped(definitions, 'stylizedSkinWarmth', 0.28 + jitter(stylizedRandom, 0.12));
-  values.stylizedCheekBlush = clamped(definitions, 'stylizedCheekBlush', 0.42 + jitter(stylizedRandom, 0.18));
-  values.stylizedNoseRedness = clamped(definitions, 'stylizedNoseRedness', 0.3 + jitter(stylizedRandom, 0.16));
-  values.stylizedForeheadWarmth = clamped(definitions, 'stylizedForeheadWarmth', 0.18 + jitter(stylizedRandom, 0.12));
-  values.stylizedLipTint = clamped(definitions, 'stylizedLipTint', 0.52 + jitter(stylizedRandom, 0.15));
+  values.stylizedPlaneContrast = clamped(definitions, 'stylizedPlaneContrast', 0.25 + surfaceAge * 0.16 + jitter(stylizedRandom, 0.10));
+  values.stylizedTriangleBlend = clamped(definitions, 'stylizedTriangleBlend', 0.48 - surfaceAge * 0.18 + jitter(stylizedRandom, 0.12));
+  values.stylizedSkinDetail = clamped(definitions, 'stylizedSkinDetail', 0.24 + surfaceAge * 0.50 + jitter(stylizedRandom, 0.10));
+  values.stylizedPoreScale = clamped(definitions, 'stylizedPoreScale', 0.78 + surfaceAge * 0.62 + jitter(stylizedRandom, 0.22));
+  values.stylizedPigmentVariation = clamped(definitions, 'stylizedPigmentVariation', 0.16 + surfaceAge * 0.52 + jitter(stylizedRandom, 0.11));
+  values.stylizedFreckleAmount = clamped(definitions, 'stylizedFreckleAmount', 0.04 + surfaceAge * 0.15 + Math.max(0, jitter(stylizedRandom, 0.10)));
+  values.stylizedSkinWarmth = clamped(definitions, 'stylizedSkinWarmth', 0.31 - surfaceAge * 0.10 + jitter(stylizedRandom, 0.10));
+  values.stylizedCheekBlush = clamped(definitions, 'stylizedCheekBlush', 0.44 - surfaceAge * 0.08 + jitter(stylizedRandom, 0.16));
+  values.stylizedNoseRedness = clamped(definitions, 'stylizedNoseRedness', 0.24 + surfaceAge * 0.16 + jitter(stylizedRandom, 0.13));
+  values.stylizedForeheadWarmth = clamped(definitions, 'stylizedForeheadWarmth', 0.17 + surfaceAge * 0.05 + jitter(stylizedRandom, 0.10));
+  values.stylizedLipTint = clamped(definitions, 'stylizedLipTint', 0.60 - surfaceAge * 0.19 + jitter(stylizedRandom, 0.12));
   values.stylizedLipColor = lipColorForSkin(values.skinTone, stylizedRandom);
-  values.stylizedEyeContrast = clamped(definitions, 'stylizedEyeContrast', 0.3 + jitter(stylizedRandom, 0.12));
-  values.stylizedSurfaceRoughness = clamped(definitions, 'stylizedSurfaceRoughness', 0.82 + jitter(stylizedRandom, 0.08));
+  values.stylizedEyeContrast = clamped(definitions, 'stylizedEyeContrast', 0.40 - surfaceAge * 0.17 + jitter(stylizedRandom, 0.10));
+  values.stylizedSurfaceRoughness = clamped(definitions, 'stylizedSurfaceRoughness', 0.72 + surfaceAge * 0.18 + jitter(stylizedRandom, 0.07));
   values.stylizedLightSoftness = clamped(definitions, 'stylizedLightSoftness', 0.78 + jitter(stylizedRandom, 0.12));
 
   values.outfitStyle = outfitFor(patient, dressRandom);
@@ -164,10 +193,23 @@ export function patientToCharacterPreset(patient, basePreset, definitions) {
   preset.patient = {
     ...patient,
     appearance: {
+      seed: appearanceSeed,
+      faceSignatureSeed: appearanceSeed,
+      restingFace: generateRestingFaceSignature(appearanceSeed),
       faceArchetype: face.id, bodyMass: values.weight, stature: values.height,
       skinTone: values.skinTone, eyeColor: values.eyeColor, hairColor: values.hairColor,
-      hairStyle: values.hairStyle, greyAmount: values.greyAmount, outfitStyle: values.outfitStyle,
+      hairShade: values.hairShade, hairStyle: values.hairStyle, flowSweep: values.flowSweep,
+      greyAmount: values.greyAmount, outfitStyle: values.outfitStyle,
       dressColor: values.dressColor, trimColor: values.trimColor,
+      skinRendering: {
+        microDetail: values.stylizedSkinDetail,
+        poreScale: values.stylizedPoreScale,
+        pigmentVariation: values.stylizedPigmentVariation,
+        freckleAmount: values.stylizedFreckleAmount,
+        lipTint: values.stylizedLipTint,
+        eyeWhiteContrast: values.stylizedEyeContrast,
+        surfaceRoughness: values.stylizedSurfaceRoughness,
+      },
     },
   };
   return preset;
