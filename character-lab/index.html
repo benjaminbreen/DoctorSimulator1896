@@ -72,6 +72,17 @@
             <h3>Pipeline state</h3>
             <dl id="pipeline-state"></dl>
           </section>
+          <section id="face-unit-debugger">
+            <h3>Atomic face-unit debug</h3>
+            <p id="expression-driver">Waiting for character…</p>
+            <label for="face-unit-select">Exported target</label>
+            <select id="face-unit-select" aria-label="Exported facial target"></select>
+            <div class="debug-slider-row">
+              <input id="face-unit-value" type="range" min="0" max="1" step="0.01" value="0" />
+              <output id="face-unit-output" for="face-unit-value">0.00</output>
+            </div>
+            <button id="face-unit-reset" type="button">Return to performance</button>
+          </section>
           <section>
             <h3>Preset JSON</h3>
             <textarea id="preset-json" spellcheck="false"></textarea>

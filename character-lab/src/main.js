@@ -20,6 +20,8 @@ const ui = {
   patientRecord: document.querySelector('#patient-record'), patientSection: document.querySelector('#patient-record-section'), pipeline: document.querySelector('#pipeline-state'),
   command: document.querySelector('#generate-command'), fallback: document.querySelector('#fallback'), search: document.querySelector('#control-search'),
   regenerate: document.querySelector('#regenerate'), randomize: document.querySelector('#randomize'), renderToggle: document.querySelector('#render-toggle'),
+  expressionDriver: document.querySelector('#expression-driver'), faceUnitSelect: document.querySelector('#face-unit-select'),
+  faceUnitValue: document.querySelector('#face-unit-value'), faceUnitOutput: document.querySelector('#face-unit-output'), faceUnitReset: document.querySelector('#face-unit-reset'),
 };
 
 /* ids that require rebuilding costume geometry (vs material-only or animation values) */
@@ -175,6 +177,42 @@ function disposeLoadedCharacter() {
   named.clear();
 }
 
+function refreshFaceUnitDebugger() {
+  const units = expressions?.availableUnits || [];
+  ui.faceUnitSelect.replaceChildren();
+  if (expressions?.mode === 'mpfb-faceunits' && units.length) {
+    for (const unit of units) ui.faceUnitSelect.append(new Option(unit, unit));
+    ui.expressionDriver.textContent = `MPFB named morphs · ${units.length} targets discovered on the body`;
+    ui.faceUnitSelect.disabled = false;
+    ui.faceUnitValue.disabled = false;
+    ui.faceUnitReset.disabled = false;
+  } else {
+    ui.faceUnitSelect.append(new Option('Legacy procedural fallback', ''));
+    ui.expressionDriver.textContent = renderStyle === 'stylized'
+      ? 'Renderer B2 · legacy procedural morphs pending deterministic target transfer'
+      : 'Legacy procedural morphs · regenerate renderer A after installing faceunits01';
+    ui.faceUnitSelect.disabled = true;
+    ui.faceUnitValue.disabled = true;
+    ui.faceUnitReset.disabled = true;
+  }
+  ui.faceUnitValue.value = 0;
+  ui.faceUnitOutput.textContent = '0.00';
+}
+
+function applyFaceUnitDebug() {
+  const value = Number(ui.faceUnitValue.value);
+  ui.faceUnitOutput.textContent = value.toFixed(2);
+  if (!expressions || expressions.mode !== 'mpfb-faceunits') return;
+  if (value <= 0) expressions.clearDebug();
+  else expressions.setDebugUnit(ui.faceUnitSelect.value, value);
+}
+
+function clearFaceUnitDebug() {
+  expressions?.clearDebug?.();
+  ui.faceUnitValue.value = 0;
+  ui.faceUnitOutput.textContent = '0.00';
+}
+
 function updateRenderToggle() {
   if (!ui.renderToggle) return;
   ui.renderToggle.textContent = renderStyle === 'stylized' ? 'Renderer B2 · Anatomical' : 'Renderer A · Current';
@@ -212,6 +250,7 @@ async function loadCharacter() {
       costume.rebuild(preset.values);
       if (renderStyle === 'stylized') styleProceduralCostume(costume, preset.values);
       expressions = createExpressions(model);
+      refreshFaceUnitDebugger();
     }
   }
   applyAll();
@@ -454,7 +493,8 @@ function updateText() {
   ui.json.value = JSON.stringify(preset, null, 2);
   ui.command.textContent = `npm run character:generate -- character-lab/public/presets/${preset.id}.json`;
   const baked = definitions.filter((d) => d.mode === 'bake').length; const live = definitions.length - baked;
-  ui.pipeline.innerHTML = `<dt>Tunable values</dt><dd>${definitions.length}</dd><dt>Live controls</dt><dd>${live}</dd><dt>Blender controls</dt><dd>${baked}</dd><dt>Renderer</dt><dd>${renderStyle === 'stylized' ? 'B2 · anatomical' : 'A · current'}</dd><dt>Regeneration</dt><dd>${regenerationNeeded ? 'needed' : 'current'}</dd><dt>Deterministic seed</dt><dd>${preset.values.seed}</dd><dt>Target runtime</dt><dd>Three.js / GLB</dd>`;
+  const expressionMode = expressions?.mode === 'mpfb-faceunits' ? `MPFB named · ${expressions.availableUnits.length}` : 'legacy procedural';
+  ui.pipeline.innerHTML = `<dt>Tunable values</dt><dd>${definitions.length}</dd><dt>Live controls</dt><dd>${live}</dd><dt>Blender controls</dt><dd>${baked}</dd><dt>Renderer</dt><dd>${renderStyle === 'stylized' ? 'B2 · anatomical' : 'A · current'}</dd><dt>Facial driver</dt><dd>${expressionMode}</dd><dt>Regeneration</dt><dd>${regenerationNeeded ? 'needed' : 'current'}</dd><dt>Deterministic seed</dt><dd>${preset.values.seed}</dd><dt>Target runtime</dt><dd>Three.js / GLB</dd>`;
 }
 
 async function randomize() {
@@ -521,7 +561,10 @@ document.querySelector('#toggle-motion').onclick = (event) => { motionEnabled = 
 ui.renderToggle.onclick = toggleRenderStyle;
 document.querySelectorAll('[data-view]').forEach((button) => button.onclick = () => setView(button.dataset.view));
 document.querySelectorAll('[data-gesture]').forEach((button) => button.onclick = () => idle?.playGesture(button.dataset.gesture, preset.values.gestureSpeed || 1));
-document.querySelectorAll('[data-expression]').forEach((button) => button.onclick = () => expressions?.play(button.dataset.expression, preset.values.gestureSpeed || 1));
+document.querySelectorAll('[data-expression]').forEach((button) => button.onclick = () => { clearFaceUnitDebug(); expressions?.play(button.dataset.expression, preset.values.gestureSpeed || 1); });
+ui.faceUnitSelect.onchange = applyFaceUnitDebug;
+ui.faceUnitValue.oninput = applyFaceUnitDebug;
+ui.faceUnitReset.onclick = clearFaceUnitDebug;
 ui.canvas.ondblclick = () => setView('clinic');
 ui.search.oninput = () => { const term = ui.search.value.toLowerCase(); document.querySelectorAll('.control').forEach((row) => row.hidden = !row.dataset.search.includes(term)); document.querySelectorAll('.control-group').forEach((group) => group.hidden = ![...group.querySelectorAll('.control')].some((row) => !row.hidden)); };
 

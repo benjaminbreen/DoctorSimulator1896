@@ -30,6 +30,15 @@ function modelFacts(gltf) {
   return { body, bones, triangles, clips: gltf.animations.map((clip) => clip.name) };
 }
 
+function morphValues(root, name) {
+  const values = [];
+  root.traverse((object) => {
+    const index = object.morphTargetDictionary?.[name];
+    if (index !== undefined) values.push({ object, value: object.morphTargetInfluences[index] });
+  });
+  return values;
+}
+
 test('A and B exports are the same animated patient on different supported topologies', async () => {
   const [current, stylized] = await Promise.all([
     loadModel('../character-lab/public/models/mrs-ostrander-1896.glb'),
@@ -45,6 +54,28 @@ test('A and B exports are the same animated patient on different supported topol
   assert.ok(b.triangles < a.triangles * 0.7, `${b.triangles} is not substantially below ${a.triangles}`);
   assert.ok(b.body.geometry.attributes.skinWeight);
   assert.ok(b.body.geometry.attributes.skinIndex);
+});
+
+test('renderer A exports and coordinates MPFB face units across fitted facial meshes', async () => {
+  const current = await loadModel('../character-lab/public/models/mrs-ostrander-1896.glb');
+  const facts = modelFacts(current);
+  const required = ['mouthSmileLeft', 'mouthSmileRight', 'browInnerUp', 'eyeBlinkLeft', 'eyeBlinkRight'];
+  for (const name of required) assert.ok(facts.body.morphTargetDictionary[name] !== undefined, `${name} is missing from renderer A`);
+  assert.ok(Object.keys(facts.body.morphTargetDictionary).length >= 50);
+  assert.ok(morphValues(current.scene, 'browInnerUp').length >= 2, 'browInnerUp was not interpolated to fitted brows');
+  assert.ok(morphValues(current.scene, 'jawOpen').length >= 2, 'jawOpen was not interpolated to fitted teeth');
+
+  const expressions = createExpressions(current.scene);
+  assert.equal(expressions.mode, 'mpfb-faceunits');
+  assert.deepEqual(expressions.availableUnits, Object.keys(facts.body.morphTargetDictionary).sort());
+  expressions.update(0, 0, { smile: 0.5, sadness: 0, fatigueExpression: 0 });
+  assert.ok(morphValues(current.scene, 'mouthSmileLeft').every(({ value }) => value > 0));
+  assert.ok(morphValues(current.scene, 'cheekSquintRight').every(({ value }) => value > 0));
+
+  assert.equal(expressions.setDebugUnit('eyeWideLeft', 0.63), true);
+  expressions.update(0, 1, { smile: 0.5, sadness: 0.5, fatigueExpression: 0.5 });
+  assert.ok(morphValues(current.scene, 'eyeWideLeft').every(({ value }) => Math.abs(value - 0.63) < 1e-6));
+  assert.ok(morphValues(current.scene, 'mouthSmileLeft').every(({ value }) => value === 0));
 });
 
 test('B2 skin treatment preserves weights and supports smile, sadness, and fatigue', async () => {
@@ -72,6 +103,7 @@ test('B2 skin treatment preserves weights and supports smile, sadness, and fatig
   assert.ok(facts.body.geometry.attributes.color.array.some((value, index) => Math.abs(value - untintedColors[index]) > 0.0001));
   const expressions = createExpressions(stylized.scene);
   assert.ok(expressions);
+  assert.equal(expressions.mode, 'legacy-procedural');
   assert.equal(facts.body.morphTargetInfluences.length, 5);
   for (const attribute of facts.body.geometry.morphAttributes.position) {
     assert.ok(attribute.array.some((value) => Math.abs(value) > 0.00001), `${attribute.name} has no visible displacement`);

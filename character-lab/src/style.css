@@ -65,6 +65,16 @@ h1 { font-size: 1.45rem; letter-spacing: 0.08em; }
 .patient-record .complaint { margin: 0; color: #d8caa4; font-family: "Libre Caslon Text", serif; font-style: italic; }
 .patient-record .clinical-label { margin: 0; color: #8f836b; font-size: 0.63rem; letter-spacing: 0.08em; text-transform: uppercase; }
 .patient-record .provenance { margin: 0; color: #716957; font-size: 0.6rem; }
+.inspector-panel select {
+  width: 100%; padding: 7px; border: 1px solid var(--line);
+  background: #100d0a; color: #d8caa4; font-size: 0.68rem;
+}
+#face-unit-debugger label { display: block; margin: 8px 0 5px; color: #8f836b; font-size: 0.66rem; }
+#expression-driver { margin: 0; color: #9e9278; }
+.debug-slider-row { display: grid; grid-template-columns: 1fr 38px; gap: 8px; align-items: center; margin: 8px 0; }
+.debug-slider-row input { width: 100%; accent-color: var(--gold); }
+.debug-slider-row output { color: #c5b17d; font-size: 0.64rem; text-align: right; }
+#face-unit-reset { width: 100%; font-size: 0.66rem; }
 .row { display: flex; gap: 7px; margin-top: 7px; }
 .row button { flex: 1; }
 textarea {

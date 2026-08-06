@@ -19,8 +19,11 @@ consulting room) versus consciousness *counted* (the anthropometric lab).
 2. Observe and examine — pulse, tongue, pupils, tremor, affect. Uses the
    Darwin examine contract: `{reply, fact{label, value, confidence,
    measurement}, behavior, uncertainty}`.
-3. Take a history through dialogue. The patient is played by the LLM but
-   carries a deterministic ground-truth condition the LLM cannot alter.
+3. Take a history through dialogue. Warm start: an authored opening complaint
+   and one authored branch round, then free text handed to the LLM with the
+   disclosure state already set. The patient is played by the LLM but carries
+   a deterministic ground-truth condition the LLM cannot alter. See
+   [decisions.md](decisions.md#2026-08-06--consultation-dialogue-architecture).
 4. Diagnose in period terms. Choose a modality: electrotherapy, bromides,
    tinctures (incl. coca preparations), rest cure, talk, placebo, referral.
 5. Write the case note. An LLM assessor grades it against period diagnostic
@@ -102,9 +105,10 @@ Three presentation modes over one world state:
    across in 3D, full working chrome: top bar (clinic nameplate, clock, date,
    patient queue, incoming letters), right rail (case overview, action verbs,
    case file), portrait card and patient panel lower left, casebook on the
-   desk. Reference: `mockups/NEW improved mockup of patient view.jpg` (the
-   closest image yet to intent) plus round-two HTML concept V for the
-   interactive chrome. Used for consultations.
+   desk. Reference: `mockups/NEW patient mode introspection mockup start of
+   decision tree.png` and `mockups/NEW patient mode dialogue mockup.png` —
+   the settled direction, superseding the earlier patient-view images. Used
+   for consultations.
 2. **Examination mode** — a static, zoomed-out reading of the same scene:
    the patient further away, in silhouette, symptom annotations arrayed
    around the figure, minimalist chrome (no verb buttons), bottom band for
@@ -118,7 +122,7 @@ Three presentation modes over one world state:
 
 | Role | Carries from Darwin |
 |---|---|
-| Patient dialogue | encounter route contract (dialogue, trustDelta, flags) |
+| Patient dialogue | encounter route contract (dialogue, trustDelta, flags), plus a new appraisal channel — the model classifies what the player did, the sim prices it |
 | Physician narrator (stream of consciousness) | narrator profile templating |
 | Examination feedback | examine route contract |
 | Case-note assessment | finalAssessment pattern |

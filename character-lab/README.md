@@ -11,16 +11,20 @@ npm run character:generate  # rebuild the GLB from the preset via headless Blend
 npm run character:validate  # check preset against the schema
 ```
 
-Requires Blender at `/Applications/Blender.app` with the MPFB extension and
-the MakeHuman system assets pack installed (override with `make BLENDER=…`).
+Requires Blender at `/Applications/Blender.app` with MPFB 2.0.16 or newer,
+the MakeHuman system assets, and MPFB's official `faceunits01` asset pack
+installed (override with `make BLENDER=…`). The generator fails early with a
+clear error if the face-unit pack is missing instead of silently exporting a
+character without facial controls.
 
 ## How it fits together
 
 - `public/presets/*.json` — the contract. One preset = one patient. 100 values.
 - `scripts/characters/generate_patient.py` — Blender build: MPFB body, face
-  and body identity baked before fitted attachments, game rig, seated pose, two idle
-  clips (ClinicIdle, RestlessIdle) stashed via NLA. **No costume** — the body
-  ships in the recolored base garment only.
+  and body identity baked before fitted attachments, all installed ARKit-named
+  face units loaded and interpolated onto fitted facial assets, game rig,
+  seated pose, and two idle clips (ClinicIdle, RestlessIdle) stashed via NLA.
+  **No costume** — the body ships in the recolored base garment only.
 - `src/costume.js` — procedural 1890s costume built at the rest pose and
   attached to bones, rebuilt live when sliders move: skirt (standing or seated
   with lap drape), leg-of-mutton sleeves, cuffs, collar and buttons.
@@ -35,6 +39,10 @@ the MakeHuman system assets pack installed (override with `make BLENDER=…`).
   amplitude), weight shift, fidget, gaze saccades, hand tension (curls real
   finger bones), hand tremor (symptom display), knee adduction, plus one-shot
   gestures (nod, shake, sigh, glance) from the Perform row.
+- `src/expressions.js` — semantic smile, sadness, and fatigue performances
+  composed from the face-unit names actually discovered in the GLB. The same
+  runtime scheduler supplies attack, hold, release, asymmetry, and delayed eye
+  involvement; it no longer manufactures renderer-A facial geometry.
 - `src/patients/` — seeded NYC 1896 patient-domain generator plus the one-way
   adapter into the render preset. Identity, household, clinic access, complaint,
   clothing, appearance and performance remain linked in the exported JSON.
@@ -56,12 +64,16 @@ rules, and `public/schema/patient.schema.json` for the record contract.
 The stage toggle switches one patient preset between two separately exported,
 equally rigged interpretations:
 
-- **A · Current** uses the MPFB basemesh.
+- **A · Current** uses the MPFB basemesh and the complete exported
+  `faceunits01` target library. Matching targets on brows, lashes, eyes, and
+  teeth are driven together with the body.
 - **B · Stylized** fits MPFB's generic female proxy, then uses protected
   decimation to target roughly 10.5k body triangles while retaining the full
   head, neck, hand and finger regions. It is derived after identity targets are
   baked, so seed, proportions, skeleton, pose, clips and patient metadata remain
-  shared. Smile, sadness and fatigue are computed on either topology.
+  shared. B deliberately retains the legacy procedural smile, sadness, and
+  fatigue controller for now: Blender's ordinary decimation workflow does not
+  safely preserve an existing shape-key library.
 
 `character:generate` and the local regeneration endpoint produce/cache both
 GLBs together. B is an additive experiment and does not overwrite A.
@@ -103,13 +115,27 @@ and gestures layer on top), `clip+procedural` (both).
 - Seed demographics use an explicit 1896 elite-clinic profile rather than
   choosing MPFB ancestry targets uniformly. Hair and eye palettes are
   conditional on that profile; both remain manually editable live controls.
+- Facial target names and count are discovered from the exported body rather
+  than assumed. The current pack exports 52 body targets, but runtime support
+  is based on required sentinel names and not that number.
+- A face unit must be written to every fitted mesh that exports that name.
+  Driving only the body recreates the floating-feature problem for expressions.
 
 ## Known gaps
 
 - Base garment is still a recolored MakeHuman suit; the procedural layers
   cover most of it, but a real bodice/skirt garment remains the asset gap.
-- Facial expressions currently use runtime-computed morphs (coordinated smile,
-  sadness and fatigue); authored Blender targets remain the longer-term route
-  for nuanced speech and a larger affect vocabulary.
+- Renderer-A expressions now use official MPFB named face units. Their weights
+  still need visual tuning across multiple identities, and MPFB's supplied
+  shapes may eventually need corrective sculpts for close-ups.
+- Renderer B remains on the legacy procedural controller. If its full fitted
+  proxy is too heavy, establish the reduced topology first and transfer every
+  deformation delta with one deterministic nearest-surface/barycentric map;
+  never decimate each expression independently.
+- Speech visemes and facial mocap are not wired yet. The named target layer is
+  intentionally compatible with adding either later.
 - GLB is unoptimized (~32k tris, ~8 MB); run the Darwin gltf-transform pass
   before game use.
+
+See [`docs/facial-animation.md`](../docs/facial-animation.md) for the design,
+installation details, expression recipes, and renderer-B migration rule.

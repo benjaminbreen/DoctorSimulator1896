@@ -404,6 +404,7 @@ def main():
     AssetService = dynamic_import("mpfb.services.assetservice", "AssetService")
     LocationService = dynamic_import("mpfb.services.locationservice", "LocationService")
     ExportService = dynamic_import("mpfb.services.exportservice", "ExportService")
+    FaceService = dynamic_import("mpfb.services.faceservice", "FaceService")
     clear_scene()
     macro = {
         "gender": values["gender"], "age": values["age"], "muscle": values["muscle"],
@@ -420,6 +421,17 @@ def main():
     # and garments. This prevents runtime skin-only morphs from pulling the
     # face away from its attachments.
     TargetService.bake_targets(base)
+    if not FaceService.is_faceunits01_installed(force_recheck=True):
+        raise RuntimeError(
+            "Missing faceunits01; install the official MPFB face-units asset pack "
+            "before generating characters"
+        )
+    FaceService.load_targets(
+        base,
+        load_microsoft_visemes=False,
+        load_meta_visemes=False,
+        load_arkit_faceunits=True,
+    )
     rig = HumanService.add_builtin_rig(base, "game_engine")
     rig.name = "Patient_Rig"
     add_asset(HumanService, AssetService, base, "eyes", "low-poly.mhclo", "Eyes", "Eyes")
@@ -436,6 +448,10 @@ def main():
         shoe_mat = material("Shoes_1896", "#211713", 0.78)
         for index in range(len(shoes.data.materials)):
             shoes.data.materials[index] = shoe_mat
+    # Keep every fitted facial object coordinated with the basemesh. The
+    # stylized proxy is intentionally created later and remains on the legacy
+    # runtime morph path until a deterministic post-decimation transfer exists.
+    FaceService.interpolate_targets(base)
     posed_bones = pose_character(rig, values)
     create_idle_actions(rig, values, posed_bones)
     # The viewport mask must be physically baked for GLB. Keeping it as a modifier

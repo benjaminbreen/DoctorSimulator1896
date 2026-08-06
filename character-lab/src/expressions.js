@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-/* Runtime facial expressions for the identity-baked character mesh.
+/* Runtime facial performances for the identity-baked character mesh.
 
    A believable smile is not an upward translation of the whole mouth. AU12
    pulls the mouth corners superolaterally and slightly back while the lip
@@ -9,9 +9,10 @@ import * as THREE from 'three';
    eyeballs themselves never rotate upward; that exposes superior sclera and
    produces the familiar startled/uncanny look.
 
-   Mouth and eye/cheek motion are separate morphs. This lets a restrained smile
-   remain mostly oral, gives a full smile a delayed eye component, and leaves a
-   clean foundation for later expression sliders or authored Blender morphs.
+   Renderer A composes exported MPFB face units and broadcasts their weights to
+   matching fitted facial meshes. Renderer B retains the older procedural
+   body-mesh morphs until its final topology receives a deterministic transfer.
+   Both paths share the same restrained-smile and delayed-eye performance model.
 */
 
 const clamp01 = (value) => THREE.MathUtils.clamp(value, 0, 1);
@@ -20,6 +21,46 @@ const smooth = (value) => {
   const x = clamp01(value);
   return x * x * (3 - 2 * x);
 };
+
+/* Semantic performances are deliberately data, not geometry. Renderer A gets
+   these stable ARKit-compatible targets from MPFB's faceunits01 pack. The
+   values are restrained maxima: expression intensity and timing are layered
+   on top at runtime. */
+export const EXPRESSION_RECIPES = Object.freeze({
+  smileMouth: Object.freeze({
+    mouthSmileLeft: 0.72,
+    mouthSmileRight: 0.69,
+    mouthDimpleLeft: 0.10,
+    mouthDimpleRight: 0.12,
+    mouthStretchLeft: 0.06,
+    mouthStretchRight: 0.06,
+  }),
+  smileEyes: Object.freeze({
+    cheekSquintLeft: 0.34,
+    cheekSquintRight: 0.36,
+    eyeSquintLeft: 0.12,
+    eyeSquintRight: 0.13,
+  }),
+  sadness: Object.freeze({
+    browInnerUp: 0.48,
+    browDownLeft: 0.08,
+    browDownRight: 0.08,
+    mouthFrownLeft: 0.42,
+    mouthFrownRight: 0.45,
+    mouthShrugLower: 0.10,
+  }),
+  fatigue: Object.freeze({
+    eyeBlinkLeft: 0.28,
+    eyeBlinkRight: 0.31,
+    eyeSquintLeft: 0.08,
+    eyeSquintRight: 0.09,
+    browInnerUp: 0.06,
+    mouthFrownLeft: 0.07,
+    mouthFrownRight: 0.08,
+  }),
+});
+
+const REQUIRED_MPFB_UNITS = ['mouthSmileLeft', 'mouthSmileRight', 'browInnerUp', 'eyeBlinkLeft', 'eyeBlinkRight'];
 
 function findFaceMeshes(model) {
   let body = null;
@@ -93,7 +134,7 @@ export function smileEyeIntensity(smile) {
   return 0.78 * smooth((clamp01(smile) - 0.16) / 0.84);
 }
 
-export function createExpressions(model) {
+function createLegacyExpressions(model) {
   const { body, eyes } = findFaceMeshes(model);
   if (!body) return null;
   const geometry = body.geometry;
@@ -316,9 +357,134 @@ export function createExpressions(model) {
   }
 
   return {
+    mode: 'legacy-procedural',
     play,
     update,
+    availableUnits: [],
+    setDebugUnit: () => false,
+    clearDebug: () => {},
     landmarks: { cornerL, cornerR, noseY, noseZ, eyes: eyeLandmarks },
     morphs: { mouthIndex, eyeIndex, sadMouthIndex, sadBrowIndex, fatigueIndex },
   };
+}
+
+function collectNamedMorphs(model) {
+  const { body } = findFaceMeshes(model);
+  const bodyDictionary = body?.morphTargetDictionary;
+  if (!bodyDictionary || !REQUIRED_MPFB_UNITS.every((name) => bodyDictionary[name] !== undefined)) return null;
+
+  const availableUnits = Object.keys(bodyDictionary).sort();
+  const availableSet = new Set(availableUnits);
+  const bindings = new Map(availableUnits.map((name) => [name, []]));
+  model.traverse((object) => {
+    if (!object.isMesh || !object.morphTargetDictionary || !object.morphTargetInfluences) return;
+    for (const [name, index] of Object.entries(object.morphTargetDictionary)) {
+      if (availableSet.has(name)) bindings.get(name).push({ object, index });
+    }
+  });
+  return { availableUnits, bindings };
+}
+
+function createNamedExpressions(model) {
+  const named = collectNamedMorphs(model);
+  if (!named) return null;
+  const { availableUnits, bindings } = named;
+  let episode = null;
+  let debugUnit = null;
+  const appliedUnits = new Set();
+
+  function writeUnit(name, value) {
+    const targets = bindings.get(name);
+    if (!targets) return;
+    const safeValue = clamp01(value);
+    for (const { object, index } of targets) object.morphTargetInfluences[index] = safeValue;
+  }
+
+  function addRecipe(weights, recipe, intensity) {
+    const scale = clamp01(intensity);
+    if (scale <= 0) return;
+    for (const [name, maximum] of Object.entries(recipe)) {
+      if (!bindings.has(name)) continue;
+      weights.set(name, clamp01((weights.get(name) || 0) + maximum * scale));
+    }
+  }
+
+  function applyWeights(weights) {
+    for (const name of appliedUnits) if (!weights.has(name)) writeUnit(name, 0);
+    appliedUnits.clear();
+    for (const [name, value] of weights) {
+      writeUnit(name, value);
+      appliedUnits.add(name);
+    }
+  }
+
+  function play(name = 'smile', speed = 1, intensity = 1) {
+    if (!['smile', 'sadness', 'fatigue'].includes(name)) return;
+    debugUnit = null;
+    const safeSpeed = Math.max(0.1, speed);
+    episode = {
+      name,
+      t0: null,
+      attack: (name === 'fatigue' ? 0.82 : 0.54) / safeSpeed,
+      hold: (name === 'fatigue' ? 1.65 : 1.25) / safeSpeed,
+      release: (name === 'fatigue' ? 1.05 : 0.72) / safeSpeed,
+      peak: clamp01(intensity),
+    };
+  }
+
+  function update(dt, t, values) {
+    if (debugUnit) {
+      applyWeights(new Map([[debugUnit.name, debugUnit.value]]));
+      return;
+    }
+
+    let smile = clamp01(values.smile ?? 0);
+    let smileEyes = smileEyeIntensity(smile);
+    let sadness = clamp01(values.sadness ?? 0);
+    let fatigue = clamp01(values.fatigueExpression ?? 0);
+    if (episode) {
+      if (episode.t0 == null) episode.t0 = t;
+      const elapsed = t - episode.t0;
+      const performance = episodeEnvelope(episode, elapsed);
+      if (episode.name === 'smile') {
+        smile = Math.max(smile, performance);
+        smileEyes = Math.max(smileEyes, smileEyeIntensity(episodeEnvelope(episode, elapsed, 0.09)));
+      } else if (episode.name === 'sadness') sadness = Math.max(sadness, performance);
+      else if (episode.name === 'fatigue') fatigue = Math.max(fatigue, performance);
+      if (elapsed > episode.attack + episode.hold + episode.release + 0.1) episode = null;
+    }
+
+    const weights = new Map();
+    addRecipe(weights, EXPRESSION_RECIPES.smileMouth, smile);
+    addRecipe(weights, EXPRESSION_RECIPES.smileEyes, smileEyes);
+    addRecipe(weights, EXPRESSION_RECIPES.sadness, sadness);
+    addRecipe(weights, EXPRESSION_RECIPES.fatigue, fatigue);
+    applyWeights(weights);
+  }
+
+  function setDebugUnit(name, value = 1) {
+    if (!bindings.has(name)) return false;
+    episode = null;
+    debugUnit = { name, value: clamp01(value) };
+    return true;
+  }
+
+  function clearDebug() {
+    debugUnit = null;
+    applyWeights(new Map());
+  }
+
+  return {
+    mode: 'mpfb-faceunits',
+    play,
+    update,
+    availableUnits,
+    setDebugUnit,
+    clearDebug,
+    get debugUnit() { return debugUnit ? { ...debugUnit } : null; },
+  };
+}
+
+export function createExpressions(model) {
+  return createNamedExpressions(model) || createLegacyExpressions(model);
 }

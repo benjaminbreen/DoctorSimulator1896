@@ -127,8 +127,9 @@ Still adopted from the first pass:
 ## 2026-08-06 — UI modes and the 1896 Character Lab
 
 **Mode architecture (Ben's call).** Three modes, per design.md "UI modes":
-patient mode (first-person desk view, button-rich; new reference image
-`mockups/NEW improved mockup of patient view.jpg`), examination mode (static
+patient mode (first-person desk view, button-rich; reference images now the
+two "NEW patient mode" mockups — see the dialogue-architecture section
+below), examination mode (static
 silhouette scene + symptom overlay + stance band; the round-two "Sitting"
 concept, retitled), exploration mode (over-the-shoulder third person for
 traversal areas).
@@ -182,6 +183,80 @@ saccades, finger-curling hand tension, hand tremor as symptom display,
 kneesTogether decorum control, nod/shake/sigh/glance gestures). 66 preset
 values, 42 live. Traps recorded in `character-lab/README.md`. Still open:
 period base garment, expression morphs, GLB optimization pass.
+
+## 2026-08-06 — Consultation dialogue architecture
+
+**Reference mockups (settled direction).** `mockups/NEW patient mode
+introspection mockup start of decision tree.png` and `mockups/NEW patient mode
+dialogue mockup.png`. These are the closest images to the intended patient
+mode and supersede the earlier patient-view mockups. Judge chrome, colour
+grammar and band layout from them; the 3D figure is placeholder fidelity.
+
+**Warm start.** The consultation does not open with an API call. Each patient
+has a pre-written opening complaint plus one authored branch round; only after
+that does the player type freely and the LLM take over. Rationale, in order of
+weight:
+
+1. Grounding. The model inherits a disclosure state instead of inventing one,
+   which is what actually prevents anachronism and drift.
+2. A canonical first beat, identical for every player — quotable in the book,
+   usable in a classroom.
+3. Zero latency on arrival, and cost that does not scale with players.
+
+Procedural minors get the same treatment: their openers are generated once at
+**casting** time, batched and cached to disk, never at runtime. Hand-authored
+and generated patients then behave identically at the table.
+
+**The eye/mouth grammar.** One band below the patient, two modes, distinguished
+by glyph and colour:
+
+- **Green eye — interpretation.** Private. Costs no clock time, the patient
+  does not react, nothing is spoken. These set the player's working hypothesis,
+  feed the case notebook and the assessor, and bias what the examine layer
+  surfaces.
+- **Amber dialogue bubble — speech.** Advances the clock, always answered,
+  cannot be taken back. The free-text field lives in this mode: typing is
+  speaking. (Currently drawn as a speech bubble, not a mouth; keep the bubble.)
+
+Interpretation cards are the *reads* ("The tremor is real"), not lines of
+dialogue. Spoken cards carry the verb-stances already adopted above
+(QUESTION / REASSURE / …) and stance history feeds assessment.
+
+**Fact channel vs reaction channel.** This is the leash, and the thing to get
+right:
+
+- **Facts** — biography, symptoms, history, what happened last Tuesday — come
+  from the deterministic record. The prompt supplies a *disclosed* set and a
+  *withheld* set; the model may release withheld facts only when the player
+  earns them, and may never invent outside the sets. Backstory or symptoms the
+  model coins are unrecorded and therefore ungrounded — the Apothecary
+  Simulator failure mode.
+- **Reactions** — tone, colour draining, standing up, walking out — are the
+  model's to write freely. Nothing it does to behaviour corrupts the record,
+  so there is no reason to constrain it there.
+
+**Appraisal contract.** The encounter response carries an appraisal channel
+alongside the dialogue:
+
+```
+{ dialogue, behavior, disclosedNow: [...],
+  appraisal: { register, decorumBreach, intent, terminates } }
+```
+
+The model classifies what the player did; the **sim** decides what it costs.
+The LLM never asserts a trust or reputation number. Worked example: the player
+types "stare at her, then bark like a dog." The model returns a frightened
+patient rising to leave and `decorumBreach: 3, terminates: true`; the sim
+collapses trust, ends the encounter, and writes a `scandal` event to the
+contagion graph, which the weekly Herald column and the society-strata
+reputation both read next tick.
+
+**No refusal path.** The contract has no "I don't understand" slot. Every input
+is classified into the appraisal taxonomy, and the persona is a person in a
+room in 1896 who cannot fail to parse the player — only be frightened,
+confused, offended or amused. Player anachronism becomes in-fiction
+consequence: ask about the telephone in her pocket and she asks what you mean,
+and it costs standing for talking gibberish.
 
 ## Still open
 
