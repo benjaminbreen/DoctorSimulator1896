@@ -28,6 +28,7 @@ def arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("--preset", required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument("--stylized-output")
     parser.add_argument("--preview")
     argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
     return parser.parse_args(argv)
@@ -239,9 +240,17 @@ def create_idle_actions(rig, values, posed_bones):
     return clips
 
 
-def export_glb(output):
+def export_glb(output, objects=None):
     os.makedirs(os.path.dirname(output), exist_ok=True)
-    bpy.ops.object.select_all(action="SELECT")
+    bpy.ops.object.select_all(action="DESELECT")
+    export_objects = objects or list(bpy.context.scene.objects)
+    for obj in export_objects:
+        if obj and obj.name in bpy.context.scene.objects:
+            obj.hide_set(False)
+            obj.hide_render = False
+            obj.select_set(True)
+    if export_objects:
+        bpy.context.view_layer.objects.active = export_objects[0]
     bpy.ops.export_scene.gltf(
         filepath=output,
         export_format="GLB",
@@ -252,6 +261,36 @@ def export_glb(output):
         export_morph_normal=True,
         export_yup=True,
     )
+
+
+def add_stylized_proxy(HumanService, AssetService, base, values):
+    """Fit MPFB's supported low-poly female topology to the finalized identity.
+
+    This is not a decimated copy or a hand-built replacement human. The proxy is
+    fitted by MPFB to the same baked targets and receives weights from the same
+    game-engine rig, so A and B remain the same generated patient.
+    """
+    proxy_path = find_asset(AssetService, "female1605.proxy", "proxymeshes")
+    proxy = HumanService.add_mhclo_asset(
+        proxy_path,
+        base,
+        asset_type="Proxymeshes",
+        subdiv_levels=0,
+        material_type="NONE",
+        set_up_rigging=True,
+        interpolate_weights=True,
+        import_subrig=True,
+        import_weights=True,
+    )
+    if not proxy:
+        raise RuntimeError("MPFB failed to create the female1605 stylized proxy")
+    proxy.name = "Human_Body_Stylized"
+    proxy.data.name = "female1605_stylized"
+    proxy.data.materials.clear()
+    proxy.data.materials.append(material("Stylized_Skin_Base", values["skinTone"], 0.92))
+    for polygon in proxy.data.polygons:
+        polygon.use_smooth = False
+    return proxy
 
 
 def render_preview(path, base):
@@ -354,13 +393,29 @@ def main():
     create_idle_actions(rig, values, posed_bones)
     # The viewport mask must be physically baked for GLB. Keeping it as a modifier
     # exports MPFB's helper/joint surfaces, which occlude the real skin in Three.js.
+    stylized_proxy = add_stylized_proxy(HumanService, AssetService, base, values) if args.stylized_output else None
     ExportService.bake_modifiers_remove_helpers(
         base, bake_masks=True, bake_subdiv=False, remove_helpers=True, also_proxy=False
     )
     bpy.context.scene["character_lab_preset"] = json.dumps(preset, separators=(",", ":"))
-    export_glb(args.output)
+    shared_objects = [rig, *[obj for obj in (garment, shoes) if obj]]
+    for object_name in ("Eyes", "Eyebrows", "Eyelashes", "Teeth"):
+        found = bpy.data.objects.get(object_name)
+        if found:
+            shared_objects.append(found)
+    export_glb(args.output, [base, *shared_objects])
+    if stylized_proxy:
+        original_base_name = base.name
+        base.name = "Human_Body_Source"
+        stylized_proxy.name = "Human_Body"
+        export_glb(args.stylized_output, [stylized_proxy, *shared_objects])
+        stylized_proxy.name = "Human_Body_Stylized"
+        base.name = original_base_name
     render_preview(args.preview, base)
-    print(f"CHARACTER_LAB_OK output={args.output} objects={len(bpy.context.scene.objects)}")
+    print(
+        f"CHARACTER_LAB_OK output={args.output} stylized={args.stylized_output or 'disabled'} "
+        f"objects={len(bpy.context.scene.objects)}"
+    )
 
 
 if __name__ == "__main__":

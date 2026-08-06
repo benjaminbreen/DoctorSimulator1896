@@ -86,7 +86,10 @@
     "fillIntensity": 0.17,
     "warmth": 0.84,
     "exposure": -0.33,
-    "cameraFov": 38
+    "cameraFov": 38,
+    "stylizedPlaneContrast": 0.46,
+    "stylizedEyeContrast": 0.3,
+    "stylizedSurfaceRoughness": 0.92
   },
   "patient": {
     "schemaVersion": 1,

@@ -120,11 +120,12 @@ function tubeAlong(a, b, radiusFn, { radialSegments = 18, lengthSegments = 12, b
   return geometry;
 }
 
-export function createCostume(scene, bones, model = null) {
+export function createCostume(scene, bones, model = null, options = {}) {
+  const stylized = options.renderStyle === 'stylized';
   const hairSystem = createHairSystem(scene, bones, model);
   const materials = {
-    dress: new THREE.MeshStandardMaterial({ name: 'CostumeDress', color: '#171525', roughness: 0.82 }),
-    trim: new THREE.MeshStandardMaterial({ name: 'CostumeTrim', color: '#4f4333', roughness: 0.72 }),
+    dress: new THREE.MeshStandardMaterial({ name: 'CostumeDress', color: '#171525', roughness: 0.82, flatShading: stylized }),
+    trim: new THREE.MeshStandardMaterial({ name: 'CostumeTrim', color: '#4f4333', roughness: 0.72, flatShading: stylized }),
     // Kept on the public costume contract for main.js and console calibration.
     hair: hairSystem.materials.base,
   };
@@ -180,7 +181,7 @@ export function createCostume(scene, bones, model = null) {
     const hemY = footY + 0.045 + (1.0 - v.skirtLength) * 0.55;
     const lap = knee.clone().addScaledVector(forward, 0.055);
     const drape = (v.skirtDrape ?? 0.6) * (seated ? 1 : 0);
-    const skirtGeo = ringGeometry(14, 44, (t) => {
+    const skirtGeo = ringGeometry(stylized ? 9 : 14, stylized ? 24 : 44, (t) => {
       const center = new THREE.Vector3();
       let rx; let rz; let back = 0;
       if (seated) {
@@ -212,12 +213,12 @@ export function createCostume(scene, bones, model = null) {
       const puff = tubeAlong(S.clone().addScaledVector(up, 0.028), E, (t) => {
         const bell = Math.exp(-((t - 0.24) ** 2) / 0.055);
         return (0.049 + 0.062 * bell * v.sleeveVolume * dressStyle.sleeve) * Math.sqrt(massFactor);
-      }, { lengthSegments: 14 });
+      }, { radialSegments: stylized ? 10 : 18, lengthSegments: stylized ? 9 : 14 });
       add(`Costume_SleevePuff_${side}`, puff, materials.dress, upper);
       if (hand) {
         const W = world(hand);
         const cuffEnd = E.clone().lerp(W, THREE.MathUtils.clamp(v.sleeveLength, 0.6, 1.05));
-        const forearm = tubeAlong(E, cuffEnd, (t) => 0.047 - 0.012 * t, { lengthSegments: 8 });
+        const forearm = tubeAlong(E, cuffEnd, (t) => 0.047 - 0.012 * t, { radialSegments: stylized ? 10 : 18, lengthSegments: stylized ? 5 : 8 });
         add(`Costume_SleeveForearm_${side}`, forearm, materials.dress, lower);
         const cuff = tubeAlong(cuffEnd.clone().lerp(E, 0.08), cuffEnd, () => 0.0375, { lengthSegments: 2 });
         add(`Costume_Cuff_${side}`, cuff, materials.trim, lower);

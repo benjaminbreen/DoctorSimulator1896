@@ -7,7 +7,7 @@ const labRoot = import.meta.dirname;
 const projectRoot = path.resolve(labRoot, '..');
 const generatedDir = path.join(labRoot, '.generated');
 const cacheDir = path.join(generatedDir, 'cache');
-const pipelineVersion = 'baked-identity-v2';
+const pipelineVersion = 'dual-renderer-v3';
 const blender = process.env.BLENDER || '/Applications/Blender.app/Contents/MacOS/Blender';
 let activeGeneration = null;
 
@@ -25,12 +25,12 @@ function readJsonBody(request) {
   });
 }
 
-function runBlender(presetPath, outputPath) {
+function runBlender(presetPath, outputPath, stylizedOutputPath) {
   return new Promise((resolve, reject) => {
     const child = spawn(blender, [
       '--background', '--python-exit-code', '1',
       '--python', path.join(projectRoot, 'scripts/characters/generate_patient.py'),
-      '--', '--preset', presetPath, '--output', outputPath,
+      '--', '--preset', presetPath, '--output', outputPath, '--stylized-output', stylizedOutputPath,
     ], { cwd: projectRoot, stdio: ['ignore', 'pipe', 'pipe'] });
     let log = '';
     child.stdout.on('data', (chunk) => { log = `${log}${chunk}`.slice(-16000); });
@@ -60,19 +60,24 @@ function characterRegenerationPlugin() {
           await mkdir(cacheDir, { recursive: true });
           const temporaryPreset = path.join(generatedDir, `${preset.id}.json`);
           const temporaryModel = path.join(generatedDir, `${preset.id}.glb`);
+          const temporaryStylizedModel = path.join(generatedDir, `${preset.id}-stylized.glb`);
           const publicPreset = path.join(labRoot, 'public/presets', `${preset.id}.json`);
           const publicModel = path.join(labRoot, 'public/models', `${preset.id}.glb`);
+          const publicStylizedModel = path.join(labRoot, 'public/models', `${preset.id}-stylized.glb`);
           const signature = createHash('sha256').update(`${pipelineVersion}:${JSON.stringify(preset.values)}`).digest('hex').slice(0, 20);
           const cachedModel = path.join(cacheDir, `${preset.id}-${signature}.glb`);
+          const cachedStylizedModel = path.join(cacheDir, `${preset.id}-${signature}-stylized.glb`);
           await writeFile(temporaryPreset, `${JSON.stringify(preset, null, 2)}\n`);
           let cached = true; let log = 'Restored a matching generated character from the local cache.';
-          try { await access(cachedModel); } catch {
+          try { await Promise.all([access(cachedModel), access(cachedStylizedModel)]); } catch {
             cached = false;
-            activeGeneration = runBlender(temporaryPreset, temporaryModel);
+            activeGeneration = runBlender(temporaryPreset, temporaryModel, temporaryStylizedModel);
             log = await activeGeneration;
             await rename(temporaryModel, cachedModel);
+            await rename(temporaryStylizedModel, cachedStylizedModel);
           }
           await copyFile(cachedModel, publicModel);
+          await copyFile(cachedStylizedModel, publicStylizedModel);
           await rename(temporaryPreset, publicPreset);
           response.end(JSON.stringify({ ok: true, cached, signature, seconds: (performance.now() - started) / 1000, log: log.slice(-1200) }));
         } catch (error) {

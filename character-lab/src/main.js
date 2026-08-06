@@ -5,6 +5,7 @@ import { findBones, createCostume } from './costume.js';
 import { createIdle } from './idle.js';
 import { createExpressions } from './expressions.js';
 import { generatePatient, nextSeed, patientToCharacterPreset } from './patients/index.js';
+import { prepareStylizedModel, styleProceduralCostume, updateStylizedModel } from './stylized.js';
 import './style.css';
 
 const [schema, initialPreset] = await Promise.all([
@@ -18,7 +19,7 @@ const ui = {
   json: document.querySelector('#preset-json'), summary: document.querySelector('#subject-summary'), subjectName: document.querySelector('#subject-name'),
   patientRecord: document.querySelector('#patient-record'), patientSection: document.querySelector('#patient-record-section'), pipeline: document.querySelector('#pipeline-state'),
   command: document.querySelector('#generate-command'), fallback: document.querySelector('#fallback'), search: document.querySelector('#control-search'),
-  regenerate: document.querySelector('#regenerate'), randomize: document.querySelector('#randomize'),
+  regenerate: document.querySelector('#regenerate'), randomize: document.querySelector('#randomize'), renderToggle: document.querySelector('#render-toggle'),
 };
 
 /* ids that require rebuilding costume geometry (vs material-only or animation values) */
@@ -65,6 +66,8 @@ let costumeDirty = false;
 let lastCostumeBuild = 0;
 let regenerationNeeded = false;
 let regenerationBusy = false;
+let renderSwitchBusy = false;
+let renderStyle = sessionStorage.getItem('characterLabRenderStyle') === 'stylized' ? 'stylized' : 'current';
 const named = new Map();
 const materials = {};
 
@@ -145,15 +148,52 @@ function indexModel(root) {
   });
 }
 
+function disposeLoadedCharacter() {
+  animationAction?.stop();
+  mixer?.stopAllAction();
+  costume?.dispose();
+  if (model) {
+    characterRoot.remove(model);
+    model.traverse((object) => {
+      object.geometry?.dispose?.();
+      const materialList = Array.isArray(object.material) ? object.material : [object.material];
+      for (const item of materialList) {
+        if (!item) continue;
+        for (const value of Object.values(item)) {
+          if (value?.isTexture) value.dispose();
+        }
+        item.dispose();
+      }
+    });
+  }
+  model = null; mixer = null; animationAction = null; animationClips = [];
+  bones = null; costume = null; idle = null; expressions = null;
+  named.clear();
+}
+
+function updateRenderToggle() {
+  if (!ui.renderToggle) return;
+  ui.renderToggle.textContent = renderStyle === 'stylized' ? 'Renderer B · Stylized' : 'Renderer A · Current';
+  ui.renderToggle.classList.toggle('active', renderStyle === 'stylized');
+  ui.renderToggle.disabled = renderSwitchBusy;
+}
+
 async function loadCharacter() {
+  disposeLoadedCharacter();
+  isFallback = false;
+  ui.fallback.hidden = true;
+  const suffix = renderStyle === 'stylized' ? '-stylized' : '';
   try {
-    const gltf = await new GLTFLoader().loadAsync(`/models/mrs-ostrander-1896.glb?v=${Date.now()}`);
-    model = gltf.scene; characterRoot.add(model); animationClips = gltf.animations;
+    const gltf = await new GLTFLoader().loadAsync(`/models/mrs-ostrander-1896${suffix}.glb?v=${Date.now()}`);
+    model = gltf.scene;
+    if (renderStyle === 'stylized') prepareStylizedModel(model, preset.values);
+    characterRoot.add(model); animationClips = gltf.animations;
     setupAnimations();
-    ui.status.textContent = `GLB loaded · ${countTriangles(model).toLocaleString()} triangles · ${animationClips.length} clip${animationClips.length === 1 ? '' : 's'}`; ui.status.className = 'status ok';
+    const label = renderStyle === 'stylized' ? 'B stylized proxy' : 'A current mesh';
+    ui.status.textContent = `${label} · ${countTriangles(model).toLocaleString()} triangles · ${animationClips.length} clip${animationClips.length === 1 ? '' : 's'}`; ui.status.className = 'status ok';
   } catch (error) {
     model = makeFallbackHuman(); characterRoot.add(model); isFallback = true;
-    ui.status.textContent = 'Live mannequin · run Blender generator for full model'; ui.status.className = 'status warn'; ui.fallback.hidden = false;
+    ui.status.textContent = `${renderStyle === 'stylized' ? 'Stylized proxy missing' : 'Model missing'} · run Blender generator`; ui.status.className = 'status warn'; ui.fallback.hidden = false;
   }
   indexModel(model);
   if (!isFallback) {
@@ -164,8 +204,9 @@ async function loadCharacter() {
       model.updateMatrixWorld(true);
       idle = createIdle(bones);
       idle.captureRest();
-      costume = createCostume(characterRoot, bones, model);
+      costume = createCostume(characterRoot, bones, model, { renderStyle });
       costume.rebuild(preset.values);
+      if (renderStyle === 'stylized') styleProceduralCostume(costume, preset.values);
       expressions = createExpressions(model);
     }
   }
@@ -207,7 +248,12 @@ function syncIdleMode() {
 }
 
 function countTriangles(root) {
-  let count = 0; root.traverse((object) => { if (object.geometry?.index) count += object.geometry.index.count / 3; }); return Math.round(count);
+  let count = 0;
+  root.traverse((object) => {
+    if (object.geometry?.index) count += object.geometry.index.count / 3;
+    else if (object.geometry?.attributes?.position) count += object.geometry.attributes.position.count / 3;
+  });
+  return Math.round(count);
 }
 
 function objectsLike(term) { return [...named].filter(([name]) => name.toLowerCase().includes(term.toLowerCase())).map(([, object]) => object); }
@@ -309,6 +355,10 @@ function applyAll(changedId = null) {
       costume.materials.dress.color.set(v.dressColor); setSurfaceFinish(costume.materials.dress, v.fabricRoughness, 1);
       costume.materials.trim.color.set(v.trimColor); costume.updateHair(v);
     }
+    if (renderStyle === 'stylized') {
+      updateStylizedModel(model, v);
+      styleProceduralCostume(costume, v);
+    }
     if (changedId === null || COSTUME_GEOMETRY_IDS.has(changedId)) costumeDirty = true;
   }
   const key = scene.getObjectByName('KeyLight'); const fill = scene.getObjectByName('FillLight');
@@ -385,7 +435,7 @@ function updateText() {
   ui.json.value = JSON.stringify(preset, null, 2);
   ui.command.textContent = `npm run character:generate -- character-lab/public/presets/${preset.id}.json`;
   const baked = definitions.filter((d) => d.mode === 'bake').length; const live = definitions.length - baked;
-  ui.pipeline.innerHTML = `<dt>Tunable values</dt><dd>${definitions.length}</dd><dt>Live controls</dt><dd>${live}</dd><dt>Blender controls</dt><dd>${baked}</dd><dt>Regeneration</dt><dd>${regenerationNeeded ? 'needed' : 'current'}</dd><dt>Deterministic seed</dt><dd>${preset.values.seed}</dd><dt>Target runtime</dt><dd>Three.js / GLB</dd>`;
+  ui.pipeline.innerHTML = `<dt>Tunable values</dt><dd>${definitions.length}</dd><dt>Live controls</dt><dd>${live}</dd><dt>Blender controls</dt><dd>${baked}</dd><dt>Renderer</dt><dd>${renderStyle === 'stylized' ? 'B · stylized proxy' : 'A · current'}</dd><dt>Regeneration</dt><dd>${regenerationNeeded ? 'needed' : 'current'}</dd><dt>Deterministic seed</dt><dd>${preset.values.seed}</dd><dt>Target runtime</dt><dd>Three.js / GLB</dd>`;
 }
 
 async function randomize() {
@@ -426,7 +476,21 @@ const views = {
 };
 function setView(name) { camera.position.set(...views[name][0]); orbit.target.set(...views[name][1]); orbit.update(); document.querySelectorAll('[data-view]').forEach((button) => button.classList.toggle('active', button.dataset.view === name)); }
 
-makeClinic(); buildControls(); await loadCharacter(); updateText(); setView('clinic');
+async function toggleRenderStyle() {
+  if (renderSwitchBusy) return;
+  renderSwitchBusy = true;
+  renderStyle = renderStyle === 'current' ? 'stylized' : 'current';
+  sessionStorage.setItem('characterLabRenderStyle', renderStyle);
+  updateRenderToggle();
+  ui.status.textContent = `Loading renderer ${renderStyle === 'stylized' ? 'B' : 'A'}…`;
+  ui.status.className = 'status';
+  await loadCharacter();
+  renderSwitchBusy = false;
+  updateRenderToggle();
+  updateText();
+}
+
+makeClinic(); buildControls(); updateRenderToggle(); await loadCharacter(); updateText(); setView('clinic');
 ui.randomize.onclick = randomize;
 ui.regenerate.onclick = regenerateCharacter;
 document.querySelector('#reset').onclick = () => { preset = structuredClone(initialPreset); refreshControls(); setView('clinic'); };
@@ -435,6 +499,7 @@ document.querySelector('#apply-json').onclick = () => { try { preset = JSON.pars
 document.querySelector('#copy-json').onclick = () => navigator.clipboard.writeText(ui.json.value);
 document.querySelector('#toggle-grid').onclick = (event) => { grid.visible = !grid.visible; event.currentTarget.classList.toggle('active', grid.visible); };
 document.querySelector('#toggle-motion').onclick = (event) => { motionEnabled = !motionEnabled; syncIdleMode(); event.currentTarget.classList.toggle('active', motionEnabled); };
+ui.renderToggle.onclick = toggleRenderStyle;
 document.querySelectorAll('[data-view]').forEach((button) => button.onclick = () => setView(button.dataset.view));
 document.querySelectorAll('[data-gesture]').forEach((button) => button.onclick = () => idle?.playGesture(button.dataset.gesture, preset.values.gestureSpeed || 1));
 document.querySelectorAll('[data-expression]').forEach((button) => button.onclick = () => expressions?.play(button.dataset.expression, preset.values.gestureSpeed || 1));
@@ -442,7 +507,7 @@ ui.canvas.ondblclick = () => setView('clinic');
 ui.search.oninput = () => { const term = ui.search.value.toLowerCase(); document.querySelectorAll('.control').forEach((row) => row.hidden = !row.dataset.search.includes(term)); document.querySelectorAll('.control-group').forEach((group) => group.hidden = ![...group.querySelectorAll('.control')].some((row) => !row.hidden)); };
 
 /* console access for calibration and debugging */
-window.__lab = { scene, get bones() { return bones; }, get model() { return model; }, get preset() { return preset; }, get idle() { return idle; }, get costume() { return costume; }, get expressions() { return expressions; }, THREE, applyAll, rebuildCostumeNow };
+window.__lab = { scene, get bones() { return bones; }, get model() { return model; }, get preset() { return preset; }, get idle() { return idle; }, get costume() { return costume; }, get expressions() { return expressions; }, get renderStyle() { return renderStyle; }, THREE, applyAll, rebuildCostumeNow, toggleRenderStyle };
 
 const clock = new THREE.Clock();
 function frame() {

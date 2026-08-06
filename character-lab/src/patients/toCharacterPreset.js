@@ -67,6 +67,7 @@ export function patientToCharacterPreset(patient, basePreset, definitions) {
   const bodyRandom = createRandom(patient.seed, 'appearance.body');
   const hairRandom = createRandom(patient.seed, 'appearance.hair');
   const dressRandom = createRandom(patient.seed, 'appearance.dress');
+  const stylizedRandom = createRandom(patient.seed, 'appearance.stylized');
   const performanceRandom = createRandom(patient.seed, 'appearance.performance');
   const origin = getOriginProfile(patient.identity.origin.id);
 
@@ -108,6 +109,9 @@ export function patientToCharacterPreset(patient, basePreset, definitions) {
   values.waveAmount = clamped(definitions, 'waveAmount', 0.38 + jitter(hairRandom, 0.34));
   values.strandContrast = clamped(definitions, 'strandContrast', 0.42 + jitter(hairRandom, 0.24));
   values.greyAmount = clamped(definitions, 'greyAmount', Math.max(0, patient.identity.age - 42) / 38 + jitter(hairRandom, 0.13));
+  values.stylizedPlaneContrast = clamped(definitions, 'stylizedPlaneContrast', 0.44 + jitter(stylizedRandom, 0.18));
+  values.stylizedEyeContrast = clamped(definitions, 'stylizedEyeContrast', 0.3 + jitter(stylizedRandom, 0.16));
+  values.stylizedSurfaceRoughness = clamped(definitions, 'stylizedSurfaceRoughness', 0.92 + jitter(stylizedRandom, 0.08));
 
   values.outfitStyle = outfitFor(patient, dressRandom);
   [values.dressColor, values.trimColor] = paletteFor(values.outfitStyle, dressRandom);

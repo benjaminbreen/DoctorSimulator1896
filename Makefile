@@ -1,13 +1,14 @@
 BLENDER ?= /Applications/Blender.app/Contents/MacOS/Blender
 PRESET ?= character-lab/public/presets/mrs-ostrander-1896.json
 MODEL ?= character-lab/public/models/mrs-ostrander-1896.glb
+STYLIZED_MODEL ?= character-lab/public/models/mrs-ostrander-1896-stylized.glb
 PREVIEW ?= character-lab/public/models/mrs-ostrander-1896-contact-sheet.png
 ROOT := $(CURDIR)
 
 .PHONY: character lab-build validate test
 
 character:
-	open -W -n -a Blender --args --background --python-exit-code 1 --python "$(ROOT)/scripts/characters/generate_patient.py" -- --preset "$(ROOT)/$(PRESET)" --output "$(ROOT)/$(MODEL)" --preview "$(ROOT)/$(PREVIEW)"
+	open -W -n -a Blender --args --background --python-exit-code 1 --python "$(ROOT)/scripts/characters/generate_patient.py" -- --preset "$(ROOT)/$(PRESET)" --output "$(ROOT)/$(MODEL)" --stylized-output "$(ROOT)/$(STYLIZED_MODEL)" --preview "$(ROOT)/$(PREVIEW)"
 
 lab-build:
 	npm run lab:build

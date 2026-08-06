@@ -16,7 +16,7 @@ the MakeHuman system assets pack installed (override with `make BLENDER=…`).
 
 ## How it fits together
 
-- `public/presets/*.json` — the contract. One preset = one patient. 83 values.
+- `public/presets/*.json` — the contract. One preset = one patient. 86 values.
 - `scripts/characters/generate_patient.py` — Blender build: MPFB body, face
   and body identity baked before fitted attachments, game rig, seated pose, two idle
   clips (ClinicIdle, RestlessIdle) stashed via NLA. **No costume** — the body
@@ -27,6 +27,9 @@ the MakeHuman system assets pack installed (override with `make BLENDER=…`).
 - `src/hair/` — modular period-hair system: scalp sampling, anatomical
   style-specific hairlines, true open parts, textured under-shells,
   directional locks, alpha-tested wisps, waves, chignons and coiled buns.
+- `src/stylized.js` — Renderer B treatment for MPFB's supported `female1605`
+  proxy: deterministic plane tones, flat-shaded skin and garments, softened
+  eye whites and restrained roughness. Renderer A remains unchanged.
 - `src/idle.js` — layered procedural performance: breathing (rate and
   amplitude), weight shift, fidget, gaze saccades, hand tension (curls real
   finger bones), hand tremor (symptom display), knee adduction, plus one-shot
@@ -47,9 +50,23 @@ The patient-domain record is stored at the top-level `patient` key in every
 generated preset. See `src/patients/README.md` for module boundaries and extension
 rules, and `public/schema/patient.schema.json` for the record contract.
 
+## A/B renderers
+
+The stage toggle switches one patient preset between two separately exported,
+equally rigged interpretations:
+
+- **A · Current** uses the MPFB basemesh.
+- **B · Stylized** uses MPFB's fitted `female1605` proxy and a lower-detail
+  procedural costume. It is derived after identity targets are baked, so seed,
+  proportions, skeleton, pose, clips and patient metadata remain shared.
+
+`character:generate` and the local regeneration endpoint produce/cache both
+GLBs together. B is an additive experiment and does not overwrite A.
+
 ```
 npm run patient:test          # determinism, coherence and render-contract tests
 npm run hair:test             # hairline bounds and deterministic geometry tests
+npm run renderer:test         # shared rig/clips, proxy reduction and expression compatibility
 npm run patient:audit -- 2000 # inspect generated distributions
 ```
 
