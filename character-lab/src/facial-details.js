@@ -88,13 +88,23 @@ function browGeometry(body, landmarks, values, sampleSurface) {
   const thickness = THREE.MathUtils.clamp(values.browThickness ?? 0.95, 0.45, 1.55);
   const arch = THREE.MathUtils.clamp(values.browArch ?? values.browAngle ?? 0, -1, 1);
   const asymmetry = THREE.MathUtils.clamp(values.browAsymmetry ?? values.faceAsymmetry ?? 0.06, 0, 0.35);
-  const browLength = landmarks.eyeSpan * 0.38;
-  const browBaseY = landmarks.eyeY + landmarks.eyeSpan * (0.155 + (values.browHeight ?? 0) * 0.025);
+  const apertures = body.geometry.userData.mhrEyeApertures || [];
   const lanes = Math.round(2 + density * 2);
   const hairsPerLane = Math.round(9 + density * 5);
 
   for (const side of [-1, 1]) {
-    const eyeX = landmarks.centerX + side * landmarks.eyeHalfSeparation;
+    const aperture = apertures.find((candidate) => candidate.side === side);
+    const margin = aperture ? [...new Set([...aperture.upper, ...aperture.lower])] : [];
+    const marginX = margin.map((vertex) => body.geometry.attributes.position.getX(vertex));
+    const upperY = aperture?.upper?.map((vertex) => body.geometry.attributes.position.getY(vertex)) || [];
+    const eyeX = marginX.length
+      ? (Math.min(...marginX) + Math.max(...marginX)) * 0.5
+      : landmarks.centerX + side * landmarks.eyeHalfSeparation;
+    const browLength = marginX.length
+      ? (Math.max(...marginX) - Math.min(...marginX)) * 1.34
+      : landmarks.eyeSpan * 0.38;
+    const browBaseY = (upperY.length ? Math.max(...upperY) : landmarks.eyeY)
+      + landmarks.eyeSpan * (0.080 + (values.browHeight ?? 0) * 0.025);
     for (let laneIndex = 0; laneIndex < lanes; laneIndex += 1) {
       const lane = lanes === 1 ? 0 : laneIndex / (lanes - 1) - 0.5;
       for (let hair = 0; hair < hairsPerLane; hair += 1) {
@@ -193,25 +203,29 @@ function apertureLashGeometry(body, landmarks, values, apertures) {
   const curl = clamp01(values.lashCurl ?? 0.48);
   const seed = Number(values.seed) || 1;
   for (const aperture of apertures) {
+    const margin = [...new Set([...aperture.upper, ...aperture.lower])];
+    const xs = margin.map((vertex) => position.getX(vertex));
+    const centerX = xs.length ? (Math.min(...xs) + Math.max(...xs)) * 0.5 : aperture.centerX;
+    const radiusX = xs.length ? (Math.max(...xs) - Math.min(...xs)) * 0.5 : aperture.radiusX;
     const upper = distributedAnchors(
       aperture.upper,
       Math.round(9 + density * 7),
       position,
-      aperture.centerX,
-      aperture.radiusX,
+      centerX,
+      radiusX,
     );
     const lower = distributedAnchors(
       aperture.lower,
       Math.round(3 + density * 3),
       position,
-      aperture.centerX,
-      aperture.radiusX,
+      centerX,
+      radiusX,
     );
     const addAnchors = (anchors, upperLid) => {
       for (let serial = 0; serial < anchors.length; serial += 1) {
         const source = anchors[serial];
         const x = position.getX(source);
-        const t = THREE.MathUtils.clamp((x - aperture.centerX) / aperture.radiusX, -1, 1);
+        const t = THREE.MathUtils.clamp((x - centerX) / radiusX, -1, 1);
         const randomLength = 0.88 + seeded(seed + aperture.side * 101 + (upperLid ? 0 : 211), serial) * 0.24;
         const length = (upperLid ? 0.00735 : 0.00345) * lengthScale * randomLength * (0.82 + (1 - Math.abs(t)) * 0.18);
         const base = new THREE.Vector3(
@@ -223,7 +237,7 @@ function apertureLashGeometry(body, landmarks, values, apertures) {
           lateral: t * length * 0.16,
           vertical: (upperLid ? 1 : -0.42) * length * (0.24 + curl * 0.22),
           forward: length * (upperLid ? 1.02 : 0.72),
-          width: upperLid ? 0.00018 : 0.00011,
+          width: upperLid ? 0.00023 : 0.00013,
           curl,
         });
       }

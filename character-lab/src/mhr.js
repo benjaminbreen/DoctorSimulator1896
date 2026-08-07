@@ -502,8 +502,11 @@ function paintMhrGlobe(geometry, values) {
   const radius = geometry.userData.mhrEyeRadius;
   const irisScale = THREE.MathUtils.clamp(Number(values.mhrIrisScale) || 1, 0.68, 1.42);
   const pupilScale = THREE.MathUtils.clamp(Number(values.mhrPupilScale) || 1, 0.55, 1.55);
-  const irisRadius = radius * 0.498 * irisScale;
-  const pupilRadius = radius * 0.189 * pupilScale;
+  // The public MHR eye-bone-to-null distance is about 16.9 mm, substantially
+  // larger than the conventional 11.5 mm globe radius. Keep iris and pupil at
+  // human-scale absolute radii instead of enlarging them with that rig radius.
+  const irisRadius = Math.min(radius * 0.50, 0.00585) * irisScale;
+  const pupilRadius = Math.min(radius * 0.19, 0.00220) * pupilScale;
   for (let vertex = 0; vertex < position.count; vertex += 1) {
     const x = position.getX(vertex), y = position.getY(vertex), z = position.getZ(vertex);
     const radial = Math.hypot(x, y);
@@ -638,13 +641,22 @@ function cutMhrEyeApertures(body, landmarks) {
    pupil pigmentation is painted directly onto the globe vertices; a separate
    transparent corneal shell supplies highlights and profile volume. */
 export function createMhrEyeDetails(root, values) {
-  const eyeBones = [root.getObjectByName('r_eye_null'), root.getObjectByName('l_eye_null')].filter(Boolean);
+  // The *_eye bones are the anatomical rotation centres. Their *_eye_null
+  // children sit near the corneal surface. Parenting a globe to an eye-null
+  // therefore rotates the *centre* of the globe around its front surface and
+  // makes it orbit through the lids. Keep the globe on the actual eye bone and
+  // use the null only as a reliable authored forward-axis reference.
+  const eyeBones = [root.getObjectByName('r_eye'), root.getObjectByName('l_eye')].filter(Boolean);
+  const eyeNulls = [root.getObjectByName('r_eye_null'), root.getObjectByName('l_eye_null')].filter(Boolean);
   const body = root.getObjectByName('body_mesh');
   const landmarks = body?.geometry?.userData?.faceLandmarks;
-  if (eyeBones.length !== 2 || !body?.isSkinnedMesh || !landmarks) return null;
+  if (eyeBones.length !== 2 || eyeNulls.length !== 2 || !body?.isSkinnedMesh || !landmarks) return null;
   body.userData.mhrAnatomicalEyes = true;
 
-  const radius = 0.01155;
+  // Match MHR's authored eye-centre -> corneal-null distance. The earlier
+  // generic 11.55 mm sphere could show only its iris through this rig's ~21 mm
+  // eyelid opening, leaving no sclera at all on wider identities.
+  const radius = 0.01655;
   const globeGeometry = new THREE.SphereGeometry(radius, 64, 40);
   globeGeometry.userData.mhrEyeRadius = radius;
   paintMhrGlobe(globeGeometry, values);
@@ -677,13 +689,58 @@ export function createMhrEyeDetails(root, values) {
     return group;
   });
 
+  const aperturePoint = new THREE.Vector3();
+  const socketCentre = new THREE.Vector3();
+  const eyeCentre = new THREE.Vector3();
+  const forward = new THREE.Vector3();
+
+  function fitToSocket(index, worldRadius, depthMm, verticalMm) {
+    const aperture = cutout?.apertures?.find((candidate) => candidate.side === (index === 0 ? -1 : 1));
+    if (!aperture) return null;
+    const vertices = [...new Set([...aperture.upper, ...aperture.lower])];
+    if (!vertices.length) return null;
+
+    let minimumX = Infinity, maximumX = -Infinity;
+    let minimumY = Infinity, maximumY = -Infinity;
+    socketCentre.set(0, 0, 0);
+    body.updateWorldMatrix(true, false);
+    for (const vertex of vertices) {
+      body.getVertexPosition(vertex, aperturePoint).applyMatrix4(body.matrixWorld);
+      socketCentre.add(aperturePoint);
+      minimumX = Math.min(minimumX, aperturePoint.x); maximumX = Math.max(maximumX, aperturePoint.x);
+      minimumY = Math.min(minimumY, aperturePoint.y); maximumY = Math.max(maximumY, aperturePoint.y);
+    }
+    socketCentre.multiplyScalar(1 / vertices.length);
+
+    // Socket depth follows the head's neutral forward axis, not the current
+    // gaze axis. MHR toes its eye bones inward for convergence; using that
+    // rotated optical axis to place the *centre* shifted each globe sideways
+    // by several millimetres and put irises on the cheeks.
+    forward.set(0, 0, 1).transformDirection(root.matrixWorld).normalize();
+    eyeCentre.copy(socketCentre)
+      .addScaledVector(forward, -worldRadius + depthMm * 0.001)
+      .addScaledVector(new THREE.Vector3(0, 1, 0), verticalMm * 0.001);
+
+    // Convert the desired world-space centre into the rotating eye bone. The
+    // residual offset is only the identity-specific socket correction; gaze
+    // then pivots around the anatomical centre rather than the corneal face.
+    groups[index].position.copy(eyeBones[index].worldToLocal(eyeCentre.clone()));
+    groups[index].userData.socketFit = {
+      side: aperture.side,
+      centre: socketCentre.toArray(),
+      width: maximumX - minimumX,
+      height: maximumY - minimumY,
+    };
+    return groups[index].userData.socketFit;
+  }
+
   function update(nextValues) {
     paintMhrGlobe(globeGeometry, nextValues);
     const authoredScale = Number.isFinite(Number(nextValues.mhrEyeGlobeScale))
-      ? Number(nextValues.mhrEyeGlobeScale) : 0.82;
+      ? Number(nextValues.mhrEyeGlobeScale) : 0.98;
     const scale = THREE.MathUtils.clamp(authoredScale, 0.70, 1.12)
       * (1 + (Number(nextValues.eyeSize) || 0) * 0.05);
-    const depthMm = Number.isFinite(Number(nextValues.mhrEyeDepth)) ? Number(nextValues.mhrEyeDepth) : -4;
+    const depthMm = Number.isFinite(Number(nextValues.mhrEyeDepth)) ? Number(nextValues.mhrEyeDepth) : -0.6;
     const verticalMm = Number.isFinite(Number(nextValues.mhrEyeVertical)) ? Number(nextValues.mhrEyeVertical) : 0;
     const gloss = Number.isFinite(Number(nextValues.mhrCorneaGloss))
       ? clamp(Number(nextValues.mhrCorneaGloss), 0, 1) : 0.38;
@@ -699,7 +756,7 @@ export function createMhrEyeDetails(root, values) {
     for (let index = 0; index < groups.length; index += 1) {
       const globe = groups[index].getObjectByName(`${groups[index].name}_Globe`);
       const cornea = groups[index].getObjectByName(`${groups[index].name}_Cornea`);
-      globe.position.set(0, verticalMm * 0.001, -radius + depthMm * 0.001);
+      globe.position.set(0, 0, 0);
       cornea.position.copy(globe.position);
       const worldScale = eyeBones[index].getWorldScale(new THREE.Vector3());
       groups[index].scale.set(
@@ -707,7 +764,9 @@ export function createMhrEyeDetails(root, values) {
         scale / Math.max(0.00001, worldScale.y),
         scale / Math.max(0.00001, worldScale.z),
       );
+      fitToSocket(index, radius * scale, depthMm, verticalMm);
     }
+    root.updateMatrixWorld(true);
   }
 
   function dispose() {

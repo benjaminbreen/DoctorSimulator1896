@@ -64,54 +64,80 @@ function seededRandom(seed) {
   };
 }
 
-// Generated 1890s street facade sized to the building, so windows keep real
-// proportions: one column per ~2.8m of width, one floor per ~3.4m of height.
-export function buildingFacade(styleIndex, seed, widthM, heightM) {
+// Facade grid shared by the painted texture and the instanced window
+// geometry (WindowField), so glass panes land exactly on the painted
+// openings: one column per ~2.8m of width, one floor per ~3.4m of height.
+export function facadeLayout(widthM, heightM) {
   const floors = Math.min(8, Math.max(2, Math.round((heightM - 2) / 3.4)));
   const cols = Math.min(6, Math.max(2, Math.round(widthM / 2.8)));
-  const key = `facade:${styleIndex}:${seed}:${floors}:${cols}`;
+  const unit = 52;
+  const texW = cols * unit + 16;
+  const texH = floors * unit + 22;
+  // 1896 sash proportions: tall and narrow, wall dominating glass. A 52px
+  // unit is ~2.8m, so 20px is a ~1.1m opening about two panes high.
+  const upper = [];
+  for (let floor = 0; floor < floors - 1; floor += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      upper.push({ col, floor, x: 18 + col * unit, y: 26 + floor * unit, w: 20, h: 34 });
+    }
+  }
+  const groundBandY = texH - unit - 4;
+  const ground = [];
+  for (let col = 0; col < cols; col += 1) {
+    ground.push({ col, x: 16 + col * unit, y: groundBandY + 4, w: 24, h: unit - 10, isDoor: col === Math.floor(cols / 2) });
+  }
+  return { floors, cols, unit, texW, texH, upper, ground, groundBandY };
+}
+
+// Painted openings stay uniformly dark: they read as interior depth behind
+// the instanced glass, which owns lit panes, frames, and shutters.
+export function buildingFacade(styleIndex, seed, widthM, heightM) {
+  const layout = facadeLayout(widthM, heightM);
+  const key = `facade:${styleIndex}:${seed}:${layout.floors}:${layout.cols}`;
   if (cache.has(key)) return cache.get(key);
 
-  const unit = 52;
-  const width = cols * unit + 16;
-  const height = floors * unit + 22;
+  const { texW: width, texH: height } = layout;
   const canvas = makeCanvas(width);
   canvas.height = height;
   const context = canvas.getContext('2d');
   const style = FACADE_STYLES[styleIndex % FACADE_STYLES.length];
   const random = seededRandom(seed * 7919 + 13);
 
-  context.fillStyle = style.base;
+  // Per-building tone shift, so a row of brownstones is not one brown.
+  const base = new THREE.Color(style.base);
+  base.offsetHSL((random() - 0.5) * 0.02, (random() - 0.5) * 0.05, (random() - 0.5) * 0.05);
+  context.fillStyle = `#${base.getHexString()}`;
   context.fillRect(0, 0, width, height);
-  for (let i = 0; i < 60 * cols; i += 1) {
+  for (let i = 0; i < 60 * layout.cols; i += 1) {
     context.fillStyle = `rgba(0,0,0,${random() * 0.05})`;
     context.fillRect(random() * width, random() * height, 3 + random() * 8, 2 + random() * 4);
   }
 
-  // Upper floors: window per column with lintel, sill, and the odd lit pane.
-  for (let floor = 0; floor < floors - 1; floor += 1) {
-    const y = 28 + floor * unit;
-    for (let col = 0; col < cols; col += 1) {
-      const x = 12 + col * unit;
-      context.fillStyle = style.trim;
-      context.fillRect(x - 3, y - 6, 38, 6);
-      context.fillStyle = random() < 0.12 ? '#d9a24c' : '#181614';
-      context.fillRect(x, y, 32, 38);
-      context.fillStyle = 'rgba(255,255,255,0.12)';
-      context.fillRect(x, y, 32, 4);
-      context.fillStyle = style.trim;
-      context.fillRect(x - 2, y + 38, 36, 4);
-    }
+  // String courses between the upper floors.
+  context.fillStyle = style.trim;
+  for (let floor = 1; floor < layout.floors - 1; floor += 1) {
+    context.fillRect(0, 26 + floor * layout.unit - 10, width, 3);
   }
 
-  // Ground floor: doorway plus tall windows.
-  const groundY = height - unit - 4;
+  for (const win of layout.upper) {
+    context.fillStyle = style.trim;
+    context.fillRect(win.x - 4, win.y - 7, win.w + 8, 7);
+    context.fillStyle = '#141210';
+    context.fillRect(win.x, win.y, win.w, win.h);
+    context.fillStyle = style.trim;
+    context.fillRect(win.x - 3, win.y + win.h, win.w + 6, 4);
+  }
+
+  // Rusticated basement course and the ground floor: doorway plus windows.
   context.fillStyle = style.trim;
-  context.fillRect(0, groundY - 4, width, unit + 8);
-  for (let col = 0; col < cols; col += 1) {
-    const x = 12 + col * unit;
-    context.fillStyle = col === Math.floor(cols / 2) ? '#171512' : 'rgba(20,18,15,0.92)';
-    context.fillRect(x, groundY + 4, 32, unit - 10);
+  context.fillRect(0, layout.groundBandY - 4, width, layout.unit + 8);
+  context.fillStyle = 'rgba(0,0,0,0.16)';
+  for (let joint = 0; joint < 3; joint += 1) {
+    context.fillRect(0, layout.groundBandY + 10 + joint * 13, width, 2);
+  }
+  for (const win of layout.ground) {
+    context.fillStyle = win.isDoor ? '#171512' : 'rgba(18,16,13,0.92)';
+    context.fillRect(win.x, win.y, win.w, win.h);
   }
 
   // Cornice.

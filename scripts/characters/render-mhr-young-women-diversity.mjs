@@ -6,7 +6,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'meshoptimizer';
 import { createCostume, findBones } from '../../character-lab/src/costume.js';
 import { createMhrFacialDetails } from '../../character-lab/src/facial-details.js';
-import { createMhrHairFormSystem } from '../../character-lab/src/mhr-hair-forms.js';
+import { createMhrHairFormSystem, createMhrScalpRootMesh } from '../../character-lab/src/mhr-hair-forms.js';
 import { createMhrController, createMhrEyeDetails, mhrSemanticProfile } from '../../character-lab/src/mhr.js';
 import { createRandom, generatePatient, patientToCharacterPreset } from '../../character-lab/src/patients/index.js';
 import { getOriginProfile } from '../../character-lab/src/patients/data/demographics.js';
@@ -192,8 +192,8 @@ function applyAppearance(values, index) {
     // Keep the complete globe behind the topology-cut eyelid aperture. The
     // previous presentation override pushed an oversized sphere forward,
     // making the iris/sclera project through the lids like a sticker.
-    mhrEyeGlobeScale: 0.74,
-    mhrEyeDepth: -4.8,
+    mhrEyeGlobeScale: 0.98,
+    mhrEyeDepth: -0.65,
     mhrEyeVertical: 0,
     mhrIrisScale: 0.98 + (index % 4) * 0.035,
     mhrPupilScale: 0.88 + (index % 3) * 0.07,
@@ -436,6 +436,7 @@ function entryFromValues(values, label, detail, seed, { presentation = false } =
   } else {
     hairForms.rebuild(values);
   }
+  const fittedScalp = presentation ? createMhrScalpRootMesh(body, values) : null;
   gltf.scene.updateMatrixWorld(true);
   const finalPosition = body.geometry.attributes.position.array;
   const skinMultiplier = body.geometry.attributes.color;
@@ -447,6 +448,10 @@ function entryFromValues(values, label, detail, seed, { presentation = false } =
     skinColors[vertex * 3 + 2] = skinBase.b * (skinMultiplier?.getZ(vertex) ?? 1);
   }
   const presentationMeshes = presentation ? [
+    ...(fittedScalp ? [{
+      mesh: fittedScalp,
+      options: { kind: 'hair-root', color: values.hairColor },
+    }] : []),
     ...cardGroomMeshes.filter((mesh) => !mesh.name.includes('Scalp')).map((mesh) => ({
       mesh,
       options: {
@@ -466,7 +471,7 @@ function entryFromValues(values, label, detail, seed, { presentation = false } =
   const visibleIndices = visibleGroup
     ? body.geometry.index.array.slice(visibleGroup.start, visibleGroup.start + visibleGroup.count)
     : body.geometry.index.array;
-  return {
+  const entry = {
     label, detail, seed, skinTone: values.skinTone,
     dressColor: values.dressColor,
     trimColor: values.trimColor,
@@ -484,7 +489,18 @@ function entryFromValues(values, label, detail, seed, { presentation = false } =
     visibleIndexBase64: Buffer.from(Uint32Array.from(visibleIndices).buffer).toString('base64'),
     skinColorBase64: Buffer.from(skinColors.buffer).toString('base64'),
     detailMeshes,
+    eyeDebug: eyeDetails?.groups.map((group) => ({
+      name: group.name,
+      centre: group.getWorldPosition(new THREE.Vector3()).toArray(),
+      socket: group.userData.socketFit,
+    })),
   };
+  if (fittedScalp) {
+    fittedScalp.parent?.remove(fittedScalp);
+    fittedScalp.geometry.dispose();
+    fittedScalp.material.dispose();
+  }
+  return entry;
 }
 
 function serializeMesh(mesh, overrides = {}) {
@@ -498,8 +514,27 @@ function serializeMesh(mesh, overrides = {}) {
     positions[vertex * 3 + 1] = point.y;
     positions[vertex * 3 + 2] = point.z;
   }
-  const sourceIndex = mesh.geometry.index?.array
+  let sourceIndex = mesh.geometry.index?.array
     || Uint32Array.from({ length: source.count }, (_, index) => index);
+  if (overrides.kind === 'hair-card') {
+    const landmarks = body.geometry.userData.faceLandmarks;
+    const retained = [];
+    for (let offset = 0; offset < sourceIndex.length; offset += 3) {
+      const a = sourceIndex[offset], b = sourceIndex[offset + 1], c = sourceIndex[offset + 2];
+      const x = (positions[a * 3] + positions[b * 3] + positions[c * 3]) / 3;
+      const y = (positions[a * 3 + 1] + positions[b * 3 + 1] + positions[c * 3 + 1]) / 3;
+      const z = (positions[a * 3 + 2] + positions[b * 3 + 2] + positions[c * 3 + 2]) / 3;
+      const temple = THREE.MathUtils.clamp(
+        Math.abs(x - landmarks.centerX) / (landmarks.eyeSpan * 0.72), 0, 1,
+      );
+      const fittedHairline = landmarks.eyeY + landmarks.eyeSpan * (0.49 - temple * 0.055);
+      const crossesFace = z > landmarks.eyeZ - landmarks.eyeSpan * 0.34
+        && Math.abs(x - landmarks.centerX) < landmarks.eyeSpan * 0.78
+        && y < fittedHairline;
+      if (!crossesFace) retained.push(a, b, c);
+    }
+    sourceIndex = Uint32Array.from(retained);
+  }
   const colors = mesh.geometry.attributes.color;
   const uvs = mesh.geometry.attributes.uv;
   const material = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;

@@ -231,8 +231,8 @@ export function patientToCharacterPreset(patient, basePreset, definitions, optio
   // MHR's source mesh has no separate eyeballs. Keep the generated globe fit
   // within a conservative anatomical band, then leave every value live for
   // close-up art direction in Character Lab.
-  values.mhrEyeGlobeScale = clamped(definitions, 'mhrEyeGlobeScale', 0.82 + jitter(faceRandom, 0.035));
-  values.mhrEyeDepth = clamped(definitions, 'mhrEyeDepth', -4.0 + jitter(faceRandom, 0.50));
+  values.mhrEyeGlobeScale = clamped(definitions, 'mhrEyeGlobeScale', 0.98 + jitter(faceRandom, 0.025));
+  values.mhrEyeDepth = clamped(definitions, 'mhrEyeDepth', -0.6 + jitter(faceRandom, 0.22));
   values.mhrEyeVertical = clamped(definitions, 'mhrEyeVertical', jitter(faceRandom, 0.35));
   values.mhrScleraColor = mixHex('#ded3c8', '#c8aa9a', 0.10 + surfaceAge * 0.18);
   values.mhrScleraBrightness = clamped(definitions, 'mhrScleraBrightness', 0.30 - surfaceAge * 0.11 + jitter(stylizedRandom, 0.06));

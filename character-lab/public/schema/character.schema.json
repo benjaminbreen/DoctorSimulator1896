@@ -109,8 +109,8 @@
     {
       "id": "mhrEyes", "label": "MHR anatomical eyes", "mode": "live", "renderer": "mhr",
       "parameters": [
-        {"id":"mhrEyeGlobeScale","label":"Globe size","type":"range","min":0.70,"max":1.12,"step":0.01,"default":0.82},
-        {"id":"mhrEyeDepth","label":"Globe depth (mm)","type":"range","min":-6,"max":1,"step":0.1,"default":-4},
+        {"id":"mhrEyeGlobeScale","label":"Globe size","type":"range","min":0.75,"max":1.15,"step":0.01,"default":0.98},
+        {"id":"mhrEyeDepth","label":"Globe depth (mm)","type":"range","min":-4,"max":1,"step":0.1,"default":-0.6},
         {"id":"mhrEyeVertical","label":"Globe vertical offset (mm)","type":"range","min":-3,"max":3,"step":0.1,"default":0},
         {"id":"mhrScleraColor","label":"Sclera color","type":"color","default":"#d6c8bb"},
         {"id":"mhrScleraBrightness","label":"Sclera brightness","type":"range","min":0,"max":1,"step":0.01,"default":0.22},

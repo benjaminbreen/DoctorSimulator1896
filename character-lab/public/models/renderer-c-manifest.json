@@ -1,0 +1,27 @@
+{
+  "pipeline": "renderer-c-mpfb2-v1",
+  "preset": "character-lab/public/presets/mrs-ostrander-1896.json",
+  "lods": {
+    "consultation": {
+      "bytes": 11259440,
+      "triangles": 46564,
+      "morphTargets": 52,
+      "clips": 2,
+      "log": "OBJ import of 'shoes05.obj' took 1.64 ms | Blender quit"
+    },
+    "nearby": {
+      "bytes": 10700988,
+      "triangles": 44696,
+      "morphTargets": 15,
+      "clips": 2,
+      "log": "OBJ import of 'shoes05.obj' took 1.40 ms | Blender quit"
+    },
+    "crowd": {
+      "bytes": 10224636,
+      "triangles": 22664,
+      "morphTargets": 0,
+      "clips": 2,
+      "log": "OBJ import of 'shoes05.obj' took 1.02 ms | Blender quit"
+    }
+  }
+}

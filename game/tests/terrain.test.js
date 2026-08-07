@@ -45,6 +45,12 @@ test('the street grid is walkable and carries the landmarks', () => {
   }
   const walkable = streetItems.filter((item) => item.kind === 'ground');
   assert.ok(walkable.length >= 18, 'road beds and sidewalks exist');
+  for (const id of ['el-station-house', 'el-deck', 'el-stair-1', 'carriage-plaza-body', 'sixth-pole-0-pole']) {
+    assert.ok(streetItems.some((item) => item.id === id), `missing ${id}`);
+  }
+  const stair = streetItems.find((item) => item.id === 'el-stair-1');
+  const grade = Math.abs(stair.rotation[2]);
+  assert.ok(grade > 0.5 && grade < 0.74, 'El stairs stay inside the climbable slope');
 });
 
 test('pond outline is a sane polygon inside the zone', () => {

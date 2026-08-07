@@ -29,8 +29,8 @@ function Backdrop({ item }) {
         <meshStandardMaterial map={map} roughness={0.9} />
       </mesh>
       <mesh position={[0, capY, 0]}>
-        <boxGeometry args={[item.size[0] + 0.4, 0.5, item.size[2] + 0.4]} />
-        <meshStandardMaterial color="#39352f" roughness={0.95} />
+        <boxGeometry args={[item.size[0] + 0.5, 0.5, item.size[2] + 0.5]} />
+        <meshStandardMaterial color="#4c4138" roughness={0.95} />
       </mesh>
       {Array.from({ length: chimneys }, (_, index) => (
         <mesh
@@ -94,7 +94,7 @@ function ItemCollider({ item }) {
     <CuboidCollider
       args={[item.size[0] / 2, item.size[1] / 2, item.size[2] / 2]}
       position={item.position}
-      rotation={[0, item.yaw ?? 0, 0]}
+      rotation={item.rotation ?? [0, item.yaw ?? 0, 0]}
     />
   );
 }
@@ -141,6 +141,17 @@ export default function Furniture({ items }) {
       }
       return <meshStandardMaterial map={paving} color={item.color ?? '#ffffff'} roughness={0.9} />;
     }
+    // Cast iron and painted metal pick up the sky; wood and stone stay flat.
+    if (item.metal) {
+      return (
+        <meshStandardMaterial
+          color={item.color ?? '#33383c'}
+          metalness={0.85}
+          roughness={0.38}
+          envMapIntensity={0.8}
+        />
+      );
+    }
     return (
       <meshStandardMaterial
         color={item.color ?? '#4a3826'}
@@ -166,7 +177,7 @@ export default function Furniture({ items }) {
           <mesh
             key={item.id}
             position={item.position}
-            rotation={[0, item.yaw ?? 0, 0]}
+            rotation={item.rotation ?? [0, item.yaw ?? 0, 0]}
             castShadow={item.collider !== false || item.shape === 'sphere'}
             receiveShadow
           >

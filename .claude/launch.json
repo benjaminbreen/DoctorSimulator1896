@@ -12,6 +12,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "game", "run", "dev"],
       "port": 5175
+    },
+    {
+      "name": "game-alt",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "game", "run", "dev", "--", "--port", "5185"],
+      "port": 5185
     }
   ]
 }

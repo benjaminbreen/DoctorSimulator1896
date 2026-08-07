@@ -13,6 +13,8 @@ import SkyRig from './SkyRig.jsx';
 import CloudDome from './CloudDome.jsx';
 import Terrain from './Terrain.jsx';
 import TreeField from './TreeField.jsx';
+import WindowField from './WindowField.jsx';
+import Pedestrians from './Pedestrians.jsx';
 import Water from './Water.jsx';
 import Effects from './Effects.jsx';
 import { zones } from '../world/zones.js';
@@ -125,6 +127,8 @@ export default function GameCanvas({ runtime, keyboard, look }) {
               <CloudDome config={lighting} runtime={runtime} />
               <Terrain />
               <TreeField items={room.furnitureBoxes.filter((item) => item.kind === 'tree')} />
+              <WindowField items={room.furnitureBoxes.filter((item) => item.kind === 'backdrop')} runtime={runtime} />
+              {values.zone === 'central-park' && <Pedestrians />}
               {zone.water && <Water runtime={runtime} outline={zone.water.outline} level={zone.water.level} />}
             </>
           ) : (

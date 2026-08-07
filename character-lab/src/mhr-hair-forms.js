@@ -215,6 +215,88 @@ function styleFor(values) {
     ? 'pompadour' : 'centre-coil';
 }
 
+// A fitted root layer for card grooms. Hair cards intentionally leave small
+// gaps so they can overlap without becoming a solid helmet; those gaps should
+// reveal dark roots, not bare scalp. Building the underlayer from the current
+// MHR head itself gives it the exact identity silhouette and avoids fitting a
+// generic sphere over the forehead.
+export function createMhrScalpRootMesh(body, values = {}) {
+  const landmarks = body?.geometry?.userData?.faceLandmarks;
+  const source = body?.geometry?.attributes?.position;
+  const sourceIndex = body?.geometry?.index?.array;
+  if (!body?.isSkinnedMesh || !landmarks || !source || !sourceIndex) return null;
+
+  const root = body.parent;
+  body.updateWorldMatrix(true, false);
+  root.updateWorldMatrix(true, false);
+  const worldToRoot = root.matrixWorld.clone().invert();
+  const point = new THREE.Vector3();
+  const positions = [];
+  const indices = [];
+  const mapped = new Map();
+  const vertexFor = (sourceVertex) => {
+    if (mapped.has(sourceVertex)) return mapped.get(sourceVertex);
+    body.getVertexPosition(sourceVertex, point).applyMatrix4(body.matrixWorld).applyMatrix4(worldToRoot);
+    const next = positions.length / 3;
+    positions.push(point.x, point.y, point.z);
+    mapped.set(sourceVertex, next);
+    return next;
+  };
+
+  const hairlineHeight = clamp(Number(values.hairlineHeight) || 0, -1, 1);
+  const foreheadLine = landmarks.eyeY + landmarks.eyeSpan * (0.49 + hairlineHeight * 0.08);
+  const rearLine = landmarks.mouthY - landmarks.eyeSpan * 0.24;
+  // Facial vertices reach almost as far forward as the nose, so the front
+  // transition must saturate before the brow. Otherwise rear-scalp triangles
+  // can pass a low interpolated threshold and project across the eye sockets.
+  const frontStart = landmarks.eyeZ - landmarks.eyeSpan * 1.10;
+  const frontRange = Math.max(0.025, landmarks.eyeSpan * 0.90);
+  for (let offset = 0; offset < sourceIndex.length; offset += 3) {
+    const a = sourceIndex[offset], b = sourceIndex[offset + 1], c = sourceIndex[offset + 2];
+    const x = (source.getX(a) + source.getX(b) + source.getX(c)) / 3;
+    const y = (source.getY(a) + source.getY(b) + source.getY(c)) / 3;
+    const z = (source.getZ(a) + source.getZ(b) + source.getZ(c)) / 3;
+    const frontness = clamp((z - frontStart) / frontRange, 0, 1);
+    const templeDrop = clamp(Math.abs(x - landmarks.centerX) / (landmarks.eyeSpan * 0.72), 0, 1)
+      * landmarks.eyeSpan * 0.055;
+    const hairline = THREE.MathUtils.lerp(rearLine, foreheadLine - templeDrop, frontness ** 1.35);
+    if (y < hairline) continue;
+    indices.push(vertexFor(a), vertexFor(b), vertexFor(c));
+  }
+  if (!indices.length) return null;
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  const attribute = geometry.attributes.position;
+  const normal = geometry.attributes.normal;
+  for (let vertex = 0; vertex < attribute.count; vertex += 1) {
+    attribute.setXYZ(
+      vertex,
+      attribute.getX(vertex) + normal.getX(vertex) * 0.00065,
+      attribute.getY(vertex) + normal.getY(vertex) * 0.00065,
+      attribute.getZ(vertex) + normal.getZ(vertex) * 0.00065,
+    );
+  }
+  attribute.needsUpdate = true;
+  geometry.computeVertexNormals();
+  geometry.computeBoundingSphere();
+  const material = new THREE.MeshStandardMaterial({
+    name: 'MHR_CardGroomRoots',
+    color: values.hairColor || '#241711',
+    roughness: 0.82,
+    metalness: 0,
+    side: THREE.DoubleSide,
+  });
+  material.userData.excludeComparisonSkin = true;
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.name = 'MHR_FittedCardGroomRoots';
+  mesh.frustumCulled = false;
+  root.add(mesh);
+  return mesh;
+}
+
 export function createMhrHairFormSystem(scene, bones, model) {
   const base = new THREE.MeshStandardMaterial({
     name: 'MHR_HairForm', color: '#2b1a12', roughness: 0.76, metalness: 0,

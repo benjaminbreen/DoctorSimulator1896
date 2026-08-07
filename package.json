@@ -18,6 +18,7 @@
     "patient:audit": "node scripts/characters/audit-patients.mjs",
     "mhr:audit": "node scripts/characters/audit-mhr-identity.mjs",
     "mhr:generate": "node scripts/characters/generate-mhr.mjs",
+    "renderer-c:generate": "node scripts/characters/generate-renderer-c.mjs",
     "mhr:contact-sheet": "node scripts/characters/render-mhr-demographic-contact-sheet.mjs && sleep 1 && (/Applications/Blender.app/Contents/MacOS/Blender --factory-startup --background --python-exit-code 1 --python \"$PWD/scripts/characters/render_mhr_demographic_contact_sheet.py\" -- --model \"$PWD/character-lab/public/models/comparison-mhr-lod1.glb\" --manifest \"$PWD/character-lab/.generated/mhr-demographic-audit/manifest.json\" --output \"$PWD/mockups/character-engine-comparison/mhr-representation-cohorts-2026-08-07.png\" || (sleep 1 && /Applications/Blender.app/Contents/MacOS/Blender --factory-startup --background --python-exit-code 1 --python \"$PWD/scripts/characters/render_mhr_demographic_contact_sheet.py\" -- --model \"$PWD/character-lab/public/models/comparison-mhr-lod1.glb\" --manifest \"$PWD/character-lab/.generated/mhr-demographic-audit/manifest.json\" --output \"$PWD/mockups/character-engine-comparison/mhr-representation-cohorts-2026-08-07.png\"))",
     "test": "npm run character:validate && npm run patient:test && npm run hair:test && npm run renderer:test && npm run lab:build && npm run game:test"
   },
