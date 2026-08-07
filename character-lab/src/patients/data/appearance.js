@@ -66,24 +66,28 @@ export const FACE_DETAIL_CENTERS = {
 };
 
 export const HAIR_STYLES = [
-  { id: 'center-parted-bun', weight: 18, ageWeights: [1.12, 1.05, 0.96], classes: ['elite', 'affluent', 'comfortable', 'sponsored'] },
-  { id: 'side-parted-bun', weight: 12, ageWeights: [1.12, 1.06, 0.78], classes: ['elite', 'affluent', 'comfortable'] },
-  { id: 'low-bun', weight: 18, ageWeights: [0.92, 1.04, 1.20], classes: ['affluent', 'comfortable', 'sponsored'] },
-  { id: 'coiled-bun', weight: 9, ageWeights: [0.72, 1.02, 1.28], classes: ['elite', 'affluent', 'comfortable'] },
-  { id: 'loose-chignon', weight: 11, ageWeights: [1.24, 1.02, 0.68], classes: ['elite', 'affluent'] },
-  { id: 'swept-back', weight: 10, ageWeights: [1.08, 1.04, 0.88], classes: ['affluent', 'comfortable', 'sponsored'] },
-  { id: 'pompadour', weight: 5, ageWeights: [1.26, 0.72, 0.18], classes: ['elite', 'affluent'], maxAge: 48 },
-  { id: 'braided-crown', weight: 5, ageWeights: [1.10, 1.0, 0.78], classes: ['comfortable', 'sponsored'] },
-  { id: 'cropped-waves', weight: 3, ageWeights: [0.62, 0.88, 1.08], classes: ['elite', 'affluent', 'comfortable'] },
-  { id: 'short-parted', weight: 2, ageWeights: [0.48, 0.80, 1.12], classes: ['elite', 'affluent', 'comfortable', 'sponsored'] },
+  { id: 'center-parted-bun', weight: 18, ageWeights: [1.12, 1.05, 0.96], classes: ['elite', 'affluent', 'comfortable', 'sponsored'], sexes: ['female'] },
+  { id: 'side-parted-bun', weight: 12, ageWeights: [1.12, 1.06, 0.78], classes: ['elite', 'affluent', 'comfortable'], sexes: ['female'] },
+  { id: 'low-bun', weight: 18, ageWeights: [0.92, 1.04, 1.20], classes: ['affluent', 'comfortable', 'sponsored'], sexes: ['female'] },
+  { id: 'coiled-bun', weight: 9, ageWeights: [0.72, 1.02, 1.28], classes: ['elite', 'affluent', 'comfortable'], sexes: ['female'] },
+  { id: 'loose-chignon', weight: 11, ageWeights: [1.24, 1.02, 0.68], classes: ['elite', 'affluent'], sexes: ['female'] },
+  { id: 'swept-back', weight: 10, ageWeights: [1.08, 1.04, 0.88], classes: ['affluent', 'comfortable', 'sponsored'], sexes: ['female'] },
+  { id: 'pompadour', weight: 5, ageWeights: [1.26, 0.72, 0.18], classes: ['elite', 'affluent'], maxAge: 48, sexes: ['female'] },
+  { id: 'braided-crown', weight: 5, ageWeights: [1.10, 1.0, 0.78], classes: ['comfortable', 'sponsored'], sexes: ['female'] },
+  { id: 'cropped-waves', weight: 5, ageWeights: [0.82, 0.96, 1.08], classes: ['elite', 'affluent', 'comfortable', 'sponsored'], sexes: ['female', 'male'] },
+  { id: 'short-parted', weight: 18, ageWeights: [1.10, 1.04, 0.92], classes: ['elite', 'affluent', 'comfortable', 'sponsored'], sexes: ['female', 'male'] },
 ];
 
 export const OUTFIT_RULES = [
-  { id: 'conservative-day', weight: 25, classes: ['elite', 'affluent', 'comfortable', 'sponsored'] },
-  { id: 'fashionable-1896', weight: 18, classes: ['elite', 'affluent'], maxAge: 55 },
-  { id: 'visiting-dress', weight: 17, classes: ['elite', 'affluent', 'comfortable'] },
-  { id: 'working-day', weight: 20, classes: ['comfortable', 'sponsored'] },
-  { id: 'mourning-dress', weight: 1, classes: ['elite', 'affluent', 'comfortable', 'sponsored'] },
+  { id: 'conservative-day', weight: 25, classes: ['elite', 'affluent', 'comfortable', 'sponsored'], sexes: ['female'] },
+  { id: 'fashionable-1896', weight: 18, classes: ['elite', 'affluent'], maxAge: 55, sexes: ['female'] },
+  { id: 'visiting-dress', weight: 17, classes: ['elite', 'affluent', 'comfortable'], sexes: ['female'] },
+  { id: 'working-day', weight: 20, classes: ['comfortable', 'sponsored'], sexes: ['female'] },
+  { id: 'mourning-dress', weight: 1, classes: ['elite', 'affluent', 'comfortable', 'sponsored'], sexes: ['female'] },
+  { id: 'mens-sack-suit', weight: 28, classes: ['elite', 'affluent', 'comfortable', 'sponsored'], sexes: ['male'] },
+  { id: 'mens-formal-suit', weight: 16, classes: ['elite', 'affluent'], sexes: ['male'] },
+  { id: 'mens-working-clothes', weight: 24, classes: ['comfortable', 'sponsored'], sexes: ['male'] },
+  { id: 'mens-mourning-suit', weight: 1, classes: ['elite', 'affluent', 'comfortable', 'sponsored'], sexes: ['male'] },
 ];
 
 export const DRESS_PALETTES = {

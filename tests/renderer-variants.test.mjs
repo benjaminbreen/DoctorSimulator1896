@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'meshoptimizer';
 import { createExpressions } from '../character-lab/src/expressions.js';
 import { createMhrController } from '../character-lab/src/mhr.js';
 import { prepareSkinModel, updateSkinModel } from '../character-lab/src/stylized.js';
@@ -15,7 +16,7 @@ globalThis.createImageBitmap ??= async () => ({ width: 1, height: 1, close() {} 
 async function loadModel(relativePath) {
   const data = await readFile(new URL(relativePath, import.meta.url));
   const arrayBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
-  return new GLTFLoader().parseAsync(arrayBuffer, '');
+  return new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(arrayBuffer, '');
 }
 
 function modelFacts(gltf) {
@@ -117,6 +118,37 @@ test('MHR identity/build controls deform the mesh and drive a seated full-body r
   assert.ok(gltf.scene.position.y > -0.01);
   assert.ok(controller.bones.get('r_upleg').quaternion.angleTo(seatedThigh) > 1);
   assert.ok(controller.bones.get('r_lowleg').quaternion.angleTo(seatedKnee) > 1);
+});
+
+test('MHR presentation and ancestry endpoints visibly deform the same seeded identity', async () => {
+  const gltf = await loadModel('../character-lab/public/models/comparison-mhr-lod1.glb');
+  const body = gltf.scene.getObjectByName('body_mesh');
+  const values = {
+    seed: 2665, gender: 0.5, age: 0.68, height: 0.5, weight: 0.5, muscle: 0.35,
+    proportions: 0.5, shoulderWidth: 0, torsoLength: 0, headShape: 'oval', headShapeStrength: 0,
+    african: 0, asian: 0, caucasian: 1, seated: 0, kneesTogether: 0, posture: 0,
+    headTurn: 0, headTilt: 0, breathing: 0, breathingRate: 13,
+  };
+  const controller = createMhrController(gltf.scene, values);
+  const capture = (overrides) => {
+    Object.assign(values, overrides);
+    controller.applyValues(values, { forceIdentity: true });
+    return new Float32Array(body.geometry.attributes.position.array);
+  };
+
+  const female = capture({ gender: 0 });
+  const male = capture({ gender: 1 });
+  assert.ok(difference(female, male).rms > 0.0025, 'presentation endpoint is too subtle');
+  assert.equal(body.userData.mhrSemanticProfile.presentation, 1);
+  assert.ok(controller.directions.body.shoulderWidth.samples > 100);
+  assert.ok(controller.directions.body.hipWidth.samples > 100);
+
+  const african = capture({ gender: 0.5, african: 1, asian: 0, caucasian: 0 });
+  const asian = capture({ african: 0, asian: 1, caucasian: 0 });
+  const european = capture({ african: 0, asian: 0, caucasian: 1 });
+  assert.ok(difference(african, european).rms > 0.0007, 'African ancestry endpoint is too subtle');
+  assert.ok(difference(asian, european).rms > 0.0002, 'Asian ancestry endpoint is too subtle');
+  assert.deepEqual(body.userData.mhrSemanticProfile.ancestry, { african: 0, asian: 0, caucasian: 1 });
 });
 
 test('renderer A exports and coordinates MPFB face units across fitted facial meshes', async () => {

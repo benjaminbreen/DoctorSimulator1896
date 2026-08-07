@@ -12,12 +12,19 @@
     "hair:test": "node --test tests/hair-geometry.test.mjs",
     "renderer:test": "node --test tests/renderer-variants.test.mjs",
     "patient:audit": "node scripts/characters/audit-patients.mjs",
+    "mhr:audit": "node scripts/characters/audit-mhr-identity.mjs",
+    "mhr:generate": "node scripts/characters/generate-mhr.mjs",
+    "mhr:contact-sheet": "node scripts/characters/render-mhr-demographic-contact-sheet.mjs && /Applications/Blender.app/Contents/MacOS/Blender --background --python-exit-code 1 --python \"$PWD/scripts/characters/render_mhr_demographic_contact_sheet.py\" -- --model \"$PWD/character-lab/public/models/comparison-mhr-lod1.glb\" --manifest \"$PWD/character-lab/.generated/mhr-demographic-audit/manifest.json\" --output \"$PWD/mockups/character-engine-comparison/mhr-demographic-contact-sheet-2026-08-06.png\"",
     "test": "npm run character:validate && npm run patient:test && npm run hair:test && npm run renderer:test && npm run lab:build"
   },
   "dependencies": {
+    "meshoptimizer": "^1.2.0",
     "three": "^0.179.1"
   },
   "devDependencies": {
+    "@gltf-transform/core": "^4.4.2",
+    "@gltf-transform/extensions": "^4.4.2",
+    "@gltf-transform/functions": "^4.4.2",
     "vite": "^7.1.1"
   }
 }

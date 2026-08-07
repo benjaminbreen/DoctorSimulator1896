@@ -77,7 +77,7 @@ The header keeps patient generation separate from asset baking:
 randomizing sliders. The demographic model first draws a social/access route to
 the clinic, then weights city origin profiles by that route. Clinical state is
 mapped into performance controls; class, occupation and mourning map into dress;
-age and origin map probabilistically into body and appearance.
+age, sex and origin map probabilistically into body and appearance.
 
 The patient-domain record is stored at the top-level `patient` key in every
 generated preset. See `src/patients/README.md` for module boundaries and extension
@@ -112,18 +112,38 @@ shoulder width, torso length and the existing face controls update live. The
 detailed face controls are anatomical projections into MHR's 20 latent head
 components; no individual PCA component is mislabeled as a semantic morph.
 Apparent age is primarily carried by surface treatment with only a restrained
-shape tendency. MHR does not ship labeled ancestry, age, sex or body-mass axes.
+shape tendency. MHR does not ship labeled ancestry, age, sex or body-mass axes,
+so the runtime derives calibrated semantic directions by projecting anatomical
+measurements into its 20 body and 20 head identity components. The
+feminine/masculine continuum drives chest, waist, hip, shoulder and facial
+structure; normalized African, Asian and European weights blend overlapping
+population centres while leaving seed and manual feature variation independent.
 An MHR-only control group exposes genuine rig dimensions from Meta's model
 definition: neck, upper/lower arm, hip, upper/lower leg, foot, hand and eyeball
 spacing controls. These are also varied conservatively by new patient seeds.
 
-`character:generate` and the local regeneration endpoint produce/cache only A.
-The B asset remains an isolated proof and never overwrites the generated patient.
+Every generated patient stores a versioned `appearance.mhrIdentity` record with
+its seed, presentation value and normalized ancestry mixture. MHR now uses the
+same procedural scalp/hair system as A and a first-pass sex-aware period costume
+foundation: bodice/skirt silhouettes for women and sack-jacket/trouser
+silhouettes for men. These procedural shells are validation assets pending
+fitted and skinned production garments.
+
+`character:generate` and the local regeneration endpoint produce/cache A. The
+full 35 MB MHR asset remains the live-authoring master. `npm run mhr:generate`
+bakes the selected patient's 45 identity coefficients into the base mesh,
+removes those authoring targets, retains all 72 expression targets and the
+126-bone rig, and caches a high-precision Meshopt runtime GLB by preset
+signature. The current reference export is about 1.9 MB; a repeated generation
+with identical values is restored from cache.
 
 ```
 npm run patient:test          # determinism, coherence and render-contract tests
 npm run hair:test             # hairline bounds and deterministic geometry tests
 npm run renderer:test         # A face/skin behavior plus B MHR asset contracts
+npm run mhr:audit             # quantitative semantic endpoint report
+npm run mhr:generate          # cached patient-specific MHR runtime GLB
+npm run mhr:contact-sheet     # repeatable eight-person Blender calibration sheet
 npm run patient:audit -- 2000 # inspect generated distributions
 ```
 
@@ -181,8 +201,10 @@ and gestures layer on top), `clip+procedural` (both).
   should be evaluated offline before the seated pose is considered final.
 - Speech visemes and facial mocap are not wired yet. The named target layer is
   intentionally compatible with adding either later.
-- GLB is unoptimized (~32k tris, ~8 MB); run the Darwin gltf-transform pass
-  before game use.
+- The current demographic directions are calibrated anatomical projections
+  because the public MHR release does not provide named sex or ancestry axes.
+  Keep the saved contact sheet and coefficient manifest as regressions when
+  tuning them; hair and fitted clothing remain necessary presentation cues.
 
 See [`docs/facial-animation.md`](../docs/facial-animation.md) for the design,
 installation details and expression recipes.

@@ -79,29 +79,39 @@ test('resting-face signatures cover all units with predominantly bilateral varia
 
 test('2,000 generated patients remain coherent and inside the render contract', () => {
   const names = new Set(); const faces = new Set(); const complaints = new Set();
-  const originCounts = new Map(); let withoutPaidOccupation = 0; let mourningDress = 0;
+  const originCounts = new Map(); const sexCounts = new Map(); let withoutPaidOccupation = 0; let mourningDress = 0;
   for (let seed = 1; seed <= 2000; seed += 1) {
     const patient = generatePatient({ seed });
     const preset = patientToCharacterPreset(patient, basePreset, definitions);
     assert.equal(patient.setting.year, 1896);
-    assert.equal(patient.identity.sex, 'female');
+    assert.ok(['female', 'male'].includes(patient.identity.sex));
+    assert.equal(patient.identity.title, patient.identity.sex === 'male' ? 'Mr.' : patient.social.household.maritalStatus === 'single' ? 'Miss' : 'Mrs.');
     assert.ok(patient.identity.age >= 16 && patient.identity.age <= 76);
     assert.ok(patient.clinical.presentingComplaint.length > 20);
     assert.deepEqual(validateValues(preset), [], `seed ${seed}`);
     assert.ok(Math.abs(preset.values.african + preset.values.asian + preset.values.caucasian - 1) < 0.001);
-    if (preset.values.outfitStyle === 'mourning-dress') {
+    assert.ok(patient.identity.sex === 'female' ? preset.values.gender < 0.18 : preset.values.gender > 0.82);
+    assert.deepEqual(preset.patient.appearance.mhrIdentity.ancestry, {
+      african: preset.values.african, asian: preset.values.asian, caucasian: preset.values.caucasian,
+    });
+    if (patient.clinical.id === 'postpartum-disturbance') assert.equal(patient.identity.sex, 'female');
+    if (['mourning-dress', 'mens-mourning-suit'].includes(preset.values.outfitStyle)) {
       mourningDress += 1;
       assert.ok(patient.clinical.flags.includes('mourning'));
     }
+    assert.equal(preset.values.outfitStyle.startsWith('mens-'), patient.identity.sex === 'male');
     if (!patient.social.occupation) withoutPaidOccupation += 1;
     names.add(patient.identity.fullName); faces.add(preset.patient.appearance.faceArchetype); complaints.add(patient.clinical.id);
     originCounts.set(patient.identity.origin.id, (originCounts.get(patient.identity.origin.id) ?? 0) + 1);
+    sexCounts.set(patient.identity.sex, (sexCounts.get(patient.identity.sex) ?? 0) + 1);
   }
   assert.ok(names.size > 900, `only ${names.size} distinct names`);
   assert.ok(faces.size >= 7, `only ${faces.size} face archetypes`);
   assert.ok(complaints.size >= 9, `only ${complaints.size} clinical presentations`);
   assert.ok(withoutPaidOccupation > 250, `only ${withoutPaidOccupation} patients without paid occupations`);
   assert.ok(mourningDress > 30, `only ${mourningDress} mourning presentations rendered as mourning`);
+  assert.ok((sexCounts.get('female') ?? 0) > 850, `only ${sexCounts.get('female')} female patients`);
+  assert.ok((sexCounts.get('male') ?? 0) > 850, `only ${sexCounts.get('male')} male patients`);
   assert.ok((originCounts.get('chinese-american') ?? 0) < 30, 'clinic sample overrepresents Chinese New Yorkers');
   assert.ok((originCounts.get('african-american') ?? 0) < 100, 'clinic sample overrepresents African American New Yorkers');
 });

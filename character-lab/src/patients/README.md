@@ -1,6 +1,6 @@
 # NYC 1896 Patient Generator
 
-This directory generates fictional female patients for the Blackwell clinic and
+This directory generates fictional women and men for the Blackwell clinic and
 maps them onto the Character Lab's existing preset contract.
 
 ## Boundaries
@@ -24,6 +24,13 @@ keeping that record fixed, producing another visual interpretation of the same
 patient. Appearance variation waits for **Regenerate model**; **New random
 patient** regenerates the GLBs immediately so the displayed anatomy and fitted
 features match the new record.
+
+Sex is sampled deterministically unless explicitly supplied to
+`generatePatient({ sex })`. Names, titles, occupations, pronouns, postpartum
+eligibility, body presentation and hairstyle candidates follow the same domain
+record. Origin profiles supply normalized ancestry mixtures and pigmentation
+palettes; the MHR adapter turns those mixtures into continuous anatomical
+directions while retaining larger independent identity variation.
 
 ## Data modules
 

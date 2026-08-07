@@ -252,6 +252,7 @@ export function createHairSystem(scene, bones, model) {
 
   return {
     rebuild,
+    invalidateScalp() { scalpCache = null; },
     dispose: disposePieces,
     destroy() {
       disposePieces();

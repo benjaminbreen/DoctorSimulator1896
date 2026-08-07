@@ -18,6 +18,10 @@ const STYLE_VALUES = {
   'mourning-dress': { bodiceFit: 0.98, waistHeight: 0.025, skirtFullness: 1.08, skirtLength: 1.04, skirtDrape: 0.72, bustleAmount: 0.08, sleeveVolume: 0.92, sleeveLength: 1.02, collarHeight: 1.12, collarSpread: 0.82, buttonCount: 8, buttonSpacing: 0.86 },
   'working-day': { bodiceFit: 1.02, waistHeight: 0.015, skirtFullness: 0.88, skirtLength: 0.94, skirtDrape: 0.58, bustleAmount: 0.03, sleeveVolume: 0.72, sleeveLength: 0.94, collarHeight: 0.72, collarSpread: 1.08, buttonCount: 6, buttonSpacing: 1.0 },
   'visiting-dress': { bodiceFit: 0.94, waistHeight: 0.045, skirtFullness: 1.15, skirtLength: 1.01, skirtDrape: 0.7, bustleAmount: 0.15, sleeveVolume: 1.22, sleeveLength: 0.99, collarHeight: 1.0, collarSpread: 1.12, buttonCount: 6, buttonSpacing: 0.92 },
+  'mens-sack-suit': { bodiceFit: 1.05, waistHeight: 0, skirtFullness: 0.9, skirtLength: 0.95, skirtDrape: 0.5, bustleAmount: 0, sleeveVolume: 0.58, sleeveLength: 1.0, collarHeight: 0.72, collarSpread: 1.08, buttonCount: 4, buttonSpacing: 1.0 },
+  'mens-formal-suit': { bodiceFit: 1.0, waistHeight: 0, skirtFullness: 0.9, skirtLength: 0.95, skirtDrape: 0.5, bustleAmount: 0, sleeveVolume: 0.52, sleeveLength: 1.02, collarHeight: 0.92, collarSpread: 0.96, buttonCount: 5, buttonSpacing: 0.90 },
+  'mens-working-clothes': { bodiceFit: 1.08, waistHeight: 0, skirtFullness: 0.9, skirtLength: 0.95, skirtDrape: 0.5, bustleAmount: 0, sleeveVolume: 0.46, sleeveLength: 0.94, collarHeight: 0.50, collarSpread: 1.12, buttonCount: 4, buttonSpacing: 1.05 },
+  'mens-mourning-suit': { bodiceFit: 1.02, waistHeight: 0, skirtFullness: 0.9, skirtLength: 0.95, skirtDrape: 0.5, bustleAmount: 0, sleeveVolume: 0.54, sleeveLength: 1.02, collarHeight: 0.90, collarSpread: 0.92, buttonCount: 5, buttonSpacing: 0.90 },
 };
 
 function clamped(definitions, id, value) {
@@ -32,17 +36,20 @@ function jitter(random, amount) {
 }
 
 function outfitFor(patient, random) {
-  if (patient.clinical.flags.includes('mourning') && random.chance(0.86)) return 'mourning-dress';
-  const laboring = ['domestic-servant', 'laundress', 'seamstress', 'factory-worker'].includes(patient.social.occupationId);
+  if (patient.clinical.flags.includes('mourning') && random.chance(0.86)) {
+    return patient.identity.sex === 'male' ? 'mens-mourning-suit' : 'mourning-dress';
+  }
+  const laboring = ['domestic-servant', 'laundress', 'seamstress', 'factory-worker', 'laborer', 'porter', 'railroad-worker', 'skilled-tradesman'].includes(patient.social.occupationId);
   const candidates = OUTFIT_RULES.filter((outfit) => outfit.classes.includes(patient.social.classId)
-    && patient.identity.age <= (outfit.maxAge ?? 120) && outfit.id !== 'mourning-dress');
-  return random.weighted(candidates, (outfit) => outfit.weight * (laboring && outfit.id === 'working-day' ? 3.5 : 1)).id;
+    && (!outfit.sexes || outfit.sexes.includes(patient.identity.sex))
+    && patient.identity.age <= (outfit.maxAge ?? 120) && !['mourning-dress', 'mens-mourning-suit'].includes(outfit.id));
+  return random.weighted(candidates, (outfit) => outfit.weight * (laboring && ['working-day', 'mens-working-clothes'].includes(outfit.id) ? 3.5 : 1)).id;
 }
 
 function paletteFor(outfit, random) {
-  if (outfit === 'mourning-dress') return random.pick(DRESS_PALETTES.mourning);
-  if (outfit === 'fashionable-1896' || outfit === 'visiting-dress') return random.pick(DRESS_PALETTES.fashionable);
-  if (outfit === 'working-day') return random.pick(DRESS_PALETTES.working);
+  if (outfit === 'mourning-dress' || outfit === 'mens-mourning-suit') return random.pick(DRESS_PALETTES.mourning);
+  if (['fashionable-1896', 'visiting-dress', 'mens-formal-suit'].includes(outfit)) return random.pick(DRESS_PALETTES.fashionable);
+  if (outfit === 'working-day' || outfit === 'mens-working-clothes') return random.pick(DRESS_PALETTES.working);
   return random.pick(DRESS_PALETTES.sober);
 }
 
@@ -91,6 +98,7 @@ function descriptionFor(patient) {
 }
 
 const FACE_IDENTITY_IDS = Object.freeze([
+  'gender', 'african', 'asian', 'caucasian',
   'headShapeStrength', ...FACE_VALUE_IDS, ...FACE_DETAIL_IDS, 'browHeight', 'faceAsymmetry',
 ]);
 
@@ -126,21 +134,22 @@ export function patientToCharacterPreset(patient, basePreset, definitions, optio
   const performanceRandom = createRandom(Number(options.performanceSeed ?? patient.seed), 'appearance.performance');
   const origin = getOriginProfile(patient.identity.origin.id);
   const surfaceAge = skinAge(patient.identity.age);
+  const female = patient.identity.sex === 'female';
 
   values.seed = appearanceSeed;
-  values.gender = clamped(definitions, 'gender', 0.04 + jitter(bodyRandom, 0.05));
+  values.gender = clamped(definitions, 'gender', (female ? 0.06 : 0.94) + jitter(bodyRandom, 0.045));
   values.age = clamped(definitions, 'age', ageMorph(patient.identity.age));
   values.height = clamped(definitions, 'height', 0.48 + jitter(bodyRandom, 0.28));
   values.weight = clamped(definitions, 'weight', bodyMass(patient, bodyRandom));
-  const laboring = ['domestic-servant', 'laundress', 'factory-worker'].includes(patient.social.occupationId);
-  values.muscle = clamped(definitions, 'muscle', 0.34 + (laboring ? 0.09 : 0) + jitter(bodyRandom, 0.18));
+  const laboring = ['domestic-servant', 'laundress', 'factory-worker', 'laborer', 'porter', 'railroad-worker', 'skilled-tradesman'].includes(patient.social.occupationId);
+  values.muscle = clamped(definitions, 'muscle', (female ? 0.30 : 0.46) + (laboring ? 0.09 : 0) + jitter(bodyRandom, 0.16));
   values.proportions = clamped(definitions, 'proportions', 0.49 + jitter(bodyRandom, 0.16));
-  values.shoulderWidth = clamped(definitions, 'shoulderWidth', -0.1 + jitter(bodyRandom, 0.24));
+  values.shoulderWidth = clamped(definitions, 'shoulderWidth', (female ? -0.12 : 0.12) + jitter(bodyRandom, 0.20));
   values.torsoLength = clamped(definitions, 'torsoLength', 0.02 + jitter(bodyRandom, 0.22));
   values.mhrNeckLength = clamped(definitions, 'mhrNeckLength', jitter(bodyRandom, 0.28));
   values.mhrUpperArmLength = clamped(definitions, 'mhrUpperArmLength', jitter(bodyRandom, 0.32));
   values.mhrLowerArmLength = clamped(definitions, 'mhrLowerArmLength', jitter(bodyRandom, 0.32));
-  values.mhrHipWidth = clamped(definitions, 'mhrHipWidth', jitter(bodyRandom, 0.30));
+  values.mhrHipWidth = clamped(definitions, 'mhrHipWidth', (female ? 0.10 : -0.08) + jitter(bodyRandom, 0.26));
   values.mhrUpperLegLength = clamped(definitions, 'mhrUpperLegLength', jitter(bodyRandom, 0.34));
   values.mhrLowerLegLength = clamped(definitions, 'mhrLowerLegLength', jitter(bodyRandom, 0.34));
   values.mhrFootLength = clamped(definitions, 'mhrFootLength', jitter(bodyRandom, 0.25));
@@ -165,6 +174,7 @@ export function patientToCharacterPreset(patient, basePreset, definitions, optio
   values.faceAsymmetry = clamped(definitions, 'faceAsymmetry', 0.055 + Math.abs(jitter(faceRandom, 0.08)));
 
   const hairCandidates = HAIR_STYLES.filter((style) => style.classes.includes(patient.social.classId)
+    && (!style.sexes || style.sexes.includes(patient.identity.sex))
     && patient.identity.age <= (style.maxAge ?? 120));
   values.hairStyle = hairRandom.weighted(hairCandidates, (style) => hairStyleWeight(style, patient.identity.age)).id;
   values.hairColor = hairRandom.pick(origin.hairColors);
@@ -230,6 +240,14 @@ export function patientToCharacterPreset(patient, basePreset, definitions, optio
     ...patient,
     appearance: {
       seed: appearanceSeed,
+      sex: patient.identity.sex,
+      mhrIdentity: {
+        version: 1,
+        seed: appearanceSeed,
+        presentation: values.gender,
+        ancestry: { african: values.african, asian: values.asian, caucasian: values.caucasian },
+      },
+      wardrobeSex: patient.identity.sex,
       faceSignatureSeed: appearanceSeed,
       restingFace: generateRestingFaceSignature(appearanceSeed),
       faceArchetype: face.id, bodyMass: values.weight, stature: values.height,

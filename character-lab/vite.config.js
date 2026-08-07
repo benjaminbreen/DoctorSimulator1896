@@ -1,15 +1,30 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { createReadStream } from 'node:fs';
 import { access, copyFile, mkdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { generateMhrRuntime } from '../scripts/characters/generate-mhr.mjs';
 
 const labRoot = import.meta.dirname;
 const projectRoot = path.resolve(labRoot, '..');
 const generatedDir = path.join(labRoot, '.generated');
 const cacheDir = path.join(generatedDir, 'cache');
+const mhrRuntimeDir = path.join(generatedDir, 'runtime', 'mhr');
 const pipelineVersion = 'renderer-a-mpfb-v6-comparison-engines';
 const blender = process.env.BLENDER || '/Applications/Blender.app/Contents/MacOS/Blender';
 let activeGeneration = null;
+let activeMhrGeneration = null;
+
+function validatePreset(preset) {
+  if (!preset?.id || !preset?.values) throw new Error('Preset must contain id and values');
+  if (!/^[a-z0-9-]+$/.test(preset.id)) throw new Error('Preset id may contain only lowercase letters, numbers, and hyphens');
+}
+
+async function cacheMhrRuntime(preset) {
+  validatePreset(preset);
+  await mkdir(mhrRuntimeDir, { recursive: true });
+  return generateMhrRuntime({ preset, output: path.join(mhrRuntimeDir, `${preset.id}.glb`) });
+}
 
 function readJsonBody(request) {
   return new Promise((resolve, reject) => {
@@ -44,6 +59,37 @@ function characterRegenerationPlugin() {
   return {
     name: 'character-regeneration',
     configureServer(server) {
+      server.middlewares.use('/generated/mhr', (request, response) => {
+        const filename = path.basename((request.url || '').split('?')[0]);
+        if (!/^[a-z0-9-]+\.glb$/.test(filename)) {
+          response.statusCode = 400; response.end('Invalid generated model path'); return;
+        }
+        response.setHeader('Content-Type', 'model/gltf-binary');
+        createReadStream(path.join(mhrRuntimeDir, filename))
+          .on('error', () => { if (!response.headersSent) response.statusCode = 404; response.end(); })
+          .pipe(response);
+      });
+      server.middlewares.use('/api/generate-mhr', async (request, response) => {
+        response.setHeader('Content-Type', 'application/json');
+        if (request.method !== 'POST') {
+          response.statusCode = 405; response.end(JSON.stringify({ error: 'POST required' })); return;
+        }
+        if (activeMhrGeneration) {
+          response.statusCode = 409; response.end(JSON.stringify({ error: 'MHR is already caching a character' })); return;
+        }
+        const started = performance.now();
+        try {
+          const preset = await readJsonBody(request);
+          activeMhrGeneration = cacheMhrRuntime(preset);
+          const result = await activeMhrGeneration;
+          response.end(JSON.stringify({ ok: true, ...result, output: `/generated/mhr/${preset.id}.glb`, seconds: (performance.now() - started) / 1000 }));
+        } catch (error) {
+          server.config.logger.error(error.stack || error.message);
+          response.statusCode = 500; response.end(JSON.stringify({ error: error.message }));
+        } finally {
+          activeMhrGeneration = null;
+        }
+      });
       server.middlewares.use('/api/regenerate', async (request, response) => {
         response.setHeader('Content-Type', 'application/json');
         if (request.method !== 'POST') {
@@ -55,8 +101,7 @@ function characterRegenerationPlugin() {
         const started = performance.now();
         try {
           const preset = await readJsonBody(request);
-          if (!preset?.id || !preset?.values) throw new Error('Preset must contain id and values');
-          if (!/^[a-z0-9-]+$/.test(preset.id)) throw new Error('Preset id may contain only lowercase letters, numbers, and hyphens');
+          validatePreset(preset);
           await mkdir(cacheDir, { recursive: true });
           const temporaryPreset = path.join(generatedDir, `${preset.id}.json`);
           const temporaryModel = path.join(generatedDir, `${preset.id}.glb`);
@@ -74,7 +119,8 @@ function characterRegenerationPlugin() {
           }
           await copyFile(cachedModel, publicModel);
           await rename(temporaryPreset, publicPreset);
-          response.end(JSON.stringify({ ok: true, cached, signature, seconds: (performance.now() - started) / 1000, log: log.slice(-1200) }));
+          const mhr = await cacheMhrRuntime(preset);
+          response.end(JSON.stringify({ ok: true, cached, signature, mhr, seconds: (performance.now() - started) / 1000, log: log.slice(-1200) }));
         } catch (error) {
           server.config.logger.error(error.stack || error.message);
           response.statusCode = 500;

@@ -27,9 +27,10 @@ function generationLabel(generation) {
   return 'from an established New York family';
 }
 
-function selectOccupation(random, socialClass, age, maritalStatus) {
+function selectOccupation(random, socialClass, age, maritalStatus, sex) {
   const candidates = OCCUPATIONS.filter((occupation) => occupation.classes.includes(socialClass.id)
-    && age >= (occupation.minAge ?? 0) && age <= (occupation.maxAge ?? 120));
+    && age >= (occupation.minAge ?? 0) && age <= (occupation.maxAge ?? 120)
+    && (!occupation.sexes || occupation.sexes.includes(sex)));
   return random.weighted(candidates, (occupation) => {
     if (occupation.id !== 'household') return occupation.weight;
     if (maritalStatus === 'married' || maritalStatus === 'widowed') return occupation.weight * 1.8;
@@ -37,8 +38,8 @@ function selectOccupation(random, socialClass, age, maritalStatus) {
   });
 }
 
-function householdFor(random, age, maritalStatus, socialClass) {
-  const spouseOccupation = maritalStatus === 'married' || maritalStatus === 'widowed'
+function householdFor(random, age, maritalStatus, socialClass, sex) {
+  const spouseOccupation = sex === 'female' && (maritalStatus === 'married' || maritalStatus === 'widowed')
     ? random.pick(SPOUSE_OCCUPATIONS[socialClass.id]) : null;
   let children = 0;
   if ((maritalStatus === 'married' || maritalStatus === 'widowed') && age >= 22) {
@@ -47,6 +48,17 @@ function householdFor(random, age, maritalStatus, socialClass) {
   }
   const dependents = children + (random.chance(socialClass.id === 'sponsored' ? 0.32 : 0.13) ? 1 : 0);
   return { maritalStatus, spouseOccupation, spouseDeceased: maritalStatus === 'widowed', children, dependents };
+}
+
+function textForSex(value, sex) {
+  if (sex !== 'male') return value;
+  return value
+    .replaceAll('dependent upon her', 'dependent upon him')
+    .replaceAll('employing her', 'employing him')
+    .replaceAll('her husband', 'his wife')
+    .replaceAll('elder sister', 'elder brother')
+    .replace(/\bshe\b/g, 'he')
+    .replace(/\bher\b/g, 'his');
 }
 
 function clinicalPresentation(random, context) {
@@ -58,7 +70,7 @@ function clinicalPresentation(random, context) {
     id: source.id,
     periodCategory: source.periodCategory,
     theme: source.theme,
-    presentingComplaint: random.pick(source.complaints),
+    presentingComplaint: textForSex(random.pick(source.complaints), context.sex),
     symptoms: [...source.symptoms],
     duration: random.weighted(DURATION_BANDS).label,
     severity,
@@ -78,22 +90,24 @@ export function generatePatient(options = {}) {
   const socialRandom = createRandom(seed, 'social');
   const clinicalRandom = createRandom(seed, 'clinical');
 
+  const sampledSex = identityRandom.chance(0.5) ? 'female' : 'male';
+  const sex = options.sex === 'female' || options.sex === 'male' ? options.sex : sampledSex;
   const age = ageForPatient(identityRandom);
   const socialClass = socialRandom.weighted(CLINIC_CLASSES);
   const origin = identityRandom.weighted(ORIGIN_PROFILES, (profile) => profile.cityWeight * profile.access[socialClass.id]);
   const generation = pickPairs(identityRandom, origin.generations);
-  const givenName = identityRandom.pick(origin.givenNames);
+  const givenName = identityRandom.pick(sex === 'male' ? origin.maleGivenNames : origin.givenNames);
   const familyName = identityRandom.pick(origin.surnames);
   const maritalStatus = pickPairs(socialRandom, maritalWeightsForAge(age));
-  const title = maritalStatus === 'single' ? 'Miss' : 'Mrs.';
-  const household = householdFor(socialRandom, age, maritalStatus, socialClass);
-  const occupation = selectOccupation(socialRandom, socialClass, age, maritalStatus);
+  const title = sex === 'male' ? 'Mr.' : maritalStatus === 'single' ? 'Miss' : 'Mrs.';
+  const household = householdFor(socialRandom, age, maritalStatus, socialClass, sex);
+  const occupation = selectOccupation(socialRandom, socialClass, age, maritalStatus, sex);
   const payer = pickPairs(socialRandom, socialClass.payer);
-  const referralSource = socialRandom.pick(REFERRAL_SOURCES[payer]);
-  const presentation = clinicalPresentation(clinicalRandom, { age, maritalStatus, socialClass: socialClass.id });
+  const referralSource = textForSex(socialRandom.pick(REFERRAL_SOURCES[payer]), sex);
+  const presentation = clinicalPresentation(clinicalRandom, { age, maritalStatus, socialClass: socialClass.id, sex });
   const residence = socialRandom.pick(RESIDENCES[socialClass.id]);
 
-  const householdPosition = occupation.id === 'household'
+  const householdPosition = sex === 'female' && occupation.id === 'household'
     ? household.spouseOccupation
       ? `${household.spouseDeceased ? 'widow' : 'wife'} of a ${household.spouseOccupation}`
       : 'woman of independent household'
@@ -104,7 +118,7 @@ export function generatePatient(options = {}) {
     seed,
     setting: { city: 'New York', year: YEAR, month: 3, clinicType: 'private nervous-disorders specialist' },
     identity: {
-      sex: 'female', age, birthYear: YEAR - age, givenName, familyName, title,
+      sex, age, birthYear: YEAR - age, givenName, familyName, title,
       displayName: `${title} ${familyName}`,
       fullName: `${title} ${givenName} ${familyName}`,
       origin: { id: origin.id, label: origin.label, generation, generationLabel: generationLabel(generation) },

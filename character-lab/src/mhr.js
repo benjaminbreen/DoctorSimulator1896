@@ -39,6 +39,37 @@ const FEATURE_SPECS = {
   cheekHeight: { region: 'cheeks', vector: () => [0, 1, 0] },
 };
 
+const BODY_FEATURE_SPECS = {
+  shoulderWidth: { region: 'shoulders', vector: (x) => [signed(x), 0, 0] },
+  chestWidth: { region: 'chest', vector: (x) => [signed(x), 0, 0] },
+  chestDepth: { region: 'chestFront', vector: () => [0, 0, 1] },
+  waistWidth: { region: 'waist', vector: (x) => [signed(x), 0, 0] },
+  hipWidth: { region: 'hips', vector: (x) => [signed(x), 0, 0] },
+};
+
+// These are overlapping population centres in anatomical feature space, not
+// categorical face templates. A patient's seed and manual feature controls are
+// applied independently, and mixed ancestry interpolates continuously. The
+// values are deliberately moderate: origin should be represented without
+// making every member of a population look alike.
+const ANCESTRY_FEATURE_CENTRES = Object.freeze({
+  african: Object.freeze({
+    headWidth: 0.10, faceHeight: -0.02, noseWidth: 0.46, noseDepth: -0.08,
+    eyeSpacing: 0.06, mouthDepth: 0.20, cheekVolume: 0.10, cheekHeight: 0.04,
+    chinProminence: 0.08,
+  }),
+  asian: Object.freeze({
+    headWidth: 0.18, faceHeight: -0.08, noseWidth: -0.02, noseDepth: -0.30,
+    eyeSize: -0.10, eyeSpacing: 0.08, eyeDepth: -0.24, cheekVolume: 0.18,
+    cheekHeight: 0.24, chinProminence: -0.05,
+  }),
+  caucasian: Object.freeze({
+    headWidth: -0.06, faceHeight: 0.07, noseWidth: -0.13, noseDepth: 0.18,
+    eyeSpacing: -0.03, eyeDepth: 0.07, mouthDepth: -0.07, cheekVolume: -0.05,
+    cheekHeight: -0.03, chinProminence: 0.03,
+  }),
+});
+
 const FEATURE_INPUTS = [
   ['headWidth', 'headWidth', 0.62],
   ['faceHeight', 'faceHeight', 0.58],
@@ -99,6 +130,18 @@ function inRegion(name, x, y, z, metrics) {
   return false;
 }
 
+function inBodyRegion(name, x, y, z, metrics) {
+  const vertical = (y - metrics.box.min.y) / metrics.height;
+  const halfWidth = Math.max(0.001, (metrics.box.max.x - metrics.box.min.x) * 0.5);
+  const lateral = Math.abs(x) / halfWidth;
+  if (name === 'shoulders') return vertical > 0.72 && vertical < 0.84 && lateral > 0.16;
+  if (name === 'chest') return vertical > 0.60 && vertical < 0.73 && lateral < 0.72;
+  if (name === 'chestFront') return vertical > 0.60 && vertical < 0.73 && lateral < 0.62 && z > metrics.headCentreZ - 0.03;
+  if (name === 'waist') return vertical > 0.49 && vertical < 0.60 && lateral < 0.72;
+  if (name === 'hips') return vertical > 0.40 && vertical < 0.51 && lateral > 0.10;
+  return false;
+}
+
 function buildFeatureDirections(geometry) {
   const position = geometry.attributes.position;
   const targets = geometry.morphAttributes.position || [];
@@ -126,9 +169,56 @@ function buildFeatureDirections(geometry) {
   return result;
 }
 
+function buildBodyDirections(geometry) {
+  const position = geometry.attributes.position;
+  const targets = geometry.morphAttributes.position || [];
+  const metrics = geometryMetrics(position);
+  const result = {};
+  for (const [name, spec] of Object.entries(BODY_FEATURE_SPECS)) {
+    const scores = new Float32Array(20);
+    let samples = 0;
+    for (let vertex = 0; vertex < position.count; vertex += 1) {
+      const x = position.getX(vertex), y = position.getY(vertex), z = position.getZ(vertex);
+      if (!inBodyRegion(spec.region, x, y, z, metrics)) continue;
+      const [vx, vy, vz] = spec.vector(x, y, z, metrics);
+      for (let component = 0; component < 20; component += 1) {
+        const target = targets[component];
+        if (!target) continue;
+        scores[component] += target.getX(vertex) * vx + target.getY(vertex) * vy + target.getZ(vertex) * vz;
+      }
+      samples += 1;
+    }
+    const length = Math.hypot(...scores) || 1;
+    for (let component = 0; component < scores.length; component += 1) scores[component] /= length;
+    result[name] = scores;
+    result[name].samples = samples;
+  }
+  return result;
+}
+
 function addDirection(weights, direction, amount) {
   if (!direction || !Number.isFinite(amount) || amount === 0) return;
   for (let index = 0; index < 20; index += 1) weights[20 + index] += direction[index] * amount;
+}
+
+function addBodyDirection(weights, direction, amount) {
+  if (!direction || !Number.isFinite(amount) || amount === 0) return;
+  for (let index = 0; index < 20; index += 1) weights[index] += direction[index] * amount;
+}
+
+function normalizedAncestry(values) {
+  const raw = [Number(values.african) || 0, Number(values.asian) || 0, Number(values.caucasian) || 0]
+    .map((value) => Math.max(0, value));
+  const total = raw.reduce((sum, value) => sum + value, 0) || 1;
+  return { african: raw[0] / total, asian: raw[1] / total, caucasian: raw[2] / total };
+}
+
+export function mhrSemanticProfile(values) {
+  return {
+    version: 1,
+    presentation: bipolar(values.gender ?? 0.5, 0, 1),
+    ancestry: normalizedAncestry(values),
+  };
 }
 
 function seededIdentity(seed) {
@@ -143,14 +233,24 @@ function identityWeights(seed, values, directions) {
   const weights = seededIdentity(seed);
   const mass = bipolar(values.weight ?? 0.5, 0.2, 0.82);
   const muscle = bipolar(values.muscle ?? 0.35, 0.18, 0.78);
-  const presentation = bipolar(values.gender ?? 0.5, 0, 1);
+  const semantic = mhrSemanticProfile(values);
+  const presentation = semantic.presentation;
   // Component 0 is the dominant measured torso-depth/overall-volume mode;
   // component 1 primarily changes waist/hip breadth.  Keep the adjustments
   // inside the model's documented typical coefficient range.
   weights[0] += mass * 1.15 + muscle * 0.16;
-  weights[1] += mass * 0.34 - presentation * 0.24;
+  weights[1] += mass * 0.34 - presentation * 0.20;
   weights[10] += muscle * 0.22 + presentation * 0.10;
   weights[12] += muscle * 0.28 + presentation * 0.12;
+
+  // Project a visible female/androgynous/male continuum into MHR's actual
+  // body PCA space. This supplements skeletal spacing with surface anatomy;
+  // lowering muscle alone cannot produce a female body from a neutral mean.
+  addBodyDirection(weights, directions.body.shoulderWidth, presentation * 0.95);
+  addBodyDirection(weights, directions.body.chestWidth, presentation * 0.52);
+  addBodyDirection(weights, directions.body.chestDepth, presentation * -1.20);
+  addBodyDirection(weights, directions.body.waistWidth, presentation * 0.52);
+  addBodyDirection(weights, directions.body.hipWidth, presentation * -1.05);
 
   for (const [input, feature, gain] of FEATURE_INPUTS) {
     const amount = Number(values[input]) || 0;
@@ -167,11 +267,25 @@ function identityWeights(seed, values, directions) {
   addDirection(weights, directions.headWidth, width * archetypeStrength);
   addDirection(weights, directions.faceHeight, height * archetypeStrength);
 
-  // Presentation and age receive only restrained anatomical tendencies.  Skin
-  // surface treatment carries most apparent-age information; these are not
-  // advertised as demographic labels on any individual MHR component.
-  addDirection(weights, directions.jawWidth, presentation * 0.25);
-  addDirection(weights, directions.faceHeight, presentation * 0.10);
+  addDirection(weights, directions.jawWidth, presentation * 0.95);
+  addDirection(weights, directions.faceHeight, presentation * 0.38);
+  addDirection(weights, directions.chinProminence, presentation * 0.52);
+  addDirection(weights, directions.browHeight, presentation * -0.34);
+  addDirection(weights, directions.cheekVolume, presentation * -0.35);
+  addDirection(weights, directions.noseWidth, presentation * 0.20);
+  addDirection(weights, directions.eyeSize, presentation * -0.20);
+  addDirection(weights, directions.mouthDepth, presentation * -0.12);
+
+  // Link the procedural origin record and the three editable ancestry sliders
+  // to shape as well as pigmentation. Each target is a blended population
+  // centre; independent seed and feature variation remains larger locally.
+  for (const feature of Object.keys(ANCESTRY_FEATURE_CENTRES.african)) {
+    const target = semantic.ancestry.african * (ANCESTRY_FEATURE_CENTRES.african[feature] || 0)
+      + semantic.ancestry.asian * (ANCESTRY_FEATURE_CENTRES.asian[feature] || 0)
+      + semantic.ancestry.caucasian * (ANCESTRY_FEATURE_CENTRES.caucasian[feature] || 0);
+    addDirection(weights, directions[feature], target * 1.18);
+  }
+
   const age = bipolar(values.age ?? 0.7, 0.5, 0.9);
   addDirection(weights, directions.cheekVolume, age * -0.12);
   addDirection(weights, directions.chinProminence, age * 0.07);
@@ -195,6 +309,7 @@ function captureRest(bones) {
 
 export const MHR_LIVE_IDENTITY_IDS = new Set([
   'seed', 'gender', 'age', 'height', 'weight', 'muscle', 'proportions', 'shoulderWidth', 'torsoLength',
+  'african', 'asian', 'caucasian',
   'headShape', 'headShapeStrength', 'headWidth', 'faceHeight', 'headDepth', 'noseWidth', 'noseLength',
   'noseVolume', 'noseDepth', 'noseBridge', 'nostrilWidth', 'jawWidth', 'chinHeight', 'chinProminence',
   'chinPrognathism', 'eyeSize', 'eyeSpacing', 'eyeVerticalPosition', 'eyeDepth', 'browHeight', 'mouthWidth',
@@ -207,12 +322,14 @@ export const MHR_LIVE_IDENTITY_IDS = new Set([
 export function createMhrController(root, values) {
   const mesh = root.getObjectByName('body_mesh');
   if (!mesh?.isSkinnedMesh || !mesh.geometry.morphAttributes.position?.length) return null;
+  const identityBaked = root.userData.mhrIdentityBaked === true || mesh.userData.mhrIdentityBaked === true;
   const geometry = mesh.geometry;
   const basePosition = new Float32Array(geometry.attributes.position.array);
   const baseNormal = geometry.attributes.normal ? new Float32Array(geometry.attributes.normal.array) : null;
   const morphPositions = geometry.morphAttributes.position;
   const morphNormals = geometry.morphAttributes.normal || [];
-  const directions = buildFeatureDirections(geometry);
+  const directions = identityBaked ? { body: {} } : buildFeatureDirections(geometry);
+  if (!identityBaked) directions.body = buildBodyDirections(geometry);
   const bones = collectBones(root);
   const rest = captureRest(bones);
   const rootRestPosition = root.position.clone();
@@ -249,6 +366,10 @@ export function createMhrController(root, values) {
   }
 
   function applyIdentity(nextValues, force = false) {
+    if (identityBaked) {
+      mesh.userData.mhrSemanticProfile ??= root.userData.semanticProfile || mhrSemanticProfile(nextValues);
+      return false;
+    }
     const signature = [...MHR_LIVE_IDENTITY_IDS].map((id) => nextValues[id]).join('|');
     if (!force && signature === identitySignature) return false;
     identitySignature = signature;
@@ -277,6 +398,7 @@ export function createMhrController(root, values) {
       if (index != null) mesh.morphTargetInfluences[index] = 0;
     }
     mesh.userData.mhrIdentityWeights = weights;
+    mesh.userData.mhrSemanticProfile = mhrSemanticProfile(nextValues);
     return true;
   }
 
@@ -287,8 +409,8 @@ export function createMhrController(root, values) {
     const proportion = bipolar(nextValues.proportions ?? 0.5, 0.25, 0.75);
     const torso = 1 + (Number(nextValues.torsoLength) || 0) * 0.075 - proportion * 0.025;
     const leg = 1 + proportion * 0.045;
-    const shoulder = 1 + (Number(nextValues.shoulderWidth) || 0) * 0.09 + presentation * 0.035;
-    const hip = 1 - presentation * 0.028 + (Number(nextValues.mhrHipWidth) || 0) * 0.045;
+    const shoulder = 1 + (Number(nextValues.shoulderWidth) || 0) * 0.09 + presentation * 0.090;
+    const hip = 1 - presentation * 0.090 + (Number(nextValues.mhrHipWidth) || 0) * 0.045;
     const neck = 1 + (Number(nextValues.mhrNeckLength) || 0) * 0.04;
     const upperArm = 1 + (Number(nextValues.mhrUpperArmLength) || 0) * 0.08;
     const lowerArm = 1 + (Number(nextValues.mhrLowerArmLength) || 0) * 0.08;
@@ -398,6 +520,7 @@ export function createMhrController(root, values) {
   applyValues(values, { forceIdentity: true, snapPose: true });
   return {
     mode: 'mhr-rig', mesh, bones, directions, applyValues, update, playGesture,
+    identityBaked,
     captureRest() {}, snapToRest() { applyRig(values, currentSeated); },
     get seatedBlend() { return currentSeated; },
   };

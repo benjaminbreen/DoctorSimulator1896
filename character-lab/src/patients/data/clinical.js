@@ -71,7 +71,7 @@ export const PRESENTATIONS = [
     performance: { posture: -0.2, breathing: 0.85, breathingRate: 11, fidget: 1.25, gazeDrift: 1.45, weightShift: 0.7, tremor: 0.85, handTension: 0.58, gestureSpeed: 0.84 },
   },
   {
-    id: 'postpartum-disturbance', weight: 5, ageRange: [19, 43], requires: ({ maritalStatus }) => maritalStatus === 'married' || maritalStatus === 'widowed',
+    id: 'postpartum-disturbance', weight: 5, ageRange: [19, 43], requires: ({ maritalStatus, sex }) => sex === 'female' && (maritalStatus === 'married' || maritalStatus === 'widowed'),
     periodCategory: 'puerperal mental disturbance', theme: 'postpartum mood or psychotic symptoms',
     complaints: ['terror, sleeplessness, and confusion since childbirth', 'a conviction that she is unfit to care for her infant', 'alternations of agitation and profound withdrawal following confinement'],
     symptoms: ['sleep loss', 'fear', 'confusion', 'withdrawal'], affects: [['weary', 3], ['anxious', 3], ['sad', 2], ['guarded', 1]],
@@ -83,4 +83,3 @@ export const DURATION_BANDS = [
   { label: 'several weeks', weight: 3 }, { label: 'two to six months', weight: 5 },
   { label: 'about a year', weight: 3 }, { label: 'several years, intermittently', weight: 2 },
 ];
-

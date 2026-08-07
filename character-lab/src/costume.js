@@ -8,15 +8,15 @@ import { createAuthoredHairSystem } from './hair/authored.js';
    The caller must snap the skeleton to rest before rebuild(). */
 
 const BONE_CANDIDATES = {
-  pelvis: ['pelvis'], spine01: ['spine_01'], spine02: ['spine_02'], spine03: ['spine_03'],
-  neck: ['neck_01', 'neck'], head: ['head'],
-  clavicleL: ['clavicle_l'], clavicleR: ['clavicle_r'],
-  upperarmL: ['upperarm_l'], upperarmR: ['upperarm_r'],
-  lowerarmL: ['lowerarm_l'], lowerarmR: ['lowerarm_r'],
-  handL: ['hand_l'], handR: ['hand_r'],
-  thighL: ['thigh_l'], thighR: ['thigh_r'],
-  calfL: ['calf_l'], calfR: ['calf_r'],
-  footL: ['foot_l'], footR: ['foot_r'],
+  pelvis: ['pelvis', 'c_spine0'], spine01: ['spine_01', 'c_spine0'], spine02: ['spine_02', 'c_spine1'], spine03: ['spine_03', 'c_spine2'],
+  neck: ['neck_01', 'neck', 'c_neck'], head: ['head', 'c_head'],
+  clavicleL: ['clavicle_l', 'l_clavicle'], clavicleR: ['clavicle_r', 'r_clavicle'],
+  upperarmL: ['upperarm_l', 'l_uparm'], upperarmR: ['upperarm_r', 'r_uparm'],
+  lowerarmL: ['lowerarm_l', 'l_lowarm'], lowerarmR: ['lowerarm_r', 'r_lowarm'],
+  handL: ['hand_l', 'l_wrist'], handR: ['hand_r', 'r_wrist'],
+  thighL: ['thigh_l', 'l_upleg'], thighR: ['thigh_r', 'r_upleg'],
+  calfL: ['calf_l', 'l_lowleg'], calfR: ['calf_r', 'r_lowleg'],
+  footL: ['foot_l', 'l_foot'], footR: ['foot_r', 'r_foot'],
 };
 
 export function findBones(model) {
@@ -160,9 +160,14 @@ export function createCostume(scene, bones, model = null) {
       'mourning-dress': { sleeve: 0.92, skirt: 1.04, bustle: 0.45, collar: 1.25, buttons: 2, apron: false, band: true },
       'working-day': { sleeve: 0.62, skirt: 0.82, bustle: 0.18, collar: 0.82, buttons: -1, apron: true, band: false },
       'visiting-dress': { sleeve: 1.28, skirt: 1.18, bustle: 1.05, collar: 1.08, buttons: 1, apron: false, band: true },
+      'mens-sack-suit': { sleeve: 0.70, skirt: 0.9, bustle: 0, collar: 0.85, buttons: -1, apron: false, band: false },
+      'mens-formal-suit': { sleeve: 0.64, skirt: 0.9, bustle: 0, collar: 1.08, buttons: 0, apron: false, band: true },
+      'mens-working-clothes': { sleeve: 0.56, skirt: 0.9, bustle: 0, collar: 0.66, buttons: -1, apron: false, band: false },
+      'mens-mourning-suit': { sleeve: 0.66, skirt: 0.9, bustle: 0, collar: 1.04, buttons: 0, apron: false, band: true },
     };
     const dressStyle = styles[v.outfitStyle] || styles['conservative-day'];
     const massFactor = 1 + ((v.weight ?? 0.48) - 0.48) * 0.42;
+    const masculine = (v.gender ?? 0.5) >= 0.55;
 
     const P = world(bones.pelvis); const H = world(bones.head);
     const N = bones.neck ? world(bones.neck) : H.clone().add(new THREE.Vector3(0, -0.08, 0));
@@ -178,12 +183,30 @@ export function createCostume(scene, bones, model = null) {
     const up = new THREE.Vector3(0, 1, 0);
     const right = new THREE.Vector3().crossVectors(up, forward).normalize();
 
+    /* --- bodice / jacket shell ---
+       MPFB carries an authored base garment, but MHR is a bare body. This
+       lightweight shell gives both engines a complete period silhouette until
+       fitted, skinned production garments replace the procedural foundation. */
+    const torsoGeo = ringGeometry(11, 36, (t) => {
+      const centre = N.clone().lerp(P, t).addScaledVector(forward, masculine ? 0.006 : 0.014 * Math.sin(t * Math.PI));
+      const chest = Math.sin(t * Math.PI);
+      const shoulderTaper = 1 - Math.max(0, 0.16 - t) * 1.4;
+      return {
+        center: centre,
+        rx: massFactor * shoulderTaper * ((masculine ? 0.175 : 0.158) + chest * (masculine ? 0.032 : 0.026)),
+        rz: massFactor * ((masculine ? 0.118 : 0.108) + chest * (masculine ? 0.022 : 0.032)),
+        forward,
+        back: masculine ? 0.005 : 0,
+      };
+    });
+    add(masculine ? 'Costume_SackJacket' : 'Costume_Bodice', torsoGeo, materials.dress, bones.spine02 || bones.pelvis);
+
     /* --- skirt --- */
     const waistY = P.y + 0.105 + (v.waistHeight || 0) * 0.4;
     const hemY = footY + 0.045 + (1.0 - v.skirtLength) * 0.55;
     const lap = knee.clone().addScaledVector(forward, 0.055);
     const drape = (v.skirtDrape ?? 0.6) * (seated ? 1 : 0);
-    const skirtGeo = ringGeometry(14, 44, (t) => {
+    const skirtGeo = !masculine && ringGeometry(14, 44, (t) => {
       const center = new THREE.Vector3();
       let rx; let rz; let back = 0;
       if (seated) {
@@ -205,7 +228,21 @@ export function createCostume(scene, bones, model = null) {
       }
       return { center, rx, rz, forward, back };
     });
-    add('Costume_Skirt', skirtGeo, materials.dress, bones.pelvis);
+    if (skirtGeo) add('Costume_Skirt', skirtGeo, materials.dress, bones.pelvis);
+
+    /* --- men's trousers --- */
+    if (masculine) for (const side of ['L', 'R']) {
+      const thigh = bones[`thigh${side}`]; const calf = bones[`calf${side}`]; const foot = bones[`foot${side}`];
+      if (!thigh || !calf) continue;
+      const hipAt = world(thigh); const kneeAt = world(calf);
+      const thighGeo = tubeAlong(hipAt, kneeAt, (t) => massFactor * THREE.MathUtils.lerp(0.085, 0.071, t), { radialSegments: 18, lengthSegments: 9 });
+      add(`Costume_TrouserThigh_${side}`, thighGeo, materials.dress, thigh);
+      if (foot) {
+        const ankleAt = world(foot);
+        const shinGeo = tubeAlong(kneeAt, ankleAt, (t) => massFactor * THREE.MathUtils.lerp(0.071, 0.058, t), { radialSegments: 18, lengthSegments: 9 });
+        add(`Costume_TrouserShin_${side}`, shinGeo, materials.dress, calf);
+      }
+    }
 
     /* --- sleeves --- */
     for (const side of ['L', 'R']) {
@@ -277,6 +314,7 @@ export function createCostume(scene, bones, model = null) {
     dispose,
     materials,
     updateHair: (values) => hairSystem.materials.update(values),
+    invalidateFit: () => hairSystem.invalidateScalp?.(),
     pieces: () => [...pieces, ...hairSystem.pieces().map((mesh) => ({ mesh, bone: bones.head }))],
   };
 }

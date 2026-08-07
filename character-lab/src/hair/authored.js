@@ -52,6 +52,7 @@ export function createAuthoredHairSystem(model) {
     kind: 'authored-mhclo',
     materials: { base: materials[0] || fallbackMaterial, update },
     rebuild: update,
+    invalidateScalp() {},
     dispose: () => fallbackMaterial.dispose(),
     pieces: () => [],
   };

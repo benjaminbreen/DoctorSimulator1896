@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'meshoptimizer';
 import { findBones, createCostume } from './costume.js';
 import { createIdle } from './idle.js';
 import { createExpressions } from './expressions.js';
@@ -336,7 +337,7 @@ async function loadCharacter() {
   ui.fallback.hidden = true;
   const rendererMode = RENDERER_MODES[renderStyle];
   try {
-    const loader = new GLTFLoader();
+    const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
     const gltf = await loader.loadAsync(`${rendererMode.path}?v=${Date.now()}`);
     model = gltf.scene;
     characterRoot.add(model); animationClips = gltf.animations;
@@ -364,6 +365,12 @@ async function loadCharacter() {
     } else if (renderStyle === 'mhr') {
       mhrController = createMhrController(model, preset.values);
       prepareSkinModel(model, preset.values);
+      bones = findBones(model);
+      model.updateMatrixWorld(true);
+      if (bones.pelvis && bones.head) {
+        costume = createCostume(characterRoot, bones, model);
+        costume.rebuild(preset.values);
+      }
       idle = mhrController;
       expressions = createMhrExpressionDebugger(model);
     }
@@ -522,6 +529,12 @@ function applyAll(changedId = null) {
       if (identityChanged) refreshSkinGeometry(model, v);
       updateSkinModel(model, v);
       updateComparisonMaterial(model, v);
+      if (costume) {
+        if (identityChanged) costume.invalidateFit?.();
+        costume.materials.dress.color.set(v.dressColor); setSurfaceFinish(costume.materials.dress, v.fabricRoughness, 1);
+        costume.materials.trim.color.set(v.trimColor); costume.updateHair(v);
+        if (identityChanged || changedId === null || COSTUME_GEOMETRY_IDS.has(changedId) || changedId === 'gender') costumeDirty = true;
+      }
     } else {
       updateComparisonMaterial(model, v);
     }
@@ -700,7 +713,19 @@ async function newRandomPatient() {
     applyAll();
     regenerationNeeded = true;
     ui.regenerate?.classList.add('needed');
-    ui.status.textContent = `New Meta MHR patient applied live · anatomy distance ${best.anatomyDistance.toFixed(2)} · renderer A rebuild pending`;
+    ui.status.textContent = `New Meta MHR patient applied live · caching runtime model…`;
+    try {
+      const response = await fetch('/api/generate-mhr', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(preset),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || `MHR cache failed (${response.status})`);
+      ui.status.textContent = `New Meta MHR patient applied · ${(result.bytes / 1_000_000).toFixed(1)} MB runtime ${result.cached ? 'restored from cache' : 'generated'} · renderer A rebuild pending`;
+      ui.status.className = 'status ok';
+    } catch (error) {
+      ui.status.textContent = `Meta MHR applied live; runtime cache failed · ${error.message}`;
+      ui.status.className = 'status warn';
+    }
     return;
   }
   await regenerateCharacter();

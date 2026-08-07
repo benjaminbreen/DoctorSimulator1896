@@ -5,7 +5,7 @@
       "id": "identity", "label": "Identity & build", "mode": "bake",
       "parameters": [
         {"id":"seed","label":"Appearance seed","type":"range","min":1,"max":9999,"step":1,"default":1896},
-        {"id":"gender","label":"Feminine ↔ masculine","type":"range","min":0,"max":1,"step":0.01,"default":0.12},
+        {"id":"gender","label":"Feminine ↔ masculine anatomy","type":"range","min":0,"max":1,"step":0.01,"default":0.12},
         {"id":"age","label":"Apparent age","type":"range","min":0.5,"max":0.9,"step":0.01,"default":0.55},
         {"id":"height","label":"Stature","type":"range","min":0.2,"max":0.8,"step":0.01,"default":0.46},
         {"id":"weight","label":"Body mass","type":"range","min":0.2,"max":0.82,"step":0.01,"default":0.48},
@@ -107,9 +107,9 @@
       ]
     },
     {
-      "id": "dress", "label": "1890s dress", "mode": "live",
+      "id": "dress", "label": "1890s clothing", "mode": "live",
       "parameters": [
-        {"id":"outfitStyle","label":"Dress style","type":"select","options":["conservative-day","fashionable-1896","mourning-dress","working-day","visiting-dress"],"default":"conservative-day"},
+        {"id":"outfitStyle","label":"Outfit style","type":"select","options":["conservative-day","fashionable-1896","mourning-dress","working-day","visiting-dress","mens-sack-suit","mens-formal-suit","mens-working-clothes","mens-mourning-suit"],"default":"conservative-day"},
         {"id":"dressColor","label":"Dress color","type":"color","default":"#171525"},
         {"id":"trimColor","label":"Trim color","type":"color","default":"#4f4333"},
         {"id":"fabricRoughness","label":"Fabric roughness / matte finish","type":"range","min":0.35,"max":1.5,"step":0.01,"default":1.0},
