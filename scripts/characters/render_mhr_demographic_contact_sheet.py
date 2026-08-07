@@ -53,7 +53,7 @@ def skin_material(index, hex_value):
     return material
 
 
-def set_identity(source, weights):
+def set_identity(source, weights, expression_weights=None):
     keys = source.data.shape_keys.key_blocks
     for key in keys:
         if key.name != "Basis":
@@ -64,6 +64,13 @@ def set_identity(source, weights):
             raise RuntimeError(f"MHR master is missing shape_{component}")
         key.slider_min = -3.0
         key.slider_max = 3.0
+        key.value = float(weight)
+    for offset, weight in enumerate(expression_weights or []):
+        key = keys.get(f"shape_{45 + offset}")
+        if key is None:
+            raise RuntimeError(f"MHR master is missing expression shape_{45 + offset}")
+        key.slider_min = -1.0
+        key.slider_max = 1.0
         key.value = float(weight)
 
 
@@ -163,14 +170,14 @@ def main():
     if source is None or source.data.shape_keys is None:
         raise RuntimeError("MHR master did not import with body_mesh shape keys")
 
-    columns = 4
+    columns = int(manifest.get("columns", 4))
     x_spacing = 0.68
     z_spacing = 0.62
     centre_x = (columns - 1) * x_spacing * 0.5
     centre_z = 1.25
     material = label_material()
     for index, entry in enumerate(manifest["entries"]):
-        set_identity(source, entry["identityWeights"])
+        set_identity(source, entry["identityWeights"], entry.get("expressionWeights"))
         bpy.context.view_layer.update()
         column = index % columns
         row = index // columns

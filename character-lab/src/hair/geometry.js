@@ -45,39 +45,75 @@ export function sampleScalp(model, frame) {
   if (!body) return null;
   const AZ = 64;
   const ROWS = 17;
-  const ray = new THREE.Raycaster();
-  ray.far = 0.6;
-  const dir = new THREE.Vector3();
-  const origin = new THREE.Vector3();
-  const samples = [];
-  for (let a = 0; a < AZ; a++) {
-    const azimuth = (a / AZ) * TAU;
-    const column = [];
-    for (let row = 0; row < ROWS; row++) {
-      const t = row / (ROWS - 1);
-      const polar = 0.04 + t * (Math.PI * 0.62);
-      dir.copy(frame.headUp).multiplyScalar(Math.cos(polar))
-        .addScaledVector(frame.forward, Math.sin(polar) * Math.cos(azimuth))
-        .addScaledVector(frame.right, Math.sin(polar) * Math.sin(azimuth));
-      origin.copy(frame.centre).addScaledVector(dir, 0.45);
-      ray.set(origin, dir.clone().negate());
-      const hits = ray.intersectObject(body, false);
-      column.push(hits.length ? hits[0].point.clone() : frame.centre.clone().addScaledVector(dir, 0.088));
+  const radii = Array.from({ length: AZ }, () => new Float32Array(ROWS));
+  const point = new THREE.Vector3();
+  const offset = new THREE.Vector3();
+  body.updateMatrixWorld(true);
+
+  // The old fitter cast 1,088 rays against every triangle in the unaccelerated
+  // body mesh. On MHR that could block the main thread for 15–60 seconds.
+  // Project each already-deformed surface vertex into the same polar grid
+  // instead: O(vertices + grid), topology-independent, and still follows live
+  // identity morphs and skinning through getVertexPosition().
+  const position = body.geometry?.attributes?.position;
+  for (let vertex = 0; vertex < (position?.count || 0); vertex++) {
+    body.getVertexPosition(vertex, point).applyMatrix4(body.matrixWorld);
+    offset.copy(point).sub(frame.centre);
+    const radius = offset.length();
+    if (radius < 0.035 || radius > 0.19) continue;
+    const polar = Math.acos(THREE.MathUtils.clamp(offset.dot(frame.headUp) / radius, -1, 1));
+    const rowValue = (polar - 0.04) / (Math.PI * 0.62) * (ROWS - 1);
+    if (rowValue < -0.5 || rowValue > ROWS - 0.5) continue;
+    const azimuth = Math.atan2(offset.dot(frame.right), offset.dot(frame.forward));
+    const azimuthValue = ((azimuth % TAU) + TAU) % TAU / TAU * AZ;
+    const a = Math.round(azimuthValue) % AZ;
+    const row = THREE.MathUtils.clamp(Math.round(rowValue), 0, ROWS - 1);
+    radii[a][row] = Math.max(radii[a][row], radius);
+  }
+
+  function neighbourRadius(a, row) {
+    for (let distance = 1; distance <= 5; distance++) {
+      let total = 0;
+      let count = 0;
+      for (let da = -distance; da <= distance; da++) {
+        for (let dr = -distance; dr <= distance; dr++) {
+          if (Math.max(Math.abs(da), Math.abs(dr)) !== distance) continue;
+          const candidateRow = row + dr;
+          if (candidateRow < 0 || candidateRow >= ROWS) continue;
+          const candidate = radii[(a + da + AZ) % AZ][candidateRow];
+          if (candidate > 0) { total += candidate; count += 1; }
+        }
+      }
+      if (count) return total / count;
     }
-    samples.push(column);
+    return 0.088;
+  }
+
+  for (let a = 0; a < AZ; a++) for (let row = 0; row < ROWS; row++) {
+    if (radii[a][row] <= 0) radii[a][row] = neighbourRadius(a, row);
   }
 
   // Ears and the nose can be the first ray hit. Clamp those isolated outliers
   // so neither one tents the hair shell away from the skull.
   for (let row = 0; row < ROWS; row++) {
-    const radii = samples.map((column) => column[row].distanceTo(frame.centre)).sort((a, b) => a - b);
-    const median = radii[Math.floor(AZ / 2)];
+    const rowRadii = radii.map((column) => column[row]).sort((a, b) => a - b);
+    const median = rowRadii[Math.floor(AZ / 2)];
     for (let a = 0; a < AZ; a++) {
-      const point = samples[a][row];
-      const distance = point.distanceTo(frame.centre);
-      if (distance > median * 1.20) point.sub(frame.centre).multiplyScalar((median * 1.08) / distance).add(frame.centre);
+      if (radii[a][row] > median * 1.20) radii[a][row] = median * 1.08;
     }
   }
+
+  const direction = new THREE.Vector3();
+  const samples = Array.from({ length: AZ }, (_, a) => {
+    const azimuth = (a / AZ) * TAU;
+    return Array.from({ length: ROWS }, (_, row) => {
+      const polar = 0.04 + (row / (ROWS - 1)) * (Math.PI * 0.62);
+      direction.copy(frame.headUp).multiplyScalar(Math.cos(polar))
+        .addScaledVector(frame.forward, Math.sin(polar) * Math.cos(azimuth))
+        .addScaledVector(frame.right, Math.sin(polar) * Math.sin(azimuth));
+      return frame.centre.clone().addScaledVector(direction, radii[a][row]);
+    });
+  });
   return { samples, AZ, ROWS };
 }
 
@@ -292,6 +328,53 @@ export function buildHairShells(scalp, frame, profile, values) {
   ];
 }
 
+/** Dense fitted scalp layer beneath the directional shells. Streamline patches
+ * intentionally converge and can reveal triangular holes between locks on a
+ * low-density runtime mesh. This cap follows the same sampled scalp and stops
+ * at the same procedural hairline, so gaps read as dark roots rather than bare
+ * skin without changing the visible comb-flow surface. */
+export function buildHairUnderCap(scalp, frame, profile, values) {
+  const columns = scalp.AZ;
+  const rows = 12;
+  const positions = [];
+  const uvs = [];
+  const colors = [];
+  const indices = [];
+  for (let column = 0; column < columns; column++) {
+    const azimuth = column / columns * TAU;
+    // A bowed head exposes the posterior skull. Guarantee nape coverage even
+    // for short profiles so the fitted root layer never ends in a bald dome.
+    const posterior = Math.max(0, -Math.cos(azimuth)) ** 2;
+    const depth = Math.max(hairlineDepth(profile, values, azimuth), posterior * 0.97) * (scalp.ROWS - 1);
+    for (let row = 0; row <= rows; row++) {
+      const t = row / rows;
+      const point = scalpPoint(scalp, azimuth, depth * t);
+      const outward = point.clone().sub(frame.centre).normalize();
+      point.addScaledVector(outward, 0.0022 + hairThickness(profile, values, azimuth, t) * 0.14);
+      positions.push(point.x, point.y, point.z);
+      uvs.push(column / columns, t);
+      const rootTone = 0.78 + 0.18 * smooth(t / 0.30);
+      colors.push(rootTone, rootTone, rootTone);
+    }
+  }
+  const stride = rows + 1;
+  for (let column = 0; column < columns; column++) {
+    const next = (column + 1) % columns;
+    for (let row = 0; row < rows; row++) {
+      const a = column * stride + row;
+      const b = next * stride + row;
+      indices.push(a, b, b + 1, a, b + 1, a + 1);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 function appendRibbon(target, centres, widths, frame, alphaTip = false, colorMultiplier = null) {
   const base = target.positions.length / 3;
   for (let i = 0; i < centres.length; i++) {
@@ -338,7 +421,7 @@ export function buildFlowRibbons(scalp, frame, profile, values) {
     const partClearance = THREE.MathUtils.lerp(0.045, 0.115, values.partWidth ?? 0.28);
     if (profile.part && Math.abs(wrapAngle(azimuth - profile.partAzimuth)) < partClearance) continue;
     const { centres } = buildFlowPath(scalp, frame, profile, values, azimuth, 12);
-    const widths = centres.map(() => 0.0014 + randomAt(seed + 31, ribbon) * 0.0016);
+    const widths = centres.map(() => 0.00075 + randomAt(seed + 31, ribbon) * 0.00085);
     // Natural greying selects complete hairs, weighted toward the temples,
     // rather than turning the whole cap uniformly grey.
     const temple = gauss(Math.abs(wrapAngle(azimuth)) - 1.20, 0.48);

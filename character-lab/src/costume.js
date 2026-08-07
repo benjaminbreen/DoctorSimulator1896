@@ -36,6 +36,86 @@ export function findBones(model) {
 
 const world = (bone, out = new THREE.Vector3()) => bone.getWorldPosition(out);
 
+function primaryBodyMesh(model) {
+  let preferred = null;
+  let largest = null;
+  let largestCount = 0;
+  model?.traverse((object) => {
+    if (!object.isSkinnedMesh || !object.geometry?.attributes?.position) return;
+    const count = object.geometry.attributes.position.count;
+    if (/^(body_mesh|human_body)$/i.test(object.name)) preferred = object;
+    if (count > largestCount) { largest = object; largestCount = count; }
+  });
+  return preferred || largest;
+}
+
+/* Measure the currently posed and morphed body instead of dressing an assumed
+   average torso. The returned ellipses enclose every central torso vertex in
+   each horizontal slice, with enough clearance to prevent z-fighting and
+   body punch-through. */
+export function sampleTorsoFit(model, top, bottom, right, forward, shoulderHalfWidth, slices = 11) {
+  const body = primaryBodyMesh(model);
+  if (!body || slices < 2 || Math.abs(top.y - bottom.y) < 0.001) return null;
+  body.updateMatrixWorld(true);
+  const rows = Array.from({ length: slices }, () => ({ side: 0, front: -Infinity, back: Infinity, samples: 0 }));
+  const point = new THREE.Vector3();
+  const centre = new THREE.Vector3();
+  const relative = new THREE.Vector3();
+  const span = top.y - bottom.y;
+  const lateralLimit = Math.max(0.14, shoulderHalfWidth * 0.94);
+
+  for (let vertex = 0; vertex < body.geometry.attributes.position.count; vertex += 1) {
+    body.getVertexPosition(vertex, point).applyMatrix4(body.matrixWorld);
+    const t = (top.y - point.y) / span;
+    if (t < -0.04 || t > 1.04) continue;
+    centre.copy(top).lerp(bottom, THREE.MathUtils.clamp(t, 0, 1));
+    relative.subVectors(point, centre);
+    const side = relative.dot(right);
+    if (Math.abs(side) > lateralLimit) continue; // exclude arms
+    const depth = relative.dot(forward);
+    const row = rows[Math.round(THREE.MathUtils.clamp(t, 0, 1) * (slices - 1))];
+    row.side = Math.max(row.side, Math.abs(side));
+    row.front = Math.max(row.front, depth);
+    row.back = Math.min(row.back, depth);
+    row.samples += 1;
+  }
+
+  // Neighbouring valid rows fill sparse slices at the neckline and waist.
+  for (let index = 0; index < rows.length; index += 1) {
+    if (rows[index].samples) continue;
+    let nearest = null;
+    for (let radius = 1; radius < rows.length && !nearest; radius += 1) {
+      nearest = rows[index - radius]?.samples ? rows[index - radius]
+        : rows[index + radius]?.samples ? rows[index + radius] : null;
+    }
+    if (nearest) Object.assign(rows[index], nearest);
+  }
+
+  const measured = rows.map((row, index) => {
+    if (!row.samples || !Number.isFinite(row.front) || !Number.isFinite(row.back)) {
+      return { rx: 0.18, rz: 0.13, offset: 0, samples: 0 };
+    }
+    const waistBias = index / (slices - 1);
+    return {
+      rx: row.side + THREE.MathUtils.lerp(0.025, 0.021, waistBias),
+      rz: (row.front - row.back) * 0.5 + 0.025,
+      offset: (row.front + row.back) * 0.5,
+      samples: row.samples,
+    };
+  });
+  // A short smoothing pass removes polygon-to-polygon jitter without ever
+  // shrinking below the original measured envelope.
+  return measured.map((row, index) => {
+    const neighbours = measured.slice(Math.max(0, index - 1), Math.min(measured.length, index + 2));
+    return {
+      rx: Math.max(row.rx, neighbours.reduce((sum, item) => sum + item.rx, 0) / neighbours.length),
+      rz: Math.max(row.rz, neighbours.reduce((sum, item) => sum + item.rz, 0) / neighbours.length),
+      offset: neighbours.reduce((sum, item) => sum + item.offset, 0) / neighbours.length,
+      samples: row.samples,
+    };
+  });
+}
+
 function ringGeometry(rings, segments, ringFn, { capTop = true, capBottom = true } = {}) {
   // ringFn(t) -> { center: Vector3, rx, rz, forward: Vector3, back: number }
   const positions = []; const indices = [];
@@ -126,8 +206,8 @@ export function createCostume(scene, bones, model = null) {
   // generator remains intact as a fallback for older or experimental models.
   const hairSystem = createAuthoredHairSystem(model) || createHairSystem(scene, bones, model);
   const materials = {
-    dress: new THREE.MeshStandardMaterial({ name: 'CostumeDress', color: '#171525', roughness: 0.82 }),
-    trim: new THREE.MeshStandardMaterial({ name: 'CostumeTrim', color: '#4f4333', roughness: 0.72 }),
+    dress: new THREE.MeshStandardMaterial({ name: 'CostumeDress', color: '#171525', roughness: 0.82, side: THREE.DoubleSide }),
+    trim: new THREE.MeshStandardMaterial({ name: 'CostumeTrim', color: '#4f4333', roughness: 0.72, side: THREE.DoubleSide }),
     // Kept on the public costume contract for main.js and console calibration.
     hair: hairSystem.materials.base,
   };
@@ -182,23 +262,33 @@ export function createCostume(scene, bones, model = null) {
     forward.normalize();
     const up = new THREE.Vector3(0, 1, 0);
     const right = new THREE.Vector3().crossVectors(up, forward).normalize();
+    const shoulderL = bones.upperarmL ? world(bones.upperarmL) : C.clone().addScaledVector(right, 0.18);
+    const shoulderR = bones.upperarmR ? world(bones.upperarmR) : C.clone().addScaledVector(right, -0.18);
+    const shoulderCenter = shoulderL.clone().add(shoulderR).multiplyScalar(0.5);
+    const shoulderHalfWidth = Math.max(0.17, shoulderL.distanceTo(shoulderR) * 0.5 + 0.025);
+    const torsoTop = shoulderCenter.clone().lerp(N, 0.20);
+    const torsoFit = sampleTorsoFit(model, torsoTop, P, right, forward, shoulderHalfWidth, 11);
 
     /* --- bodice / jacket shell ---
        MPFB carries an authored base garment, but MHR is a bare body. This
        lightweight shell gives both engines a complete period silhouette until
        fitted, skinned production garments replace the procedural foundation. */
     const torsoGeo = ringGeometry(11, 36, (t) => {
-      const centre = N.clone().lerp(P, t).addScaledVector(forward, masculine ? 0.006 : 0.014 * Math.sin(t * Math.PI));
+      const fit = torsoFit?.[Math.round(t * 10)];
+      const centre = torsoTop.clone().lerp(P, t).addScaledVector(
+        forward,
+        fit?.offset ?? (masculine ? 0.006 : 0.014 * Math.sin(t * Math.PI)),
+      );
       const chest = Math.sin(t * Math.PI);
-      const shoulderTaper = 1 - Math.max(0, 0.16 - t) * 1.4;
+      const fittedWidth = massFactor * ((masculine ? 0.175 : 0.158) + chest * (masculine ? 0.032 : 0.026));
       return {
         center: centre,
-        rx: massFactor * shoulderTaper * ((masculine ? 0.175 : 0.158) + chest * (masculine ? 0.032 : 0.026)),
-        rz: massFactor * ((masculine ? 0.118 : 0.108) + chest * (masculine ? 0.022 : 0.032)),
+        rx: Math.max(fittedWidth, fit?.rx || 0),
+        rz: Math.max(massFactor * ((masculine ? 0.118 : 0.108) + chest * (masculine ? 0.022 : 0.032)), fit?.rz || 0),
         forward,
-        back: masculine ? 0.005 : 0,
+        back: 0,
       };
-    });
+    }, { capTop: false });
     add(masculine ? 'Costume_SackJacket' : 'Costume_Bodice', torsoGeo, materials.dress, bones.spine02 || bones.pelvis);
 
     /* --- skirt --- */
@@ -249,17 +339,23 @@ export function createCostume(scene, bones, model = null) {
       const upper = bones[`upperarm${side}`]; const lower = bones[`lowerarm${side}`]; const hand = bones[`hand${side}`];
       if (!upper || !lower) continue;
       const S = world(upper); const E = world(lower);
-      const puff = tubeAlong(S.clone().addScaledVector(up, 0.028), E, (t) => {
+      const sleeveStart = S.clone().lerp(shoulderCenter, 0.16).addScaledVector(up, 0.006);
+      const sleeveStrength = THREE.MathUtils.clamp((v.sleeveVolume ?? 0.8) * dressStyle.sleeve, 0.35, 1.45);
+      const W = hand ? world(hand) : null;
+      const upperEnd = W ? E.clone().lerp(W, 0.10) : E;
+      const puff = tubeAlong(sleeveStart, upperEnd, (t) => {
         const bell = Math.exp(-((t - 0.24) ** 2) / 0.055);
-        return (0.049 + 0.062 * bell * v.sleeveVolume * dressStyle.sleeve) * Math.sqrt(massFactor);
-      }, { radialSegments: 18, lengthSegments: 14 });
+        return (0.060 + 0.027 * bell * sleeveStrength) * Math.sqrt(massFactor);
+      }, { radialSegments: 18, lengthSegments: 14, capEnds: false });
       add(`Costume_SleevePuff_${side}`, puff, materials.dress, upper);
-      if (hand) {
-        const W = world(hand);
+      if (W) {
         const cuffEnd = E.clone().lerp(W, THREE.MathUtils.clamp(v.sleeveLength, 0.6, 1.05));
-        const forearm = tubeAlong(E, cuffEnd, (t) => 0.047 - 0.012 * t, { radialSegments: 18, lengthSegments: 8 });
+        const lowerStart = E.clone().lerp(S, 0.12);
+        const forearm = tubeAlong(lowerStart, cuffEnd, (t) => (0.060 - 0.016 * t) * Math.sqrt(massFactor), {
+          radialSegments: 18, lengthSegments: 8, capEnds: false,
+        });
         add(`Costume_SleeveForearm_${side}`, forearm, materials.dress, lower);
-        const cuff = tubeAlong(cuffEnd.clone().lerp(E, 0.08), cuffEnd, () => 0.0375, { lengthSegments: 2 });
+        const cuff = tubeAlong(cuffEnd.clone().lerp(E, 0.11), cuffEnd, () => 0.048 * Math.sqrt(massFactor), { lengthSegments: 2 });
         add(`Costume_Cuff_${side}`, cuff, materials.trim, lower);
       }
     }
@@ -267,19 +363,20 @@ export function createCostume(scene, bones, model = null) {
     /* --- collar --- */
     const collarBase = N.clone().lerp(H, 0.12);
     const collarTop = N.clone().lerp(H, 0.12 + 0.3 * v.collarHeight * dressStyle.collar);
-    const collar = tubeAlong(collarBase, collarTop, () => 0.0555 * v.collarSpread, { lengthSegments: 3 });
+    const collar = tubeAlong(collarBase, collarTop, () => 0.048 * v.collarSpread, { lengthSegments: 3 });
     add('Costume_Collar', collar, materials.trim, bones.neck || bones.head);
 
     /* --- bodice placket + buttons --- */
     const chestForward = forward.clone();
-    const placketTop = N.clone().addScaledVector(chestForward, 0.092).addScaledVector(up, -0.025);
-    const placketBottom = P.clone().setY(waistY + 0.015).addScaledVector(chestForward, 0.14);
     const count = Math.max(3, Math.round((v.buttonCount ?? 6) + dressStyle.buttons));
     for (let index = 0; index < count; index++) {
-      const t = count === 1 ? 0 : (index / (count - 1)) * THREE.MathUtils.clamp(v.buttonSpacing, 0.6, 1.3);
-      const at = placketTop.clone().lerp(placketBottom, Math.min(1, t));
-      const bulgeOut = 0.028 * Math.sin(Math.min(1, t) * Math.PI);
-      at.addScaledVector(chestForward, bulgeOut);
+      const spacing = THREE.MathUtils.clamp(v.buttonSpacing, 0.6, 1.3);
+      const t = THREE.MathUtils.lerp(0.12, 0.84, count === 1 ? 0 : Math.min(1, (index / (count - 1)) * spacing));
+      const fit = torsoFit?.[Math.round(t * 10)];
+      const at = torsoTop.clone().lerp(P, t).addScaledVector(
+        chestForward,
+        fit ? fit.offset + fit.rz + 0.007 : 0.14,
+      );
       const button = new THREE.SphereGeometry(0.0072, 12, 8);
       button.translate(at.x, at.y, at.z);
       add(`Costume_Button_${index}`, button, materials.trim, bones.spine03 || bones.pelvis);
@@ -294,9 +391,11 @@ export function createCostume(scene, bones, model = null) {
     }
     if (dressStyle.band) {
       const bandCenter = P.clone().setY(waistY - 0.11).addScaledVector(forward, 0.018);
+      const waistFit = torsoFit?.at(-1);
       const band = ringGeometry(3, 36, (t) => ({
-        center: bandCenter.clone().addScaledVector(up, (t - 0.5) * 0.045),
-        rx: 0.17 * massFactor * v.bodiceFit, rz: 0.14 * massFactor * v.bodiceFit, forward, back: 0,
+        center: bandCenter.clone().addScaledVector(up, (t - 0.5) * 0.045).addScaledVector(forward, waistFit?.offset || 0),
+        rx: Math.max(0.17 * massFactor * v.bodiceFit, waistFit?.rx || 0),
+        rz: Math.max(0.14 * massFactor * v.bodiceFit, waistFit?.rz || 0), forward, back: 0,
       }), { capTop: false, capBottom: false });
       add('Costume_ContrastBand', band, materials.trim, bones.pelvis);
     }

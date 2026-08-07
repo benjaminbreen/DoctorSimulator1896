@@ -40,12 +40,12 @@ export const HAIR_PROFILES = Object.freeze({
     bunScale: [0.80, 0.80, 0.60], flowGuideRow: 0.25, flowAnchorRow: 0.55,
   },
   'cropped-waves': {
-    part: 'center', partAzimuth: 0, frontDepth: 0.43, sideDepth: 0.78, napeDepth: 0.76,
+    part: 'center', partAzimuth: 0, frontDepth: 0.43, sideDepth: 0.82, napeDepth: 0.98,
     crown: 0.78, sides: 0.48, templePuff: 0.34, mass: 'cropped-waves',
     flowGuideRow: 0.16, flowAnchorRow: 0.18,
   },
   'short-parted': {
-    part: 'center', partAzimuth: 0, frontDepth: 0.42, sideDepth: 0.75, napeDepth: 0.73,
+    part: 'center', partAzimuth: 0, frontDepth: 0.42, sideDepth: 0.80, napeDepth: 0.96,
     crown: 0.76, sides: 0.32, templePuff: 0.22, mass: 'short-parted',
     flowGuideRow: 0.14, flowAnchorRow: 0.17,
   },

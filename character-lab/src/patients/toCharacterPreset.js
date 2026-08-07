@@ -79,9 +79,11 @@ function bodyMass(patient, random) {
   return classCenter + ageAdjustment + complaintAdjustment + jitter(random, 0.16);
 }
 
-function hairStyleWeight(style, age) {
+function hairStyleWeight(style, age, sex = null) {
   const band = age < 30 ? 0 : age < 50 ? 1 : 2;
-  return style.weight * (style.ageWeights?.[band] ?? 1);
+  const femaleShortPenalty = sex === 'female' && style.id === 'short-parted' ? 0.16
+    : sex === 'female' && style.id === 'cropped-waves' ? 0.35 : 1;
+  return style.weight * (style.ageWeights?.[band] ?? 1) * femaleShortPenalty;
 }
 
 function groomingDisarray(patient, random) {
@@ -176,7 +178,10 @@ export function patientToCharacterPreset(patient, basePreset, definitions, optio
   const hairCandidates = HAIR_STYLES.filter((style) => style.classes.includes(patient.social.classId)
     && (!style.sexes || style.sexes.includes(patient.identity.sex))
     && patient.identity.age <= (style.maxAge ?? 120));
-  values.hairStyle = hairRandom.weighted(hairCandidates, (style) => hairStyleWeight(style, patient.identity.age)).id;
+  values.hairStyle = hairRandom.weighted(
+    hairCandidates,
+    (style) => hairStyleWeight(style, patient.identity.age, patient.identity.sex),
+  ).id;
   values.hairColor = hairRandom.pick(origin.hairColors);
   values.hairShade = nearestHairShade(values.hairColor);
   values.hairVolume = clamped(definitions, 'hairVolume', 1 + jitter(hairRandom, 0.22));
@@ -227,6 +232,10 @@ export function patientToCharacterPreset(patient, basePreset, definitions, optio
   values.kneesTogether = clamped(definitions, 'kneesTogether', 0.74 + jitter(performanceRandom, 0.12));
   values.headTilt = clamped(definitions, 'headTilt', jitter(performanceRandom, 0.09));
   values.headTurn = clamped(definitions, 'headTurn', jitter(performanceRandom, 0.16));
+  values.armOpenness = clamped(definitions, 'armOpenness', jitter(performanceRandom, 0.16));
+  values.elbowBend = clamped(definitions, 'elbowBend', 0.68 + jitter(performanceRandom, 0.12));
+  values.armAsymmetry = clamped(definitions, 'armAsymmetry', jitter(performanceRandom, 0.16));
+  values.wristAngle = clamped(definitions, 'wristAngle', jitter(performanceRandom, 0.14));
   const sadPresentations = new Set(['melancholic-withdrawal', 'bereavement-visions', 'postpartum-disturbance']);
   const tiredPresentations = new Set(['neurasthenic-exhaustion', 'persistent-insomnia', 'morphine-habit', 'postpartum-disturbance']);
   values.sadness = clamped(definitions, 'sadness', (sadPresentations.has(patient.clinical.id) ? 0.42 : 0.03) * severity + jitter(performanceRandom, 0.05));

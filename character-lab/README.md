@@ -129,6 +129,24 @@ foundation: bodice/skirt silhouettes for women and sack-jacket/trouser
 silhouettes for men. These procedural shells are validation assets pending
 fitted and skinned production garments.
 
+The current MHR visual foundation uses a shoulder-overlapping smooth bodice,
+restrained 1890s sleeve volume, and a fitted hair under-cap beneath the visible
+flow shells. MHR's eyes are embedded in `body_mesh`, so their sclera, iris and
+pupil colors are assigned from the rig eye centres rather than waiting for a
+separate `Eyes` material. Face masks are measured from current base vertices
+and verified expression motion; morph-target bounding-box extremes must never
+be used for lip, cheek, freckle, or pore placement.
+
+Renderer B also has a live semantic expression driver. The public MHR release
+retains 72 signed expression components but does not publish FACS/ARKit names
+for them. The lab therefore keeps every component in the atomic debugger
+(including its full -1…1 range), uses visually verified bilateral controls
+32/33 for smile, their neighboring mouth controls for sadness, and the paired
+eyelid controls for fatigue. Only quiet cheek/brow contributions are inferred
+from regularized local deformation fields. Smile, sadness and fatigue share
+the same attack/hold/release scheduler as renderer A, and MPFB resting-face
+signatures are translated into the corresponding MHR controls.
+
 `character:generate` and the local regeneration endpoint produce/cache A. The
 full 35 MB MHR asset remains the live-authoring master. `npm run mhr:generate`
 bakes the selected patient's 45 identity coefficients into the base mesh,
@@ -152,6 +170,12 @@ npm run patient:audit -- 2000 # inspect generated distributions
 `idleMode` selects: `procedural` (all sliders act instantly; the GLB clip
 holds frame 0 as the pose), `clip` (baked GLB clip plays; only gaze, tremor,
 and gestures layer on top), `clip+procedural` (both).
+
+Renderer B exposes a contextual **Stand up / Sit down** stage button. It drives
+a reversible 2.25-second MHR rig transition with eased pelvis, leg, arm and
+balance-transfer motion. Pose transitions continue when ambient idle motion is
+disabled, and procedural clothing is refitted after the stable endpoint rather
+than during every animation frame.
 
 ## Gotchas learned the hard way
 
@@ -201,6 +225,9 @@ and gestures layer on top), `clip+procedural` (both).
   should be evaluated offline before the seated pose is considered final.
 - Speech visemes and facial mocap are not wired yet. The named target layer is
   intentionally compatible with adding either later.
+- MHR's public expression components are not semantically named. The saved
+  indexed atlas is the calibration record; new recipes should prefer visually
+  verified authored components over broad latent projection.
 - The current demographic directions are calibrated anatomical projections
   because the public MHR release does not provide named sex or ancestry axes.
   Keep the saved contact sheet and coefficient manifest as regressions when

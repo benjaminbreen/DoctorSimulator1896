@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {
-  buildFlowPath, buildFlowRibbons, buildHairlineWisps, buildHairShells,
+  buildFlowPath, buildFlowRibbons, buildHairlineWisps, buildHairShells, buildHairUnderCap,
   flowAnchor, hairlineDepth, scalpPoint, scalpShadeFactor,
 } from '../character-lab/src/hair/geometry.js';
 import { HAIR_PROFILES } from '../character-lab/src/hair/profiles.js';
@@ -65,6 +65,22 @@ test('shells are opaque streamline grids with a flow tangent basis', () => {
       assert.ok(shell.getAttribute('tangent'), `${name} has no flow tangent basis`);
       for (const value of shell.getAttribute('tangent').array) assert.ok(Number.isFinite(value), `${name} has NaN tangents`);
     });
+  }
+});
+
+test('a fitted under-cap closes streamline gaps through the procedural hairline', () => {
+  const { scalp, frame } = syntheticScalp();
+  for (const [name, profile] of Object.entries(HAIR_PROFILES)) {
+    const cap = buildHairUnderCap(scalp, frame, profile, defaults);
+    assertFiniteGeometry(cap);
+    assert.equal(cap.getAttribute('position').count, scalp.AZ * 13, name);
+    assert.equal(cap.getAttribute('color').count, cap.getAttribute('position').count, name);
+    assert.ok(cap.index.count > scalp.AZ * 12 * 3, `${name} under-cap has open grid gaps`);
+    const posteriorEdge = new THREE.Vector3().fromBufferAttribute(cap.getAttribute('position'), (scalp.AZ / 2) * 13 + 12);
+    const polar = Math.acos(THREE.MathUtils.clamp(
+      posteriorEdge.clone().sub(frame.centre).normalize().dot(frame.headUp), -1, 1,
+    ));
+    assert.ok(polar > 1.7, `${name} leaves the posterior scalp exposed when the head bows`);
   }
 });
 

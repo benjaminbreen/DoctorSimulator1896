@@ -3,8 +3,11 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'meshoptimizer';
-import { createExpressions } from '../character-lab/src/expressions.js';
-import { createMhrController } from '../character-lab/src/mhr.js';
+import * as THREE from 'three';
+import { findBones, sampleTorsoFit } from '../character-lab/src/costume.js';
+import { createExpressions, createMhrExpressions } from '../character-lab/src/expressions.js';
+import { sampleScalp } from '../character-lab/src/hair/geometry.js';
+import { createMhrController, createMhrEyeDetails } from '../character-lab/src/mhr.js';
 import { prepareSkinModel, updateSkinModel } from '../character-lab/src/stylized.js';
 
 globalThis.self = globalThis;
@@ -100,6 +103,15 @@ test('MHR identity/build controls deform the mesh and drive a seated full-body r
   assert.ok(gltf.scene.position.y < -0.3, 'seated pose should lower the pelvis toward the chair');
   const seatedThigh = controller.bones.get('r_upleg').quaternion.clone();
   const seatedKnee = controller.bones.get('r_lowleg').quaternion.clone();
+  const worldAt = (name) => controller.bones.get(name).getWorldPosition(new THREE.Vector3());
+  const shoulderSeparation = worldAt('r_uparm').distanceTo(worldAt('l_uparm'));
+  const handSeparation = worldAt('r_wrist').distanceTo(worldAt('l_wrist'));
+  assert.ok(handSeparation < shoulderSeparation * 0.75, 'seated hands should settle inward onto the lap');
+  assert.ok(worldAt('r_wrist').y < worldAt('r_uparm').y - 0.35, 'seated arm still reads as a splayed T-pose');
+  const relaxedFinger = controller.bones.get('r_index2').quaternion.clone();
+  values.handTension = 1;
+  controller.applyValues(values);
+  assert.ok(controller.bones.get('r_index2').quaternion.angleTo(relaxedFinger) > 0.2, 'hand tension does not articulate fingers');
   const upperArmLength = controller.bones.get('r_lowarm').position.length();
   const initialPosition = new Float32Array(body.geometry.attributes.position.array);
 
@@ -111,6 +123,10 @@ test('MHR identity/build controls deform the mesh and drive a seated full-body r
   assert.ok(body.userData.mhrIdentityWeights[0] > 0.8, 'body-mass control should recruit measured volume component 0');
   assert.ok(gltf.scene.scale.y > 1.05, 'stature should change the rig scale live');
   assert.ok(controller.bones.get('r_lowarm').position.length() > upperArmLength * 1.07, 'named MHR limb scale should be live');
+  const identityWeights = [...body.userData.mhrIdentityWeights];
+  values.mhrNeckLength = 0.8;
+  assert.equal(controller.applyValues(values), false, 'rig-only dimensions must not rebake identity geometry');
+  assert.deepEqual(body.userData.mhrIdentityWeights, identityWeights);
 
   values.seated = 0;
   controller.update(10, 1, values);
@@ -118,6 +134,71 @@ test('MHR identity/build controls deform the mesh and drive a seated full-body r
   assert.ok(gltf.scene.position.y > -0.01);
   assert.ok(controller.bones.get('r_upleg').quaternion.angleTo(seatedThigh) > 1);
   assert.ok(controller.bones.get('r_lowleg').quaternion.angleTo(seatedKnee) > 1);
+});
+
+test('MHR costume fitting measures the posed body and eye details follow the eye bones', async () => {
+  const gltf = await loadModel('../character-lab/public/models/comparison-mhr-lod1.glb');
+  const values = {
+    seed: 7139, gender: 0, age: 0.72, height: 0.5, weight: 0.82, muscle: 0.25,
+    proportions: 0.5, shoulderWidth: 0, torsoLength: 0, headShape: 'oval', headShapeStrength: 0.4,
+    seated: 1, kneesTogether: 0.65, posture: 0.1, headTurn: 0, headTilt: 0,
+    breathing: 0, breathingRate: 13, eyeColor: '#416b78', stylizedEyeContrast: 0.8, eyeSize: 0,
+  };
+  createMhrController(gltf.scene, values);
+  gltf.scene.updateMatrixWorld(true);
+  const bones = findBones(gltf.scene);
+  const at = (bone) => bone.getWorldPosition(new THREE.Vector3());
+  const pelvis = at(bones.pelvis);
+  const neck = at(bones.neck);
+  const shoulderL = at(bones.upperarmL), shoulderR = at(bones.upperarmR);
+  const shoulderCentre = shoulderL.clone().add(shoulderR).multiplyScalar(0.5);
+  const top = shoulderCentre.clone().lerp(neck, 0.2);
+  const knee = at(bones.calfL).add(at(bones.calfR)).multiplyScalar(0.5);
+  const forward = knee.sub(pelvis).setY(0);
+  if (forward.lengthSq() < 1e-6) forward.set(0, 0, 1);
+  forward.normalize();
+  const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), forward).normalize();
+  const fit = sampleTorsoFit(gltf.scene, top, pelvis, right, forward, shoulderL.distanceTo(shoulderR) * 0.5 + 0.025);
+  assert.equal(fit.length, 11);
+  assert.ok(fit.every((row) => row.samples > 0 && row.rx > 0.1 && row.rz > 0.07));
+  assert.ok(Math.max(...fit.map((row) => row.rz)) > 0.12, 'full body should determine garment chest depth');
+
+  const eyes = createMhrEyeDetails(gltf.scene, values);
+  assert.equal(eyes.groups.length, 2);
+  assert.ok(eyes.groups.every((group) => /eye_null$/.test(group.parent.name)));
+  assert.equal(eyes.materials.iris.userData.excludeComparisonSkin, true);
+  assert.equal(`#${eyes.materials.iris.color.getHexString()}`.length, 7);
+  values.eyeColor = '#783f26'; values.eyeSize = 0.5;
+  eyes.update(values);
+  assert.ok(eyes.groups[0].scale.x > 1.05);
+  eyes.dispose();
+  assert.ok(eyes.groups.every((group) => group.parent == null));
+});
+
+test('MHR scalp fitting is linear-time and follows the deformed head surface', async () => {
+  const gltf = await loadModel('../character-lab/public/models/comparison-mhr-lod1.glb');
+  gltf.scene.updateMatrixWorld(true);
+  const bones = findBones(gltf.scene);
+  const worldPosition = (bone) => bone.getWorldPosition(new THREE.Vector3());
+  const pelvis = worldPosition(bones.pelvis);
+  const head = worldPosition(bones.head);
+  const neck = worldPosition(bones.neck);
+  const forward = worldPosition(bones.calfL).add(worldPosition(bones.calfR)).multiplyScalar(0.5).sub(pelvis).setY(0);
+  if (forward.lengthSq() < 1e-6) forward.set(0, 0, 1);
+  forward.normalize();
+  const headUp = head.clone().sub(neck).normalize();
+  const frame = {
+    centre: head.clone().addScaledVector(headUp, 0.055), head, neck, headUp, forward,
+    right: new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), forward).normalize(),
+  };
+  const started = performance.now();
+  const scalp = sampleScalp(gltf.scene, frame);
+  const duration = performance.now() - started;
+  const radii = scalp.samples.flatMap((column) => column.map((point) => point.distanceTo(frame.centre)));
+  assert.equal(radii.length, 1088);
+  assert.ok(Math.min(...radii) > 0.05 && Math.max(...radii) < 0.18);
+  assert.ok(Math.max(...radii) - Math.min(...radii) > 0.025, 'scalp projection collapsed to a fallback sphere');
+  assert.ok(duration < 1000, `MHR scalp fit regressed to ${duration.toFixed(0)}ms`);
 });
 
 test('MHR presentation and ancestry endpoints visibly deform the same seeded identity', async () => {
@@ -149,6 +230,71 @@ test('MHR presentation and ancestry endpoints visibly deform the same seeded ide
   assert.ok(difference(african, european).rms > 0.0007, 'African ancestry endpoint is too subtle');
   assert.ok(difference(asian, european).rms > 0.0002, 'Asian ancestry endpoint is too subtle');
   assert.deepEqual(body.userData.mhrSemanticProfile.ancestry, { african: 0, asian: 0, caucasian: 1 });
+});
+
+test('MHR seated controller animates, completes, and reverses a pose transition', async () => {
+  const gltf = await loadModel('../character-lab/public/models/comparison-mhr-lod1.glb');
+  const values = {
+    seed: 8042, gender: 0.5, age: 0.7, height: 0.5, weight: 0.5, muscle: 0.35,
+    proportions: 0.5, shoulderWidth: 0, torsoLength: 0, headShape: 'oval', headShapeStrength: 0,
+    african: 0, asian: 0, caucasian: 1, seated: 1, kneesTogether: 0.4, posture: 0,
+    headTurn: 0, headTilt: 0, breathing: 0, breathingRate: 13,
+  };
+  const controller = createMhrController(gltf.scene, values);
+  assert.equal(controller.seatedBlend, 1);
+  values.seated = 0;
+  assert.equal(controller.startSeatedTransition(0, 2, values), true);
+  controller.update(0.5, 0.5, values);
+  assert.ok(controller.seatedBlend > 0.8 && controller.seatedBlend < 1, 'sit-to-stand should have an eased first quarter');
+  assert.equal(controller.isPoseTransitioning, true);
+  controller.update(0.5, 1, values);
+  const midpoint = controller.seatedBlend;
+  assert.ok(midpoint > 0.45 && midpoint < 0.55);
+
+  values.seated = 1;
+  assert.equal(controller.startSeatedTransition(1, 1, values), true, 'an in-flight transition should reverse');
+  controller.update(0.5, 1.5, values);
+  assert.ok(controller.seatedBlend > midpoint && controller.seatedBlend < 1);
+  controller.update(0.5, 2, values);
+  assert.equal(controller.seatedBlend, 1);
+  assert.equal(controller.targetSeated, 1);
+  assert.equal(controller.isPoseTransitioning, false);
+});
+
+test('MHR semantic expressions drive its 72 signed latent targets without disturbing identity', async () => {
+  const gltf = await loadModel('../character-lab/public/models/comparison-mhr-lod1.glb');
+  const body = gltf.scene.getObjectByName('body_mesh');
+  const expressions = createMhrExpressions(gltf.scene, {
+    restingFace: { mouthSmileLeft: 0.08, mouthSmileRight: 0.11 },
+  });
+  assert.equal(expressions.mode, 'mhr-semantic');
+  assert.equal(expressions.availableUnits.length, 72);
+  for (const [name, count] of Object.entries(expressions.projection.samples)) {
+    assert.ok(count > 10, `${name} projection did not find the intended facial region`);
+  }
+
+  const identityBefore = Array.from({ length: 45 }, (_, component) => {
+    const index = body.morphTargetDictionary[`shape_${component}`];
+    body.morphTargetInfluences[index] = component === 3 ? 0.37 : body.morphTargetInfluences[index];
+    return body.morphTargetInfluences[index];
+  });
+  expressions.update(0, 0, { smile: 0.8, sadness: 0, fatigueExpression: 0 });
+  const smile = expressions.appliedWeights;
+  assert.ok(smile.some((value) => Math.abs(value) > 0.01), 'smile produced no MHR deformation');
+  assert.deepEqual(Array.from({ length: 45 }, (_, component) => body.morphTargetInfluences[
+    body.morphTargetDictionary[`shape_${component}`]
+  ]), identityBefore);
+
+  expressions.update(0, 1, { smile: 0, sadness: 0.8, fatigueExpression: 0 });
+  const sadness = expressions.appliedWeights;
+  assert.ok(difference(smile, sadness).rms > 0.02, 'smile and sadness collapsed to the same latent direction');
+  expressions.update(0, 2, { smile: 0, sadness: 0, fatigueExpression: 0.8 });
+  assert.ok(difference(sadness, expressions.appliedWeights).rms > 0.01, 'fatigue did not recruit a distinct eyelid direction');
+
+  assert.equal(expressions.setDebugUnit('MHR expression 00', -0.63), true);
+  expressions.update(0, 3, { smile: 1, sadness: 1, fatigueExpression: 1 });
+  assert.ok(Math.abs(body.morphTargetInfluences[body.morphTargetDictionary.shape_45] + 0.63) < 1e-6);
+  assert.ok(expressions.appliedWeights.slice(1).every((value) => value === 0));
 });
 
 test('renderer A exports and coordinates MPFB face units across fitted facial meshes', async () => {
@@ -218,6 +364,34 @@ test('renderer A supports live skin treatment without changing topology or facia
   assert.ok(facts.body.geometry.attributes.normal.array.every((value, index) => Math.abs(value - smoothNormals[index]) < 1e-6));
   assert.ok(facts.body.material.bumpScale > 0.001);
   assert.ok(facts.body.material.bumpMap.repeat.x < restrainedPoreRepeat);
+});
+
+test('MHR embedded eyes and face overlays use the visible neutral face frame', async () => {
+  const gltf = await loadModel('../character-lab/public/models/comparison-mhr-lod1.glb');
+  const body = gltf.scene.getObjectByName('body_mesh');
+  const values = {
+    seed: 2665, age: 0.65, skinTone: '#d2a085', eyeColor: '#3b2618',
+    stylizedPlaneContrast: 0.3, stylizedTriangleBlend: 0.7, stylizedSkinDetail: 0.62,
+    stylizedPoreScale: 1, stylizedPigmentVariation: 0.53, stylizedFreckleAmount: 0.15,
+    stylizedSkinWarmth: 0.2, stylizedCheekBlush: 0.37, stylizedNoseRedness: 0.3,
+    stylizedForeheadWarmth: 0.19, stylizedLipTint: 0.48, stylizedLipColor: '#be6861',
+    stylizedEyeContrast: 0.7, stylizedSurfaceRoughness: 0.8,
+  };
+  prepareSkinModel(gltf.scene, values);
+  const landmarks = body.geometry.userData.faceLandmarks;
+  assert.equal(landmarks.embeddedEyes, true);
+  assert.ok(landmarks.eyeY > 1.58 && landmarks.eyeY < 1.67, `eye frame escaped the visible face: ${landmarks.eyeY}`);
+  assert.ok(landmarks.mouthY > 1.51 && landmarks.mouthY < 1.59, `mouth frame escaped the visible face: ${landmarks.mouthY}`);
+  assert.ok(landmarks.eyeSpan < 0.12 && landmarks.mouthWidth < 0.09);
+  assert.ok(body.userData.faceOverlay.lipMask.some((value) => value > 0.4), 'MHR lips have no texture mask');
+
+  const brownEyes = new Float32Array(body.geometry.attributes.color.array);
+  updateSkinModel(gltf.scene, { ...values, eyeColor: '#447d92' });
+  const blueEyes = body.geometry.attributes.color.array;
+  assert.ok(blueEyes.some((value, index) => Math.abs(value - brownEyes[index]) > 0.2), 'MHR iris color is not live');
+  const quietCheeks = new Float32Array(blueEyes);
+  updateSkinModel(gltf.scene, { ...values, eyeColor: '#447d92', stylizedCheekBlush: 1 });
+  assert.ok(body.geometry.attributes.color.array.some((value, index) => Math.abs(value - quietCheeks[index]) > 0.08), 'MHR blush misses the visible cheeks');
 });
 
 test('renderer A skin controls produce perceptible endpoint changes', async () => {

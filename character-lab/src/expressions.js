@@ -10,8 +10,9 @@ import * as THREE from 'three';
    produces the familiar startled/uncanny look.
 
    Renderer A composes exported MPFB face units and broadcasts their weights to
-   matching fitted facial meshes. The MHR comparison model exposes its native
-   proof controls separately instead of manufacturing geometry.
+   matching fitted facial meshes. MHR exposes 72 signed latent expression
+   components rather than named action units, so its semantic controls are
+   projected from measured deformation fields on the loaded mesh.
 */
 
 const clamp01 = (value) => THREE.MathUtils.clamp(value, 0, 1);
@@ -125,6 +126,377 @@ function episodeEnvelope(episode, elapsed, delay = 0) {
   if (t < attack + hold) return peak;
   if (t < attack + hold + release) return peak * smooth(1 - (t - attack - hold) / release);
   return 0;
+}
+
+const MHR_EXPRESSION_FIRST = 45;
+const MHR_EXPRESSION_COUNT = 72;
+// Visual calibration against the shipped MHR model. These are offsets inside
+// the 72-expression block (not glTF shape numbers, which begin at shape_45).
+// Components 32/33 are the authored bilateral smile controls; 34/35 are their
+// adjacent bilateral lower-corner/frown controls; 12/13 close the eyelids.
+const MHR_AUTHORED_CONTROLS = Object.freeze({
+  smileLeft: 32,
+  smileRight: 33,
+  frownLeft: 34,
+  frownRight: 35,
+  lidCloseLeft: 12,
+  lidCloseRight: 13,
+});
+
+function collectMhrExpressionMorphs(model) {
+  const meshes = [];
+  let primary = null;
+  model.traverse((object) => {
+    const dictionary = object.morphTargetDictionary;
+    if (!object.isMesh || !dictionary || dictionary.shape_45 == null || !object.morphTargetInfluences) return;
+    meshes.push(object);
+    if (!primary || (object.geometry?.attributes?.position?.count || 0) > primary.geometry.attributes.position.count) primary = object;
+  });
+  if (!primary) return null;
+
+  const components = [];
+  for (let offset = 0; offset < MHR_EXPRESSION_COUNT; offset += 1) {
+    const shape = `shape_${MHR_EXPRESSION_FIRST + offset}`;
+    const primaryIndex = primary.morphTargetDictionary[shape];
+    const target = primary.geometry.morphAttributes.position?.[primaryIndex];
+    if (primaryIndex == null || !target) continue;
+    const bindings = [];
+    for (const mesh of meshes) {
+      const index = mesh.morphTargetDictionary[shape];
+      if (index != null) bindings.push({ mesh, index });
+    }
+    components.push({
+      offset,
+      shape,
+      label: `MHR expression ${String(offset).padStart(2, '0')}`,
+      target,
+      bindings,
+    });
+  }
+  return components.length ? { primary, components } : null;
+}
+
+function mhrFaceMetrics(position) {
+  const box = new THREE.Box3();
+  const point = new THREE.Vector3();
+  for (let vertex = 0; vertex < position.count; vertex += 1) box.expandByPoint(point.fromBufferAttribute(position, vertex));
+  const height = Math.max(0.001, box.max.y - box.min.y);
+  return {
+    box,
+    height,
+    top: box.max.y,
+    front: box.max.z,
+    eyeY: box.max.y - height * 0.068,
+    mouthY: box.max.y - height * 0.122,
+    browY: box.max.y - height * 0.049,
+  };
+}
+
+function sideWeight(x, side) {
+  if (side < 0 && x >= 0) return 0;
+  if (side > 0 && x <= 0) return 0;
+  return smooth(Math.abs(x) / 0.012);
+}
+
+/* Each field describes an anatomical request in the MHR bind space. Projecting
+   the request onto all 72 source deltas produces a stable signed coefficient
+   vector without claiming that any one latent component is an AU/FACS target. */
+function mhrExpressionFields(metrics) {
+  const frontWeight = (z) => smooth((z - (metrics.front - 0.14)) / 0.10);
+  const mouthField = (side, direction) => (x, y, z) => {
+    const sideMix = sideWeight(x, side);
+    if (!sideMix) return null;
+    const band = gauss(y - metrics.mouthY, 0.017) * frontWeight(z);
+    const corner = smooth((Math.abs(x) - 0.012) / 0.045);
+    const weight = sideMix * band * corner;
+    if (weight < 0.002) return null;
+    return [side * 0.42 * direction * weight, 1.0 * direction * weight, -0.12 * direction * weight];
+  };
+  const eyeCloseField = (side) => (x, y, z) => {
+    const sideMix = sideWeight(x, side);
+    const eyeX = Math.abs(x);
+    const lateral = gauss(eyeX - 0.034, 0.027);
+    const vertical = gauss(y - metrics.eyeY, 0.014);
+    const weight = sideMix * lateral * vertical * frontWeight(z);
+    if (weight < 0.003 || Math.abs(y - metrics.eyeY) < 0.001) return null;
+    return [0, -Math.sign(y - metrics.eyeY) * weight, 0.08 * weight];
+  };
+  const cheekField = (side) => (x, y, z) => {
+    const sideMix = sideWeight(x, side);
+    const weight = sideMix * gauss(Math.abs(x) - 0.057, 0.032)
+      * gauss(y - (metrics.eyeY - 0.034), 0.026) * frontWeight(z);
+    if (weight < 0.003) return null;
+    return [side * 0.20 * weight, weight, 0.28 * weight];
+  };
+  const innerBrowField = (x, y, z) => {
+    const weight = gauss(Math.abs(x) - 0.027, 0.022)
+      * gauss(y - metrics.browY, 0.018) * frontWeight(z);
+    if (weight < 0.003) return null;
+    return [-Math.sign(x || 1) * 0.18 * weight, weight, 0.08 * weight];
+  };
+  return {
+    mouthSmileLeft: mouthField(-1, 1),
+    mouthSmileRight: mouthField(1, 1),
+    mouthFrownLeft: mouthField(-1, -1),
+    mouthFrownRight: mouthField(1, -1),
+    eyeCloseLeft: eyeCloseField(-1),
+    eyeCloseRight: eyeCloseField(1),
+    cheekRaiseLeft: cheekField(-1),
+    cheekRaiseRight: cheekField(1),
+    browInnerUp: innerBrowField,
+  };
+}
+
+const MHR_FIELD_AMPLITUDES = Object.freeze({
+  mouthSmileLeft: 0.0052,
+  mouthSmileRight: 0.0052,
+  mouthFrownLeft: 0.0042,
+  mouthFrownRight: 0.0042,
+  eyeCloseLeft: 0.0028,
+  eyeCloseRight: 0.0028,
+  cheekRaiseLeft: 0.0030,
+  cheekRaiseRight: 0.0030,
+  browInnerUp: 0.0034,
+});
+
+function solveRegularizedSymmetric(matrix, rhs, size, lambda) {
+  const lower = new Float64Array(size * size);
+  for (let row = 0; row < size; row += 1) {
+    for (let column = 0; column <= row; column += 1) {
+      let value = matrix[row * size + column];
+      if (row === column) value += lambda;
+      for (let inner = 0; inner < column; inner += 1) {
+        value -= lower[row * size + inner] * lower[column * size + inner];
+      }
+      lower[row * size + column] = row === column
+        ? Math.sqrt(Math.max(value, 1e-16))
+        : value / lower[column * size + column];
+    }
+  }
+  const forward = new Float64Array(size);
+  for (let row = 0; row < size; row += 1) {
+    let value = rhs[row];
+    for (let column = 0; column < row; column += 1) value -= lower[row * size + column] * forward[column];
+    forward[row] = value / lower[row * size + row];
+  }
+  const solution = new Float64Array(size);
+  for (let row = size - 1; row >= 0; row -= 1) {
+    let value = forward[row];
+    for (let column = row + 1; column < size; column += 1) value -= lower[column * size + row] * solution[column];
+    solution[row] = value / lower[row * size + row];
+  }
+  return solution;
+}
+
+export function deriveMhrExpressionDirections(mesh) {
+  const position = mesh.geometry.attributes.position;
+  const metrics = mhrFaceMetrics(position);
+  const fields = mhrExpressionFields(metrics);
+  const dictionary = mesh.morphTargetDictionary || {};
+  const relative = mesh.geometry.morphTargetsRelative;
+  const fieldNames = Object.keys(fields);
+  const directions = Object.fromEntries(fieldNames.map((name) => [name, new Float32Array(MHR_EXPRESSION_COUNT)]));
+  const samples = Object.fromEntries(Object.keys(fields).map((name) => [name, 0]));
+  const rightHandSides = Object.fromEntries(fieldNames.map((name) => [name, new Float64Array(MHR_EXPRESSION_COUNT)]));
+  const gram = new Float64Array(MHR_EXPRESSION_COUNT * MHR_EXPRESSION_COUNT);
+  const targets = Array.from({ length: MHR_EXPRESSION_COUNT }, (_, offset) => {
+    const morphIndex = dictionary[`shape_${MHR_EXPRESSION_FIRST + offset}`];
+    return mesh.geometry.morphAttributes.position?.[morphIndex] || null;
+  });
+  const dx = new Float64Array(MHR_EXPRESSION_COUNT);
+  const dy = new Float64Array(MHR_EXPRESSION_COUNT);
+  const dz = new Float64Array(MHR_EXPRESSION_COUNT);
+
+  for (let vertex = 0; vertex < position.count; vertex += 1) {
+    const x = position.getX(vertex), y = position.getY(vertex), z = position.getZ(vertex);
+    // The Gram matrix includes the entire head and neck. A requested corner
+    // lift therefore pays a cost for moving the jaw, skull, or throat and the
+    // solve prefers combinations whose deformation remains local.
+    if (y < metrics.top - metrics.height * 0.30) continue;
+    for (let offset = 0; offset < MHR_EXPRESSION_COUNT; offset += 1) {
+      const target = targets[offset];
+      if (!target) { dx[offset] = 0; dy[offset] = 0; dz[offset] = 0; continue; }
+      dx[offset] = target.getX(vertex) - (relative ? 0 : x);
+      dy[offset] = target.getY(vertex) - (relative ? 0 : y);
+      dz[offset] = target.getZ(vertex) - (relative ? 0 : z);
+    }
+    for (let row = 0; row < MHR_EXPRESSION_COUNT; row += 1) {
+      for (let column = 0; column <= row; column += 1) {
+        const value = dx[row] * dx[column] + dy[row] * dy[column] + dz[row] * dz[column];
+        gram[row * MHR_EXPRESSION_COUNT + column] += value;
+        if (row !== column) gram[column * MHR_EXPRESSION_COUNT + row] += value;
+      }
+    }
+    for (const [name, field] of Object.entries(fields)) {
+      const vector = field(x, y, z);
+      if (!vector) continue;
+      samples[name] += 1;
+      for (let offset = 0; offset < MHR_EXPRESSION_COUNT; offset += 1) {
+        rightHandSides[name][offset] += MHR_FIELD_AMPLITUDES[name]
+          * (dx[offset] * vector[0] + dy[offset] * vector[1] + dz[offset] * vector[2]);
+      }
+    }
+  }
+
+  let trace = 0;
+  for (let offset = 0; offset < MHR_EXPRESSION_COUNT; offset += 1) trace += gram[offset * MHR_EXPRESSION_COUNT + offset];
+  const lambda = Math.max(1e-12, trace / MHR_EXPRESSION_COUNT * 0.0025);
+  for (const name of fieldNames) {
+    const solved = solveRegularizedSymmetric(gram, rightHandSides[name], MHR_EXPRESSION_COUNT, lambda);
+    const maximum = Math.max(...solved.map(Math.abs), 1e-9);
+    const safetyScale = maximum > 0.78 ? 0.78 / maximum : 1;
+    for (let offset = 0; offset < MHR_EXPRESSION_COUNT; offset += 1) directions[name][offset] = solved[offset] * safetyScale;
+  }
+  return { directions, samples, metrics, lambda };
+}
+
+function mhrRestingAmounts(signature = {}) {
+  const number = (name) => Math.max(0, Number(signature[name]) || 0);
+  return {
+    mouthSmileLeft: number('mouthSmileLeft') + number('mouthDimpleLeft') * 0.35,
+    mouthSmileRight: number('mouthSmileRight') + number('mouthDimpleRight') * 0.35,
+    mouthFrownLeft: number('mouthFrownLeft'),
+    mouthFrownRight: number('mouthFrownRight'),
+    eyeCloseLeft: number('eyeBlinkLeft') + number('eyeSquintLeft') * 0.42,
+    eyeCloseRight: number('eyeBlinkRight') + number('eyeSquintRight') * 0.42,
+    cheekRaiseLeft: number('cheekSquintLeft'),
+    cheekRaiseRight: number('cheekSquintRight'),
+    browInnerUp: number('browInnerUp'),
+  };
+}
+
+export function createMhrExpressions(model, options = {}) {
+  const found = collectMhrExpressionMorphs(model);
+  if (!found) return null;
+  const { primary, components } = found;
+  const projection = deriveMhrExpressionDirections(primary);
+  const { directions } = projection;
+  const availableUnits = components.map(({ label }) => label);
+  const unitByLabel = new Map(components.map((component) => [component.label, component]));
+  let episode = null;
+  let debugUnit = null;
+  let restingFace = { ...(options.restingFace || {}) };
+  const applied = new Float32Array(MHR_EXPRESSION_COUNT);
+
+  function write(weights) {
+    for (const component of components) {
+      const value = THREE.MathUtils.clamp(weights[component.offset] || 0, -1, 1);
+      for (const { mesh, index } of component.bindings) mesh.morphTargetInfluences[index] = value;
+      applied[component.offset] = value;
+    }
+  }
+
+  function add(weights, direction, amount) {
+    if (!direction || !Number.isFinite(amount) || amount === 0) return;
+    for (let offset = 0; offset < MHR_EXPRESSION_COUNT; offset += 1) weights[offset] += direction[offset] * amount;
+  }
+
+  function addComponent(weights, component, amount) {
+    if (!Number.isFinite(amount) || amount === 0) return;
+    weights[component] += amount;
+  }
+
+  function addResting(weights) {
+    const amounts = mhrRestingAmounts(restingFace);
+    addComponent(weights, MHR_AUTHORED_CONTROLS.smileLeft, amounts.mouthSmileLeft * 0.72);
+    addComponent(weights, MHR_AUTHORED_CONTROLS.smileRight, amounts.mouthSmileRight * 0.72);
+    addComponent(weights, MHR_AUTHORED_CONTROLS.frownLeft, amounts.mouthFrownLeft * 0.62);
+    addComponent(weights, MHR_AUTHORED_CONTROLS.frownRight, amounts.mouthFrownRight * 0.62);
+    addComponent(weights, MHR_AUTHORED_CONTROLS.lidCloseLeft, amounts.eyeCloseLeft * 0.52);
+    addComponent(weights, MHR_AUTHORED_CONTROLS.lidCloseRight, amounts.eyeCloseRight * 0.52);
+    // The model does not publish names for the remaining components. Keep the
+    // inferred cheek/brow offsets intentionally quiet until visually audited.
+    add(weights, directions.cheekRaiseLeft, amounts.cheekRaiseLeft * 0.08);
+    add(weights, directions.cheekRaiseRight, amounts.cheekRaiseRight * 0.08);
+    add(weights, directions.browInnerUp, amounts.browInnerUp * 0.10);
+  }
+
+  function play(name = 'smile', speed = 1, intensity = 1) {
+    if (!['smile', 'sadness', 'fatigue'].includes(name)) return;
+    debugUnit = null;
+    const safeSpeed = Math.max(0.1, speed);
+    episode = {
+      name,
+      t0: null,
+      attack: (name === 'fatigue' ? 0.82 : 0.54) / safeSpeed,
+      hold: (name === 'fatigue' ? 1.65 : 1.25) / safeSpeed,
+      release: (name === 'fatigue' ? 1.05 : 0.72) / safeSpeed,
+      peak: clamp01(intensity),
+    };
+  }
+
+  function update(_dt, t, values) {
+    if (debugUnit) {
+      const debugWeights = new Float32Array(MHR_EXPRESSION_COUNT);
+      debugWeights[debugUnit.offset] = debugUnit.value;
+      write(debugWeights);
+      return;
+    }
+
+    let smile = clamp01(values.smile ?? 0);
+    let sadness = clamp01(values.sadness ?? 0);
+    let fatigue = clamp01(values.fatigueExpression ?? 0);
+    let smileEyes = smileEyeIntensity(smile);
+    if (episode) {
+      if (episode.t0 == null) episode.t0 = t;
+      const elapsed = t - episode.t0;
+      const performance = episodeEnvelope(episode, elapsed);
+      if (episode.name === 'smile') {
+        smile = Math.max(smile, performance);
+        smileEyes = Math.max(smileEyes, smileEyeIntensity(episodeEnvelope(episode, elapsed, 0.09)));
+      } else if (episode.name === 'sadness') sadness = Math.max(sadness, performance);
+      else if (episode.name === 'fatigue') fatigue = Math.max(fatigue, performance);
+      if (elapsed > episode.attack + episode.hold + episode.release + 0.1) episode = null;
+    }
+
+    const weights = new Float32Array(MHR_EXPRESSION_COUNT);
+    addResting(weights);
+    addComponent(weights, MHR_AUTHORED_CONTROLS.smileLeft, smile * 0.70);
+    addComponent(weights, MHR_AUTHORED_CONTROLS.smileRight, smile * 0.67);
+    add(weights, directions.cheekRaiseLeft, smileEyes * 0.08);
+    add(weights, directions.cheekRaiseRight, smileEyes * 0.09);
+    addComponent(weights, MHR_AUTHORED_CONTROLS.lidCloseLeft, smileEyes * 0.045);
+    addComponent(weights, MHR_AUTHORED_CONTROLS.lidCloseRight, smileEyes * 0.050);
+    addComponent(weights, MHR_AUTHORED_CONTROLS.frownLeft, sadness * 0.58);
+    addComponent(weights, MHR_AUTHORED_CONTROLS.frownRight, sadness * 0.62);
+    add(weights, directions.browInnerUp, sadness * 0.12 + fatigue * 0.025);
+    addComponent(weights, MHR_AUTHORED_CONTROLS.lidCloseLeft, fatigue * 0.30);
+    addComponent(weights, MHR_AUTHORED_CONTROLS.lidCloseRight, fatigue * 0.33);
+    addComponent(weights, MHR_AUTHORED_CONTROLS.frownLeft, fatigue * 0.045);
+    addComponent(weights, MHR_AUTHORED_CONTROLS.frownRight, fatigue * 0.050);
+    write(weights);
+  }
+
+  function setDebugUnit(name, value = 1) {
+    const component = unitByLabel.get(name);
+    if (!component) return false;
+    episode = null;
+    debugUnit = { offset: component.offset, name, value: THREE.MathUtils.clamp(Number(value) || 0, -1, 1) };
+    return true;
+  }
+
+  function clearDebug() {
+    debugUnit = null;
+    write(new Float32Array(MHR_EXPRESSION_COUNT));
+  }
+
+  function setRestingFace(signature = {}) {
+    restingFace = { ...signature };
+  }
+
+  return {
+    mode: 'mhr-semantic',
+    play,
+    update,
+    availableUnits,
+    setDebugUnit,
+    clearDebug,
+    setRestingFace,
+    projection,
+    get debugUnit() { return debugUnit ? { ...debugUnit } : null; },
+    get restingFace() { return { ...restingFace }; },
+    get appliedWeights() { return new Float32Array(applied); },
+  };
 }
 
 export function smileEyeIntensity(smile) {

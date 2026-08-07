@@ -4,8 +4,10 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'meshoptimizer';
 import { findBones, createCostume } from './costume.js';
 import { createIdle } from './idle.js';
-import { createExpressions } from './expressions.js';
-import { createMhrController, MHR_LIVE_IDENTITY_IDS } from './mhr.js';
+import { createExpressions, createMhrExpressions } from './expressions.js';
+import {
+  createMhrController, createMhrEyeDetails, MHR_IDENTITY_IDS, MHR_LIVE_IDENTITY_IDS, MHR_RIG_IDS,
+} from './mhr.js';
 import {
   faceIdentityDistance, generatePatient, generateRestingFaceSignature, nextSeed,
   patientToCharacterPreset, randomSeed,
@@ -27,6 +29,7 @@ const ui = {
   command: document.querySelector('#generate-command'), fallback: document.querySelector('#fallback'), search: document.querySelector('#control-search'),
   regenerate: document.querySelector('#regenerate'), randomize: document.querySelector('#randomize'), newPatient: document.querySelector('#new-patient'),
   renderToggle: document.querySelector('#render-toggle'),
+  poseToggle: document.querySelector('#pose-toggle'),
   expressionDriver: document.querySelector('#expression-driver'), faceUnitSelect: document.querySelector('#face-unit-select'),
   faceUnitValue: document.querySelector('#face-unit-value'), faceUnitOutput: document.querySelector('#face-unit-output'), faceUnitReset: document.querySelector('#face-unit-reset'),
   faceUnitSurprise: document.querySelector('#face-unit-surprise'),
@@ -36,8 +39,22 @@ const ui = {
 const COSTUME_GEOMETRY_IDS = new Set(['bodiceFit', 'waistHeight', 'skirtFullness', 'skirtLength', 'skirtDrape',
   'bustleAmount', 'sleeveVolume', 'sleeveLength', 'collarHeight', 'collarSpread', 'buttonSpacing', 'buttonCount',
   'outfitStyle', 'hairStyle', 'hairVolume', 'partWidth', 'bunSize', 'hairHeight', 'sideVolume',
-  'hairlineHeight', 'templeRecession', 'wispAmount', 'waveAmount', 'flowSweep', 'greyAmount']);
+  'hairlineHeight', 'templeRecession', 'wispAmount', 'waveAmount', 'flowSweep']);
 const HERITAGE_IDS = ['african', 'asian', 'caucasian'];
+const SKIN_APPEARANCE_IDS = new Set([
+  'skinTone', 'skinRoughness', 'eyeColor',
+  ...definitions.filter((definition) => definition.group === 'stylized' && definition.id !== 'stylizedLightSoftness')
+    .map((definition) => definition.id),
+]);
+const COMPARISON_MATERIAL_IDS = new Set(['skinTone', 'skinRoughness']);
+const COSTUME_MATERIAL_IDS = new Set([
+  'dressColor', 'trimColor', 'fabricRoughness', 'hairShade', 'hairColor', 'strandContrast', 'greyAmount',
+]);
+const LIGHTING_IDS = new Set(['keyIntensity', 'fillIntensity', 'warmth', 'exposure', 'cameraFov', 'stylizedLightSoftness']);
+const MHR_POSE_IDS = new Set([
+  'seated', 'kneesTogether', 'posture', 'headTilt', 'headTurn',
+  'armOpenness', 'elbowBend', 'armAsymmetry', 'wristAngle', 'handTension',
+]);
 
 const renderer = new THREE.WebGLRenderer({ canvas: ui.canvas, antialias: true, alpha: false });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -73,12 +90,19 @@ let costume = null;
 let idle = null;
 let expressions = null;
 let mhrController = null;
+let mhrEyeDetails = null;
 let isFallback = false;
 let costumeDirty = false;
 let lastCostumeBuild = 0;
 let regenerationNeeded = false;
 let regenerationBusy = false;
 let renderSwitchBusy = false;
+let poseCostumeRebuildPending = false;
+let poseWasTransitioning = false;
+let identityFitPending = false;
+let pendingControlFrame = null;
+let pendingControlId = null;
+let pendingControlAppliesLive = false;
 const RENDERER_MODES = Object.freeze({
   current: Object.freeze({ label: 'A · MPFB', path: '/models/mrs-ostrander-1896.glb', kind: 'mpfb' }),
   mhr: Object.freeze({ label: 'B · Meta MHR', path: '/models/comparison-mhr-lod1.glb', kind: 'mhr' }),
@@ -180,6 +204,7 @@ function disposeLoadedCharacter() {
   animationAction?.stop();
   mixer?.stopAllAction();
   costume?.dispose();
+  mhrEyeDetails?.dispose();
   if (model) {
     characterRoot.remove(model);
     model.traverse((object) => {
@@ -196,35 +221,11 @@ function disposeLoadedCharacter() {
   }
   model = null; mixer = null; animationAction = null; animationClips = [];
   bones = null; costume = null; idle = null; expressions = null;
-  mhrController = null;
+  mhrController = null; mhrEyeDetails = null;
+  poseCostumeRebuildPending = false;
+  poseWasTransitioning = false;
+  identityFitPending = false;
   named.clear();
-}
-
-function createMhrExpressionDebugger(root) {
-  const meshes = [];
-  root.traverse((object) => {
-    if (object.isMesh && object.morphTargetDictionary?.shape_45 != null) meshes.push(object);
-  });
-  if (!meshes.length) return null;
-  const availableUnits = Array.from({ length: 72 }, (_, index) => `MHR expression ${String(index).padStart(2, '0')}`);
-  const clearDebug = () => {
-    for (const mesh of meshes) for (let component = 45; component < 117; component += 1) {
-      const index = mesh.morphTargetDictionary[`shape_${component}`];
-      if (index != null) mesh.morphTargetInfluences[index] = 0;
-    }
-  };
-  return {
-    mode: 'mhr-components', availableUnits, restingFace: {}, clearDebug,
-    setDebugUnit(name, value) {
-      clearDebug();
-      const component = 45 + Number(name.slice(-2));
-      for (const mesh of meshes) {
-        const index = mesh.morphTargetDictionary[`shape_${component}`];
-        if (index != null) mesh.morphTargetInfluences[index] = value;
-      }
-    },
-    play() {}, update() {},
-  };
 }
 
 function updateComparisonMaterial(root, values) {
@@ -235,7 +236,8 @@ function updateComparisonMaterial(root, values) {
     for (const item of materials) {
       if (!item?.color) continue;
       const name = item.name.toLowerCase();
-      const isSkin = renderStyle === 'mhr' || name.includes('head_material') || name.includes('skin');
+      const isMhrBody = renderStyle === 'mhr' && object.name === 'body_mesh' && !item.userData.excludeComparisonSkin;
+      const isSkin = isMhrBody || name.includes('head_material') || name.includes('skin');
       if (!isSkin) continue;
       item.color.copy(skin);
       if ('roughness' in item) item.roughness = values.skinRoughness;
@@ -247,6 +249,7 @@ function updateComparisonMaterial(root, values) {
 function refreshFaceUnitDebugger() {
   const units = expressions?.availableUnits || [];
   ui.faceUnitSelect.replaceChildren();
+  ui.faceUnitValue.min = '0';
   if (expressions?.mode === 'mpfb-faceunits' && units.length) {
     for (const unit of units) ui.faceUnitSelect.append(new Option(unit, unit));
     const restingCount = Object.keys(expressions.restingFace || {}).length;
@@ -255,13 +258,14 @@ function refreshFaceUnitDebugger() {
     ui.faceUnitValue.disabled = false;
     ui.faceUnitReset.disabled = false;
     ui.faceUnitSurprise.disabled = false;
-  } else if (expressions?.mode === 'mhr-components' && units.length) {
+  } else if (expressions?.mode === 'mhr-semantic' && units.length) {
     for (const unit of units) ui.faceUnitSelect.append(new Option(unit, unit));
-    ui.expressionDriver.textContent = `Meta MHR component morphs · ${units.length} expression targets`;
+    ui.expressionDriver.textContent = `Meta MHR semantic projection · ${units.length} signed latent targets`;
+    ui.faceUnitValue.min = '-1';
     ui.faceUnitSelect.disabled = false;
     ui.faceUnitValue.disabled = false;
     ui.faceUnitReset.disabled = false;
-    ui.faceUnitSurprise.disabled = true;
+    ui.faceUnitSurprise.disabled = false;
   } else {
     ui.faceUnitSelect.append(new Option('Legacy procedural fallback', ''));
     ui.expressionDriver.textContent = 'Legacy procedural morphs · regenerate renderer A after installing faceunits01';
@@ -277,8 +281,8 @@ function refreshFaceUnitDebugger() {
 function applyFaceUnitDebug() {
   const value = Number(ui.faceUnitValue.value);
   ui.faceUnitOutput.textContent = value.toFixed(2);
-  if (!expressions || !['mpfb-faceunits', 'mhr-components'].includes(expressions.mode)) return;
-  if (value <= 0) expressions.clearDebug();
+  if (!expressions || !['mpfb-faceunits', 'mhr-semantic'].includes(expressions.mode)) return;
+  if (value === 0) expressions.clearDebug();
   else expressions.setDebugUnit(ui.faceUnitSelect.value, value);
 }
 
@@ -293,7 +297,7 @@ function applyPresetRestingFace() {
 }
 
 function surpriseFace() {
-  if (!expressions?.setRestingFace || expressions.mode !== 'mpfb-faceunits') return;
+  if (!expressions?.setRestingFace || !['mpfb-faceunits', 'mhr-semantic'].includes(expressions.mode)) return;
   const appearance = preset.patient?.appearance;
   if (!appearance) return;
   const faceSignatureSeed = nextSeed(appearance.faceSignatureSeed ?? preset.values.seed);
@@ -301,7 +305,8 @@ function surpriseFace() {
   appearance.restingFace = generateRestingFaceSignature(faceSignatureSeed, { dramatic: true });
   clearFaceUnitDebug();
   expressions.setRestingFace(appearance.restingFace);
-  ui.expressionDriver.textContent = `MPFB named morphs · ${expressions.availableUnits.length} targets · ${Object.keys(expressions.restingFace).length} active resting offsets`;
+  const driver = expressions.mode === 'mhr-semantic' ? 'Meta MHR semantic projection' : 'MPFB named morphs';
+  ui.expressionDriver.textContent = `${driver} · ${expressions.availableUnits.length} targets · ${Object.values(expressions.restingFace).filter(Number).length} active resting offsets`;
   updateText();
   ui.status.textContent = `Resting-face signature ${faceSignatureSeed} applied`;
   ui.status.className = 'status ok';
@@ -312,6 +317,23 @@ function updateRenderToggle() {
   ui.renderToggle.textContent = `Renderer ${RENDERER_MODES[renderStyle].label}`;
   ui.renderToggle.classList.toggle('active', renderStyle !== 'current');
   ui.renderToggle.disabled = renderSwitchBusy;
+}
+
+function updatePoseToggle() {
+  if (!ui.poseToggle) return;
+  const supported = renderStyle === 'mhr' && mhrController && !isFallback;
+  ui.poseToggle.hidden = !supported;
+  if (!supported) return;
+  const targetIsSeated = mhrController.targetSeated >= 0.5;
+  const moving = mhrController.isPoseTransitioning;
+  ui.poseToggle.textContent = moving
+    ? `Reverse: ${targetIsSeated ? 'stand up' : 'sit down'}`
+    : targetIsSeated ? 'Stand up' : 'Sit down';
+  ui.poseToggle.classList.toggle('active', targetIsSeated);
+  ui.poseToggle.setAttribute('aria-pressed', String(targetIsSeated));
+  ui.poseToggle.title = moving
+    ? 'Reverse the current Meta MHR pose transition'
+    : `Animate the Meta MHR patient to ${targetIsSeated ? 'standing' : 'the chair'}`;
 }
 
 function updateControlModes() {
@@ -366,13 +388,14 @@ async function loadCharacter() {
       mhrController = createMhrController(model, preset.values);
       prepareSkinModel(model, preset.values);
       bones = findBones(model);
+      mhrEyeDetails = createMhrEyeDetails(model, preset.values);
       model.updateMatrixWorld(true);
       if (bones.pelvis && bones.head) {
         costume = createCostume(characterRoot, bones, model);
         costume.rebuild(preset.values);
       }
       idle = mhrController;
-      expressions = createMhrExpressionDebugger(model);
+      expressions = createMhrExpressions(model, { restingFace: preset.patient?.appearance?.restingFace });
     }
     refreshFaceUnitDebugger();
   }
@@ -503,63 +526,85 @@ function rebuildCostumeNow() {
   costumeDirty = false;
 }
 
-function applyAll(changedId = null) {
+function applyAll(changedId = null, { final = true } = {}) {
   const v = preset.values;
+  const initial = changedId == null;
   if (isFallback) {
     setMaterialLike('dress', v.dressColor, v.fabricRoughness, 1); setMaterialLike('trim', v.trimColor);
     setMaterialLike('hair', v.hairColor); setMaterialLike('skin', v.skinTone, v.skinRoughness, .9);
     characterRoot.position.y = -0.2 * (v.seated >= 0.5 ? 1 : 0);
   } else {
     if (renderStyle === 'current') {
-      const skinTint = new THREE.Color('#ffffff').lerp(new THREE.Color(v.skinTone), 0.75);
-      setMaterialLike('human', skinTint, v.skinRoughness, .9); setMaterialLike('.body', skinTint, v.skinRoughness, .9);
-      setMaterialLike('garment', v.dressColor, v.fabricRoughness, 1);
-      setMaterialLike('bodice', v.dressColor, v.fabricRoughness, 1);
-      setMaterialLike('suit', v.dressColor, v.fabricRoughness, 1);
-      setMaterialLike('shoes', '#211713');
-      setEyeColor(v.eyeColor);
-      updateSkinModel(model, v);
-      if (costume) {
+      if (initial || SKIN_APPEARANCE_IDS.has(changedId)) {
+        const skinTint = new THREE.Color('#ffffff').lerp(new THREE.Color(v.skinTone), 0.75);
+        setMaterialLike('human', skinTint, v.skinRoughness, .9); setMaterialLike('.body', skinTint, v.skinRoughness, .9);
+        setEyeColor(v.eyeColor);
+        updateSkinModel(model, v);
+      }
+      if (initial || COSTUME_MATERIAL_IDS.has(changedId) || COSTUME_GEOMETRY_IDS.has(changedId)) {
+        setMaterialLike('garment', v.dressColor, v.fabricRoughness, 1);
+        setMaterialLike('bodice', v.dressColor, v.fabricRoughness, 1);
+        setMaterialLike('suit', v.dressColor, v.fabricRoughness, 1);
+        setMaterialLike('shoes', '#211713');
+      }
+      if (costume && (initial || COSTUME_MATERIAL_IDS.has(changedId) || COSTUME_GEOMETRY_IDS.has(changedId))) {
         costume.materials.dress.color.set(v.dressColor); setSurfaceFinish(costume.materials.dress, v.fabricRoughness, 1);
         costume.materials.trim.color.set(v.trimColor); costume.updateHair(v);
       }
-      if (changedId === null || COSTUME_GEOMETRY_IDS.has(changedId)) costumeDirty = true;
+      if (final && COSTUME_GEOMETRY_IDS.has(changedId)) costumeDirty = true;
     } else if (renderStyle === 'mhr') {
-      const identityChanged = mhrController?.applyValues(v, { forceIdentity: changedId != null && MHR_LIVE_IDENTITY_IDS.has(changedId) }) || false;
-      if (identityChanged) refreshSkinGeometry(model, v);
-      updateSkinModel(model, v);
-      updateComparisonMaterial(model, v);
+      const identityControl = initial || MHR_IDENTITY_IDS.has(changedId);
+      const rigControl = initial || MHR_RIG_IDS.has(changedId) || MHR_POSE_IDS.has(changedId);
+      const identityChanged = (identityControl || rigControl) ? (mhrController?.applyValues(v) || false) : false;
+      if (changedId === 'seated' && mhrController?.isPoseTransitioning) poseCostumeRebuildPending = true;
+      if (identityChanged) {
+        refreshSkinGeometry(model, v);
+        identityFitPending = true;
+      }
+      if (initial || identityChanged || SKIN_APPEARANCE_IDS.has(changedId)) updateSkinModel(model, v);
+      if (initial || identityChanged || SKIN_APPEARANCE_IDS.has(changedId)) mhrEyeDetails?.update(v);
+      if (initial || COMPARISON_MATERIAL_IDS.has(changedId)) updateComparisonMaterial(model, v);
       if (costume) {
-        if (identityChanged) costume.invalidateFit?.();
-        costume.materials.dress.color.set(v.dressColor); setSurfaceFinish(costume.materials.dress, v.fabricRoughness, 1);
-        costume.materials.trim.color.set(v.trimColor); costume.updateHair(v);
-        if (identityChanged || changedId === null || COSTUME_GEOMETRY_IDS.has(changedId) || changedId === 'gender') costumeDirty = true;
+        if (initial || COSTUME_MATERIAL_IDS.has(changedId) || COSTUME_GEOMETRY_IDS.has(changedId)) {
+          costume.materials.dress.color.set(v.dressColor); setSurfaceFinish(costume.materials.dress, v.fabricRoughness, 1);
+          costume.materials.trim.color.set(v.trimColor); costume.updateHair(v);
+        }
+        if (final && identityControl && identityFitPending) {
+          costume.invalidateFit?.();
+          costumeDirty = true;
+          identityFitPending = false;
+        }
+        if (final && COSTUME_GEOMETRY_IDS.has(changedId)) costumeDirty = true;
       }
     } else {
-      updateComparisonMaterial(model, v);
+      if (initial || COMPARISON_MATERIAL_IDS.has(changedId)) updateComparisonMaterial(model, v);
     }
   }
-  const key = scene.getObjectByName('KeyLight');
-  const fill = scene.getObjectByName('FillLight');
-  const faceFill = scene.getObjectByName('ComparisonFaceFill');
-  const rim = scene.getObjectByName('ComparisonRimLight');
-  const comparison = renderStyle !== 'current';
-  const softness = THREE.MathUtils.clamp(v.stylizedLightSoftness ?? 0.78, 0, 1);
-  if (key) {
-    key.intensity = (comparison ? THREE.MathUtils.lerp(39, 29, softness) : 48) * v.keyIntensity;
-    key.color.setHSL(0.105, comparison ? .42 : .58, (comparison ? .67 : .62) + (1 - v.warmth) * .1);
-    key.penumbra = comparison ? THREE.MathUtils.lerp(.9, .995, softness) : .92;
-    key.shadow.radius = comparison ? THREE.MathUtils.lerp(2, 4, softness) : 3;
-    key.shadow.normalBias = comparison ? 0.018 : 0.012;
+  if (initial || LIGHTING_IDS.has(changedId)) {
+    const key = scene.getObjectByName('KeyLight');
+    const fill = scene.getObjectByName('FillLight');
+    const faceFill = scene.getObjectByName('ComparisonFaceFill');
+    const rim = scene.getObjectByName('ComparisonRimLight');
+    const comparison = renderStyle !== 'current';
+    const softness = THREE.MathUtils.clamp(v.stylizedLightSoftness ?? 0.78, 0, 1);
+    if (key) {
+      key.intensity = (comparison ? THREE.MathUtils.lerp(39, 29, softness) : 48) * v.keyIntensity;
+      key.color.setHSL(0.105, comparison ? .42 : .58, (comparison ? .67 : .62) + (1 - v.warmth) * .1);
+      key.penumbra = comparison ? THREE.MathUtils.lerp(.9, .995, softness) : .92;
+      key.shadow.radius = comparison ? THREE.MathUtils.lerp(2, 4, softness) : 3;
+      key.shadow.normalBias = comparison ? 0.018 : 0.012;
+    }
+    if (fill) fill.intensity = comparison ? 0.38 + v.fillIntensity * 0.55 : 0.62 + v.fillIntensity * 0.9;
+    if (faceFill) {
+      faceFill.visible = comparison;
+      faceFill.intensity = (0.65 + softness * 1.75) * (0.65 + v.fillIntensity * 0.45);
+    }
+    if (rim) { rim.visible = comparison; rim.intensity = 0.14 + softness * 0.14; }
+    renderer.toneMappingExposure = 2 ** (v.exposure + (comparison ? -0.08 : 0));
+    camera.fov = v.cameraFov; camera.updateProjectionMatrix();
   }
-  if (fill) fill.intensity = comparison ? 0.38 + v.fillIntensity * 0.55 : 0.62 + v.fillIntensity * 0.9;
-  if (faceFill) {
-    faceFill.visible = comparison;
-    faceFill.intensity = (0.65 + softness * 1.75) * (0.65 + v.fillIntensity * 0.45);
-  }
-  if (rim) { rim.visible = comparison; rim.intensity = 0.14 + softness * 0.14; }
-  renderer.toneMappingExposure = 2 ** (v.exposure + (comparison ? -0.08 : 0)); camera.fov = v.cameraFov; camera.updateProjectionMatrix();
   if (changedId === 'idleMode') syncIdleMode();
+  updatePoseToggle();
   updateText();
 }
 
@@ -576,6 +621,25 @@ function buildControls() {
   updateControlModes();
 }
 
+function flushPendingControlUpdate({ final = false } = {}) {
+  if (pendingControlFrame != null) cancelAnimationFrame(pendingControlFrame);
+  pendingControlFrame = null;
+  const changedId = pendingControlId;
+  const appliesLive = pendingControlAppliesLive;
+  pendingControlId = null;
+  pendingControlAppliesLive = false;
+  if (!changedId) return;
+  if (appliesLive) applyAll(changedId, { final });
+  else updateText();
+}
+
+function scheduleControlUpdate(changedId, appliesLive) {
+  pendingControlId = changedId;
+  pendingControlAppliesLive = appliesLive;
+  if (pendingControlFrame != null) return;
+  pendingControlFrame = requestAnimationFrame(() => flushPendingControlUpdate({ final: false }));
+}
+
 function makeControl(definition) {
   const row = document.createElement('div'); row.className = `control ${definition.mode === 'bake' ? 'bake' : 'live'}`; row.dataset.search = `${definition.label} ${definition.id}`.toLowerCase();
   row.dataset.id = definition.id;
@@ -584,21 +648,25 @@ function makeControl(definition) {
   if (definition.type === 'select') for (const value of definition.options) { const option = document.createElement('option'); option.value = value; option.textContent = value.replaceAll('-', ' '); input.append(option); }
   else { input.type = definition.type; if (definition.type === 'range') for (const key of ['min', 'max', 'step']) input[key] = definition[key]; }
   input.value = preset.values[definition.id]; output.textContent = formatValue(definition, input.value);
-  const applyInput = () => {
+  const applyInput = (final = false) => {
     preset.values[definition.id] = definition.type === 'range' ? Number(input.value) : input.value;
     output.textContent = formatValue(definition, input.value);
     if (HERITAGE_IDS.includes(definition.id)) normalizeHeritageWeights(definition.id);
-    if (definition.mode === 'bake') {
-      markRegenerationNeeded();
-      // MHR's identity and skeletal proportions are runtime parameters, so the
-      // same controls remain live in B while still recording that renderer A
-      // would need a Blender rebuild.
-      if (renderStyle === 'mhr') applyAll(definition.id);
-    } else applyAll(definition.id);
-    updateText();
+    if (definition.mode === 'bake') markRegenerationNeeded();
+    // MHR identity changes are expensive enough to miss a frame, but pointer
+    // events can arrive far faster than frames. Keep only the latest value and
+    // never queue a backlog. The final change event commits one hair/costume
+    // refit after dragging stops.
+    const appliesLive = definition.mode === 'live'
+      || (renderStyle === 'mhr' && (MHR_LIVE_IDENTITY_IDS.has(definition.id) || definition.id === 'seated'));
+    if (final) {
+      pendingControlId = definition.id;
+      pendingControlAppliesLive = appliesLive;
+      flushPendingControlUpdate({ final: true });
+    } else scheduleControlUpdate(definition.id, appliesLive);
   };
-  input.oninput = applyInput;
-  if (definition.type === 'select') input.onchange = applyInput;
+  input.oninput = () => applyInput(false);
+  input.onchange = () => applyInput(true);
   row.append(label, output, input); return row;
 }
 
@@ -621,7 +689,19 @@ function normalizeHeritageWeights(changedId) {
     if (heritageOutput) heritageOutput.textContent = formatValue(heritageDefinition, preset.values[id]);
   }
 }
-function refreshControls() { for (const definition of definitions) { const input = document.querySelector(`#control-${definition.id}`); if (input) { input.value = preset.values[definition.id]; input.dispatchEvent(new Event('input')); } } }
+function refreshControls(apply = true) {
+  if (pendingControlFrame != null) cancelAnimationFrame(pendingControlFrame);
+  pendingControlFrame = null; pendingControlId = null; pendingControlAppliesLive = false;
+  for (const definition of definitions) {
+    const input = document.querySelector(`#control-${definition.id}`);
+    if (!input) continue;
+    input.value = preset.values[definition.id];
+    const output = input.parentElement?.querySelector('output');
+    if (output) output.textContent = formatValue(definition, input.value);
+  }
+  if (apply) applyAll();
+  else updateText();
+}
 function markRegenerationNeeded() {
   regenerationNeeded = true;
   ui.regenerate?.classList.add('needed');
@@ -663,15 +743,41 @@ function updateText() {
   const baked = definitions.length - live;
   const expressionMode = expressions?.mode === 'mpfb-faceunits'
     ? `MPFB named · ${expressions.availableUnits.length}`
-    : expressions?.mode === 'mhr-components' ? `MHR components · ${expressions.availableUnits.length}` : 'baked / unavailable';
+    : expressions?.mode === 'mhr-semantic' ? `MHR semantic · ${expressions.availableUnits.length} signed components` : 'baked / unavailable';
   ui.pipeline.innerHTML = `<dt>Tunable values</dt><dd>${definitions.length}</dd><dt>Live controls</dt><dd>${live}</dd><dt>Blender controls</dt><dd>${baked}</dd><dt>Renderer</dt><dd>${RENDERER_MODES[renderStyle].label}</dd><dt>Facial driver</dt><dd>${expressionMode}</dd><dt>Regeneration</dt><dd>${regenerationNeeded ? 'needed' : 'current'}</dd><dt>Patient seed</dt><dd>${preset.patient?.seed ?? 'legacy'}</dd><dt>Appearance seed</dt><dd>${preset.values.seed}</dd><dt>Face signature</dt><dd>${preset.patient?.appearance?.faceSignatureSeed ?? 'neutral'}</dd><dt>Target runtime</dt><dd>Three.js / GLB</dd>`;
+}
+
+function syncControlValue(id, value) {
+  const input = document.querySelector(`#control-${id}`);
+  if (!input) return;
+  input.value = value;
+  const definition = definitions.find((item) => item.id === id);
+  const output = input.parentElement?.querySelector('output');
+  if (definition && output) output.textContent = formatValue(definition, value);
+}
+
+function toggleMhrPose() {
+  if (renderStyle !== 'mhr' || !mhrController || isFallback) return;
+  const nextSeated = mhrController.targetSeated < 0.5 ? 1 : 0;
+  preset.values.seated = nextSeated;
+  syncControlValue('seated', nextSeated);
+  mhrController.startSeatedTransition(nextSeated, 2.25, preset.values);
+  poseCostumeRebuildPending = true;
+  poseWasTransitioning = true;
+  regenerationNeeded = true;
+  ui.regenerate?.classList.add('needed');
+  setView('full');
+  ui.status.textContent = nextSeated ? 'Meta MHR patient sitting down…' : 'Meta MHR patient standing up…';
+  ui.status.className = 'status ok';
+  updatePoseToggle();
+  updateText();
 }
 
 function appearanceVariation() {
   const patient = preset.patient ?? generatePatient({ seed: preset.values.seed });
   const appearanceSeed = nextSeed(preset.values.seed);
   preset = patientToCharacterPreset(patient, preset, definitions, { appearanceSeed });
-  refreshControls();
+  refreshControls(false);
   applyPresetRestingFace();
   if (renderStyle === 'mhr') {
     applyAll();
@@ -705,7 +811,7 @@ async function newRandomPatient() {
   }
 
   preset = best.candidate;
-  refreshControls();
+  refreshControls(false);
   applyPresetRestingFace();
   ui.status.textContent = `Casting a distinct patient · anatomy distance ${best.anatomyDistance.toFixed(2)}…`;
   ui.status.className = 'status warn';
@@ -789,6 +895,7 @@ document.querySelector('#copy-json').onclick = () => navigator.clipboard.writeTe
 document.querySelector('#toggle-grid').onclick = (event) => { grid.visible = !grid.visible; event.currentTarget.classList.toggle('active', grid.visible); };
 document.querySelector('#toggle-motion').onclick = (event) => { motionEnabled = !motionEnabled; syncIdleMode(); event.currentTarget.classList.toggle('active', motionEnabled); };
 ui.renderToggle.onclick = toggleRenderStyle;
+ui.poseToggle.onclick = toggleMhrPose;
 document.querySelectorAll('[data-view]').forEach((button) => button.onclick = () => setView(button.dataset.view));
 document.querySelectorAll('[data-gesture]').forEach((button) => button.onclick = () => idle?.playGesture(button.dataset.gesture, preset.values.gestureSpeed || 1));
 document.querySelectorAll('[data-expression]').forEach((button) => button.onclick = () => { clearFaceUnitDebug(); expressions?.play(button.dataset.expression, preset.values.gestureSpeed || 1); });
@@ -806,11 +913,25 @@ const clock = new THREE.Clock();
 function frame() {
   const delta = clock.getDelta();
   const elapsed = clock.elapsedTime;
-  if (costumeDirty && performance.now() - lastCostumeBuild > 90) rebuildCostumeNow();
-  if (motionEnabled && !isFallback) {
+  if (costumeDirty && !mhrController?.isPoseTransitioning && performance.now() - lastCostumeBuild > 90) rebuildCostumeNow();
+  if (!isFallback) {
     const mode = preset.values.idleMode || 'procedural';
-    if (mixer) mixer.update(mode === 'procedural' ? 0 : delta * (0.72 + Math.min(preset.values.breathing, 1.2) * 0.9));
-    if (idle) idle.update(delta, elapsed, preset.values, mode);
+    if (motionEnabled && mixer) mixer.update(mode === 'procedural' ? 0 : delta * (0.72 + Math.min(preset.values.breathing, 1.2) * 0.9));
+    if (idle && renderStyle === 'mhr') {
+      idle.update(delta, elapsed, preset.values, mode, motionEnabled);
+      const transitioning = idle.isPoseTransitioning;
+      if (transitioning !== poseWasTransitioning) {
+        poseWasTransitioning = transitioning;
+        updatePoseToggle();
+      }
+      if (poseCostumeRebuildPending && !transitioning) {
+        costume?.invalidateFit?.();
+        costumeDirty = true;
+        poseCostumeRebuildPending = false;
+        ui.status.textContent = idle.targetSeated >= 0.5 ? 'Meta MHR patient seated' : 'Meta MHR patient standing';
+        ui.status.className = 'status ok';
+      }
+    } else if (motionEnabled && idle) idle.update(delta, elapsed, preset.values, mode);
   }
   if (expressions && !isFallback) expressions.update(delta, elapsed, preset.values);
   orbit.update(); renderer.render(scene, camera); requestAnimationFrame(frame);

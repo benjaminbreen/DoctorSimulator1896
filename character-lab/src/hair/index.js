@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { getHairProfile } from './profiles.js';
 import {
-  buildFlowRibbons, buildHairlineWisps, buildHairShells, findBodyMesh, sampleScalp,
+  buildFlowRibbons, buildHairlineWisps, buildHairShells, buildHairUnderCap, findBodyMesh, sampleScalp,
   scalpPoint, scalpShadeFactor,
 } from './geometry.js';
 import { createHairMaterials } from './materials.js';
@@ -237,6 +237,7 @@ export function createHairSystem(scene, bones, model) {
     if (!scalpCache) scalpCache = sampleScalp(model, frame);
     if (!scalpCache) return;
     const profile = getHairProfile(values.hairStyle);
+    add('Hair_UnderCap', buildHairUnderCap(scalpCache, frame, profile, values), materials.root);
     const shells = buildHairShells(scalpCache, frame, profile, values);
     shells.forEach((geometry, index) => add(`Hair_Scalp_${index}`, geometry));
     add('Hair_FlowRibbons', buildFlowRibbons(scalpCache, frame, profile, values), materials.strand);

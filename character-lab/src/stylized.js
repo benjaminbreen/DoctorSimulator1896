@@ -113,11 +113,17 @@ function makeWeldedSmoothNormals(geometry, flatNormals) {
 }
 
 function skinMetrics(geometry) {
-  geometry.computeBoundingBox();
-  const box = geometry.boundingBox;
+  // BufferGeometry.computeBoundingBox() expands for every morph target. On
+  // MHR that includes 117 signed identity/expression extremes, placing the
+  // inferred eyes and mouth far above the visible neutral head. Appearance
+  // masks must use the current base positions; refreshSkinGeometry rebuilds
+  // them whenever live identity is baked into that base.
+  const box = new THREE.Box3();
+  const point = new THREE.Vector3();
+  const position = geometry.attributes.position;
+  for (let index = 0; index < position.count; index++) box.expandByPoint(point.fromBufferAttribute(position, index));
   const height = box.max.y - box.min.y;
   const headMinY = box.max.y - height * 0.175;
-  const position = geometry.attributes.position;
   let minX = Infinity;
   let maxX = -Infinity;
   let minZ = Infinity;
@@ -173,16 +179,75 @@ function findFaceLandmarks(model, body) {
       frontZ = Math.max(frontZ, position.getZ(index));
     }
     const headWidth = Math.max(0.001, maxX - minX);
+    // MHR's SkinnedMesh carries a 0.01/axis-conversion bind transform while
+    // its rig bones and geometry positions are authored in the model-root
+    // frame. Converting through body.matrixWorld would magnify the eye frame
+    // by 100×; remove only the character root transform here.
+    const toCharacter = model.matrixWorld.clone().invert();
+    const eyePoints = ['r_eye_null', 'l_eye_null']
+      .map((name) => model.getObjectByName(name))
+      .filter(Boolean)
+      .map((bone) => bone.getWorldPosition(new THREE.Vector3()).applyMatrix4(toCharacter));
+    const eyeCenter = eyePoints.length === 2
+      ? eyePoints[0].clone().add(eyePoints[1]).multiplyScalar(0.5)
+      : new THREE.Vector3((minX + maxX) / 2, metrics.maxY - metrics.height * 0.059, frontZ - headWidth * 0.11);
+    const eyeSeparation = eyePoints.length === 2 ? eyePoints[0].distanceTo(eyePoints[1]) : headWidth * 0.145;
+
+    // Components 32/33 are the verified bilateral smile controls in the MHR
+    // expression block. Their affected vertices give a topology-stable mouth
+    // frame, avoiding broad anthropometric ratios that tinted half the face.
+    const mouthTargets = ['shape_77', 'shape_78'].map((name) => {
+      const index = body.morphTargetDictionary?.[name];
+      return index == null ? null : body.geometry.morphAttributes.position?.[index];
+    }).filter(Boolean);
+    let mouthWeight = 0;
+    const mouthCenter = new THREE.Vector3();
+    let mouthMinX = Infinity, mouthMaxX = -Infinity, mouthMinY = Infinity, mouthMaxY = -Infinity;
+    let maximumDelta = 0;
+    if (mouthTargets.length) {
+      for (let index = 0; index < position.count; index++) {
+        let delta = 0;
+        for (const target of mouthTargets) {
+          const dx = target.getX(index) - (body.geometry.morphTargetsRelative ? 0 : position.getX(index));
+          const dy = target.getY(index) - (body.geometry.morphTargetsRelative ? 0 : position.getY(index));
+          const dz = target.getZ(index) - (body.geometry.morphTargetsRelative ? 0 : position.getZ(index));
+          delta += Math.hypot(dx, dy, dz);
+        }
+        maximumDelta = Math.max(maximumDelta, delta);
+      }
+      for (let index = 0; index < position.count; index++) {
+        let delta = 0;
+        for (const target of mouthTargets) {
+          const dx = target.getX(index) - (body.geometry.morphTargetsRelative ? 0 : position.getX(index));
+          const dy = target.getY(index) - (body.geometry.morphTargetsRelative ? 0 : position.getY(index));
+          const dz = target.getZ(index) - (body.geometry.morphTargetsRelative ? 0 : position.getZ(index));
+          delta += Math.hypot(dx, dy, dz);
+        }
+        if (delta < maximumDelta * 0.10) continue;
+        const weight = delta * delta;
+        mouthCenter.x += position.getX(index) * weight;
+        mouthCenter.y += position.getY(index) * weight;
+        mouthCenter.z += position.getZ(index) * weight;
+        mouthWeight += weight;
+        mouthMinX = Math.min(mouthMinX, position.getX(index)); mouthMaxX = Math.max(mouthMaxX, position.getX(index));
+        mouthMinY = Math.min(mouthMinY, position.getY(index)); mouthMaxY = Math.max(mouthMaxY, position.getY(index));
+      }
+    }
+    if (mouthWeight) mouthCenter.multiplyScalar(1 / mouthWeight);
+    else mouthCenter.set((minX + maxX) / 2, eyeCenter.y - metrics.height * 0.044, frontZ - headWidth * 0.07);
+    const measuredMouthWidth = Number.isFinite(mouthMaxX - mouthMinX) ? mouthMaxX - mouthMinX : headWidth * 0.135;
+    const measuredMouthHeight = Number.isFinite(mouthMaxY - mouthMinY) ? mouthMaxY - mouthMinY : metrics.height * 0.012;
     return {
-      centerX: (minX + maxX) / 2,
-      eyeY: metrics.maxY - metrics.height * 0.067,
-      eyeZ: frontZ - headWidth * 0.18,
-      eyeSpan: headWidth * 0.68,
-      eyeHalfSeparation: headWidth * 0.18,
-      mouthY: metrics.maxY - metrics.height * 0.122,
-      mouthZ: frontZ - headWidth * 0.12,
-      mouthWidth: headWidth * 0.43,
-      mouthHeight: metrics.height * 0.018,
+      embeddedEyes: true,
+      centerX: eyeCenter.x,
+      eyeY: eyeCenter.y,
+      eyeZ: eyeCenter.z,
+      eyeSpan: eyeSeparation + headWidth * 0.055,
+      eyeHalfSeparation: eyeSeparation * 0.5,
+      mouthY: mouthCenter.y,
+      mouthZ: mouthCenter.z,
+      mouthWidth: THREE.MathUtils.clamp(measuredMouthWidth, headWidth * 0.09, headWidth * 0.16),
+      mouthHeight: THREE.MathUtils.clamp(measuredMouthHeight, metrics.height * 0.008, metrics.height * 0.014),
       frontZ,
     };
   }
@@ -191,6 +256,7 @@ function findFaceLandmarks(model, body) {
   const mouthCenter = teeth.getCenter(new THREE.Vector3());
   const mouthSize = teeth.getSize(new THREE.Vector3());
   return {
+    embeddedEyes: false,
     centerX: eyeCenter.x,
     eyeY: eyeCenter.y,
     eyeZ: eyeCenter.z,
@@ -586,9 +652,38 @@ function updatePlaneTones(mesh, values) {
     const baseGreen = tone + green;
     const baseBlue = tone + blue;
     const offset = vertex * 3;
-    colors[offset] = THREE.MathUtils.clamp(baseRed, 0.58, 1.12);
-    colors[offset + 1] = THREE.MathUtils.clamp(baseGreen, 0.52, 1.08);
-    colors[offset + 2] = THREE.MathUtils.clamp(baseBlue, 0.50, 1.06);
+    let finalRed = THREE.MathUtils.clamp(baseRed, 0.58, 1.12);
+    let finalGreen = THREE.MathUtils.clamp(baseGreen, 0.52, 1.08);
+    let finalBlue = THREE.MathUtils.clamp(baseBlue, 0.50, 1.06);
+
+    // MHR embeds its eye surfaces in body_mesh, so there is no separately
+    // named Eyes material for the existing eye-color path. Paint the visible
+    // front of each eyeball by anatomical position: warm sclera, colored iris,
+    // and pupil. Ratios compensate for the shared skin material multiplier.
+    if (role === 'skin' && landmarks?.embeddedEyes) {
+      const eyeRadiusX = landmarks.eyeSpan * 0.135;
+      const eyeRadiusY = landmarks.eyeSpan * 0.072;
+      const eyeFront = z > landmarks.eyeZ - landmarks.eyeSpan * 0.018;
+      let eyeDistance = Infinity;
+      for (const side of [-1, 1]) {
+        const centerX = landmarks.centerX + side * landmarks.eyeHalfSeparation;
+        eyeDistance = Math.min(eyeDistance, Math.hypot((x - centerX) / eyeRadiusX, (y - landmarks.eyeY) / eyeRadiusY));
+      }
+      if (eyeFront && eyeDistance < 1) {
+        const eyeContrast = clamp01(values.stylizedEyeContrast ?? 0.3);
+        let target = new THREE.Color('#ded8ca').lerp(new THREE.Color('#fffdf7'), 0.36 + eyeContrast * 0.46);
+        const irisRadius = 0.40;
+        const pupilRadius = 0.17;
+        if (eyeDistance < irisRadius) target = new THREE.Color(values.eyeColor ?? '#4c3828').multiplyScalar(0.72 + eyeContrast * 0.20);
+        if (eyeDistance < pupilRadius) target.set('#090706');
+        finalRed = target.r / Math.max(0.035, skinColor.r);
+        finalGreen = target.g / Math.max(0.035, skinColor.g);
+        finalBlue = target.b / Math.max(0.035, skinColor.b);
+      }
+    }
+    colors[offset] = finalRed;
+    colors[offset + 1] = finalGreen;
+    colors[offset + 2] = finalBlue;
   }
   if (!geometry.attributes.color) geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   else geometry.attributes.color.needsUpdate = true;
@@ -705,7 +800,7 @@ export function updateStylizedModel(model, values) {
 export function styleProceduralCostume(costume, values) {
   if (!costume) return;
   for (const material of [costume.materials.dress, costume.materials.trim]) {
-    material.flatShading = true;
+    material.flatShading = false;
     material.roughness = Math.max(material.roughness, values.stylizedSurfaceRoughness ?? 0.9);
     material.needsUpdate = true;
   }

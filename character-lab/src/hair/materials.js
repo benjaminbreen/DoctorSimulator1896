@@ -14,7 +14,7 @@ function createFlowTexture() {
   canvas.width = 512;
   canvas.height = 512;
   const context = canvas.getContext('2d');
-  context.fillStyle = '#c0bbb5';
+  context.fillStyle = '#d8d4cf';
   context.fillRect(0, 0, canvas.width, canvas.height);
   context.lineCap = 'round';
 
@@ -24,7 +24,7 @@ function createFlowTexture() {
   for (let clump = 0; clump < clumps; clump++) {
     const x = (clump + seeded(clump + 40) * 0.9) / clumps * canvas.width;
     const width = (0.55 + seeded(clump + 90) * 0.9) / clumps * canvas.width;
-    const value = (seeded(clump + 140) - 0.5) * 46;
+    const value = (seeded(clump + 140) - 0.5) * 22;
     const gradient = context.createLinearGradient(x - width, 0, x + width, 0);
     const tint = value >= 0 ? `rgba(255,252,246,${Math.abs(value) / 255})` : `rgba(24,16,10,${Math.abs(value) / 255})`;
     gradient.addColorStop(0, 'rgba(0,0,0,0)');
@@ -39,7 +39,7 @@ function createFlowTexture() {
     const x = seeded(strand) * canvas.width;
     const bend = (seeded(strand + 400) - 0.5) * 26;
     const light = seeded(strand + 800) > 0.42;
-    const alpha = 0.05 + seeded(strand + 1000) * 0.16;
+    const alpha = 0.025 + seeded(strand + 1000) * 0.07;
     context.strokeStyle = light ? `rgba(250,243,232,${alpha})` : `rgba(22,14,9,${alpha})`;
     context.lineWidth = 0.5 + seeded(strand + 1200) * 1.3;
     context.beginPath();
@@ -52,7 +52,7 @@ function createFlowTexture() {
   // darkens into the painted scalp band instead of ending in a hard seam, and
   // a lighter dip at v=1 where the strands disappear under the mass.
   const root = context.createLinearGradient(0, canvas.height, 0, canvas.height * 0.80);
-  root.addColorStop(0, 'rgba(16,10,6,0.62)');
+  root.addColorStop(0, 'rgba(16,10,6,0.38)');
   root.addColorStop(1, 'rgba(16,10,6,0)');
   context.fillStyle = root;
   context.fillRect(0, Math.floor(canvas.height * 0.80), canvas.width, canvas.height);
@@ -66,7 +66,7 @@ function createFlowTexture() {
   texture.name = 'ProceduralHairFlow';
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.ClampToEdgeWrapping;
-  texture.repeat.set(3, 1);
+  texture.repeat.set(5, 1);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
 }
@@ -120,6 +120,10 @@ export function createHairMaterials() {
     vertexColors: true, anisotropy: 0.55, anisotropyMap,
     sheen: 0.08, sheenColor: '#604a40', sheenRoughness: 0.75,
   });
+  const root = new THREE.MeshStandardMaterial({
+    name: 'CostumeHairRoot', color: '#0d0908', roughness: 0.84, side: THREE.DoubleSide,
+    vertexColors: true,
+  });
   const strand = new THREE.MeshPhysicalMaterial({
     name: 'CostumeHairStrands', color: '#17100d', roughness: 0.66, side: THREE.DoubleSide,
     polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1, vertexColors: true,
@@ -142,6 +146,7 @@ export function createHairMaterials() {
     // The strand texture averages ~0.55 in linear light; lift the multiplier
     // so the on-screen shell matches the palette swatch.
     base.color.copy(baseColor).multiplyScalar(1.30 + contrast * 0.12);
+    root.color.copy(baseColor).multiplyScalar(0.82 + contrast * 0.05);
     strand.color.copy(baseColor).lerp(new THREE.Color(palette.sheen), 0.22 + contrast * 0.18);
     highlight.color.copy(baseColor).lerp(new THREE.Color(palette.sheen), 0.45 + contrast * 0.20);
     wisp.color.copy(baseColor).lerp(new THREE.Color(palette.sheen), 0.15);
@@ -154,8 +159,8 @@ export function createHairMaterials() {
     flowTexture.dispose();
     wispAlpha.dispose();
     anisotropyMap.dispose();
-    for (const material of [base, strand, highlight, wisp]) material.dispose();
+    for (const material of [base, root, strand, highlight, wisp]) material.dispose();
   }
 
-  return { base, strand, highlight, wisp, update, dispose };
+  return { base, root, strand, highlight, wisp, update, dispose };
 }

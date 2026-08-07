@@ -307,17 +307,75 @@ function captureRest(bones) {
   return rest;
 }
 
-export const MHR_LIVE_IDENTITY_IDS = new Set([
-  'seed', 'gender', 'age', 'height', 'weight', 'muscle', 'proportions', 'shoulderWidth', 'torsoLength',
+export const MHR_IDENTITY_IDS = new Set([
+  'seed', 'gender', 'age', 'weight', 'muscle', 'shoulderWidth',
   'african', 'asian', 'caucasian',
   'headShape', 'headShapeStrength', 'headWidth', 'faceHeight', 'headDepth', 'noseWidth', 'noseLength',
   'noseVolume', 'noseDepth', 'noseBridge', 'nostrilWidth', 'jawWidth', 'chinHeight', 'chinProminence',
   'chinPrognathism', 'eyeSize', 'eyeSpacing', 'eyeVerticalPosition', 'eyeDepth', 'browHeight', 'mouthWidth',
   'mouthVerticalPosition', 'mouthDepth', 'lipFullness', 'cheekVolume', 'cheekboneProminence', 'cheekHeight',
   'cheekInnerVolume',
+]);
+
+export const MHR_RIG_IDS = new Set([
+  'height', 'proportions', 'shoulderWidth', 'torsoLength',
   'mhrNeckLength', 'mhrUpperArmLength', 'mhrLowerArmLength', 'mhrHipWidth', 'mhrUpperLegLength',
   'mhrLowerLegLength', 'mhrFootLength', 'mhrHandScale', 'mhrEyeSpacing',
 ]);
+
+export const MHR_LIVE_IDENTITY_IDS = new Set([...MHR_IDENTITY_IDS, ...MHR_RIG_IDS]);
+
+/* The MHR proof asset stores the eye surface in the shared body mesh, so its
+   latent geometry has no separately tintable iris material. Small bone-bound
+   corneal overlays provide stable irises, pupils and catchlights while still
+   following eye spacing, head motion and the full skeleton. */
+export function createMhrEyeDetails(root, values) {
+  const eyeBones = [root.getObjectByName('r_eye_null'), root.getObjectByName('l_eye_null')].filter(Boolean);
+  if (eyeBones.length !== 2) return null;
+
+  const irisGeometry = new THREE.CircleGeometry(0.0067, 32);
+  const pupilGeometry = new THREE.CircleGeometry(0.00265, 24);
+  const highlightGeometry = new THREE.CircleGeometry(0.00072, 16);
+  const irisMaterial = new THREE.MeshPhysicalMaterial({
+    name: 'MHR_Iris', color: values.eyeColor || '#55422b', roughness: 0.3,
+    clearcoat: 0.35, clearcoatRoughness: 0.22, side: THREE.DoubleSide,
+  });
+  const pupilMaterial = new THREE.MeshBasicMaterial({ name: 'MHR_Pupil', color: '#080706', side: THREE.DoubleSide });
+  const highlightMaterial = new THREE.MeshBasicMaterial({ name: 'MHR_EyeCatchlight', color: '#fff7e8', side: THREE.DoubleSide });
+  for (const material of [irisMaterial, pupilMaterial, highlightMaterial]) material.userData.excludeComparisonSkin = true;
+
+  const groups = eyeBones.map((bone, index) => {
+    const group = new THREE.Group();
+    group.name = index === 0 ? 'MHR_EyeDetail_R' : 'MHR_EyeDetail_L';
+    const iris = new THREE.Mesh(irisGeometry, irisMaterial);
+    iris.name = `${group.name}_Iris`; iris.position.z = 0.00225; iris.renderOrder = 3;
+    const pupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
+    pupil.name = `${group.name}_Pupil`; pupil.position.z = 0.00248; pupil.renderOrder = 4;
+    const highlight = new THREE.Mesh(highlightGeometry, highlightMaterial);
+    highlight.name = `${group.name}_Catchlight`;
+    highlight.position.set(-0.00145, 0.00155, 0.00268); highlight.renderOrder = 5;
+    group.add(iris, pupil, highlight);
+    bone.add(group);
+    return group;
+  });
+
+  function update(nextValues) {
+    const base = new THREE.Color(nextValues.eyeColor || '#55422b');
+    const contrast = clamp(Number(nextValues.stylizedEyeContrast) || 0.7, 0, 1);
+    irisMaterial.color.copy(base).offsetHSL(0, contrast * 0.12, (contrast - 0.5) * -0.09);
+    const scale = 1 + (Number(nextValues.eyeSize) || 0) * 0.12;
+    for (const group of groups) group.scale.setScalar(scale);
+  }
+
+  function dispose() {
+    for (const group of groups) group.parent?.remove(group);
+    irisGeometry.dispose(); pupilGeometry.dispose(); highlightGeometry.dispose();
+    irisMaterial.dispose(); pupilMaterial.dispose(); highlightMaterial.dispose();
+  }
+
+  update(values);
+  return { groups, materials: { iris: irisMaterial, pupil: pupilMaterial, highlight: highlightMaterial }, update, dispose };
+}
 
 export function createMhrController(root, values) {
   const mesh = root.getObjectByName('body_mesh');
@@ -337,8 +395,34 @@ export function createMhrController(root, values) {
   const tempQuaternion = new THREE.Quaternion();
   let currentSeated = (values.seated ?? 1) >= 0.5 ? 1 : 0;
   let targetSeated = currentSeated;
+  let poseTransition = null;
+  let latestValues = values;
   let identitySignature = '';
   let gesture = null;
+
+  function smootherStep(value) {
+    const t = clamp(value, 0, 1);
+    return t * t * t * (t * (t * 6 - 15) + 10);
+  }
+
+  function startSeatedTransition(seated, duration = 2.25, nextValues = latestValues) {
+    latestValues = nextValues || latestValues;
+    const nextTarget = seated ? 1 : 0;
+    targetSeated = nextTarget;
+    if (Math.abs(currentSeated - nextTarget) < 0.0005) {
+      currentSeated = nextTarget;
+      poseTransition = null;
+      applyRig(latestValues, currentSeated);
+      return false;
+    }
+    poseTransition = {
+      from: currentSeated,
+      to: nextTarget,
+      elapsed: 0,
+      duration: clamp(Number(duration) || 2.25, 0.35, 5),
+    };
+    return true;
+  }
 
   function resetRig() {
     for (const [name, state] of rest) {
@@ -353,6 +437,100 @@ export function createMhrController(root, values) {
     const bone = bones.get(name);
     if (!bone || !radians) return;
     bone.quaternion.multiply(tempQuaternion.setFromAxisAngle(AXES[axis], radians));
+  }
+
+  function aimBoneToward(name, childName, target) {
+    const bone = bones.get(name), child = bones.get(childName);
+    if (!bone || !child) return;
+    root.updateMatrixWorld(true);
+    const origin = bone.getWorldPosition(new THREE.Vector3());
+    const current = child.getWorldPosition(new THREE.Vector3()).sub(origin);
+    const desired = target.clone().sub(origin);
+    if (current.lengthSq() < 1e-7 || desired.lengthSq() < 1e-7) return;
+    current.normalize(); desired.normalize();
+    const worldRotation = bone.getWorldQuaternion(new THREE.Quaternion());
+    const delta = new THREE.Quaternion().setFromUnitVectors(current, desired);
+    const desiredWorld = delta.multiply(worldRotation);
+    const parentWorld = bone.parent?.getWorldQuaternion(new THREE.Quaternion()) || new THREE.Quaternion();
+    bone.quaternion.copy(parentWorld.invert().multiply(desiredWorld));
+    root.updateMatrixWorld(true);
+  }
+
+  function poseArms(nextValues, sit, elapsed = 0) {
+    root.updateMatrixWorld(true);
+    const pelvisBone = bones.get('c_spine0');
+    if (!pelvisBone) return;
+    const pelvis = pelvisBone.getWorldPosition(new THREE.Vector3());
+    const forward = new THREE.Vector3(0, 0, 1).transformDirection(root.matrixWorld).setY(0).normalize();
+    const right = new THREE.Vector3(1, 0, 0).transformDirection(root.matrixWorld).setY(0).normalize();
+    const up = new THREE.Vector3(0, 1, 0);
+    const openness = clamp(Number(nextValues.armOpenness) || 0, -1, 1);
+    const bend = clamp(nextValues.elbowBend ?? 0.68, 0, 1);
+    const asymmetry = clamp(Number(nextValues.armAsymmetry) || 0, -1, 1);
+    const fidget = clamp(Number(nextValues.fidget) || 0, 0, 3);
+    const tremor = clamp(Number(nextValues.tremor) || 0, 0, 2);
+
+    for (const side of ['r', 'l']) {
+      const upper = bones.get(`${side}_uparm`), lower = bones.get(`${side}_lowarm`), wrist = bones.get(`${side}_wrist`);
+      if (!upper || !lower || !wrist) continue;
+      const shoulder = upper.getWorldPosition(new THREE.Vector3());
+      const elbow = lower.getWorldPosition(new THREE.Vector3());
+      const hand = wrist.getWorldPosition(new THREE.Vector3());
+      const sideSign = Math.sign(shoulder.clone().sub(pelvis).dot(right)) || (side === 'r' ? 1 : -1);
+      const phase = side === 'r' ? 0.4 : 2.7;
+      const idleLift = elapsed ? Math.sin(elapsed * 0.83 + phase) * 0.006 * fidget : 0;
+      const idleForward = elapsed ? Math.sin(elapsed * 0.57 + phase * 1.3) * 0.005 * fidget : 0;
+      const tremorWave = elapsed
+        ? (Math.sin(elapsed * 11.4 + phase) + Math.sin(elapsed * 17.1 + phase * 1.7) * 0.55) * 0.0045 * tremor
+        : 0;
+      const upperLength = Math.max(0.18, shoulder.distanceTo(elbow));
+      const lowerLength = Math.max(0.16, elbow.distanceTo(hand));
+
+      const standingElbow = shoulder.clone()
+        .addScaledVector(up, -upperLength * 0.94)
+        .addScaledVector(forward, upperLength * (0.06 + bend * 0.08))
+        .addScaledVector(right, sideSign * (0.012 + openness * 0.025));
+      const seatedElbow = shoulder.clone()
+        .addScaledVector(up, -upperLength * (0.80 - openness * 0.05) + idleLift * 0.45)
+        .addScaledVector(forward, upperLength * (0.24 + bend * 0.18 + asymmetry * sideSign * 0.12) + idleForward * 0.35)
+        .addScaledVector(right, sideSign * (0.006 + openness * 0.045));
+      const elbowTarget = standingElbow.lerp(seatedElbow, sit);
+      aimBoneToward(`${side}_uparm`, `${side}_lowarm`, elbowTarget);
+
+      const standingHand = shoulder.clone()
+        .addScaledVector(up, -(upperLength + lowerLength) * 0.93)
+        .addScaledVector(forward, 0.025 + bend * 0.025)
+        .addScaledVector(right, sideSign * (0.025 + openness * 0.04));
+      const seatedHand = pelvis.clone()
+        .addScaledVector(up, 0.075 + openness * 0.018 + asymmetry * sideSign * 0.035 + idleLift + tremorWave)
+        .addScaledVector(forward, 0.18 + bend * 0.085 + asymmetry * sideSign * 0.065 + idleForward)
+        .addScaledVector(right, sideSign * (0.105 + openness * 0.065) + tremorWave * 0.65);
+      const handTarget = standingHand.lerp(seatedHand, sit);
+      aimBoneToward(`${side}_lowarm`, `${side}_wrist`, handTarget);
+
+      rotate(`${side}_wrist`, 'z', 0.08 + (Number(nextValues.wristAngle) || 0) * 0.38 + tremorWave * 2.2);
+    }
+
+    // MHR ships articulated fingers, but its neutral hand is a flat scan pose.
+    // A small baseline curl reads relaxed; tension increases the curl without
+    // turning every patient into a clenched fist.
+    const tension = clamp(nextValues.handTension ?? 0.28, 0, 1);
+    const curl = 0.12 + tension * 0.42;
+    for (const side of ['r', 'l']) {
+      for (const finger of ['index', 'middle', 'ring']) {
+        rotate(`${side}_${finger}1`, 'z', curl * 0.48);
+        rotate(`${side}_${finger}2`, 'z', curl * 0.68);
+        rotate(`${side}_${finger}3`, 'z', curl * 0.52);
+      }
+      rotate(`${side}_pinky0`, 'z', curl * 0.22);
+      rotate(`${side}_pinky1`, 'z', curl * 0.50);
+      rotate(`${side}_pinky2`, 'z', curl * 0.68);
+      rotate(`${side}_pinky3`, 'z', curl * 0.50);
+      rotate(`${side}_thumb0`, 'y', 0.08 + tension * 0.10);
+      rotate(`${side}_thumb1`, 'z', curl * 0.24);
+      rotate(`${side}_thumb2`, 'z', curl * 0.32);
+    }
+    root.updateMatrixWorld(true);
   }
 
   function scaleBonePosition(name, factor) {
@@ -370,7 +548,10 @@ export function createMhrController(root, values) {
       mesh.userData.mhrSemanticProfile ??= root.userData.semanticProfile || mhrSemanticProfile(nextValues);
       return false;
     }
-    const signature = [...MHR_LIVE_IDENTITY_IDS].map((id) => nextValues[id]).join('|');
+    // Rig-only controls must never rebake the 45 identity deltas. Keeping the
+    // signatures separate turns limb, stature and pose changes into cheap bone
+    // updates rather than full CPU mesh rewrites.
+    const signature = [...MHR_IDENTITY_IDS].map((id) => nextValues[id]).join('|');
     if (!force && signature === identitySignature) return false;
     identitySignature = signature;
     const weights = identityWeights(Number(nextValues.seed) || 1, nextValues, directions);
@@ -452,7 +633,9 @@ export function createMhrController(root, values) {
 
     const heightScale = THREE.MathUtils.lerp(0.925, 1.075, stature);
     root.scale.copy(rootRestScale); root.scale.y *= heightScale;
-    root.position.copy(rootRestPosition); root.position.y -= seatedBlend * 0.39 * heightScale;
+    root.position.copy(rootRestPosition);
+    root.position.y -= seatedBlend * 0.39 * heightScale;
+    root.position.z -= seatedBlend * 0.055;
 
     const sit = seatedBlend;
     rotate('r_upleg', 'z', -1.47 * sit);
@@ -464,10 +647,18 @@ export function createMhrController(root, values) {
     rotate('c_spine0', 'z', 0.07 * sit);
     rotate('c_spine1', 'z', 0.08 * sit);
     rotate('c_spine2', 'z', 0.06 * sit);
-    rotate('r_uparm', 'z', 0.75 * sit);
-    rotate('l_uparm', 'z', 0.75 * sit);
-    rotate('r_lowarm', 'z', -0.35 * sit);
-    rotate('l_lowarm', 'z', -0.35 * sit);
+    poseArms(nextValues, sit, elapsed);
+
+    // Lean the trunk over the feet while the pelvis changes height. This small
+    // balance transfer keeps the transition from reading as a mannequin being
+    // lowered vertically, and disappears at both stable endpoints.
+    if (poseTransition) {
+      const progress = clamp(poseTransition.elapsed / poseTransition.duration, 0, 1);
+      const balanceTransfer = Math.sin(progress * Math.PI);
+      rotate('c_spine0', 'z', balanceTransfer * 0.11);
+      rotate('c_spine1', 'z', balanceTransfer * 0.07);
+      rotate('c_head', 'z', balanceTransfer * -0.045);
+    }
 
     const knees = (Number(nextValues.kneesTogether) || 0) * 0.12 * sit;
     rotate('r_upleg', 'y', -knees);
@@ -497,19 +688,32 @@ export function createMhrController(root, values) {
   }
 
   function applyValues(nextValues, { forceIdentity = false, snapPose = false } = {}) {
-    targetSeated = (nextValues.seated ?? 1) >= 0.5 ? 1 : 0;
-    if (snapPose) currentSeated = targetSeated;
+    latestValues = nextValues;
+    const nextTarget = (nextValues.seated ?? 1) >= 0.5 ? 1 : 0;
+    if (snapPose) {
+      targetSeated = nextTarget;
+      currentSeated = nextTarget;
+      poseTransition = null;
+    } else if (nextTarget !== targetSeated) startSeatedTransition(nextTarget, 2.25, nextValues);
     const identityChanged = applyIdentity(nextValues, forceIdentity);
     applyRig(nextValues, currentSeated);
     return identityChanged;
   }
 
-  function update(dt, elapsed, nextValues) {
-    targetSeated = (nextValues.seated ?? 1) >= 0.5 ? 1 : 0;
-    const ease = 1 - Math.exp(-dt * 3.6);
-    currentSeated += (targetSeated - currentSeated) * ease;
-    if (Math.abs(currentSeated - targetSeated) < 0.0005) currentSeated = targetSeated;
-    applyRig(nextValues, currentSeated, elapsed);
+  function update(dt, elapsed, nextValues, _mode = 'procedural', ambientMotion = true) {
+    latestValues = nextValues;
+    const requestedTarget = (nextValues.seated ?? 1) >= 0.5 ? 1 : 0;
+    if (requestedTarget !== targetSeated) startSeatedTransition(requestedTarget, 2.25, nextValues);
+    if (poseTransition) {
+      poseTransition.elapsed = Math.min(poseTransition.duration, poseTransition.elapsed + Math.max(0, dt));
+      const progress = smootherStep(poseTransition.elapsed / poseTransition.duration);
+      currentSeated = THREE.MathUtils.lerp(poseTransition.from, poseTransition.to, progress);
+      if (poseTransition.elapsed >= poseTransition.duration) {
+        currentSeated = poseTransition.to;
+        poseTransition = null;
+      }
+    } else currentSeated = targetSeated;
+    applyRig(nextValues, currentSeated, ambientMotion ? elapsed : 0);
   }
 
   function playGesture(name, speed = 1) {
@@ -519,9 +723,12 @@ export function createMhrController(root, values) {
 
   applyValues(values, { forceIdentity: true, snapPose: true });
   return {
-    mode: 'mhr-rig', mesh, bones, directions, applyValues, update, playGesture,
+    mode: 'mhr-rig', mesh, bones, directions, applyValues, update, playGesture, startSeatedTransition,
     identityBaked,
-    captureRest() {}, snapToRest() { applyRig(values, currentSeated); },
+    captureRest() {}, snapToRest() { applyRig(latestValues, currentSeated); },
     get seatedBlend() { return currentSeated; },
+    get targetSeated() { return targetSeated; },
+    get isPoseTransitioning() { return poseTransition != null; },
+    get poseTransitionProgress() { return poseTransition ? clamp(poseTransition.elapsed / poseTransition.duration, 0, 1) : 1; },
   };
 }
