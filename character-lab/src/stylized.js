@@ -158,7 +158,34 @@ function findFaceLandmarks(model, body) {
   model.updateMatrixWorld(true);
   const eyes = objectBoundsInBody(model.getObjectByName('Eyes'), body);
   const teeth = objectBoundsInBody(model.getObjectByName('Teeth'), body);
-  if (!eyes || !teeth) return null;
+  if (!eyes || !teeth) {
+    // Single-surface character systems such as MHR do not expose separate eye
+    // and teeth objects.  Their stable anthropomorphic topology still gives us
+    // a useful face frame from the head bounds, keeping freckles and lip tint
+    // localized instead of painting entire triangles or the lower face.
+    const metrics = skinMetrics(body.geometry);
+    const position = body.geometry.attributes.position;
+    let minX = Infinity, maxX = -Infinity, frontZ = -Infinity;
+    for (let index = 0; index < position.count; index++) {
+      if (position.getY(index) < metrics.headMinY) continue;
+      minX = Math.min(minX, position.getX(index));
+      maxX = Math.max(maxX, position.getX(index));
+      frontZ = Math.max(frontZ, position.getZ(index));
+    }
+    const headWidth = Math.max(0.001, maxX - minX);
+    return {
+      centerX: (minX + maxX) / 2,
+      eyeY: metrics.maxY - metrics.height * 0.067,
+      eyeZ: frontZ - headWidth * 0.18,
+      eyeSpan: headWidth * 0.68,
+      eyeHalfSeparation: headWidth * 0.18,
+      mouthY: metrics.maxY - metrics.height * 0.122,
+      mouthZ: frontZ - headWidth * 0.12,
+      mouthWidth: headWidth * 0.43,
+      mouthHeight: metrics.height * 0.018,
+      frontZ,
+    };
+  }
   const eyeCenter = eyes.getCenter(new THREE.Vector3());
   const eyeSize = eyes.getSize(new THREE.Vector3());
   const mouthCenter = teeth.getCenter(new THREE.Vector3());
@@ -388,7 +415,7 @@ function prepareFacetedMesh(mesh, role, seed) {
   if (role === 'skin') {
     const microTexture = makeSkinMicroTexture(seed);
     material = new THREE.MeshPhysicalMaterial({
-      name: 'B2_AnatomicalSkin',
+      name: 'AnatomicalSkin',
       color: '#ffffff',
       roughness: 0.82,
       metalness: 0,
@@ -598,7 +625,7 @@ export function prepareSkinModel(model, values, { stylized = false } = {}) {
   let body = null;
   model.traverse((object) => {
     if (!object.isMesh) return;
-    if (object.name === 'Human_Body') {
+    if (object.name === 'Human_Body' || object.name === 'body_mesh') {
       body = object;
       if (stylized) prepareFacetedMesh(object, 'skin', seed);
       else prepareCurrentSkinMesh(object, seed);
@@ -616,6 +643,33 @@ export function prepareSkinModel(model, values, { stylized = false } = {}) {
     }
   }
   updateSkinModel(model, values);
+}
+
+/** Refresh topology-stable skin bases after an identity morph has been baked
+ * into the base position/normal attributes (used by MHR's live identity path). */
+export function refreshSkinGeometry(model, values) {
+  let body = null;
+  model?.traverse((object) => {
+    if (!body && object.isMesh && object.userData.skinAppearancePrepared && object.userData.stylizedRole === 'skin') body = object;
+  });
+  if (!body) return;
+  const geometry = body.geometry;
+  if (!geometry.attributes.normal) geometry.computeVertexNormals();
+  const smoothNormals = new Float32Array(geometry.attributes.normal.array);
+  geometry.userData.stylizedSmoothNormals = smoothNormals;
+  geometry.userData.stylizedFlatNormals = makePlaneNormals(smoothNormals);
+  geometry.userData.skinMetrics = skinMetrics(geometry);
+  geometry.userData.faceLandmarks = findFaceLandmarks(model, body);
+  if (body.userData.faceOverlay) {
+    body.userData.faceOverlay.texture?.dispose?.();
+    body.userData.faceOverlay = createFaceOverlay(body, geometry.userData.faceLandmarks, Number(values.seed) || 1);
+    const materials = Array.isArray(body.material) ? body.material : [body.material];
+    for (const material of materials) {
+      if (!material) continue;
+      if (material.userData.faceOverlayUniform) material.userData.faceOverlayUniform.value = body.userData.faceOverlay.texture;
+      material.userData.faceOverlayTexture = body.userData.faceOverlay.texture;
+    }
+  }
 }
 
 export function prepareStylizedModel(model, values) {

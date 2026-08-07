@@ -9,6 +9,7 @@ __pycache__/
 *.blend1
 *.sb-*
 .env*
+gnm_head_editor-*.zip
 
 # Third-party authoring source downloaded from Daniel Bystedt's Gumroad page.
 # Keep the generated project groom, but do not redistribute the source package.

@@ -1,0 +1,134 @@
+{
+  "engine": "Google GNM Head 3.0 via GNM Head Editor 2.2.3",
+  "gender": "FEMALE",
+  "ethnicity": "WHITE",
+  "seeds": [
+    111,
+    222,
+    333,
+    444,
+    555,
+    666
+  ],
+  "heads": [
+    {
+      "seed": 111,
+      "vertices": 17821,
+      "quadFaces": 17662,
+      "materials": 8,
+      "dimensionsMeters": [
+        0.255816,
+        0.336104,
+        0.236521
+      ],
+      "identityCoefficientRange": [
+        -8.68554,
+        3.16107
+      ],
+      "identityCoefficientStd": 1.06144,
+      "glb": "gnm-111.glb"
+    },
+    {
+      "seed": 222,
+      "vertices": 17821,
+      "quadFaces": 17662,
+      "materials": 8,
+      "dimensionsMeters": [
+        0.252641,
+        0.351079,
+        0.247014
+      ],
+      "identityCoefficientRange": [
+        -9.02523,
+        7.03219
+      ],
+      "identityCoefficientStd": 1.578,
+      "glb": "gnm-222.glb"
+    },
+    {
+      "seed": 333,
+      "vertices": 17821,
+      "quadFaces": 17662,
+      "materials": 8,
+      "dimensionsMeters": [
+        0.252532,
+        0.339917,
+        0.244931
+      ],
+      "identityCoefficientRange": [
+        -14.61635,
+        3.97551
+      ],
+      "identityCoefficientStd": 1.41066,
+      "glb": "gnm-333.glb"
+    },
+    {
+      "seed": 444,
+      "vertices": 17821,
+      "quadFaces": 17662,
+      "materials": 8,
+      "dimensionsMeters": [
+        0.262624,
+        0.330628,
+        0.241929
+      ],
+      "identityCoefficientRange": [
+        -2.07945,
+        2.72365
+      ],
+      "identityCoefficientStd": 0.68532,
+      "glb": "gnm-444.glb"
+    },
+    {
+      "seed": 555,
+      "vertices": 17821,
+      "quadFaces": 17662,
+      "materials": 8,
+      "dimensionsMeters": [
+        0.248774,
+        0.337125,
+        0.242154
+      ],
+      "identityCoefficientRange": [
+        -2.50351,
+        2.85273
+      ],
+      "identityCoefficientStd": 0.87431,
+      "glb": "gnm-555.glb"
+    },
+    {
+      "seed": 666,
+      "vertices": 17821,
+      "quadFaces": 17662,
+      "materials": 8,
+      "dimensionsMeters": [
+        0.260375,
+        0.336918,
+        0.24005
+      ],
+      "identityCoefficientRange": [
+        -2.33022,
+        2.10907
+      ],
+      "identityCoefficientStd": 0.68475,
+      "glb": "gnm-666.glb"
+    }
+  ],
+  "pairwiseRmsMeters": {
+    "111-222": 0.0033839,
+    "111-333": 0.00211307,
+    "111-444": 0.00215251,
+    "111-555": 0.00200133,
+    "111-666": 0.00186218,
+    "222-333": 0.00274333,
+    "222-444": 0.00407591,
+    "222-555": 0.00323926,
+    "222-666": 0.00322187,
+    "333-444": 0.00216552,
+    "333-555": 0.00132156,
+    "333-666": 0.00151352,
+    "444-555": 0.00176172,
+    "444-666": 0.00132164,
+    "555-666": 0.00124545
+  }
+}

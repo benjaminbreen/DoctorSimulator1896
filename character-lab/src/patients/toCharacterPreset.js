@@ -137,6 +137,15 @@ export function patientToCharacterPreset(patient, basePreset, definitions, optio
   values.proportions = clamped(definitions, 'proportions', 0.49 + jitter(bodyRandom, 0.16));
   values.shoulderWidth = clamped(definitions, 'shoulderWidth', -0.1 + jitter(bodyRandom, 0.24));
   values.torsoLength = clamped(definitions, 'torsoLength', 0.02 + jitter(bodyRandom, 0.22));
+  values.mhrNeckLength = clamped(definitions, 'mhrNeckLength', jitter(bodyRandom, 0.28));
+  values.mhrUpperArmLength = clamped(definitions, 'mhrUpperArmLength', jitter(bodyRandom, 0.32));
+  values.mhrLowerArmLength = clamped(definitions, 'mhrLowerArmLength', jitter(bodyRandom, 0.32));
+  values.mhrHipWidth = clamped(definitions, 'mhrHipWidth', jitter(bodyRandom, 0.30));
+  values.mhrUpperLegLength = clamped(definitions, 'mhrUpperLegLength', jitter(bodyRandom, 0.34));
+  values.mhrLowerLegLength = clamped(definitions, 'mhrLowerLegLength', jitter(bodyRandom, 0.34));
+  values.mhrFootLength = clamped(definitions, 'mhrFootLength', jitter(bodyRandom, 0.25));
+  values.mhrHandScale = clamped(definitions, 'mhrHandScale', jitter(bodyRandom, 0.25));
+  values.mhrEyeSpacing = clamped(definitions, 'mhrEyeSpacing', jitter(faceRandom, 0.22));
 
   [values.african, values.asian, values.caucasian] = origin.heritage;
   values.skinTone = bodyRandom.pick(origin.skinTones);

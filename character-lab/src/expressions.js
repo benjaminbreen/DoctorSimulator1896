@@ -10,9 +10,8 @@ import * as THREE from 'three';
    produces the familiar startled/uncanny look.
 
    Renderer A composes exported MPFB face units and broadcasts their weights to
-   matching fitted facial meshes. Renderer B retains the older procedural
-   body-mesh morphs until its final topology receives a deterministic transfer.
-   Both paths share the same restrained-smile and delayed-eye performance model.
+   matching fitted facial meshes. The MHR comparison model exposes its native
+   proof controls separately instead of manufacturing geometry.
 */
 
 const clamp01 = (value) => THREE.MathUtils.clamp(value, 0, 1);

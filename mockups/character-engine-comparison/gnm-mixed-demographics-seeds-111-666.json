@@ -1,0 +1,147 @@
+{
+  "engine": "Google GNM Head 3.0 via GNM Head Editor 2.2.3",
+  "gender": "FEMALE",
+  "ethnicity": "WHITE",
+  "mixedDemographics": true,
+  "seeds": [
+    111,
+    222,
+    333,
+    444,
+    555,
+    666
+  ],
+  "heads": [
+    {
+      "seed": 111,
+      "gender": "FEMALE",
+      "ethnicity": "WHITE",
+      "vertices": 17821,
+      "quadFaces": 17662,
+      "materials": 8,
+      "dimensionsMeters": [
+        0.255816,
+        0.336104,
+        0.236521
+      ],
+      "identityCoefficientRange": [
+        -8.68554,
+        3.16107
+      ],
+      "identityCoefficientStd": 1.06144,
+      "glb": "gnm-111.glb"
+    },
+    {
+      "seed": 222,
+      "gender": "MALE",
+      "ethnicity": "BLACK",
+      "vertices": 17821,
+      "quadFaces": 17662,
+      "materials": 8,
+      "dimensionsMeters": [
+        0.259365,
+        0.351154,
+        0.251631
+      ],
+      "identityCoefficientRange": [
+        -9.06954,
+        6.56422
+      ],
+      "identityCoefficientStd": 1.54068,
+      "glb": "gnm-222.glb"
+    },
+    {
+      "seed": 333,
+      "gender": "FEMALE",
+      "ethnicity": "ASIAN",
+      "vertices": 17821,
+      "quadFaces": 17662,
+      "materials": 8,
+      "dimensionsMeters": [
+        0.253265,
+        0.338507,
+        0.242429
+      ],
+      "identityCoefficientRange": [
+        -14.07097,
+        3.62988
+      ],
+      "identityCoefficientStd": 1.40959,
+      "glb": "gnm-333.glb"
+    },
+    {
+      "seed": 444,
+      "gender": "MALE",
+      "ethnicity": "MIDDLE_EASTERN",
+      "vertices": 17821,
+      "quadFaces": 17662,
+      "materials": 8,
+      "dimensionsMeters": [
+        0.263885,
+        0.331354,
+        0.244601
+      ],
+      "identityCoefficientRange": [
+        -1.75438,
+        1.97815
+      ],
+      "identityCoefficientStd": 0.72012,
+      "glb": "gnm-444.glb"
+    },
+    {
+      "seed": 555,
+      "gender": "FEMALE",
+      "ethnicity": "BLACK",
+      "vertices": 17821,
+      "quadFaces": 17662,
+      "materials": 8,
+      "dimensionsMeters": [
+        0.249492,
+        0.331894,
+        0.238721
+      ],
+      "identityCoefficientRange": [
+        -3.30536,
+        2.88408
+      ],
+      "identityCoefficientStd": 0.95694,
+      "glb": "gnm-555.glb"
+    },
+    {
+      "seed": 666,
+      "gender": "MALE",
+      "ethnicity": "WHITE",
+      "vertices": 17821,
+      "quadFaces": 17662,
+      "materials": 8,
+      "dimensionsMeters": [
+        0.255439,
+        0.339484,
+        0.241234
+      ],
+      "identityCoefficientRange": [
+        -2.03421,
+        1.97118
+      ],
+      "identityCoefficientStd": 0.69469,
+      "glb": "gnm-666.glb"
+    }
+  ],
+  "pairwiseRmsMeters": {
+    "111-222": 0.00559604,
+    "111-333": 0.00218389,
+    "111-444": 0.00248598,
+    "111-555": 0.00241234,
+    "111-666": 0.0021197,
+    "222-333": 0.00437288,
+    "222-444": 0.00483897,
+    "222-555": 0.00502661,
+    "222-666": 0.00398845,
+    "333-444": 0.00199163,
+    "333-555": 0.00180857,
+    "333-666": 0.0014477,
+    "444-555": 0.00185642,
+    "444-666": 0.00162795,
+    "555-666": 0.00175853
+  }
+}

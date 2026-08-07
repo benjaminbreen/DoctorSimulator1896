@@ -16,6 +16,20 @@
       ]
     },
     {
+      "id": "mhrProportions", "label": "Meta MHR rig proportions", "mode": "live", "renderer": "mhr",
+      "parameters": [
+        {"id":"mhrNeckLength","label":"Neck length","type":"range","min":-1,"max":1,"step":0.01,"default":0},
+        {"id":"mhrUpperArmLength","label":"Upper-arm length","type":"range","min":-1,"max":1,"step":0.01,"default":0},
+        {"id":"mhrLowerArmLength","label":"Forearm length","type":"range","min":-1,"max":1,"step":0.01,"default":0},
+        {"id":"mhrHipWidth","label":"Skeletal hip width","type":"range","min":-1,"max":1,"step":0.01,"default":0},
+        {"id":"mhrUpperLegLength","label":"Thigh length","type":"range","min":-1,"max":1,"step":0.01,"default":0},
+        {"id":"mhrLowerLegLength","label":"Lower-leg length","type":"range","min":-1,"max":1,"step":0.01,"default":0},
+        {"id":"mhrFootLength","label":"Foot length","type":"range","min":-1,"max":1,"step":0.01,"default":0},
+        {"id":"mhrHandScale","label":"Hand scale","type":"range","min":-1,"max":1,"step":0.01,"default":0},
+        {"id":"mhrEyeSpacing","label":"Eyeball spacing","type":"range","min":-1,"max":1,"step":0.01,"default":0}
+      ]
+    },
+    {
       "id": "heritage", "label": "Skin & phenotype", "mode": "bake",
       "parameters": [
         {"id":"african","label":"African target weight","type":"range","min":0,"max":1,"step":0.01,"default":0.04},
@@ -151,7 +165,7 @@
       ]
     },
     {
-      "id": "stylized", "label": "Skin rendering · A and B", "mode": "live",
+      "id": "stylized", "label": "Skin rendering · A and Meta MHR", "mode": "live",
       "parameters": [
         {"id":"stylizedPlaneContrast","label":"Anatomical plane definition","type":"range","min":0,"max":1,"step":0.01,"default":0.3},
         {"id":"stylizedTriangleBlend","label":"Triangle smoothing blend","type":"range","min":0,"max":1,"step":0.01,"default":0.36},
@@ -167,7 +181,7 @@
         {"id":"stylizedLipColor","label":"Lip color","type":"color","default":"#b66d68"},
         {"id":"stylizedEyeContrast","label":"Eye-white contrast","type":"range","min":0,"max":1,"step":0.01,"default":0.3},
         {"id":"stylizedSurfaceRoughness","label":"Skin surface roughness","type":"range","min":0.55,"max":1,"step":0.01,"default":0.82},
-        {"id":"stylizedLightSoftness","label":"Portrait light softness (B)","type":"range","min":0,"max":1,"step":0.01,"default":0.78}
+        {"id":"stylizedLightSoftness","label":"Portrait light softness","type":"range","min":0,"max":1,"step":0.01,"default":0.78}
       ]
     }
   ]

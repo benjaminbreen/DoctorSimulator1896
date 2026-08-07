@@ -1,0 +1,87 @@
+{
+  "engine": "Meta Momentum Human Rig 1.0.1 LOD1",
+  "seeds": [
+    111,
+    222,
+    333,
+    444,
+    555,
+    666
+  ],
+  "headStrength": 1.0,
+  "identityComponents": {
+    "body": 20,
+    "head": 20,
+    "hands": 5
+  },
+  "expressionComponents": 72,
+  "shapeKeysInFbxIncludingBasis": 118,
+  "heads": [
+    {
+      "seed": 111,
+      "headCoefficientRange": [
+        -2.25643,
+        2.43876
+      ],
+      "headCoefficientStd": 0.99008
+    },
+    {
+      "seed": 222,
+      "headCoefficientRange": [
+        -1.56017,
+        2.5
+      ],
+      "headCoefficientStd": 1.14561
+    },
+    {
+      "seed": 333,
+      "headCoefficientRange": [
+        -2.00765,
+        2.16499
+      ],
+      "headCoefficientStd": 1.04779
+    },
+    {
+      "seed": 444,
+      "headCoefficientRange": [
+        -2.10455,
+        0.93417
+      ],
+      "headCoefficientStd": 0.70566
+    },
+    {
+      "seed": 555,
+      "headCoefficientRange": [
+        -1.93509,
+        2.15557
+      ],
+      "headCoefficientStd": 1.02205
+    },
+    {
+      "seed": 666,
+      "headCoefficientRange": [
+        -2.34163,
+        2.22114
+      ],
+      "headCoefficientStd": 1.05582
+    }
+  ],
+  "pairwiseRmsMeters": {
+    "111-222": 0.00194261,
+    "111-333": 0.00248901,
+    "111-444": 0.00155004,
+    "111-555": 0.00267184,
+    "111-666": 0.00192877,
+    "222-333": 0.00224036,
+    "222-444": 0.0025975,
+    "222-555": 0.00251663,
+    "222-666": 0.00182091,
+    "333-444": 0.00270542,
+    "333-555": 0.00360334,
+    "333-666": 0.00261395,
+    "444-555": 0.00321341,
+    "444-666": 0.00259417,
+    "555-666": 0.00279638
+  },
+  "glb": "mhr-lod1-morph-library.glb"
+}

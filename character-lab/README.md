@@ -27,7 +27,7 @@ The header keeps patient generation separate from asset baking:
 - **New random patient** draws fresh patient seeds, selects the candidate whose
   baked facial landmarks are most distinct from the person currently visible,
   creates a new identity, household, clinical presentation, appearance, and
-  performance profile, then immediately rebuilds both Blender renderers.
+  performance profile, then immediately rebuilds renderer A.
 - **Regenerate model** sends manually tuned or appearance-variation controls to
   Blender when the user is ready.
 - Each generated renderer-A patient receives a coherent resting-face signature
@@ -53,13 +53,12 @@ The header keeps patient generation separate from asset baking:
 - `src/hair/` — modular period-hair system: scalp sampling, anatomical
   style-specific hairlines, true open parts, textured under-shells,
   directional locks, alpha-tested wisps, waves, chignons and coiled buns.
-- `src/stylized.js` — shared live skin treatment for both renderer topologies:
+- `src/stylized.js` — topology-safe live skin treatment for A and Meta MHR:
   anatomy-guided facial colour, capillary colour, procedural microstructure,
   pore scale, pigment variation, lip tint, and eye-white contrast. Freckles and
   lip pigment use a landmark-derived UV overlay so their edges are independent
-  of either renderer's triangles. B also uses this module for its stronger
-  faceted-normal and portrait-light treatment;
-  A preserves its original indexed topology, diffuse texture, and morphs.
+  of mesh triangles. The pass preserves A's indexed topology, diffuse texture,
+  and facial morph library.
 - `src/idle.js` — layered procedural performance: breathing (rate and
   amplitude), weight shift, fidget, gaze saccades, hand tension (curls real
   finger bones), hand tremor (symptom display), knee adduction, plus one-shot
@@ -84,37 +83,47 @@ The patient-domain record is stored at the top-level `patient` key in every
 generated preset. See `src/patients/README.md` for module boundaries and extension
 rules, and `public/schema/patient.schema.json` for the record contract.
 
-Skin-rendering values are generated as identity consequences, not renderer-B
-decoration. Older patients trend toward more micro-detail, larger visible pore
+Skin-rendering values are generated as identity consequences. Older patients
+trend toward more micro-detail, larger visible pore
 scale, greater pigment unevenness, a rougher/more matte surface, less saturated
 lips, and lower eye-white contrast. Seeded variation remains broad enough that
 age does not produce identical surfaces. Every value remains live and editable
-in the **Skin rendering · A and B** control group. The `stylized…` JSON prefixes
-are retained for preset compatibility even though the controls are now shared.
+in the **Skin rendering · A and Meta MHR** control group. The `stylized…` JSON
+prefixes are retained for preset compatibility.
 
-## A/B renderers
+## A/B character engines
 
-The stage toggle switches one patient preset between two separately exported,
-equally rigged interpretations:
+The stage toggle cycles two deliberately different character foundations:
 
-- **A · Current** uses the MPFB basemesh and the complete exported
+- **A · MPFB** uses the generated MPFB basemesh and the complete exported
   `faceunits01` target library. Matching targets on brows, lashes, eyes, and
   teeth are driven together with the body.
-- **B · Stylized** fits MPFB's generic female proxy, then uses protected
-  decimation to target roughly 10.5k body triangles while retaining the full
-  head, neck, hand and finger regions. It is derived after identity targets are
-  baked, so seed, proportions, skeleton, pose, clips and patient metadata remain
-  shared. B deliberately retains the legacy procedural smile, sadness, and
-  fatigue controller for now: Blender's ordinary decimation workflow does not
-  safely preserve an existing shape-key library.
+- **B · Meta MHR** is the official LOD1 full-body rig: 126 bones, 45 identity
+  components, 72 expression components, and 117 exported morph targets. The
+  lab currently keeps its 35 MB float-attribute GLB while identity morphs are
+  baked live into the base mesh and normals are refreshed. The earlier 2 MB
+  8-bit-normal Meshopt proof is deferred because combining many quantized
+  identity-normal deltas can add terracing to the shared shadow-map artifact.
 
-`character:generate` and the local regeneration endpoint produce/cache both
-GLBs together. B is an additive experiment and does not overwrite A.
+Renderer B has a dedicated runtime adapter. It defaults to the preset's seated
+state, eases between standing and sitting, and drives named MHR hip, knee,
+ankle, spine, arm and head bones. Stature, body mass, muscularity, proportions,
+shoulder width, torso length and the existing face controls update live. The
+detailed face controls are anatomical projections into MHR's 20 latent head
+components; no individual PCA component is mislabeled as a semantic morph.
+Apparent age is primarily carried by surface treatment with only a restrained
+shape tendency. MHR does not ship labeled ancestry, age, sex or body-mass axes.
+An MHR-only control group exposes genuine rig dimensions from Meta's model
+definition: neck, upper/lower arm, hip, upper/lower leg, foot, hand and eyeball
+spacing controls. These are also varied conservatively by new patient seeds.
+
+`character:generate` and the local regeneration endpoint produce/cache only A.
+The B asset remains an isolated proof and never overwrites the generated patient.
 
 ```
 npm run patient:test          # determinism, coherence and render-contract tests
 npm run hair:test             # hairline bounds and deterministic geometry tests
-npm run renderer:test         # shared rig/clips, proxy reduction and expression compatibility
+npm run renderer:test         # A face/skin behavior plus B MHR asset contracts
 npm run patient:audit -- 2000 # inspect generated distributions
 ```
 
@@ -155,8 +164,7 @@ and gestures layer on top), `clip+procedural` (both).
   Driving only the body recreates the floating-feature problem for expressions.
 - Renderer A's skin pass must not call `toNonIndexed()`, decimate, or otherwise
   split vertices: its complete MPFB morph library depends on stable topology.
-  A's smoothing slider blends toward a topology-safe quantized normal field;
-  B can use true per-triangle normals on its expression-free body proxy.
+  A's smoothing slider blends toward a topology-safe quantized normal field.
 
 ## Known gaps
 
@@ -165,14 +173,16 @@ and gestures layer on top), `clip+procedural` (both).
 - Renderer-A expressions now use official MPFB named face units. Their weights
   still need visual tuning across multiple identities, and MPFB's supplied
   shapes may eventually need corrective sculpts for close-ups.
-- Renderer B remains on the legacy procedural controller. If its full fitted
-  proxy is too heavy, establish the reduced topology first and transfer every
-  deformation delta with one deterministic nearest-surface/barycentric map;
-  never decimate each expression independently.
+- MHR has no bundled hair or wardrobe ecosystem. Period garments need fitting,
+  weight transfer, covered-body masks, and identity corrective shapes; rigid
+  jewelry and medical markers can use its named bones directly.
+- The browser pose currently uses MHR's ordinary exported skin weights. Meta's
+  higher-quality non-linear pose correctives are distributed separately and
+  should be evaluated offline before the seated pose is considered final.
 - Speech visemes and facial mocap are not wired yet. The named target layer is
   intentionally compatible with adding either later.
 - GLB is unoptimized (~32k tris, ~8 MB); run the Darwin gltf-transform pass
   before game use.
 
 See [`docs/facial-animation.md`](../docs/facial-animation.md) for the design,
-installation details, expression recipes, and renderer-B migration rule.
+installation details and expression recipes.

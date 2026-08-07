@@ -3,9 +3,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createExpressions } from '../character-lab/src/expressions.js';
-import {
-  prepareSkinModel, prepareStylizedModel, updateSkinModel, updateStylizedModel,
-} from '../character-lab/src/stylized.js';
+import { createMhrController } from '../character-lab/src/mhr.js';
+import { prepareSkinModel, updateSkinModel } from '../character-lab/src/stylized.js';
 
 globalThis.self = globalThis;
 globalThis.ProgressEvent ??= class ProgressEvent {
@@ -65,21 +64,59 @@ function skinSnapshot(root) {
   };
 }
 
-test('A and B exports are the same animated patient on different supported topologies', async () => {
-  const [current, stylized] = await Promise.all([
+test('A/B comparison assets expose their intended rig and identity controls', async () => {
+  const [current, mhr] = await Promise.all([
     loadModel('../character-lab/public/models/mrs-ostrander-1896.glb'),
-    loadModel('../character-lab/public/models/mrs-ostrander-1896-stylized.glb'),
+    loadModel('../character-lab/public/models/comparison-mhr-lod1.glb'),
   ]);
   const a = modelFacts(current);
-  const b = modelFacts(stylized);
   assert.ok(a.body?.isSkinnedMesh);
-  assert.ok(b.body?.isSkinnedMesh);
-  assert.deepEqual(b.clips, a.clips);
-  assert.equal(b.bones, a.bones);
-  assert.ok(b.triangles >= 9000 && b.triangles <= 12000, `${b.triangles} is outside the B2 body budget`);
-  assert.ok(b.triangles < a.triangles * 0.7, `${b.triangles} is not substantially below ${a.triangles}`);
-  assert.ok(b.body.geometry.attributes.skinWeight);
-  assert.ok(b.body.geometry.attributes.skinIndex);
+  const mhrBody = mhr.scene.getObjectByName('body_mesh');
+  assert.ok(mhrBody?.isSkinnedMesh);
+  assert.equal(Object.keys(mhrBody.morphTargetDictionary).length, 117);
+  assert.equal(mhrBody.morphTargetDictionary.shape_0, 0);
+  assert.equal(mhrBody.morphTargetDictionary.shape_116, 116);
+  let mhrBones = 0;
+  mhr.scene.traverse((object) => { if (object.isBone) mhrBones += 1; });
+  assert.equal(mhrBones, 126);
+  assert.ok(mhrBody.geometry.attributes.skinWeight);
+  assert.ok(mhrBody.geometry.attributes.skinIndex);
+});
+
+test('MHR identity/build controls deform the mesh and drive a seated full-body rig', async () => {
+  const gltf = await loadModel('../character-lab/public/models/comparison-mhr-lod1.glb');
+  const body = gltf.scene.getObjectByName('body_mesh');
+  const values = {
+    seed: 6005, gender: 0.5, age: 0.7, height: 0.5, weight: 0.5, muscle: 0.35,
+    proportions: 0.5, shoulderWidth: 0, torsoLength: 0, headShape: 'oval', headShapeStrength: 0.4,
+    seated: 1, kneesTogether: 0.7, posture: 0.1, headTurn: 0, headTilt: 0,
+    breathing: 0, breathingRate: 13,
+  };
+  const controller = createMhrController(gltf.scene, values);
+  assert.ok(controller);
+  assert.equal(controller.bones.size, 126);
+  assert.equal(controller.seatedBlend, 1);
+  assert.ok(gltf.scene.position.y < -0.3, 'seated pose should lower the pelvis toward the chair');
+  const seatedThigh = controller.bones.get('r_upleg').quaternion.clone();
+  const seatedKnee = controller.bones.get('r_lowleg').quaternion.clone();
+  const upperArmLength = controller.bones.get('r_lowarm').position.length();
+  const initialPosition = new Float32Array(body.geometry.attributes.position.array);
+
+  values.weight = 0.82;
+  values.height = 0.8;
+  values.mhrUpperArmLength = 1;
+  assert.equal(controller.applyValues(values, { forceIdentity: true }), true);
+  assert.ok(difference(initialPosition, body.geometry.attributes.position.array).rms > 0.0001);
+  assert.ok(body.userData.mhrIdentityWeights[0] > 0.8, 'body-mass control should recruit measured volume component 0');
+  assert.ok(gltf.scene.scale.y > 1.05, 'stature should change the rig scale live');
+  assert.ok(controller.bones.get('r_lowarm').position.length() > upperArmLength * 1.07, 'named MHR limb scale should be live');
+
+  values.seated = 0;
+  controller.update(10, 1, values);
+  assert.equal(controller.seatedBlend, 0);
+  assert.ok(gltf.scene.position.y > -0.01);
+  assert.ok(controller.bones.get('r_upleg').quaternion.angleTo(seatedThigh) > 1);
+  assert.ok(controller.bones.get('r_lowleg').quaternion.angleTo(seatedKnee) > 1);
 });
 
 test('renderer A exports and coordinates MPFB face units across fitted facial meshes', async () => {
@@ -151,10 +188,9 @@ test('renderer A supports live skin treatment without changing topology or facia
   assert.ok(facts.body.material.bumpMap.repeat.x < restrainedPoreRepeat);
 });
 
-test('shared skin controls produce perceptible endpoint changes on both renderers', async () => {
+test('renderer A skin controls produce perceptible endpoint changes', async () => {
   const variants = [
     ['A', '../character-lab/public/models/mrs-ostrander-1896.glb', false],
-    ['B', '../character-lab/public/models/mrs-ostrander-1896-stylized.glb', true],
   ];
   const baseline = {
     seed: 4800, age: 0.63, skinTone: '#b87e61', stylizedPlaneContrast: 0.3,
@@ -206,48 +242,4 @@ test('shared skin controls produce perceptible endpoint changes on both renderer
     assert.ok(effects.stylizedLipTint.faceOverlay.maximum > 40, `${label} lip tint is imperceptible`);
     assert.ok(effects.stylizedEyeContrast.eye.rms > 0.2, `${label} eye contrast is imperceptible`);
   }
-});
-
-test('B2 skin treatment preserves weights and supports smile, sadness, and fatigue', async () => {
-  const stylized = await loadModel('../character-lab/public/models/mrs-ostrander-1896-stylized.glb');
-  const styleValues = {
-    seed: 150, age: 0.62, skinTone: '#c99378', stylizedPlaneContrast: 0.3,
-    stylizedSkinDetail: 0.42, stylizedSkinWarmth: 0.28, stylizedEyeContrast: 0.3,
-    stylizedSurfaceRoughness: 0.82, stylizedTriangleBlend: 0,
-    stylizedPigmentVariation: 0.3, stylizedPoreScale: 1, stylizedFreckleAmount: 0.08,
-    stylizedCheekBlush: 0.42, stylizedNoseRedness: 0.3, stylizedForeheadWarmth: 0.18,
-    stylizedLipTint: 0, stylizedLipColor: '#a45e5c',
-  };
-  prepareStylizedModel(stylized.scene, styleValues);
-  const facts = modelFacts(stylized);
-  assert.ok(facts.body.geometry.attributes.color);
-  assert.ok(facts.body.geometry.attributes.uv);
-  assert.ok(facts.body.geometry.attributes.skinWeight);
-  assert.equal(facts.body.material.flatShading, false);
-  assert.equal(facts.body.material.isMeshPhysicalMaterial, true);
-  assert.ok(facts.body.material.bumpMap?.isDataTexture);
-  assert.ok(facts.body.userData.faceOverlay?.texture?.isDataTexture);
-  assert.ok(facts.body.userData.faceOverlay.spots.length >= 150);
-  const shader = {
-    uniforms: {},
-    vertexShader: '#include <uv_vertex>',
-    fragmentShader: '#include <map_fragment>',
-  };
-  facts.body.material.onBeforeCompile(shader, {});
-  assert.equal(shader.uniforms.skinFaceOverlay.value, facts.body.userData.faceOverlay.texture);
-  assert.match(shader.fragmentShader, /texture2D\(skinFaceOverlay, vSkinFaceUv\)/);
-  const flatNormals = new Float32Array(facts.body.geometry.attributes.normal.array);
-  const untintedOverlay = new Uint8Array(facts.body.userData.faceOverlay.data);
-  updateStylizedModel(stylized.scene, { ...styleValues, stylizedTriangleBlend: 1, stylizedLipTint: 1 });
-  assert.ok(facts.body.geometry.attributes.normal.array.some((value, index) => Math.abs(value - flatNormals[index]) > 0.0001));
-  assert.ok(facts.body.userData.faceOverlay.data.some((value, index) => value !== untintedOverlay[index]));
-  const expressions = createExpressions(stylized.scene);
-  assert.ok(expressions);
-  assert.equal(expressions.mode, 'legacy-procedural');
-  assert.equal(facts.body.morphTargetInfluences.length, 5);
-  for (const attribute of facts.body.geometry.morphAttributes.position) {
-    assert.ok(attribute.array.some((value) => Math.abs(value) > 0.00001), `${attribute.name} has no visible displacement`);
-  }
-  expressions.update(0, 0, { smile: 0.5, sadness: 0.4, fatigueExpression: 0.3 });
-  assert.ok(facts.body.morphTargetInfluences.every((value) => value > 0));
 });

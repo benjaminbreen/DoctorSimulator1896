@@ -46,26 +46,13 @@ on the exported body. Use it before judging a compound recipe: first verify the
 individual units on several identities, then adjust the recipe weights and
 timing.
 
-## Renderer boundary
+## Comparison-engine boundary
 
-Renderer A directly carries the named library. Renderer B's reduced fitted
-proxy does not yet do so and therefore intentionally retains the old procedural
-controller. This is not accidental feature drift.
-
-Blender's normal Decimate workflow is not a safe way to preserve a library of
-existing shape keys. The migration sequence for B is:
-
-1. Validate all units and semantic performances on renderer A.
-2. Establish B's full fitted proxy as the visual reference.
-3. If reduction is necessary, create B's final reduced neutral topology once.
-4. Build one deterministic nearest-surface/barycentric correspondence from the
-   full neutral proxy to the reduced neutral proxy.
-5. Transfer every unit's deformation delta through that same correspondence.
-6. Validate target names, topology identity, fitted-feature coordination, and
-   visual parity before removing the legacy fallback.
-
-Never decimate expression shapes independently: vertex order and correspondence
-can diverge, leaving morph targets invalid or visibly unstable.
+Renderer A directly carries the named MPFB library. Meta MHR exports 72 numbered
+facial components intact, but the upstream release does not publish a
+FACS/semantic name mapping. The lab therefore exposes those
+MHR components by number for isolation tests and does not pretend they are
+interchangeable with MPFB's ARKit-compatible names.
 
 ## Acceptance checks
 
@@ -76,7 +63,7 @@ can diverge, leaving morph targets invalid or visibly unstable.
 - A semantic expression drives every mesh carrying each selected target.
 - Debug isolation zeros the preceding compound expression and drives only the
   selected unit.
-- Renderer B continues to identify itself as `legacy-procedural` until the
-  deterministic transfer is complete.
-- Multiple patient identities are visually compared before deleting the legacy
-  controller.
+- MHR retains all 72 expression components. The current proof keeps float morph
+  normals while the aggressively quantized export is evaluated separately from
+  the viewer's former shadow-map banding.
+- Multiple patient identities are visually compared before choosing a new base.
