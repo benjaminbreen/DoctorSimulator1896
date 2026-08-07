@@ -58,7 +58,15 @@ export function createHairSystem(scene, bones, model) {
     if (forward.lengthSq() < 1e-6) forward.set(0, 0, 1);
     forward.normalize();
     const headUp = head.clone().sub(neck).normalize();
-    const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), forward).normalize();
+    // The seated pose pitches the neck, so headUp is not perpendicular to the
+    // body's horizontal forward vector. The polar scalp fitter assumes an
+    // orthonormal basis; project forward into the head plane before building
+    // right or posterior radii collapse when the patient bows.
+    forward.addScaledVector(headUp, -forward.dot(headUp));
+    if (forward.lengthSq() < 1e-6) forward.set(0, 0, 1)
+      .addScaledVector(headUp, -headUp.z).normalize();
+    else forward.normalize();
+    const right = new THREE.Vector3().crossVectors(headUp, forward).normalize();
     return {
       centre: head.clone().addScaledVector(headUp, 0.055), head, neck, headUp, forward, right,
       seed: Number(values.seed) || 1,

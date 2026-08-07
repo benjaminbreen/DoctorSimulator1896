@@ -15,3 +15,9 @@ gnm_head_editor-*.zip
 # Keep the generated project groom, but do not redistribute the source package.
 Geometry nodes - hair cards from curves - blender 3.6.blend
 character-lab/authoring/hair/victorian-low-bun.blend
+
+# Local visual QA output. Curated design references already tracked under
+# mockups/ remain versioned; repeated MHR calibration renders stay local.
+mockups/character-engine-comparison/mhr-live-*.png
+mockups/character-engine-comparison/mhr-*-2026-*.png
+mockups/character-engine-comparison/mhr-anatomical-eyes-contact-sheet-*.png

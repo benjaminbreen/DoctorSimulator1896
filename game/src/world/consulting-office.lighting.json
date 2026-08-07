@@ -1,0 +1,24 @@
+{
+  "id": "CONSULTING_OFFICE_DUSK",
+  "ambient": { "color": "#6f675c", "intensity": 0.35 },
+  "hemisphere": { "skyColor": "#8a93ad", "groundColor": "#4a3a2a", "intensity": 0.55 },
+  "windowSky": "#b8c4de",
+  "windowPortals": [
+    { "windowId": "window-north-1", "color": "#a7b8d8", "intensity": 2.0, "elevationDeg": 32, "azimuthDeg": 15 },
+    { "windowId": "window-north-2", "color": "#a7b8d8", "intensity": 2.0, "elevationDeg": 32, "azimuthDeg": -10 },
+    { "windowId": "window-west", "color": "#a7b8d8", "intensity": 1.4, "elevationDeg": 32, "azimuthDeg": 75 },
+    { "windowId": "window-south", "color": "#9fb0cc", "intensity": 1.1, "elevationDeg": 32, "azimuthDeg": 20 }
+  ],
+  "gaslights": [
+    { "propId": "gaslight-east", "color": "#ffb45e", "intensity": 6.0, "distance": 8.0, "decay": 2, "flicker": 0.12, "castShadow": true },
+    { "propId": "gaslight-desk", "color": "#ffc57a", "intensity": 3.2, "distance": 5.0, "decay": 2, "flicker": 0.08, "castShadow": false },
+    { "propId": "gaslight-west", "color": "#ffb45e", "intensity": 5.0, "distance": 7.5, "decay": 2, "flicker": 0.1, "castShadow": false }
+  ],
+  "exposureBase": 1.0,
+  "materials": {
+    "wall": "#8a7a5f",
+    "floor": "#6b4f33",
+    "ceiling": "#9c8f78",
+    "trim": "#3a2c1e"
+  }
+}

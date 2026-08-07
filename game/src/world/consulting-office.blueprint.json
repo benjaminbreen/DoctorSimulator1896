@@ -1,0 +1,70 @@
+{
+  "id": "CONSULTING_OFFICE",
+  "label": "Consulting Office",
+  "schemaVersion": 1,
+  "dimensions": { "width": 8.0, "depth": 10.0, "ceiling": 3.6, "floorY": 0 },
+  "outline": [[-4, 5], [4, 5], [4, -5], [-4, -5]],
+  "navigation": { "defaultSpawn": [-1.5, 0, 1.5], "defaultFacing": [0, 0, -1] },
+  "walls": [
+    {
+      "id": "north-wall",
+      "position": [0, 1.8, -5],
+      "size": [8.0, 3.6, 0.24],
+      "yaw": 0,
+      "openings": [
+        { "id": "window-north-1", "type": "window", "center": [-2, 1.72], "size": [1.2, 2.0], "sillHeight": 0.75 },
+        { "id": "window-north-2", "type": "window", "center": [1.6, 1.72], "size": [1.2, 2.0], "sillHeight": 0.75 }
+      ]
+    },
+    {
+      "id": "south-wall",
+      "position": [0, 1.8, 5],
+      "size": [8.0, 3.6, 0.24],
+      "yaw": 0,
+      "openings": [
+        { "id": "door-waiting-room", "type": "door", "center": [2.2, 1.05], "size": [0.95, 2.1], "sillHeight": 0, "blocked": true },
+        { "id": "window-south", "type": "window", "center": [-2.2, 1.72], "size": [1.2, 2.0], "sillHeight": 0.75 }
+      ]
+    },
+    {
+      "id": "west-wall",
+      "position": [-4, 1.8, 0],
+      "size": [0.24, 3.6, 10.0],
+      "yaw": 0,
+      "openings": [
+        { "id": "window-west", "type": "window", "center": [-2, 1.72], "size": [1.1, 1.95], "sillHeight": 0.75 }
+      ]
+    },
+    {
+      "id": "east-wall",
+      "position": [4, 1.8, 0],
+      "size": [0.24, 3.6, 10.0],
+      "yaw": 0,
+      "openings": []
+    }
+  ],
+  "transitions": [
+    {
+      "id": "to-waiting-room",
+      "label": "To the waiting room",
+      "position": [2.2, 4.3],
+      "radius": 1.2,
+      "to": { "zone": "waiting-room", "spawn": [-3.4, 0, 3.4], "facing": [1, 0] }
+    }
+  ],
+  "furniture": [
+    { "id": "rug", "kind": "furniture", "position": [-0.5, 0.008, -2.2], "size": [3.2, 0.012, 2.6], "yaw": 0, "color": "#6e3438", "collider": false },
+    { "id": "desk", "kind": "furniture", "position": [-0.5, 0.38, -2.8], "size": [1.5, 0.76, 0.85], "yaw": 0, "color": "#4a3826" },
+    { "id": "desk-chair", "kind": "furniture", "position": [-0.5, 0.45, -3.6], "size": [0.55, 0.9, 0.55], "yaw": 0, "color": "#3a2c1e" },
+    { "id": "patient-chair", "kind": "furniture", "position": [-0.5, 0.45, -1.7], "size": [0.6, 0.9, 0.6], "yaw": 3.14, "color": "#5c3a2e" },
+    { "id": "fainting-couch", "kind": "furniture", "position": [2.6, 0.35, 1.6], "size": [0.75, 0.7, 1.9], "yaw": 0, "color": "#5e2f33" },
+    { "id": "bookcase-east", "kind": "furniture", "position": [3.74, 1.15, -2.2], "size": [0.42, 2.3, 2.2], "yaw": 0, "color": "#3d2f22" },
+    { "id": "instrument-cabinet", "kind": "furniture", "position": [-3.7, 0.9, 2.4], "size": [0.5, 1.8, 1.1], "yaw": 0, "color": "#463525" },
+    { "id": "side-table", "kind": "furniture", "position": [1.6, 0.36, -4.3], "size": [0.6, 0.72, 0.5], "yaw": 0.2, "color": "#4a3826" }
+  ],
+  "props": [
+    { "id": "gaslight-east", "kind": "lightMarker", "position": [3.8, 2.2, 0.6] },
+    { "id": "gaslight-desk", "kind": "lightMarker", "position": [-0.9, 0.95, -2.8] },
+    { "id": "gaslight-west", "kind": "lightMarker", "position": [-3.8, 2.3, -0.5] }
+  ]
+}

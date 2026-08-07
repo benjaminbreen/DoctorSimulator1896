@@ -50,7 +50,7 @@ function assertFiniteGeometry(geometry) {
 test('period hairstyle profiles keep the front hairline on the upper forehead', () => {
   for (const [name, profile] of Object.entries(HAIR_PROFILES)) {
     const front = hairlineDepth(profile, defaults, 0);
-    assert.ok(front >= 0.40 && front <= 0.47, `${name} front depth ${front}`);
+    assert.ok(front >= 0.18 && front <= 0.24, `${name} front depth ${front}`);
   }
 });
 

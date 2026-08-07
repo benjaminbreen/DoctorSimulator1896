@@ -1,0 +1,21 @@
+{
+  "id": "CENTRAL_PARK",
+  "label": "Central Park — Southeast Corner",
+  "schemaVersion": 1,
+  "kind": "exterior",
+  "dimensions": { "width": 160.0, "depth": 140.0, "ceiling": 0, "floorY": 0 },
+  "outline": [[-80, 70], [80, 70], [80, -70], [-80, -70]],
+  "navigation": { "defaultSpawn": [64, 0, 56], "defaultFacing": [-0.7, 0, -0.7] },
+  "walls": [],
+  "transitions": [
+    {
+      "id": "to-waiting-room",
+      "label": "Back to the practice (Scholars' Gate)",
+      "position": [70, 60],
+      "radius": 3,
+      "to": { "zone": "waiting-room", "spawn": [0, 0, 4.2], "facing": [0, -1] }
+    }
+  ],
+  "furniture": [],
+  "props": []
+}

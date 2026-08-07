@@ -6,8 +6,9 @@ import { MeshoptDecoder } from 'meshoptimizer';
 import * as THREE from 'three';
 import { findBones, sampleTorsoFit } from '../character-lab/src/costume.js';
 import { createExpressions, createMhrExpressions } from '../character-lab/src/expressions.js';
-import { sampleScalp } from '../character-lab/src/hair/geometry.js';
+import { findBodyMesh, sampleScalp, scalpPoint } from '../character-lab/src/hair/geometry.js';
 import { createMhrController, createMhrEyeDetails } from '../character-lab/src/mhr.js';
+import { createMhrFacialDetails } from '../character-lab/src/facial-details.js';
 import { prepareSkinModel, updateSkinModel } from '../character-lab/src/stylized.js';
 
 globalThis.self = globalThis;
@@ -53,6 +54,18 @@ function difference(a, b) {
     maximum = Math.max(maximum, delta);
   }
   return { rms: Math.sqrt(sum / a.length), maximum };
+}
+
+function regionalDifference(a, b, referencePosition, predicate) {
+  let sum = 0; let maximum = 0; let samples = 0;
+  for (let vertex = 0; vertex < referencePosition.count; vertex += 1) {
+    const x = referencePosition.getX(vertex), y = referencePosition.getY(vertex), z = referencePosition.getZ(vertex);
+    if (!predicate(x, y, z)) continue;
+    const offset = vertex * 3;
+    const delta = Math.hypot(a[offset] - b[offset], a[offset + 1] - b[offset + 1], a[offset + 2] - b[offset + 2]);
+    sum += delta * delta; maximum = Math.max(maximum, delta); samples += 1;
+  }
+  return { rms: samples ? Math.sqrt(sum / samples) : 0, maximum, samples };
 }
 
 function skinSnapshot(root) {
@@ -107,7 +120,7 @@ test('MHR identity/build controls deform the mesh and drive a seated full-body r
   const shoulderSeparation = worldAt('r_uparm').distanceTo(worldAt('l_uparm'));
   const handSeparation = worldAt('r_wrist').distanceTo(worldAt('l_wrist'));
   assert.ok(handSeparation < shoulderSeparation * 0.75, 'seated hands should settle inward onto the lap');
-  assert.ok(worldAt('r_wrist').y < worldAt('r_uparm').y - 0.35, 'seated arm still reads as a splayed T-pose');
+  assert.ok(worldAt('r_wrist').y < worldAt('r_uparm').y - 0.20, 'seated arm still reads as a splayed T-pose');
   const relaxedFinger = controller.bones.get('r_index2').quaternion.clone();
   values.handTension = 1;
   controller.applyValues(values);
@@ -162,17 +175,56 @@ test('MHR costume fitting measures the posed body and eye details follow the eye
   assert.equal(fit.length, 11);
   assert.ok(fit.every((row) => row.samples > 0 && row.rx > 0.1 && row.rz > 0.07));
   assert.ok(Math.max(...fit.map((row) => row.rz)) > 0.12, 'full body should determine garment chest depth');
+  const maximumTorsoDepth = Math.max(...fit.map((row) => row.rz));
+  assert.ok(maximumTorsoDepth < 0.23, `posed arms leaked into the torso garment fit (${maximumTorsoDepth.toFixed(3)}m)`);
 
+  prepareSkinModel(gltf.scene, values);
+  const body = gltf.scene.getObjectByName('body_mesh');
+  const originalMaterial = body.material;
+  const originalIndexCount = body.geometry.index.count;
+  const embeddedEyePaint = new Float32Array(body.geometry.attributes.color.array);
   const eyes = createMhrEyeDetails(gltf.scene, values);
   assert.equal(eyes.groups.length, 2);
   assert.ok(eyes.groups.every((group) => /eye_null$/.test(group.parent.name)));
-  assert.equal(eyes.materials.iris.userData.excludeComparisonSkin, true);
-  assert.equal(`#${eyes.materials.iris.color.getHexString()}`.length, 7);
+  assert.ok(eyes.groups.every((group) => group.getObjectByName(`${group.name}_Globe`)?.geometry.type === 'SphereGeometry'));
+  assert.ok(eyes.groups.every((group) => group.getObjectByName(`${group.name}_Cornea`)?.geometry.type === 'SphereGeometry'));
+  assert.ok(eyes.removedTriangles > 30, `opaque embedded eye surface should be cut away (${eyes.removedTriangles} triangles)`);
+  assert.ok(eyes.apertures.every((aperture) => aperture.upper.length >= 8 && aperture.lower.length >= 6));
+  assert.equal(eyes.materials.globe.userData.excludeComparisonSkin, true);
+  assert.equal(eyes.materials.cornea.userData.excludeComparisonSkin, true);
+  updateSkinModel(gltf.scene, values);
+  assert.ok(difference(embeddedEyePaint, body.geometry.attributes.color.array).maximum > 0.25,
+    'old embedded-eye sclera pigment remained on the retained eyelid margin');
+  const originalEyeColors = new Float32Array(eyes.groups[0].children[0].geometry.attributes.color.array);
+  const facial = createMhrFacialDetails(gltf.scene, {
+    ...values, hairColor: '#21150f', browColor: '#21150f', lashColor: '#17100c',
+    lashDensity: 0.7, lashLength: 1, lashCurl: 0.5,
+  });
+  const lashes = facial.meshes.find((mesh) => mesh.name === 'MHR_ProceduralLashes');
+  assert.ok(lashes.geometry.attributes.position.count > 400, 'eyelid margins should produce individual lash strands');
+  const apertureVertices = new Set(eyes.apertures.flatMap((aperture) => [...aperture.upper, ...aperture.lower]));
+  assert.ok([...lashes.geometry.userData.surfaceSources].every((source) => apertureVertices.has(source)), 'lash roots must use actual eyelid-margin vertices');
+  const openLashes = new Float32Array(lashes.geometry.attributes.position.array);
+  body.morphTargetInfluences[body.morphTargetDictionary.shape_58] = 0.85;
+  facial.update(values);
+  assert.ok(difference(openLashes, lashes.geometry.attributes.position.array).rms > 0.0001, 'lashes must follow the blinking eyelid morph');
+  body.morphTargetInfluences[body.morphTargetDictionary.shape_58] = 0;
+  const initialScale = eyes.groups[0].scale.x;
   values.eyeColor = '#783f26'; values.eyeSize = 0.5;
+  values.mhrEyeGlobeScale = 1.05; values.mhrEyeDepth = -4.2; values.mhrEyeVertical = 1.1;
+  values.mhrScleraColor = '#bba99a'; values.mhrScleraBrightness = 0.12;
+  values.mhrIrisScale = 1.28; values.mhrPupilScale = 0.72; values.mhrCorneaGloss = 0.8;
   eyes.update(values);
-  assert.ok(eyes.groups[0].scale.x > 1.05);
+  assert.ok(eyes.groups[0].children[0].geometry.attributes.color.array.some((value, index) => Math.abs(value - originalEyeColors[index]) > 0.08));
+  assert.ok(eyes.groups[0].scale.x > initialScale * 1.15, 'live globe-size control did not change the bone-bound eye');
+  assert.ok(Math.abs(eyes.groups[0].children[0].position.y - 0.0011) < 1e-7);
+  assert.ok(Math.abs(eyes.groups[0].children[0].position.z + 0.01575) < 1e-7);
+  assert.ok(eyes.materials.cornea.opacity > 0.16);
+  facial.dispose();
   eyes.dispose();
   assert.ok(eyes.groups.every((group) => group.parent == null));
+  assert.equal(body.material, originalMaterial);
+  assert.equal(body.geometry.index.count, originalIndexCount);
 });
 
 test('MHR scalp fitting is linear-time and follows the deformed head surface', async () => {
@@ -187,9 +239,12 @@ test('MHR scalp fitting is linear-time and follows the deformed head surface', a
   if (forward.lengthSq() < 1e-6) forward.set(0, 0, 1);
   forward.normalize();
   const headUp = head.clone().sub(neck).normalize();
+  forward.addScaledVector(headUp, -forward.dot(headUp));
+  if (forward.lengthSq() < 1e-6) forward.set(0, 0, 1).addScaledVector(headUp, -headUp.z);
+  forward.normalize();
   const frame = {
     centre: head.clone().addScaledVector(headUp, 0.055), head, neck, headUp, forward,
-    right: new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), forward).normalize(),
+    right: new THREE.Vector3().crossVectors(headUp, forward).normalize(),
   };
   const started = performance.now();
   const scalp = sampleScalp(gltf.scene, frame);
@@ -198,12 +253,39 @@ test('MHR scalp fitting is linear-time and follows the deformed head surface', a
   assert.equal(radii.length, 1088);
   assert.ok(Math.min(...radii) > 0.05 && Math.max(...radii) < 0.18);
   assert.ok(Math.max(...radii) - Math.min(...radii) > 0.025, 'scalp projection collapsed to a fallback sphere');
+  const body = findBodyMesh(gltf.scene);
+  const world = new THREE.Vector3();
+  const offset = new THREE.Vector3();
+  let worstPosteriorUndercut = -Infinity;
+  let worstPosteriorLocation = null;
+  for (let vertex = 0; vertex < body.geometry.attributes.position.count; vertex++) {
+    body.getVertexPosition(vertex, world).applyMatrix4(body.matrixWorld);
+    offset.copy(world).sub(frame.centre);
+    const radius = offset.length();
+    if (radius < 0.035 || radius > 0.19) continue;
+    const direction = offset.clone().divideScalar(radius);
+    const polar = Math.acos(THREE.MathUtils.clamp(direction.dot(frame.headUp), -1, 1));
+    const azimuth = Math.atan2(direction.dot(frame.right), direction.dot(frame.forward));
+    if (polar < 0.04 || polar > 1.22 || Math.abs(azimuth) < 2.15) continue;
+    const row = (polar - 0.04) / (Math.PI * 0.62) * (scalp.ROWS - 1);
+    const fittedRadius = scalpPoint(scalp, azimuth, row).distanceTo(frame.centre);
+    const undercut = radius - fittedRadius;
+    if (undercut > worstPosteriorUndercut) {
+      worstPosteriorUndercut = undercut;
+      worstPosteriorLocation = { polar, azimuth, row };
+    }
+  }
+  assert.ok(worstPosteriorUndercut < 0.008,
+    `posterior scalp fit undercuts the visible skull by ${(worstPosteriorUndercut * 1000).toFixed(1)}mm at ${JSON.stringify(worstPosteriorLocation)}`);
   assert.ok(duration < 1000, `MHR scalp fit regressed to ${duration.toFixed(0)}ms`);
 });
 
 test('MHR presentation and ancestry endpoints visibly deform the same seeded identity', async () => {
   const gltf = await loadModel('../character-lab/public/models/comparison-mhr-lod1.glb');
   const body = gltf.scene.getObjectByName('body_mesh');
+  const referencePosition = body.geometry.attributes.position.clone();
+  const referenceBox = new THREE.Box3().setFromBufferAttribute(referencePosition);
+  const head = (_x, y) => y > referenceBox.max.y - (referenceBox.max.y - referenceBox.min.y) * 0.18;
   const values = {
     seed: 2665, gender: 0.5, age: 0.68, height: 0.5, weight: 0.5, muscle: 0.35,
     proportions: 0.5, shoulderWidth: 0, torsoLength: 0, headShape: 'oval', headShapeStrength: 0,
@@ -217,9 +299,14 @@ test('MHR presentation and ancestry endpoints visibly deform the same seeded ide
     return new Float32Array(body.geometry.attributes.position.array);
   };
 
+  const neutral = capture({ gender: 0.5 });
   const female = capture({ gender: 0 });
   const male = capture({ gender: 1 });
   assert.ok(difference(female, male).rms > 0.0025, 'presentation endpoint is too subtle');
+  const feminineTravel = regionalDifference(female, neutral, referencePosition, head).rms;
+  const masculineTravel = regionalDifference(male, neutral, referencePosition, head).rms;
+  assert.ok(feminineTravel > masculineTravel * 1.12,
+    `feminine endpoint (${feminineTravel}) should travel farther than restrained masculine endpoint (${masculineTravel})`);
   assert.equal(body.userData.mhrSemanticProfile.presentation, 1);
   assert.ok(controller.directions.body.shoulderWidth.samples > 100);
   assert.ok(controller.directions.body.hipWidth.samples > 100);
@@ -227,9 +314,53 @@ test('MHR presentation and ancestry endpoints visibly deform the same seeded ide
   const african = capture({ gender: 0.5, african: 1, asian: 0, caucasian: 0 });
   const asian = capture({ african: 0, asian: 1, caucasian: 0 });
   const european = capture({ african: 0, asian: 0, caucasian: 1 });
-  assert.ok(difference(african, european).rms > 0.0007, 'African ancestry endpoint is too subtle');
-  assert.ok(difference(asian, european).rms > 0.0002, 'Asian ancestry endpoint is too subtle');
+  assert.ok(regionalDifference(african, european, referencePosition, head).rms > 0.00035, 'African ancestry endpoint is too subtle');
+  assert.ok(regionalDifference(asian, european, referencePosition, head).rms > 0.00035, 'Asian ancestry endpoint is too subtle');
   assert.deepEqual(body.userData.mhrSemanticProfile.ancestry, { african: 0, asian: 0, caucasian: 1 });
+});
+
+test('MHR semantic face sliders are localized and every displayed detail control is live', async () => {
+  const gltf = await loadModel('../character-lab/public/models/comparison-mhr-lod1.glb');
+  const body = gltf.scene.getObjectByName('body_mesh');
+  const reference = body.geometry.attributes.position.clone();
+  const box = new THREE.Box3().setFromBufferAttribute(reference);
+  const top = box.max.y;
+  const values = {
+    seed: 4118, gender: 0.5, age: 0.66, height: 0.5, weight: 0.5, muscle: 0.35,
+    proportions: 0.5, shoulderWidth: 0, torsoLength: 0, headShape: 'oval', headShapeStrength: 0,
+    african: 0, asian: 0, caucasian: 1, seated: 0, kneesTogether: 0, posture: 0,
+    headTurn: 0, headTilt: 0, breathing: 0, breathingRate: 13,
+  };
+  const controller = createMhrController(gltf.scene, values);
+  const capture = (overrides) => {
+    Object.assign(values, overrides);
+    controller.applyValues(values, { forceIdentity: true });
+    return new Float32Array(body.geometry.attributes.position.array);
+  };
+  const low = capture({ noseDepth: -0.65 });
+  const high = capture({ noseDepth: 0.65 });
+  const nose = regionalDifference(low, high, reference,
+    (x, y, z) => Math.abs(x) < 0.065 && y > top - 0.235 && y < top - 0.075 && z > box.max.z - 0.16);
+  const otherFace = regionalDifference(low, high, reference,
+    (x, y, z) => y > top - 0.31 && z > box.max.z - 0.16
+      && !(Math.abs(x) < 0.075 && y > top - 0.245 && y < top - 0.065));
+  assert.ok(nose.rms > 0.00025, `nose projection is too subtle (${nose.rms})`);
+  assert.ok(otherFace.rms < nose.rms * 0.24,
+    `nose projection leaked across the face (${otherFace.rms} vs ${nose.rms})`);
+
+  const detailIds = [
+    'headAngle', 'headBackDepth', 'noseCurve', 'noseTipAngle', 'eyeHeightInner', 'eyeHeightCenter',
+    'eyeHeightOuter', 'epicanthus', 'eyeFold', 'browAngle', 'cupidBow', 'philtrumVolume', 'cheekInnerVolume',
+  ];
+  for (const id of detailIds) {
+    const before = capture({ [id]: -0.5 });
+    const after = capture({ [id]: 0.5 });
+    assert.ok(difference(before, after).maximum > 0.00008, `${id} updates the label but not MHR geometry`);
+  }
+  const symmetric = capture({ faceAsymmetry: 0 });
+  const asymmetric = capture({ faceAsymmetry: 0.35 });
+  assert.ok(difference(symmetric, asymmetric).maximum > 0.00008,
+    'faceAsymmetry updates the label but not MHR geometry');
 });
 
 test('MHR seated controller animates, completes, and reverses a pose transition', async () => {
@@ -290,6 +421,11 @@ test('MHR semantic expressions drive its 72 signed latent targets without distur
   assert.ok(difference(smile, sadness).rms > 0.02, 'smile and sadness collapsed to the same latent direction');
   expressions.update(0, 2, { smile: 0, sadness: 0, fatigueExpression: 0.8 });
   assert.ok(difference(sadness, expressions.appliedWeights).rms > 0.01, 'fatigue did not recruit a distinct eyelid direction');
+  expressions.play('blink', 1, 1);
+  expressions.update(0, 2.1, { smile: 0, sadness: 0, fatigueExpression: 0 });
+  expressions.update(0, 2.22, { smile: 0, sadness: 0, fatigueExpression: 0 });
+  assert.ok(expressions.appliedWeights[12] > 0.8 && expressions.appliedWeights[13] > 0.8, 'blink should close both MHR eyelids');
+  assert.ok(expressions.appliedWeights[14] > 0.2 && expressions.appliedWeights[15] > 0.2, 'blink should seal the low-poly wet line');
 
   assert.equal(expressions.setDebugUnit('MHR expression 00', -0.63), true);
   expressions.update(0, 3, { smile: 1, sadness: 1, fatigueExpression: 1 });

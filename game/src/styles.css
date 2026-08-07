@@ -1,0 +1,15 @@
+@import 'tailwindcss';
+
+/* Panel controls; everything else is Tailwind utilities. */
+.panel-row input[type='range'] {
+  width: 100%;
+  accent-color: #c9a227;
+}
+
+.panel-row input[type='color'] {
+  width: 3rem;
+  height: 1.4rem;
+  border: none;
+  background: none;
+  padding: 0;
+}

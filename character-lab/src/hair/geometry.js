@@ -68,7 +68,23 @@ export function sampleScalp(model, frame) {
     const azimuthValue = ((azimuth % TAU) + TAU) % TAU / TAU * AZ;
     const a = Math.round(azimuthValue) % AZ;
     const row = THREE.MathUtils.clamp(Math.round(rowValue), 0, ROWS - 1);
-    radii[a][row] = Math.max(radii[a][row], radius);
+    // A single-bin projection leaves holes wherever the head topology is
+    // sparse (most visibly on MHR's posterior crown). Bilinear sampling then
+    // interpolates toward an averaged empty-cell fill and can put the cap
+    // several centimetres *inside* the skull. Conservatively splat each real
+    // surface sample into its immediate polar neighbours. The later row-wise
+    // outlier clamp still removes ears and the nose, while every interpolated
+    // scalp point is now bounded by an observed nearby surface radius.
+    for (let da = -1; da <= 1; da++) {
+      for (let dr = -1; dr <= 1; dr++) {
+        const candidateRow = row + dr;
+        if (candidateRow < 0 || candidateRow >= ROWS) continue;
+        const candidateAzimuth = (a + da + AZ) % AZ;
+        radii[candidateAzimuth][candidateRow] = Math.max(
+          radii[candidateAzimuth][candidateRow], radius,
+        );
+      }
+    }
   }
 
   function neighbourRadius(a, row) {
@@ -93,13 +109,21 @@ export function sampleScalp(model, frame) {
     if (radii[a][row] <= 0) radii[a][row] = neighbourRadius(a, row);
   }
 
-  // Ears and the nose can be the first ray hit. Clamp those isolated outliers
-  // so neither one tents the hair shell away from the skull.
+  // Ears and the nose can be the first surface sample in the lower rows. Clamp
+  // those isolated outliers so neither one tents the hair shell away from the
+  // skull. Never apply the global row median to the upper crown: MHR's normal
+  // posterior cranium is substantially deeper than its forehead at the same
+  // polar row, and the old cleanup erased 35–40mm of real skull there.
   for (let row = 0; row < ROWS; row++) {
+    if (row < Math.floor(ROWS * 0.42)) continue;
     const rowRadii = radii.map((column) => column[row]).sort((a, b) => a - b);
     const median = rowRadii[Math.floor(AZ / 2)];
     for (let a = 0; a < AZ; a++) {
-      if (radii[a][row] > median * 1.20) radii[a][row] = median * 1.08;
+      const azimuth = wrapAngle(a / AZ * TAU);
+      const absoluteAzimuth = Math.abs(azimuth);
+      const featureBand = absoluteAzimuth < 0.72
+        || Math.abs(absoluteAzimuth - Math.PI / 2) < 0.34;
+      if (featureBand && radii[a][row] > median * 1.10) radii[a][row] = median * 1.04;
     }
   }
 
@@ -132,7 +156,10 @@ export function scalpPoint(scalp, azimuth, rowValue) {
 }
 
 export function hairlineDepth(profile, values, azimuth) {
-  const front = Math.max(0, Math.cos(azimuth)) ** 2.2;
+  // Keep the upper-forehead influence broad enough to reach the temples. A
+  // steeper falloff handed control to the low side depth too early and made
+  // an otherwise period silhouette read as a modern helmet fringe.
+  const front = Math.max(0, Math.cos(azimuth)) ** 1.35;
   const back = Math.max(0, -Math.cos(azimuth)) ** 1.7;
   const sides = Math.max(0, 1 - front - back);
   const absoluteFrontAngle = Math.abs(wrapAngle(azimuth));
@@ -144,7 +171,7 @@ export function hairlineDepth(profile, values, azimuth) {
   return THREE.MathUtils.clamp(
     profile.frontDepth * front + profile.sideDepth * sides + profile.napeDepth * back
       - templeRecession - height + subtleCentrePoint,
-    0.38,
+    0.12,
     0.99,
   );
 }
@@ -319,7 +346,7 @@ export function buildHairShells(scalp, frame, profile, values) {
     return [buildStreamlinePatch(scalp, frame, profile, values, 0, TAU, 96)];
   }
   const part = profile.partAzimuth;
-  const gap = THREE.MathUtils.lerp(0.035, 0.105, values.partWidth ?? 0.28);
+  const gap = THREE.MathUtils.lerp(0.018, 0.052, values.partWidth ?? 0.28);
   // The angular gap exists only at the seeds; the streamlines converge toward
   // the anchor, so the visible part tapers away naturally over the crown.
   return [
@@ -350,7 +377,11 @@ export function buildHairUnderCap(scalp, frame, profile, values) {
       const t = row / rows;
       const point = scalpPoint(scalp, azimuth, depth * t);
       const outward = point.clone().sub(frame.centre).normalize();
-      point.addScaledVector(outward, 0.0022 + hairThickness(profile, values, azimuth, t) * 0.14);
+      // Four millimetres of root lift is visually flush at portrait distance,
+      // but gives enough clearance for coarse live morphs and animated scalp
+      // skinning. This is the opaque safety layer; the directional shell above
+      // it supplies the visible coiffure volume.
+      point.addScaledVector(outward, 0.0042 + hairThickness(profile, values, azimuth, t) * 0.16);
       positions.push(point.x, point.y, point.z);
       uvs.push(column / columns, t);
       const rootTone = 0.78 + 0.18 * smooth(t / 0.30);

@@ -169,6 +169,23 @@ test('generated identities span landmark structure beyond a shared face template
   }
 });
 
+test('generated presentation changes the whole body without oversized lower faces', () => {
+  const cohorts = { female: [], male: [] };
+  for (let seed = 1; seed <= 1600; seed += 1) {
+    const patient = generatePatient({ seed });
+    cohorts[patient.identity.sex].push(patientToCharacterPreset(patient, basePreset, definitions).values);
+  }
+  const mean = (sex, field) => cohorts[sex].reduce((sum, values) => sum + values[field], 0) / cohorts[sex].length;
+  assert.ok(mean('female', 'height') < mean('male', 'height') - 0.07);
+  assert.ok(mean('female', 'muscle') < mean('male', 'muscle') - 0.11);
+  assert.ok(mean('female', 'shoulderWidth') < mean('male', 'shoulderWidth') - 0.20);
+  assert.ok(mean('female', 'mhrHipWidth') > mean('male', 'mhrHipWidth') + 0.18);
+  assert.ok(mean('female', 'mhrHandScale') < mean('male', 'mhrHandScale') - 0.20);
+  assert.ok(mean('female', 'mhrFootLength') < mean('male', 'mhrFootLength') - 0.12);
+  assert.ok(Math.abs(mean('male', 'jawWidth')) < 0.08, 'male generation still biases every jaw large');
+  assert.ok(mean('male', 'chinProminence') < 0.08, 'male generation still biases every chin prominent');
+});
+
 test('face identity distance detects structural siblings', () => {
   const first = patientToCharacterPreset(generatePatient({ seed: 111 }), basePreset, definitions);
   const same = patientToCharacterPreset(generatePatient({ seed: 111 }), basePreset, definitions);

@@ -72,6 +72,13 @@ function lipColorForSkin(skinTone, random) {
   return `#${tinted.map((value) => value.toString(16).padStart(2, '0')).join('')}`;
 }
 
+function mixHex(left, right, amount) {
+  const channels = (value) => [1, 3, 5].map((index) => parseInt(value.slice(index, index + 2), 16));
+  const a = channels(left); const b = channels(right);
+  return `#${a.map((value, index) => Math.round(value + (b[index] - value) * amount)
+    .toString(16).padStart(2, '0')).join('')}`;
+}
+
 function bodyMass(patient, random) {
   const classCenter = { elite: 0.56, affluent: 0.53, comfortable: 0.49, sponsored: 0.44 }[patient.social.classId];
   const ageAdjustment = patient.identity.age > 50 ? 0.035 : patient.identity.age < 23 ? -0.035 : 0;
@@ -81,8 +88,11 @@ function bodyMass(patient, random) {
 
 function hairStyleWeight(style, age, sex = null) {
   const band = age < 30 ? 0 : age < 50 ? 1 : 2;
-  const femaleShortPenalty = sex === 'female' && style.id === 'short-parted' ? 0.16
-    : sex === 'female' && style.id === 'cropped-waves' ? 0.35 : 1;
+  // Cropped profiles remain possible, but an 1896 private-practice sample
+  // should overwhelmingly cast women's hair as dressed-up rather than as the
+  // modern bowl silhouette produced when a short profile wins too often.
+  const femaleShortPenalty = sex === 'female' && style.id === 'short-parted' ? 0.025
+    : sex === 'female' && style.id === 'cropped-waves' ? 0.08 : 1;
   return style.weight * (style.ageWeights?.[band] ?? 1) * femaleShortPenalty;
 }
 
@@ -139,23 +149,23 @@ export function patientToCharacterPreset(patient, basePreset, definitions, optio
   const female = patient.identity.sex === 'female';
 
   values.seed = appearanceSeed;
-  values.gender = clamped(definitions, 'gender', (female ? 0.06 : 0.94) + jitter(bodyRandom, 0.045));
+  values.gender = clamped(definitions, 'gender', (female ? 0.035 : 0.90) + jitter(bodyRandom, 0.035));
   values.age = clamped(definitions, 'age', ageMorph(patient.identity.age));
-  values.height = clamped(definitions, 'height', 0.48 + jitter(bodyRandom, 0.28));
+  values.height = clamped(definitions, 'height', (female ? 0.44 : 0.53) + jitter(bodyRandom, 0.22));
   values.weight = clamped(definitions, 'weight', bodyMass(patient, bodyRandom));
   const laboring = ['domestic-servant', 'laundress', 'factory-worker', 'laborer', 'porter', 'railroad-worker', 'skilled-tradesman'].includes(patient.social.occupationId);
-  values.muscle = clamped(definitions, 'muscle', (female ? 0.30 : 0.46) + (laboring ? 0.09 : 0) + jitter(bodyRandom, 0.16));
+  values.muscle = clamped(definitions, 'muscle', (female ? 0.27 : 0.41) + (laboring ? 0.09 : 0) + jitter(bodyRandom, 0.15));
   values.proportions = clamped(definitions, 'proportions', 0.49 + jitter(bodyRandom, 0.16));
-  values.shoulderWidth = clamped(definitions, 'shoulderWidth', (female ? -0.12 : 0.12) + jitter(bodyRandom, 0.20));
+  values.shoulderWidth = clamped(definitions, 'shoulderWidth', (female ? -0.20 : 0.06) + jitter(bodyRandom, 0.18));
   values.torsoLength = clamped(definitions, 'torsoLength', 0.02 + jitter(bodyRandom, 0.22));
   values.mhrNeckLength = clamped(definitions, 'mhrNeckLength', jitter(bodyRandom, 0.28));
   values.mhrUpperArmLength = clamped(definitions, 'mhrUpperArmLength', jitter(bodyRandom, 0.32));
   values.mhrLowerArmLength = clamped(definitions, 'mhrLowerArmLength', jitter(bodyRandom, 0.32));
-  values.mhrHipWidth = clamped(definitions, 'mhrHipWidth', (female ? 0.10 : -0.08) + jitter(bodyRandom, 0.26));
+  values.mhrHipWidth = clamped(definitions, 'mhrHipWidth', (female ? 0.18 : -0.05) + jitter(bodyRandom, 0.23));
   values.mhrUpperLegLength = clamped(definitions, 'mhrUpperLegLength', jitter(bodyRandom, 0.34));
   values.mhrLowerLegLength = clamped(definitions, 'mhrLowerLegLength', jitter(bodyRandom, 0.34));
-  values.mhrFootLength = clamped(definitions, 'mhrFootLength', jitter(bodyRandom, 0.25));
-  values.mhrHandScale = clamped(definitions, 'mhrHandScale', jitter(bodyRandom, 0.25));
+  values.mhrFootLength = clamped(definitions, 'mhrFootLength', (female ? -0.10 : 0.07) + jitter(bodyRandom, 0.22));
+  values.mhrHandScale = clamped(definitions, 'mhrHandScale', (female ? -0.18 : 0.08) + jitter(bodyRandom, 0.20));
   values.mhrEyeSpacing = clamped(definitions, 'mhrEyeSpacing', jitter(faceRandom, 0.22));
 
   [values.african, values.asian, values.caucasian] = origin.heritage;
@@ -174,6 +184,13 @@ export function patientToCharacterPreset(patient, basePreset, definitions, optio
   }
   values.browHeight = clamped(definitions, 'browHeight', -0.03 + jitter(faceRandom, 0.16));
   values.faceAsymmetry = clamped(definitions, 'faceAsymmetry', 0.055 + Math.abs(jitter(faceRandom, 0.08)));
+  // The source MHR mean already carries a prominent lower face. Keep broad
+  // archetype variety without stacking every random draw on an oversized
+  // chin, and let the calibrated presentation field supply sex-linked shape.
+  values.jawWidth = clamped(definitions, 'jawWidth', values.jawWidth * 0.84 + (female ? -0.07 : 0));
+  values.chinHeight = clamped(definitions, 'chinHeight', values.chinHeight * 0.78);
+  values.chinProminence = clamped(definitions, 'chinProminence', values.chinProminence * 0.68 + (female ? -0.05 : -0.02));
+  values.chinPrognathism = clamped(definitions, 'chinPrognathism', values.chinPrognathism * 0.74);
 
   const hairCandidates = HAIR_STYLES.filter((style) => style.classes.includes(patient.social.classId)
     && (!style.sexes || style.sexes.includes(patient.identity.sex))
@@ -200,6 +217,28 @@ export function patientToCharacterPreset(patient, basePreset, definitions, optio
   values.waveAmount = clamped(definitions, 'waveAmount', 0.38 + jitter(hairRandom, 0.34));
   values.strandContrast = clamped(definitions, 'strandContrast', 0.42 + jitter(hairRandom, 0.24));
   values.greyAmount = clamped(definitions, 'greyAmount', Math.max(0, patient.identity.age - 42) / 38 + jitter(hairRandom, 0.13));
+  // Brows usually sit darker and less chromatic than scalp hair; lashes are
+  // darker again.  They remain independent live controls after generation.
+  values.browColor = mixHex(values.hairColor, '#21150f', 0.42);
+  values.browDensity = clamped(definitions, 'browDensity', 0.76 - surfaceAge * 0.13 + jitter(hairRandom, 0.14));
+  values.browThickness = clamped(definitions, 'browThickness', 0.96 + jitter(hairRandom, 0.20));
+  values.browArch = clamped(definitions, 'browArch', jitter(faceRandom, 0.28));
+  values.browAsymmetry = clamped(definitions, 'browAsymmetry', 0.04 + Math.abs(jitter(faceRandom, 0.07)));
+  values.lashColor = mixHex(values.hairColor, '#100b09', 0.68);
+  values.lashDensity = clamped(definitions, 'lashDensity', 0.68 - surfaceAge * 0.10 + jitter(hairRandom, 0.12));
+  values.lashLength = clamped(definitions, 'lashLength', 0.88 + jitter(hairRandom, 0.15));
+  values.lashCurl = clamped(definitions, 'lashCurl', 0.46 + jitter(hairRandom, 0.18));
+  // MHR's source mesh has no separate eyeballs. Keep the generated globe fit
+  // within a conservative anatomical band, then leave every value live for
+  // close-up art direction in Character Lab.
+  values.mhrEyeGlobeScale = clamped(definitions, 'mhrEyeGlobeScale', 0.82 + jitter(faceRandom, 0.035));
+  values.mhrEyeDepth = clamped(definitions, 'mhrEyeDepth', -4.0 + jitter(faceRandom, 0.50));
+  values.mhrEyeVertical = clamped(definitions, 'mhrEyeVertical', jitter(faceRandom, 0.35));
+  values.mhrScleraColor = mixHex('#ded3c8', '#c8aa9a', 0.10 + surfaceAge * 0.18);
+  values.mhrScleraBrightness = clamped(definitions, 'mhrScleraBrightness', 0.30 - surfaceAge * 0.11 + jitter(stylizedRandom, 0.06));
+  values.mhrIrisScale = clamped(definitions, 'mhrIrisScale', 1.02 + jitter(faceRandom, 0.09));
+  values.mhrPupilScale = clamped(definitions, 'mhrPupilScale', 0.96 + jitter(faceRandom, 0.12));
+  values.mhrCorneaGloss = clamped(definitions, 'mhrCorneaGloss', 0.36 + jitter(stylizedRandom, 0.10));
   values.stylizedPlaneContrast = clamped(definitions, 'stylizedPlaneContrast', 0.25 + surfaceAge * 0.16 + jitter(stylizedRandom, 0.10));
   values.stylizedTriangleBlend = clamped(definitions, 'stylizedTriangleBlend', 0.48 - surfaceAge * 0.18 + jitter(stylizedRandom, 0.12));
   values.stylizedSkinDetail = clamped(definitions, 'stylizedSkinDetail', 0.24 + surfaceAge * 0.50 + jitter(stylizedRandom, 0.10));
@@ -210,6 +249,8 @@ export function patientToCharacterPreset(patient, basePreset, definitions, optio
   values.stylizedCheekBlush = clamped(definitions, 'stylizedCheekBlush', 0.44 - surfaceAge * 0.08 + jitter(stylizedRandom, 0.16));
   values.stylizedNoseRedness = clamped(definitions, 'stylizedNoseRedness', 0.24 + surfaceAge * 0.16 + jitter(stylizedRandom, 0.13));
   values.stylizedForeheadWarmth = clamped(definitions, 'stylizedForeheadWarmth', 0.17 + surfaceAge * 0.05 + jitter(stylizedRandom, 0.10));
+  values.stylizedUnderEyeDepth = clamped(definitions, 'stylizedUnderEyeDepth', 0.18 + surfaceAge * 0.34 + jitter(stylizedRandom, 0.11));
+  values.stylizedAgeSpots = clamped(definitions, 'stylizedAgeSpots', Math.max(0, surfaceAge - 0.32) * 0.62 + Math.max(0, jitter(stylizedRandom, 0.10)));
   values.stylizedLipTint = clamped(definitions, 'stylizedLipTint', 0.60 - surfaceAge * 0.19 + jitter(stylizedRandom, 0.12));
   values.stylizedLipColor = lipColorForSkin(values.skinTone, stylizedRandom);
   values.stylizedEyeContrast = clamped(definitions, 'stylizedEyeContrast', 0.40 - surfaceAge * 0.17 + jitter(stylizedRandom, 0.10));
@@ -230,7 +271,7 @@ export function patientToCharacterPreset(patient, basePreset, definitions, optio
     values[id] = clamped(definitions, id, neutral + (target - neutral) * severity + jitter(performanceRandom, amount));
   }
   values.kneesTogether = clamped(definitions, 'kneesTogether', 0.74 + jitter(performanceRandom, 0.12));
-  values.headTilt = clamped(definitions, 'headTilt', jitter(performanceRandom, 0.09));
+  values.headTilt = clamped(definitions, 'headTilt', jitter(performanceRandom, 0.045));
   values.headTurn = clamped(definitions, 'headTurn', jitter(performanceRandom, 0.16));
   values.armOpenness = clamped(definitions, 'armOpenness', jitter(performanceRandom, 0.16));
   values.elbowBend = clamped(definitions, 'elbowBend', 0.68 + jitter(performanceRandom, 0.12));
@@ -262,13 +303,16 @@ export function patientToCharacterPreset(patient, basePreset, definitions, optio
       faceArchetype: face.id, bodyMass: values.weight, stature: values.height,
       skinTone: values.skinTone, eyeColor: values.eyeColor, hairColor: values.hairColor,
       hairShade: values.hairShade, hairStyle: values.hairStyle, flowSweep: values.flowSweep,
-      greyAmount: values.greyAmount, outfitStyle: values.outfitStyle,
+      greyAmount: values.greyAmount, browColor: values.browColor, browDensity: values.browDensity,
+      lashColor: values.lashColor, lashDensity: values.lashDensity, outfitStyle: values.outfitStyle,
       dressColor: values.dressColor, trimColor: values.trimColor,
       skinRendering: {
         microDetail: values.stylizedSkinDetail,
         poreScale: values.stylizedPoreScale,
         pigmentVariation: values.stylizedPigmentVariation,
         freckleAmount: values.stylizedFreckleAmount,
+        underEyeDepth: values.stylizedUnderEyeDepth,
+        ageSpots: values.stylizedAgeSpots,
         lipTint: values.stylizedLipTint,
         eyeWhiteContrast: values.stylizedEyeContrast,
         surfaceRoughness: values.stylizedSurfaceRoughness,

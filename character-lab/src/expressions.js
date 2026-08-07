@@ -58,6 +58,10 @@ export const EXPRESSION_RECIPES = Object.freeze({
     mouthFrownLeft: 0.07,
     mouthFrownRight: 0.08,
   }),
+  blink: Object.freeze({
+    eyeBlinkLeft: 1,
+    eyeBlinkRight: 1,
+  }),
 });
 
 const REQUIRED_MPFB_UNITS = ['mouthSmileLeft', 'mouthSmileRight', 'browInnerUp', 'eyeBlinkLeft', 'eyeBlinkRight'];
@@ -141,6 +145,8 @@ const MHR_AUTHORED_CONTROLS = Object.freeze({
   frownRight: 35,
   lidCloseLeft: 12,
   lidCloseRight: 13,
+  lidSealLeft: 14,
+  lidSealRight: 15,
 });
 
 function collectMhrExpressionMorphs(model) {
@@ -412,15 +418,15 @@ export function createMhrExpressions(model, options = {}) {
   }
 
   function play(name = 'smile', speed = 1, intensity = 1) {
-    if (!['smile', 'sadness', 'fatigue'].includes(name)) return;
+    if (!['smile', 'sadness', 'fatigue', 'blink'].includes(name)) return;
     debugUnit = null;
     const safeSpeed = Math.max(0.1, speed);
     episode = {
       name,
       t0: null,
-      attack: (name === 'fatigue' ? 0.82 : 0.54) / safeSpeed,
-      hold: (name === 'fatigue' ? 1.65 : 1.25) / safeSpeed,
-      release: (name === 'fatigue' ? 1.05 : 0.72) / safeSpeed,
+      attack: (name === 'blink' ? 0.085 : name === 'fatigue' ? 0.82 : 0.54) / safeSpeed,
+      hold: (name === 'blink' ? 0.45 : name === 'fatigue' ? 1.65 : 1.25) / safeSpeed,
+      release: (name === 'blink' ? 0.14 : name === 'fatigue' ? 1.05 : 0.72) / safeSpeed,
       peak: clamp01(intensity),
     };
   }
@@ -436,6 +442,7 @@ export function createMhrExpressions(model, options = {}) {
     let smile = clamp01(values.smile ?? 0);
     let sadness = clamp01(values.sadness ?? 0);
     let fatigue = clamp01(values.fatigueExpression ?? 0);
+    let blink = 0;
     let smileEyes = smileEyeIntensity(smile);
     if (episode) {
       if (episode.t0 == null) episode.t0 = t;
@@ -446,6 +453,7 @@ export function createMhrExpressions(model, options = {}) {
         smileEyes = Math.max(smileEyes, smileEyeIntensity(episodeEnvelope(episode, elapsed, 0.09)));
       } else if (episode.name === 'sadness') sadness = Math.max(sadness, performance);
       else if (episode.name === 'fatigue') fatigue = Math.max(fatigue, performance);
+      else if (episode.name === 'blink') blink = performance;
       if (elapsed > episode.attack + episode.hold + episode.release + 0.1) episode = null;
     }
 
@@ -462,6 +470,13 @@ export function createMhrExpressions(model, options = {}) {
     add(weights, directions.browInnerUp, sadness * 0.12 + fatigue * 0.025);
     addComponent(weights, MHR_AUTHORED_CONTROLS.lidCloseLeft, fatigue * 0.30);
     addComponent(weights, MHR_AUTHORED_CONTROLS.lidCloseRight, fatigue * 0.33);
+    addComponent(weights, MHR_AUTHORED_CONTROLS.lidCloseLeft, blink * 0.96);
+    addComponent(weights, MHR_AUTHORED_CONTROLS.lidCloseRight, blink * 0.96);
+    // The principal lid-close pair leaves a narrow wet-line opening in the
+    // source scan. Blend a restrained amount of its adjacent seal pair only
+    // at the peak of a deliberate blink so the globe cannot show through.
+    addComponent(weights, MHR_AUTHORED_CONTROLS.lidSealLeft, blink * 0.28);
+    addComponent(weights, MHR_AUTHORED_CONTROLS.lidSealRight, blink * 0.28);
     addComponent(weights, MHR_AUTHORED_CONTROLS.frownLeft, fatigue * 0.045);
     addComponent(weights, MHR_AUTHORED_CONTROLS.frownRight, fatigue * 0.050);
     write(weights);
@@ -690,14 +705,14 @@ function createLegacyExpressions(model) {
 
   let episode = null;
   function play(name = 'smile', speed = 1, intensity = 1) {
-    if (!['smile', 'sadness', 'fatigue'].includes(name)) return;
+    if (!['smile', 'sadness', 'fatigue', 'blink'].includes(name)) return;
     const safeSpeed = Math.max(0.1, speed);
     episode = {
       name,
       t0: null,
-      attack: (name === 'fatigue' ? 0.82 : 0.54) / safeSpeed,
-      hold: (name === 'fatigue' ? 1.65 : 1.25) / safeSpeed,
-      release: (name === 'fatigue' ? 1.05 : 0.72) / safeSpeed,
+      attack: (name === 'blink' ? 0.085 : name === 'fatigue' ? 0.82 : 0.54) / safeSpeed,
+      hold: (name === 'blink' ? 0.45 : name === 'fatigue' ? 1.65 : 1.25) / safeSpeed,
+      release: (name === 'blink' ? 0.14 : name === 'fatigue' ? 1.05 : 0.72) / safeSpeed,
       peak: clamp01(intensity),
     };
   }
@@ -708,6 +723,7 @@ function createLegacyExpressions(model) {
     let eye = smileEyeIntensity(sliderMouth);
     let sadness = clamp01(values.sadness ?? 0);
     let fatigue = clamp01(values.fatigueExpression ?? 0);
+    let blink = 0;
     if (episode) {
       if (episode.t0 == null) episode.t0 = t;
       const elapsed = t - episode.t0;
@@ -718,10 +734,11 @@ function createLegacyExpressions(model) {
         eye = Math.max(eye, smileEyeIntensity(episodeEnvelope(episode, elapsed, 0.09)));
       } else if (episode.name === 'sadness') sadness = Math.max(sadness, performance);
       else if (episode.name === 'fatigue') fatigue = Math.max(fatigue, performance);
+      else if (episode.name === 'blink') blink = performance;
       if (elapsed > episode.attack + episode.hold + episode.release + 0.1) episode = null;
     }
     body.morphTargetInfluences[mouthIndex] = clamp01(mouth);
-    body.morphTargetInfluences[eyeIndex] = clamp01(eye);
+    body.morphTargetInfluences[eyeIndex] = clamp01(Math.max(eye, blink));
     body.morphTargetInfluences[sadMouthIndex] = sadness;
     body.morphTargetInfluences[sadBrowIndex] = sadness;
     body.morphTargetInfluences[fatigueIndex] = fatigue;
@@ -798,15 +815,15 @@ function createNamedExpressions(model, initialRestingFace = {}) {
   }
 
   function play(name = 'smile', speed = 1, intensity = 1) {
-    if (!['smile', 'sadness', 'fatigue'].includes(name)) return;
+    if (!['smile', 'sadness', 'fatigue', 'blink'].includes(name)) return;
     debugUnit = null;
     const safeSpeed = Math.max(0.1, speed);
     episode = {
       name,
       t0: null,
-      attack: (name === 'fatigue' ? 0.82 : 0.54) / safeSpeed,
-      hold: (name === 'fatigue' ? 1.65 : 1.25) / safeSpeed,
-      release: (name === 'fatigue' ? 1.05 : 0.72) / safeSpeed,
+      attack: (name === 'blink' ? 0.085 : name === 'fatigue' ? 0.82 : 0.54) / safeSpeed,
+      hold: (name === 'blink' ? 0.45 : name === 'fatigue' ? 1.65 : 1.25) / safeSpeed,
+      release: (name === 'blink' ? 0.14 : name === 'fatigue' ? 1.05 : 0.72) / safeSpeed,
       peak: clamp01(intensity),
     };
   }
@@ -821,6 +838,7 @@ function createNamedExpressions(model, initialRestingFace = {}) {
     let smileEyes = smileEyeIntensity(smile);
     let sadness = clamp01(values.sadness ?? 0);
     let fatigue = clamp01(values.fatigueExpression ?? 0);
+    let blink = 0;
     if (episode) {
       if (episode.t0 == null) episode.t0 = t;
       const elapsed = t - episode.t0;
@@ -830,6 +848,7 @@ function createNamedExpressions(model, initialRestingFace = {}) {
         smileEyes = Math.max(smileEyes, smileEyeIntensity(episodeEnvelope(episode, elapsed, 0.09)));
       } else if (episode.name === 'sadness') sadness = Math.max(sadness, performance);
       else if (episode.name === 'fatigue') fatigue = Math.max(fatigue, performance);
+      else if (episode.name === 'blink') blink = performance;
       if (elapsed > episode.attack + episode.hold + episode.release + 0.1) episode = null;
     }
 
@@ -838,6 +857,8 @@ function createNamedExpressions(model, initialRestingFace = {}) {
     addRecipe(weights, EXPRESSION_RECIPES.smileEyes, smileEyes);
     addRecipe(weights, EXPRESSION_RECIPES.sadness, sadness);
     addRecipe(weights, EXPRESSION_RECIPES.fatigue, fatigue);
+    addRecipe(weights, EXPRESSION_RECIPES.blink, blink);
+    addRecipe(weights, EXPRESSION_RECIPES.blink, blink);
     applyWeights(weights);
   }
 

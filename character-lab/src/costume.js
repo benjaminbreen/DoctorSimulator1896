@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createHairSystem } from './hair/index.js';
-import { createAuthoredHairSystem } from './hair/authored.js';
+import { createMhrHairFormSystem } from './mhr-hair-forms.js';
 
 /* Procedural 1890s costume + hair, rebuilt live from preset values.
    Geometry is constructed in world space at the skeleton's rest pose, then
@@ -63,8 +63,25 @@ export function sampleTorsoFit(model, top, bottom, right, forward, shoulderHalfW
   const relative = new THREE.Vector3();
   const span = top.y - bottom.y;
   const lateralLimit = Math.max(0.14, shoulderHalfWidth * 0.94);
+  const skinIndex = body.geometry.attributes.skinIndex;
+  const skinWeight = body.geometry.attributes.skinWeight;
+  const excludedBoneIndices = new Set();
+  body.skeleton?.bones?.forEach((bone, index) => {
+    if (/(uparm|upperarm|lowarm|lowerarm|wrist|hand|thumb|index|middle|ring|pinky|upleg|thigh|lowleg|calf|foot|toe)/i.test(bone.name)) {
+      excludedBoneIndices.add(index);
+    }
+  });
 
   for (let vertex = 0; vertex < body.geometry.attributes.position.count; vertex += 1) {
+    if (skinIndex && skinWeight && excludedBoneIndices.size) {
+      let excludedWeight = 0;
+      for (let influence = 0; influence < 4; influence++) {
+        if (excludedBoneIndices.has(skinIndex.getComponent(vertex, influence))) {
+          excludedWeight += skinWeight.getComponent(vertex, influence);
+        }
+      }
+      if (excludedWeight > 0.22) continue;
+    }
     body.getVertexPosition(vertex, point).applyMatrix4(body.matrixWorld);
     const t = (top.y - point.y) / span;
     if (t < -0.04 || t > 1.04) continue;
@@ -116,6 +133,67 @@ export function sampleTorsoFit(model, top, bottom, right, forward, shoulderHalfW
   });
 }
 
+function conformalYokeGeometry(model, centre, bottomY, topY, right, forward, lateralLimit, depthLimit) {
+  const body = primaryBodyMesh(model);
+  const sourceIndex = body?.geometry?.index;
+  const sourcePosition = body?.geometry?.attributes?.position;
+  if (!body || !sourcePosition) return null;
+  body.updateMatrixWorld(true);
+  const worldPositions = Array.from({ length: sourcePosition.count }, () => new THREE.Vector3());
+  for (let vertex = 0; vertex < sourcePosition.count; vertex++) {
+    body.getVertexPosition(vertex, worldPositions[vertex]).applyMatrix4(body.matrixWorld);
+  }
+  const positions = [];
+  const indices = [];
+  const selectedTriangles = [];
+  const accumulatedNormals = new Map();
+  const relative = new THREE.Vector3();
+  const outward = new THREE.Vector3();
+  const triangleCount = sourceIndex ? sourceIndex.count / 3 : sourcePosition.count / 3;
+  for (let triangle = 0; triangle < triangleCount; triangle++) {
+    const ids = sourceIndex
+      ? [sourceIndex.getX(triangle * 3), sourceIndex.getX(triangle * 3 + 1), sourceIndex.getX(triangle * 3 + 2)]
+      : [triangle * 3, triangle * 3 + 1, triangle * 3 + 2];
+    const points = ids.map((id) => worldPositions[id]);
+    const centroid = points[0].clone().add(points[1]).add(points[2]).multiplyScalar(1 / 3);
+    if (centroid.y < bottomY || centroid.y > topY) continue;
+    relative.subVectors(centroid, centre);
+    const side = relative.dot(right);
+    const depth = relative.dot(forward);
+    if (Math.abs(side) > lateralLimit || Math.abs(depth) > depthLimit) continue;
+    const triangleNormal = points[1].clone().sub(points[0])
+      .cross(points[2].clone().sub(points[0])).normalize();
+    outward.copy(right).multiplyScalar(side).addScaledVector(forward, depth);
+    if (triangleNormal.dot(outward) < 0) triangleNormal.negate();
+    selectedTriangles.push(ids);
+    for (const id of ids) {
+      if (!accumulatedNormals.has(id)) accumulatedNormals.set(id, new THREE.Vector3());
+      accumulatedNormals.get(id).add(triangleNormal);
+    }
+  }
+  if (!selectedTriangles.length) return null;
+  // Weld adjacent source triangles and use an averaged surface normal for the
+  // cloth clearance. Per-triangle offsets separate at every edge and reveal a
+  // conspicuous web of the underlying skin.
+  const remap = new Map();
+  for (const ids of selectedTriangles) {
+    for (const id of ids) {
+      if (!remap.has(id)) {
+        const normal = accumulatedNormals.get(id).normalize();
+        const point = worldPositions[id].clone().addScaledVector(normal, 0.0085);
+        remap.set(id, positions.length / 3);
+        positions.push(point.x, point.y, point.z);
+      }
+      indices.push(remap.get(id));
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 function ringGeometry(rings, segments, ringFn, { capTop = true, capBottom = true } = {}) {
   // ringFn(t) -> { center: Vector3, rx, rz, forward: Vector3, back: number }
   const positions = []; const indices = [];
@@ -152,6 +230,35 @@ function ringGeometry(rings, segments, ringFn, { capTop = true, capBottom = true
     positions.push(last.x, last.y, last.z);
     const row = (rings - 1) * segments;
     for (let segment = 0; segment < segments; segment++) indices.push(base, row + segment, row + (segment + 1) % segments);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function yokeGeometry(outerCenter, innerCenter, outerRx, outerRz, innerRx, innerRz, forward, segments = 40) {
+  const positions = [];
+  const indices = [];
+  const up = new THREE.Vector3(0, 1, 0);
+  const fwd = forward.clone().setY(0).normalize();
+  const right = new THREE.Vector3().crossVectors(up, fwd).normalize();
+  for (let segment = 0; segment < segments; segment++) {
+    const angle = segment / segments * Math.PI * 2;
+    const front = Math.cos(angle);
+    const side = Math.sin(angle);
+    const outer = outerCenter.clone().addScaledVector(fwd, front * outerRz).addScaledVector(right, side * outerRx);
+    const inner = innerCenter.clone().addScaledVector(fwd, front * innerRz).addScaledVector(right, side * innerRx);
+    positions.push(outer.x, outer.y, outer.z, inner.x, inner.y, inner.z);
+  }
+  for (let segment = 0; segment < segments; segment++) {
+    const next = (segment + 1) % segments;
+    const outer = segment * 2;
+    const inner = outer + 1;
+    const nextOuter = next * 2;
+    const nextInner = nextOuter + 1;
+    indices.push(outer, nextOuter, nextInner, outer, nextInner, inner);
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -202,9 +309,19 @@ function tubeAlong(a, b, radiusFn, { radialSegments = 18, lengthSegments = 12, b
 }
 
 export function createCostume(scene, bones, model = null) {
-  // Prefer the MPFB-fitted authored bun included in the GLB. The procedural
-  // generator remains intact as a fallback for older or experimental models.
-  const hairSystem = createAuthoredHairSystem(model) || createHairSystem(scene, bones, model);
+  // The comparison GLB carries a legacy fitted bun, but it is identity-specific
+  // and cannot respond to hairstyle, volume, hairline, greying, or texture
+  // controls. Keeping it visible made every MHR subject inherit the same bald
+  // crown. Hide that source asset and use the live, scalp-fitted system for all
+  // runtime identities; authored production hair can return later as a proper
+  // style library with explicit compatibility metadata.
+  model?.traverse((object) => {
+    const name = `${object.name || ''} ${object.geometry?.name || ''}`.toLowerCase();
+    if (name.includes('authored_hair_bun') || name.includes('hair_bun_brown')) object.visible = false;
+  });
+  const hairSystem = model?.getObjectByName?.('body_mesh')
+    ? createMhrHairFormSystem(scene, bones, model)
+    : createHairSystem(scene, bones, model);
   const materials = {
     dress: new THREE.MeshStandardMaterial({ name: 'CostumeDress', color: '#171525', roughness: 0.82, side: THREE.DoubleSide }),
     trim: new THREE.MeshStandardMaterial({ name: 'CostumeTrim', color: '#4f4333', roughness: 0.72, side: THREE.DoubleSide }),
@@ -281,15 +398,49 @@ export function createCostume(scene, bones, model = null) {
       );
       const chest = Math.sin(t * Math.PI);
       const fittedWidth = massFactor * ((masculine ? 0.175 : 0.158) + chest * (masculine ? 0.032 : 0.026));
+      const shoulderEnvelope = THREE.MathUtils.lerp(
+        shoulderHalfWidth + 0.026,
+        0,
+        THREE.MathUtils.smoothstep(t, 0.02, 0.30),
+      );
       return {
         center: centre,
-        rx: Math.max(fittedWidth, fit?.rx || 0),
+        rx: Math.max(fittedWidth, fit?.rx || 0, shoulderEnvelope),
         rz: Math.max(massFactor * ((masculine ? 0.118 : 0.108) + chest * (masculine ? 0.022 : 0.032)), fit?.rz || 0),
         forward,
         back: 0,
       };
     }, { capTop: false });
     add(masculine ? 'Costume_SackJacket' : 'Costume_Bodice', torsoGeo, materials.dress, bones.spine02 || bones.pelvis);
+
+    // A high-neck 1890s bodice needs a real shoulder/chest yoke. A torso tube
+    // alone leaves bare wedges between its top ellipse, the collar, and the
+    // separately attached sleeve heads. Bridge that space with an annular,
+    // body-fitted panel while preserving a small neck opening.
+    const topFit = torsoFit?.[0];
+    const yokeOuter = torsoTop.clone().addScaledVector(forward, topFit?.offset || 0);
+    const yokeInner = N.clone().lerp(H, 0.10);
+    const fallbackYoke = yokeGeometry(
+      yokeOuter,
+      yokeInner,
+      Math.max(shoulderHalfWidth + 0.052, (topFit?.rx || 0.19) + 0.018),
+      Math.max(0.150 * massFactor, (topFit?.rz || 0.12) + 0.018),
+      0.066 * THREE.MathUtils.clamp(v.collarSpread ?? 1, 0.75, 1.3),
+      0.064 * THREE.MathUtils.clamp(v.collarSpread ?? 1, 0.75, 1.3),
+      forward,
+    );
+    const fittedYoke = conformalYokeGeometry(
+      model,
+      shoulderCenter,
+      torsoTop.y - 0.075,
+      yokeInner.y + 0.035,
+      right,
+      forward,
+      shoulderHalfWidth + 0.065,
+      0.205 * massFactor,
+    );
+    add('Costume_ShoulderYoke', fittedYoke || fallbackYoke, materials.dress, bones.spine02 || bones.pelvis);
+    if (fittedYoke) fallbackYoke.dispose();
 
     /* --- skirt --- */
     const waistY = P.y + 0.105 + (v.waistHeight || 0) * 0.4;
@@ -321,15 +472,30 @@ export function createCostume(scene, bones, model = null) {
     if (skirtGeo) add('Costume_Skirt', skirtGeo, materials.dress, bones.pelvis);
 
     /* --- men's trousers --- */
+    if (masculine) {
+      const trouserWaist = ringGeometry(5, 32, (t) => ({
+        center: P.clone().addScaledVector(up, THREE.MathUtils.lerp(0.115, -0.135, t))
+          .addScaledVector(forward, seated ? 0.028 * t : 0),
+        rx: massFactor * THREE.MathUtils.lerp(0.185, 0.205, t),
+        rz: massFactor * THREE.MathUtils.lerp(0.145, 0.165, t),
+        forward,
+        back: seated ? 0.025 : 0,
+      }), { capTop: false, capBottom: false });
+      add('Costume_TrouserWaist', trouserWaist, materials.dress, bones.pelvis);
+    }
     if (masculine) for (const side of ['L', 'R']) {
       const thigh = bones[`thigh${side}`]; const calf = bones[`calf${side}`]; const foot = bones[`foot${side}`];
       if (!thigh || !calf) continue;
       const hipAt = world(thigh); const kneeAt = world(calf);
-      const thighGeo = tubeAlong(hipAt, kneeAt, (t) => massFactor * THREE.MathUtils.lerp(0.085, 0.071, t), { radialSegments: 18, lengthSegments: 9 });
+      const thighGeo = tubeAlong(hipAt, kneeAt, (t) => massFactor * THREE.MathUtils.lerp(0.112, 0.086, t), { radialSegments: 18, lengthSegments: 9 });
       add(`Costume_TrouserThigh_${side}`, thighGeo, materials.dress, thigh);
+      const kneeCover = new THREE.SphereGeometry(0.108 * massFactor, 20, 14);
+      kneeCover.scale(1.02, 0.84, 1.08);
+      kneeCover.translate(kneeAt.x, kneeAt.y, kneeAt.z);
+      add(`Costume_TrouserKnee_${side}`, kneeCover, materials.dress, calf);
       if (foot) {
         const ankleAt = world(foot);
-        const shinGeo = tubeAlong(kneeAt, ankleAt, (t) => massFactor * THREE.MathUtils.lerp(0.071, 0.058, t), { radialSegments: 18, lengthSegments: 9 });
+        const shinGeo = tubeAlong(kneeAt, ankleAt, (t) => massFactor * THREE.MathUtils.lerp(0.088, 0.065, t), { radialSegments: 18, lengthSegments: 9 });
         add(`Costume_TrouserShin_${side}`, shinGeo, materials.dress, calf);
       }
     }
@@ -339,7 +505,9 @@ export function createCostume(scene, bones, model = null) {
       const upper = bones[`upperarm${side}`]; const lower = bones[`lowerarm${side}`]; const hand = bones[`hand${side}`];
       if (!upper || !lower) continue;
       const S = world(upper); const E = world(lower);
-      const sleeveStart = S.clone().lerp(shoulderCenter, 0.16).addScaledVector(up, 0.006);
+      // Start on the shoulder joint itself. Pulling the sleeve root inward
+      // exposed a crescent of bare deltoid between the fitted yoke and puff.
+      const sleeveStart = S.clone().lerp(shoulderCenter, 0.025).addScaledVector(up, 0.008);
       const sleeveStrength = THREE.MathUtils.clamp((v.sleeveVolume ?? 0.8) * dressStyle.sleeve, 0.35, 1.45);
       const W = hand ? world(hand) : null;
       const upperEnd = W ? E.clone().lerp(W, 0.10) : E;

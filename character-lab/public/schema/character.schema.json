@@ -107,6 +107,33 @@
       ]
     },
     {
+      "id": "mhrEyes", "label": "MHR anatomical eyes", "mode": "live", "renderer": "mhr",
+      "parameters": [
+        {"id":"mhrEyeGlobeScale","label":"Globe size","type":"range","min":0.70,"max":1.12,"step":0.01,"default":0.82},
+        {"id":"mhrEyeDepth","label":"Globe depth (mm)","type":"range","min":-6,"max":1,"step":0.1,"default":-4},
+        {"id":"mhrEyeVertical","label":"Globe vertical offset (mm)","type":"range","min":-3,"max":3,"step":0.1,"default":0},
+        {"id":"mhrScleraColor","label":"Sclera color","type":"color","default":"#d6c8bb"},
+        {"id":"mhrScleraBrightness","label":"Sclera brightness","type":"range","min":0,"max":1,"step":0.01,"default":0.22},
+        {"id":"mhrIrisScale","label":"Iris size","type":"range","min":0.68,"max":1.42,"step":0.01,"default":1},
+        {"id":"mhrPupilScale","label":"Pupil size","type":"range","min":0.55,"max":1.55,"step":0.01,"default":1},
+        {"id":"mhrCorneaGloss","label":"Corneal gloss","type":"range","min":0,"max":1,"step":0.01,"default":0.38}
+      ]
+    },
+    {
+      "id": "mhrFacialHair", "label": "MHR brows & lashes", "mode": "live", "renderer": "mhr",
+      "parameters": [
+        {"id":"browColor","label":"Brow color","type":"color","default":"#2a1a12"},
+        {"id":"browDensity","label":"Brow density","type":"range","min":0,"max":1,"step":0.01,"default":0.72},
+        {"id":"browThickness","label":"Brow thickness","type":"range","min":0.45,"max":1.55,"step":0.01,"default":0.95},
+        {"id":"browArch","label":"Brow arch","type":"range","min":-1,"max":1,"step":0.01,"default":0.08},
+        {"id":"browAsymmetry","label":"Brow asymmetry","type":"range","min":0,"max":0.35,"step":0.01,"default":0.06},
+        {"id":"lashColor","label":"Eyelash color","type":"color","default":"#16100d"},
+        {"id":"lashDensity","label":"Eyelash density","type":"range","min":0,"max":1,"step":0.01,"default":0.68},
+        {"id":"lashLength","label":"Eyelash length","type":"range","min":0.45,"max":1.55,"step":0.01,"default":0.92},
+        {"id":"lashCurl","label":"Eyelash curl","type":"range","min":0,"max":1,"step":0.01,"default":0.48}
+      ]
+    },
+    {
       "id": "dress", "label": "1890s clothing", "mode": "live",
       "parameters": [
         {"id":"outfitStyle","label":"Outfit style","type":"select","options":["conservative-day","fashionable-1896","mourning-dress","working-day","visiting-dress","mens-sack-suit","mens-formal-suit","mens-working-clothes","mens-mourning-suit"],"default":"conservative-day"},
@@ -181,6 +208,8 @@
         {"id":"stylizedCheekBlush","label":"Cheek blush","type":"range","min":0,"max":1,"step":0.01,"default":0.42},
         {"id":"stylizedNoseRedness","label":"Nose redness","type":"range","min":0,"max":1,"step":0.01,"default":0.3},
         {"id":"stylizedForeheadWarmth","label":"Forehead warmth","type":"range","min":0,"max":1,"step":0.01,"default":0.18},
+        {"id":"stylizedUnderEyeDepth","label":"Under-eye depth","type":"range","min":0,"max":1,"step":0.01,"default":0.28},
+        {"id":"stylizedAgeSpots","label":"Age spots / mottling","type":"range","min":0,"max":1,"step":0.01,"default":0.12},
         {"id":"stylizedLipTint","label":"Natural lip tint","type":"range","min":0,"max":1,"step":0.01,"default":0.52},
         {"id":"stylizedLipColor","label":"Lip color","type":"color","default":"#b66d68"},
         {"id":"stylizedEyeContrast","label":"Eye-white contrast","type":"range","min":0,"max":1,"step":0.01,"default":0.3},

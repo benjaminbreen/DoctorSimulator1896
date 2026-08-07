@@ -179,19 +179,44 @@ function findFaceLandmarks(model, body) {
       frontZ = Math.max(frontZ, position.getZ(index));
     }
     const headWidth = Math.max(0.001, maxX - minX);
-    // MHR's SkinnedMesh carries a 0.01/axis-conversion bind transform while
-    // its rig bones and geometry positions are authored in the model-root
-    // frame. Converting through body.matrixWorld would magnify the eye frame
-    // by 100×; remove only the character root transform here.
-    const toCharacter = model.matrixWorld.clone().invert();
-    const eyePoints = ['r_eye_null', 'l_eye_null']
-      .map((name) => model.getObjectByName(name))
-      .filter(Boolean)
-      .map((bone) => bone.getWorldPosition(new THREE.Vector3()).applyMatrix4(toCharacter));
+    // Eye bones are already posed when the Character Lab prepares an MHR
+    // identity, so their world positions cannot define a stable bind-space
+    // face frame. The verified left/right lid-close morphs are topology-stable
+    // and isolate the actual eyelid vertices regardless of head pose.
+    const eyeTargets = ['shape_57', 'shape_58'].map((name) => {
+      const index = body.morphTargetDictionary?.[name];
+      return index == null ? null : body.geometry.morphAttributes.position?.[index];
+    }).filter(Boolean);
+    const eyePoints = [];
+    for (const target of eyeTargets) {
+      let maximumDelta = 0;
+      for (let index = 0; index < position.count; index += 1) {
+        const dx = target.getX(index) - (body.geometry.morphTargetsRelative ? 0 : position.getX(index));
+        const dy = target.getY(index) - (body.geometry.morphTargetsRelative ? 0 : position.getY(index));
+        const dz = target.getZ(index) - (body.geometry.morphTargetsRelative ? 0 : position.getZ(index));
+        maximumDelta = Math.max(maximumDelta, Math.hypot(dx, dy, dz));
+      }
+      const point = new THREE.Vector3();
+      let total = 0;
+      for (let index = 0; index < position.count; index += 1) {
+        const dx = target.getX(index) - (body.geometry.morphTargetsRelative ? 0 : position.getX(index));
+        const dy = target.getY(index) - (body.geometry.morphTargetsRelative ? 0 : position.getY(index));
+        const dz = target.getZ(index) - (body.geometry.morphTargetsRelative ? 0 : position.getZ(index));
+        const delta = Math.hypot(dx, dy, dz);
+        if (delta < maximumDelta * 0.32 || position.getY(index) < metrics.headMinY) continue;
+        const weight = delta * delta;
+        point.x += position.getX(index) * weight;
+        point.y += position.getY(index) * weight;
+        point.z += position.getZ(index) * weight;
+        total += weight;
+      }
+      if (total) eyePoints.push(point.multiplyScalar(1 / total));
+    }
+    eyePoints.sort((a, b) => a.x - b.x);
     const eyeCenter = eyePoints.length === 2
       ? eyePoints[0].clone().add(eyePoints[1]).multiplyScalar(0.5)
       : new THREE.Vector3((minX + maxX) / 2, metrics.maxY - metrics.height * 0.059, frontZ - headWidth * 0.11);
-    const eyeSeparation = eyePoints.length === 2 ? eyePoints[0].distanceTo(eyePoints[1]) : headWidth * 0.145;
+    const eyeSeparation = eyePoints.length === 2 ? Math.abs(eyePoints[1].x - eyePoints[0].x) : headWidth * 0.145;
 
     // Components 32/33 are the verified bilateral smile controls in the MHR
     // expression block. Their affected vertices give a topology-stable mouth
@@ -527,7 +552,23 @@ function prepareCurrentSkinMesh(mesh, seed) {
   mesh.userData.stylizedRole = 'skin';
 
   const microTexture = makeSkinMicroTexture(seed);
-  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+  let materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+  if (mesh.name === 'body_mesh' && !materials[0]?.map) {
+    // The public MHR proof has one untextured standard material for the whole
+    // body. Promote it to a restrained physical skin response; patient colour,
+    // complexion variation and the UV face overlay remain procedural.
+    const previous = materials[0];
+    const physical = new THREE.MeshPhysicalMaterial({
+      name: 'MHR_ProceduralSkin', color: previous?.color || '#b98269',
+      roughness: previous?.roughness ?? 0.82, metalness: 0, vertexColors: true,
+      side: THREE.FrontSide, sheen: 0.10, sheenColor: '#8f6253',
+      sheenRoughness: 0.92, specularIntensity: 0.30, ior: 1.4,
+    });
+    physical.userData = { ...(previous?.userData || {}) };
+    previous?.dispose?.();
+    mesh.material = physical;
+    materials = [physical];
+  }
   for (const material of materials) {
     if (!material) continue;
     // Preserve renderer A's original diffuse skin texture and material type.
@@ -574,6 +615,8 @@ function updatePlaneTones(mesh, values) {
   const cheekBlush = clamp01(values.stylizedCheekBlush ?? 0.42);
   const noseRedness = clamp01(values.stylizedNoseRedness ?? 0.3);
   const foreheadWarmth = clamp01(values.stylizedForeheadWarmth ?? 0.18);
+  const underEyeDepth = clamp01(values.stylizedUnderEyeDepth ?? 0.28);
+  const ageSpots = clamp01(values.stylizedAgeSpots ?? 0.12);
   const skinColor = new THREE.Color(values.skinTone ?? '#b98269');
   const lipColor = new THREE.Color(values.stylizedLipColor ?? '#a96260');
   const role = mesh.userData.stylizedRole;
@@ -626,6 +669,10 @@ function updatePlaneTones(mesh, values) {
         gaussian(x, landmarks.centerX - landmarks.eyeHalfSeparation, landmarks.eyeSpan * 0.18)
         + gaussian(x, landmarks.centerX + landmarks.eyeHalfSeparation, landmarks.eyeSpan * 0.18)
       ) * gaussian(y, landmarks.eyeY, vertical * 0.22) * front;
+      const underEye = (
+        gaussian(x, landmarks.centerX - landmarks.eyeHalfSeparation, landmarks.eyeSpan * 0.17)
+        + gaussian(x, landmarks.centerX + landmarks.eyeHalfSeparation, landmarks.eyeSpan * 0.17)
+      ) * gaussian(y, landmarks.eyeY - vertical * 0.13, vertical * 0.105) * front;
       const mouthShadow = gaussian(x, landmarks.centerX, landmarks.mouthWidth * 0.72)
         * gaussian(y, landmarks.mouthY, landmarks.mouthHeight * 0.34) * front;
       const jawShadow = gaussian(x, landmarks.centerX, landmarks.eyeSpan * 0.66)
@@ -636,15 +683,19 @@ function updatePlaneTones(mesh, values) {
       const textureV = uv ? uv.getY(vertex) : y * 3;
       const pigmentNoise = (valueNoise(textureU, textureV, 24, seed + 13) - 0.5) * 2;
       const ageVariation = (0.45 + (values.age ?? 0.55) * 0.55) * pigment * pigmentNoise * faceZone;
+      const spotNoise = smoothstep(0.62, 0.92, valueNoise(textureU + 0.19, textureV - 0.11, 15, seed + 71));
+      const mottling = spotNoise * ageSpots * faceZone;
 
       tone += ageVariation * 0.075;
-      tone -= eyeSocket * contrast * 0.085 + mouthShadow * 0.045 + jawShadow * 0.05;
+      tone -= eyeSocket * contrast * 0.085 + underEye * underEyeDepth * 0.115
+        + mouthShadow * 0.045 + jawShadow * 0.05 + mottling * 0.075;
       red += cheek * cheekBlush * 0.19 + nose * noseRedness * 0.18
-        + forehead * foreheadWarmth * 0.24 + ageVariation * 0.055;
+        + forehead * foreheadWarmth * 0.24 + ageVariation * 0.055 + mottling * 0.025;
       green -= cheek * cheekBlush * 0.085 + nose * noseRedness * 0.080
-        + forehead * foreheadWarmth * 0.080;
+        + forehead * foreheadWarmth * 0.080 + underEye * underEyeDepth * 0.028 + mottling * 0.045;
       blue -= cheek * cheekBlush * 0.20 + nose * noseRedness * 0.19
-        + forehead * foreheadWarmth * 0.25 + ageVariation * 0.095;
+        + forehead * foreheadWarmth * 0.25 + ageVariation * 0.095
+        + underEye * underEyeDepth * 0.090 + mottling * 0.080;
     }
 
     tone = THREE.MathUtils.clamp(tone, 0.76, 1.06);
@@ -660,7 +711,7 @@ function updatePlaneTones(mesh, values) {
     // named Eyes material for the existing eye-color path. Paint the visible
     // front of each eyeball by anatomical position: warm sclera, colored iris,
     // and pupil. Ratios compensate for the shared skin material multiplier.
-    if (role === 'skin' && landmarks?.embeddedEyes) {
+    if (role === 'skin' && landmarks?.embeddedEyes && !mesh.userData.mhrAnatomicalEyes) {
       const eyeRadiusX = landmarks.eyeSpan * 0.135;
       const eyeRadiusY = landmarks.eyeSpan * 0.072;
       const eyeFront = z > landmarks.eyeZ - landmarks.eyeSpan * 0.018;

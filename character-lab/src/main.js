@@ -5,6 +5,7 @@ import { MeshoptDecoder } from 'meshoptimizer';
 import { findBones, createCostume } from './costume.js';
 import { createIdle } from './idle.js';
 import { createExpressions, createMhrExpressions } from './expressions.js';
+import { createMhrFacialDetails } from './facial-details.js';
 import {
   createMhrController, createMhrEyeDetails, MHR_IDENTITY_IDS, MHR_LIVE_IDENTITY_IDS, MHR_RIG_IDS,
 } from './mhr.js';
@@ -50,6 +51,15 @@ const COMPARISON_MATERIAL_IDS = new Set(['skinTone', 'skinRoughness']);
 const COSTUME_MATERIAL_IDS = new Set([
   'dressColor', 'trimColor', 'fabricRoughness', 'hairShade', 'hairColor', 'strandContrast', 'greyAmount',
 ]);
+const MHR_FACE_DETAIL_GEOMETRY_IDS = new Set([
+  'browDensity', 'browThickness', 'browArch', 'browAsymmetry',
+  'lashDensity', 'lashLength', 'lashCurl',
+]);
+const MHR_FACE_DETAIL_MATERIAL_IDS = new Set(['browColor', 'lashColor', 'hairColor']);
+const MHR_EYE_DETAIL_IDS = new Set([
+  'eyeColor', 'eyeSize', 'mhrEyeGlobeScale', 'mhrEyeDepth', 'mhrEyeVertical',
+  'mhrScleraColor', 'mhrScleraBrightness', 'mhrIrisScale', 'mhrPupilScale', 'mhrCorneaGloss',
+]);
 const LIGHTING_IDS = new Set(['keyIntensity', 'fillIntensity', 'warmth', 'exposure', 'cameraFov', 'stylizedLightSoftness']);
 const MHR_POSE_IDS = new Set([
   'seated', 'kneesTogether', 'posture', 'headTilt', 'headTurn',
@@ -91,6 +101,7 @@ let idle = null;
 let expressions = null;
 let mhrController = null;
 let mhrEyeDetails = null;
+let mhrFacialDetails = null;
 let isFallback = false;
 let costumeDirty = false;
 let lastCostumeBuild = 0;
@@ -109,7 +120,7 @@ const RENDERER_MODES = Object.freeze({
 });
 const RENDERER_ORDER = Object.keys(RENDERER_MODES);
 const storedRenderer = sessionStorage.getItem('characterLabRenderStyle');
-let renderStyle = RENDERER_MODES[storedRenderer] ? storedRenderer : 'current';
+let renderStyle = RENDERER_MODES[storedRenderer] ? storedRenderer : 'mhr';
 const named = new Map();
 const materials = {};
 
@@ -205,6 +216,7 @@ function disposeLoadedCharacter() {
   mixer?.stopAllAction();
   costume?.dispose();
   mhrEyeDetails?.dispose();
+  mhrFacialDetails?.dispose();
   if (model) {
     characterRoot.remove(model);
     model.traverse((object) => {
@@ -221,7 +233,7 @@ function disposeLoadedCharacter() {
   }
   model = null; mixer = null; animationAction = null; animationClips = [];
   bones = null; costume = null; idle = null; expressions = null;
-  mhrController = null; mhrEyeDetails = null;
+  mhrController = null; mhrEyeDetails = null; mhrFacialDetails = null;
   poseCostumeRebuildPending = false;
   poseWasTransitioning = false;
   identityFitPending = false;
@@ -389,6 +401,7 @@ async function loadCharacter() {
       prepareSkinModel(model, preset.values);
       bones = findBones(model);
       mhrEyeDetails = createMhrEyeDetails(model, preset.values);
+      mhrFacialDetails = createMhrFacialDetails(model, preset.values);
       model.updateMatrixWorld(true);
       if (bones.pelvis && bones.head) {
         costume = createCostume(characterRoot, bones, model);
@@ -559,10 +572,13 @@ function applyAll(changedId = null, { final = true } = {}) {
       if (changedId === 'seated' && mhrController?.isPoseTransitioning) poseCostumeRebuildPending = true;
       if (identityChanged) {
         refreshSkinGeometry(model, v);
+        mhrFacialDetails?.rebuild(v);
         identityFitPending = true;
       }
       if (initial || identityChanged || SKIN_APPEARANCE_IDS.has(changedId)) updateSkinModel(model, v);
-      if (initial || identityChanged || SKIN_APPEARANCE_IDS.has(changedId)) mhrEyeDetails?.update(v);
+      if (initial || identityChanged || MHR_EYE_DETAIL_IDS.has(changedId)) mhrEyeDetails?.update(v);
+      if (initial || MHR_FACE_DETAIL_MATERIAL_IDS.has(changedId)) mhrFacialDetails?.update(v);
+      if (final && MHR_FACE_DETAIL_GEOMETRY_IDS.has(changedId)) mhrFacialDetails?.rebuild(v);
       if (initial || COMPARISON_MATERIAL_IDS.has(changedId)) updateComparisonMaterial(model, v);
       if (costume) {
         if (initial || COSTUME_MATERIAL_IDS.has(changedId) || COSTUME_GEOMETRY_IDS.has(changedId)) {
@@ -866,7 +882,24 @@ const views = {
   portrait: [[.58, 1.42, 1.08], [0, 1.32, 0]],
   exam: [[2.75, 1.28, 0.9], [0, 0.9, 0.1]],
 };
-function setView(name) { camera.position.set(...views[name][0]); orbit.target.set(...views[name][1]); orbit.update(); document.querySelectorAll('[data-view]').forEach((button) => button.classList.toggle('active', button.dataset.view === name)); }
+function setView(name) {
+  if (name === 'portrait' && bones?.head) {
+    const target = bones.head.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0.025, 0));
+    orbit.target.copy(target);
+    camera.position.copy(target).add(new THREE.Vector3(0.38, 0.09, 0.72));
+  } else if (name === 'full' && bones?.head && bones?.pelvis) {
+    const head = bones.head.getWorldPosition(new THREE.Vector3());
+    const pelvis = bones.pelvis.getWorldPosition(new THREE.Vector3());
+    const target = pelvis.clone().lerp(head, 0.48).add(new THREE.Vector3(0, -0.06, 0));
+    orbit.target.copy(target);
+    camera.position.copy(target).add(new THREE.Vector3(1.72, 0.48, 2.75));
+  } else {
+    camera.position.set(...views[name][0]);
+    orbit.target.set(...views[name][1]);
+  }
+  orbit.update();
+  document.querySelectorAll('[data-view]').forEach((button) => button.classList.toggle('active', button.dataset.view === name));
+}
 
 async function toggleRenderStyle() {
   if (renderSwitchBusy) return;
@@ -907,7 +940,7 @@ ui.canvas.ondblclick = () => setView('clinic');
 ui.search.oninput = () => { const term = ui.search.value.toLowerCase(); document.querySelectorAll('.control').forEach((row) => row.hidden = !row.dataset.search.includes(term)); document.querySelectorAll('.control-group').forEach((group) => { const rendererMismatch = group.dataset.renderer && group.dataset.renderer !== renderStyle; group.hidden = rendererMismatch || ![...group.querySelectorAll('.control')].some((row) => !row.hidden); }); };
 
 /* console access for calibration and debugging */
-window.__lab = { scene, get bones() { return bones; }, get model() { return model; }, get preset() { return preset; }, get idle() { return idle; }, get costume() { return costume; }, get expressions() { return expressions; }, get renderStyle() { return renderStyle; }, THREE, applyAll, rebuildCostumeNow, toggleRenderStyle };
+window.__lab = { scene, get bones() { return bones; }, get model() { return model; }, get preset() { return preset; }, get idle() { return idle; }, get costume() { return costume; }, get facialDetails() { return mhrFacialDetails; }, get expressions() { return expressions; }, get renderStyle() { return renderStyle; }, THREE, applyAll, rebuildCostumeNow, toggleRenderStyle };
 
 const clock = new THREE.Clock();
 function frame() {
@@ -934,6 +967,7 @@ function frame() {
     } else if (motionEnabled && idle) idle.update(delta, elapsed, preset.values, mode);
   }
   if (expressions && !isFallback) expressions.update(delta, elapsed, preset.values);
+  if (mhrFacialDetails && renderStyle === 'mhr') mhrFacialDetails.update(preset.values);
   orbit.update(); renderer.render(scene, camera); requestAnimationFrame(frame);
 }
 function resize() { const width = ui.canvas.clientWidth; const height = ui.canvas.clientHeight; renderer.setSize(width, height, false); camera.aspect = width / height; camera.updateProjectionMatrix(); }
