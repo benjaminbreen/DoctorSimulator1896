@@ -8,6 +8,7 @@ const BINDINGS = {
   KeyD: 'right', ArrowRight: 'right',
   ShiftLeft: 'run', ShiftRight: 'run',
   KeyE: 'interact',
+  KeyM: 'cycleCamera',
   Space: 'jump',
 };
 

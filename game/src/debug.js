@@ -4,14 +4,14 @@
 export const gameDebug = {
   tuning: null,
   set: null,
-  player: { position: [0, 0, 0], grounded: false, yaw: 0 },
+  player: { position: [0, 0, 0], grounded: false, yaw: 0, visible: true },
   pendingTeleport: null,
   teleport(x, y, z) {
     gameDebug.pendingTeleport = [x, y, z];
   },
   look: null,
   setLook: null,
-  stats: { fps: 0, cameraDistance: 0 },
+  stats: { fps: 0, cameraDistance: 0, cameraYaw: null },
   exportPreset: null,
 };
 

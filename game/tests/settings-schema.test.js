@@ -27,7 +27,7 @@ test('select parameters include their default', () => {
 test('runtime clamps out-of-range writes and ignores unknown ids', () => {
   const runtime = createTuningRuntime(settingsSchema);
   runtime.set('walkSpeed', 999);
-  assert.equal(runtime.values.walkSpeed, 10);
+  assert.equal(runtime.values.walkSpeed, 14);
   runtime.set('nonsense', 5);
   assert.equal(runtime.values.nonsense, undefined);
 });

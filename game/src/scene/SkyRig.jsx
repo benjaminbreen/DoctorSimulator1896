@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Sky } from 'three/addons/objects/Sky.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 import { solarRamps } from '../world/solar.js';
 import { gameDebug } from '../debug.js';
 
@@ -52,6 +53,26 @@ export default function SkyRig({ config, runtime }) {
     };
   }, [scene, config, runtime]);
 
+  // HDRI environment (image-based light) grounds the materials outdoors.
+  useEffect(() => {
+    let disposed = false;
+    let environment = null;
+    new RGBELoader().loadAsync('/textures/sky.hdr').then((texture) => {
+      if (disposed) {
+        texture.dispose();
+        return;
+      }
+      texture.mapping = THREE.EquirectangularReflectionMapping;
+      environment = texture;
+      scene.environment = texture;
+    });
+    return () => {
+      disposed = true;
+      scene.environment = null;
+      environment?.dispose();
+    };
+  }, [scene]);
+
   useFrame(() => {
     const values = runtime.values;
     const { direction, daylight, golden } = solarRamps(values.timeOfDay);
@@ -95,6 +116,7 @@ export default function SkyRig({ config, runtime }) {
       );
     }
     if (scene.fog) scene.fog.density = values.fogDensity;
+    scene.environmentIntensity = values.envIntensity * (0.35 + 0.65 * daylight);
   });
 
   return (

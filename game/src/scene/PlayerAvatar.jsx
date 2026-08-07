@@ -37,6 +37,7 @@ export default function PlayerAvatar() {
     const [x, y, z] = gameDebug.player.position;
     group.position.set(x, y, z);
     group.rotation.y = gameDebug.player.yaw;
+    group.visible = gameDebug.player.visible !== false;
   });
 
   return (

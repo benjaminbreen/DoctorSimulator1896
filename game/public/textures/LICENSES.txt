@@ -1,0 +1,4 @@
+CC0 assets, no attribution required.
+
+ambientCG.com: Grass004, Ground037, Rock030, Bark012, Bricks090, PavingStones070 (1K JPG)
+Poly Haven (polyhaven.com): kloofendal_48d_partly_cloudy_puresky 1k HDRI (sky.hdr)

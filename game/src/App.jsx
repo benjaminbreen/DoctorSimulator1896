@@ -41,7 +41,7 @@ export default function App() {
         <GameCanvas key={rebuildVersion} runtime={runtime} keyboard={keyboard} look={look} />
         <DebugHud />
         <p className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded bg-black/50 px-3 py-1 text-xs text-neutral-300">
-          Click the scene to look · WASD to walk · Shift to run · Space to jump · E at doors
+          Click the scene to look · WASD to walk · Shift to run · Space to jump · E at doors · M for camera
         </p>
       </main>
       <TuningPanel runtime={runtime} />

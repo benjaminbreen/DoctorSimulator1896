@@ -1,17 +1,23 @@
 import { useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { computeEyeTarget, clampPitch, occlusionLimit } from '../camera/cameraMath.js';
-import { damp } from '../movement/mathUtils.js';
+import { damp, dampAngle } from '../movement/mathUtils.js';
 import { gameDebug } from '../debug.js';
 
 const ANCHOR_HEIGHT = 1.45;
+const EYE_HEIGHT = 1.62;
 const MAX_DT = 1 / 30;
+const MODES = ['shoulder', 'first', 'overhead', 'hero'];
 
-// Over-the-shoulder follow camera. Occlusion pulls in fast and returns slowly
-// (Darwin's asymmetric damp), so a passing bookcase never snaps the frame.
-export default function CameraRig({ room, runtime, look, heightAt = null }) {
+// Four camera modes on the Darwin pattern, cycled with M: over-the-shoulder
+// orbit (default), first person, overhead, and hero (follows the player's
+// facing instead of the mouse).
+export default function CameraRig({ room, runtime, look, keyboard, heightAt = null }) {
   const camera = useThree((state) => state.camera);
   const smoothedRef = useRef(null);
+  const heroYawRef = useRef(0);
+  const cycleLatch = useRef(true);
+  const lastMode = useRef(null);
   const occlusionBoxes = useMemo(
     () => [
       ...room.wallBoxes,
@@ -24,15 +30,78 @@ export default function CameraRig({ room, runtime, look, heightAt = null }) {
   useFrame((_, delta) => {
     const dt = Math.min(delta, MAX_DT);
     const values = runtime.values;
-    look.look.pitch = clampPitch(look.look.pitch, values);
 
+    if (keyboard?.state.cycleCamera) {
+      if (!cycleLatch.current) {
+        cycleLatch.current = true;
+        const next = MODES[(MODES.indexOf(values.cameraMode) + 1) % MODES.length];
+        runtime.set('cameraMode', next);
+      }
+    } else {
+      cycleLatch.current = false;
+    }
+
+    const mode = MODES.includes(values.cameraMode) ? values.cameraMode : 'shoulder';
+    if (mode !== lastMode.current) {
+      smoothedRef.current = null;
+      heroYawRef.current = gameDebug.player.yaw;
+      lastMode.current = mode;
+    }
+
+    look.look.pitch = clampPitch(look.look.pitch, values);
     const playerPos = gameDebug.player.position;
+    gameDebug.player.visible = mode !== 'first';
+
+    if (mode === 'first') {
+      // Mouse-down pitch looks down, matching the third-person feel.
+      const pitch = -look.look.pitch;
+      const yaw = look.look.yaw;
+      const cos = Math.cos(pitch);
+      camera.position.set(playerPos[0], playerPos[1] + EYE_HEIGHT, playerPos[2]);
+      camera.lookAt(
+        playerPos[0] - Math.sin(yaw) * cos,
+        playerPos[1] + EYE_HEIGHT + Math.sin(pitch),
+        playerPos[2] - Math.cos(yaw) * cos,
+      );
+      gameDebug.stats.cameraYaw = yaw;
+      gameDebug.stats.cameraDistance = 0;
+      return;
+    }
+
+    if (mode === 'overhead') {
+      const target = [playerPos[0], playerPos[1] + values.overheadHeight, playerPos[2] + 0.01];
+      let smoothed = smoothedRef.current;
+      if (!smoothed) {
+        smoothed = smoothedRef.current = { eye: [...target], look: [...playerPos], distance: values.overheadHeight };
+      }
+      smoothed.eye[0] = damp(smoothed.eye[0], target[0], values.positionDamping, dt);
+      smoothed.eye[1] = damp(smoothed.eye[1], target[1], values.yDamping, dt);
+      smoothed.eye[2] = damp(smoothed.eye[2], target[2], values.positionDamping, dt);
+      smoothed.look[0] = damp(smoothed.look[0], playerPos[0], values.positionDamping, dt);
+      smoothed.look[1] = damp(smoothed.look[1], playerPos[1], values.yDamping, dt);
+      smoothed.look[2] = damp(smoothed.look[2], playerPos[2], values.positionDamping, dt);
+      camera.position.set(smoothed.eye[0], smoothed.eye[1], smoothed.eye[2]);
+      camera.lookAt(smoothed.look[0], smoothed.look[1], smoothed.look[2]);
+      gameDebug.stats.cameraYaw = look.look.yaw;
+      gameDebug.stats.cameraDistance = values.overheadHeight;
+      return;
+    }
+
+    // Shoulder and hero share the boom; hero follows the player's facing.
+    let yaw = look.look.yaw;
+    let side = values.shoulderSide;
+    if (mode === 'hero') {
+      heroYawRef.current = dampAngle(heroYawRef.current, gameDebug.player.yaw, values.heroFollowRate, dt);
+      yaw = heroYawRef.current;
+      side = values.shoulderSide * 0.4;
+    }
+
     const anchor = [playerPos[0], playerPos[1] + ANCHOR_HEIGHT, playerPos[2]];
     const eyeTarget = computeEyeTarget({
       playerPos,
-      yaw: look.look.yaw,
+      yaw,
       pitch: look.look.pitch,
-      side: values.shoulderSide,
+      side,
       up: values.shoulderUp,
       back: values.shoulderBack,
     });
@@ -75,6 +144,7 @@ export default function CameraRig({ room, runtime, look, heightAt = null }) {
 
     camera.position.set(smoothed.eye[0], smoothed.eye[1], smoothed.eye[2]);
     camera.lookAt(smoothed.look[0], smoothed.look[1], smoothed.look[2]);
+    gameDebug.stats.cameraYaw = yaw;
     gameDebug.stats.cameraDistance = smoothed.distance;
   });
 

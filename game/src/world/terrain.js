@@ -1,9 +1,11 @@
-// Central Park terrain, framework-free and deterministic. The Pond is carved
-// from its authored outline, paths grade the ground flat, knolls raise the
-// schist outcrops, and the Green is a level meadow.
+// Central Park terrain, framework-free and deterministic. The land climbs
+// gently to the north and west, the Pond sits in a sunken hollow below the
+// Plaza, Hallett's knoll and the schist outcrops rise from the lawn, and
+// every path grades the ground it crosses.
 
 import { clamp } from '../movement/mathUtils.js';
 import { POND_OUTLINE, PATHS, KNOLLS, MEADOW, GATE } from './centralPark.js';
+import { STREET_LEVEL } from './streetGrid.js';
 
 function hash(ix, iz) {
   let h = ix * 374761393 + iz * 668265263;
@@ -69,36 +71,62 @@ function polygonEdgeDistance(x, z, polygon) {
 // Signed pond field: negative inside (toward -1 at depth), positive outside.
 export function pondDepth(x, z) {
   const edge = polygonEdgeDistance(x, z, POND_OUTLINE);
-  if (pointInPolygon(x, z, POND_OUTLINE)) return -Math.min(1, edge / 6);
-  return Math.min(1, edge / 6);
+  if (pointInPolygon(x, z, POND_OUTLINE)) return -Math.min(1, edge / 7);
+  return Math.min(1, edge / 7);
+}
+
+// Combined outcrop strength in [0, ~1.5]; also drives rock coloring.
+export function rockiness(x, z) {
+  let total = 0;
+  for (const knoll of KNOLLS) {
+    const distance = Math.hypot(x - knoll.x, z - knoll.z);
+    total += smooth(clamp(1 - distance / knoll.radius, 0, 1));
+  }
+  return total;
 }
 
 export function terrainHeight(x, z) {
-  const rolling =
-    (valueNoise(x * 0.03 + 7.3, z * 0.03 + 2.9) - 0.5) * 2.6 +
-    (valueNoise(x * 0.09 + 3.1, z * 0.09 + 9.4) - 0.5) * 0.8 +
-    (valueNoise(x * 0.27 + 5.7, z * 0.27 + 1.2) - 0.5) * 0.2;
+  // The land climbs away from the Pond corner, toward the north and west.
+  const base = (58 - z) * 0.012 + Math.max(0, -x - 20) * 0.008;
 
-  let height = rolling;
+  const rolling =
+    (valueNoise(x * 0.025 + 7.3, z * 0.025 + 2.9) - 0.5) * 2.8 +
+    (valueNoise(x * 0.08 + 3.1, z * 0.08 + 9.4) - 0.5) * 0.9 +
+    (valueNoise(x * 0.25 + 5.7, z * 0.25 + 1.2) - 0.5) * 0.2;
+
+  let relief = rolling;
   for (const knoll of KNOLLS) {
     const distance = Math.hypot(x - knoll.x, z - knoll.z);
-    height += knoll.height * smooth(clamp(1 - distance / knoll.radius, 0, 1));
+    relief += knoll.height * smooth(clamp(1 - distance / knoll.radius, 0, 1));
   }
 
-  // The Green and the gate apron are graded level.
+  // The Green is graded level; paths grade whatever they cross.
   const meadow = smooth(clamp(1 - Math.hypot(x - MEADOW.x, z - MEADOW.z) / MEADOW.radius, 0, 1));
-  const gate = smooth(clamp(1 - Math.hypot(x - GATE.x, z - GATE.z) / GATE.radius, 0, 1));
-  height *= 1 - Math.max(meadow * 0.85, gate);
+  relief *= 1 - meadow * 0.85;
+  relief *= smooth(clamp(pathsDistance(x, z) / 3.5, 0, 1));
 
-  // Paths grade the ground toward level.
-  height *= smooth(clamp(pathsDistance(x, z) / 3.5, 0, 1));
+  let height = base + relief;
 
-  // Carve the Pond; lift its banks gently just outside.
+  // Beyond the park wall the city takes over: level street grade under the
+  // road and sidewalk strips.
+  const street = Math.max(
+    smooth(clamp((x - 93) / 5, 0, 1)),
+    smooth(clamp((z - 81) / 5, 0, 1)),
+  );
+  if (street > 0) height = height * (1 - street) + (STREET_LEVEL - 0.03) * street;
+
+  // Grand Army Plaza is a raised, level apron with a fully flat core.
+  const gateDistance = Math.hypot(x - GATE.x, z - GATE.z);
+  const gate = 1 - smooth(clamp((gateDistance - GATE.flat) / (GATE.radius - GATE.flat), 0, 1));
+  height = height * (1 - gate) + GATE.height * gate;
+
+  // The Pond: beach at the rim, carved hollow inside.
   const pond = pondDepth(x, z);
   if (pond < 0) {
-    height = Math.min(height, 0) + pond * 1.7;
+    height = Math.min(height, -0.05) + pond * 2.1;
   } else {
-    height *= smooth(clamp(pond, 0, 1)) * 0.85 + 0.15;
+    const shore = smooth(clamp(pond, 0, 1));
+    height = -0.05 * (1 - shore) + height * shore;
   }
 
   return height;

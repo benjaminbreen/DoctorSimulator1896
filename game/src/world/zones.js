@@ -8,6 +8,7 @@ import waitingLighting from './waiting-room.lighting.json';
 import parkBlueprint from './central-park.blueprint.json';
 import parkLighting from './central-park.lighting.json';
 import { parkItems, POND_OUTLINE, WATER_LEVEL } from './centralPark.js';
+import { streetItems } from './streetGrid.js';
 
 export const zones = {
   'consulting-office': { blueprint: consultingBlueprint, lighting: consultingLighting },
@@ -15,7 +16,7 @@ export const zones = {
   'central-park': {
     blueprint: parkBlueprint,
     lighting: parkLighting,
-    extraItems: parkItems,
+    extraItems: [...parkItems, ...streetItems],
     water: { outline: POND_OUTLINE, level: WATER_LEVEL },
   },
 };

@@ -71,15 +71,32 @@ export function deriveWallBoxes(wall) {
   return { boxes, blockers, holes };
 }
 
-// Invisible boundary colliders around an exterior zone's edges.
-function perimeterBlockers(width, depth, floorY) {
-  const height = 4;
+function outlineBounds(outline) {
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+  for (const [x, z] of outline) {
+    minX = Math.min(minX, x);
+    maxX = Math.max(maxX, x);
+    minZ = Math.min(minZ, z);
+    maxZ = Math.max(maxZ, z);
+  }
+  return { minX, maxX, minZ, maxZ, cx: (minX + maxX) / 2, cz: (minZ + maxZ) / 2 };
+}
+
+// Invisible boundary colliders around an exterior zone's edges. Exterior
+// outlines need not be centered on the origin.
+function perimeterBlockers(bounds, floorY) {
+  const height = 5;
   const y = floorY + height / 2;
+  const width = bounds.maxX - bounds.minX;
+  const depth = bounds.maxZ - bounds.minZ;
   return [
-    { id: 'bounds-north', position: [0, y, -depth / 2 - 0.5], size: [width + 2, height, 1], yaw: 0 },
-    { id: 'bounds-south', position: [0, y, depth / 2 + 0.5], size: [width + 2, height, 1], yaw: 0 },
-    { id: 'bounds-west', position: [-width / 2 - 0.5, y, 0], size: [1, height, depth + 2], yaw: 0 },
-    { id: 'bounds-east', position: [width / 2 + 0.5, y, 0], size: [1, height, depth + 2], yaw: 0 },
+    { id: 'bounds-north', position: [bounds.cx, y, bounds.minZ - 0.5], size: [width + 2, height, 1], yaw: 0 },
+    { id: 'bounds-south', position: [bounds.cx, y, bounds.maxZ + 0.5], size: [width + 2, height, 1], yaw: 0 },
+    { id: 'bounds-west', position: [bounds.minX - 0.5, y, bounds.cz], size: [1, height, depth + 2], yaw: 0 },
+    { id: 'bounds-east', position: [bounds.maxX + 0.5, y, bounds.cz], size: [1, height, depth + 2], yaw: 0 },
   ];
 }
 
@@ -95,10 +112,13 @@ export function deriveRoom(blueprint) {
     blockerBoxes.push(...derived.blockers);
     windowHoles.push(...derived.holes);
   }
-  if (exterior) blockerBoxes.push(...perimeterBlockers(width, depth, floorY));
+  const bounds = outlineBounds(blueprint.outline);
+  const centerX = exterior ? bounds.cx : 0;
+  const centerZ = exterior ? bounds.cz : 0;
+  if (exterior) blockerBoxes.push(...perimeterBlockers(bounds, floorY));
   return {
     exterior,
-    floor: { id: 'floor', position: [0, floorY - 0.05, 0], size: [width, 0.1, depth], yaw: 0 },
+    floor: { id: 'floor', position: [centerX, floorY - 0.05, centerZ], size: [width, 0.1, depth], yaw: 0 },
     ceiling: exterior
       ? null
       : { id: 'ceiling', position: [0, floorY + ceiling + 0.05, 0], size: [width, 0.1, depth], yaw: 0 },
@@ -133,6 +153,12 @@ export function validateBlueprint(blueprint) {
   }
   if (!Array.isArray(outline) || outline.length < 3) {
     errors.push('outline needs at least 3 points');
+  } else if (exterior) {
+    // Exterior outlines may sit off-center; dimensions must cover the extent.
+    const bounds = outlineBounds(outline);
+    if (bounds.maxX - bounds.minX > dimensions.width + EPS || bounds.maxZ - bounds.minZ > dimensions.depth + EPS) {
+      errors.push('outline extent exceeds dimensions');
+    }
   } else {
     for (const [x, z] of outline) {
       if (Math.abs(x) > dimensions.width / 2 + EPS || Math.abs(z) > dimensions.depth / 2 + EPS) {

@@ -52,7 +52,9 @@ export default function PlayerRig({ room, runtime, keyboard, look, spawn, spawnY
 
     const result = movementStep({
       input: keyboard.moveInput(),
-      lookYaw: look.look.yaw,
+      // Movement is relative to the active camera's yaw (hero mode follows
+      // the player's facing, not the mouse).
+      lookYaw: gameDebug.stats.cameraYaw ?? look.look.yaw,
       state,
       dt,
       tunables: runtime.values,
@@ -88,7 +90,10 @@ export default function PlayerRig({ room, runtime, keyboard, look, spawn, spawnY
       }
     }
 
-    if (meshRef.current) meshRef.current.rotation.y = state.yaw;
+    if (meshRef.current) {
+      meshRef.current.rotation.y = state.yaw;
+      meshRef.current.visible = gameDebug.player.visible !== false;
+    }
     gameDebug.player.position[0] = next.x;
     gameDebug.player.position[1] = next.y;
     gameDebug.player.position[2] = next.z;

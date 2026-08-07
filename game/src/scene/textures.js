@@ -47,6 +47,84 @@ export function woodTexture(base) {
   return texture;
 }
 
+const FACADE_STYLES = [
+  { base: '#6b5648', trim: '#57453a' },
+  { base: '#7d4f3e', trim: '#5e3b2e' },
+  { base: '#8d8375', trim: '#726a5c' },
+  { base: '#61564c', trim: '#4c433b' },
+  // White marble (the Metropolitan Club look).
+  { base: '#c9c2b4', trim: '#a8a191' },
+];
+
+function seededRandom(seed) {
+  let state = seed;
+  return () => {
+    state = (state * 9301 + 49297) % 233280;
+    return state / 233280;
+  };
+}
+
+// Generated 1890s street facade sized to the building, so windows keep real
+// proportions: one column per ~2.8m of width, one floor per ~3.4m of height.
+export function buildingFacade(styleIndex, seed, widthM, heightM) {
+  const floors = Math.min(8, Math.max(2, Math.round((heightM - 2) / 3.4)));
+  const cols = Math.min(6, Math.max(2, Math.round(widthM / 2.8)));
+  const key = `facade:${styleIndex}:${seed}:${floors}:${cols}`;
+  if (cache.has(key)) return cache.get(key);
+
+  const unit = 52;
+  const width = cols * unit + 16;
+  const height = floors * unit + 22;
+  const canvas = makeCanvas(width);
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  const style = FACADE_STYLES[styleIndex % FACADE_STYLES.length];
+  const random = seededRandom(seed * 7919 + 13);
+
+  context.fillStyle = style.base;
+  context.fillRect(0, 0, width, height);
+  for (let i = 0; i < 60 * cols; i += 1) {
+    context.fillStyle = `rgba(0,0,0,${random() * 0.05})`;
+    context.fillRect(random() * width, random() * height, 3 + random() * 8, 2 + random() * 4);
+  }
+
+  // Upper floors: window per column with lintel, sill, and the odd lit pane.
+  for (let floor = 0; floor < floors - 1; floor += 1) {
+    const y = 28 + floor * unit;
+    for (let col = 0; col < cols; col += 1) {
+      const x = 12 + col * unit;
+      context.fillStyle = style.trim;
+      context.fillRect(x - 3, y - 6, 38, 6);
+      context.fillStyle = random() < 0.12 ? '#d9a24c' : '#181614';
+      context.fillRect(x, y, 32, 38);
+      context.fillStyle = 'rgba(255,255,255,0.12)';
+      context.fillRect(x, y, 32, 4);
+      context.fillStyle = style.trim;
+      context.fillRect(x - 2, y + 38, 36, 4);
+    }
+  }
+
+  // Ground floor: doorway plus tall windows.
+  const groundY = height - unit - 4;
+  context.fillStyle = style.trim;
+  context.fillRect(0, groundY - 4, width, unit + 8);
+  for (let col = 0; col < cols; col += 1) {
+    const x = 12 + col * unit;
+    context.fillStyle = col === Math.floor(cols / 2) ? '#171512' : 'rgba(20,18,15,0.92)';
+    context.fillRect(x, groundY + 4, 32, unit - 10);
+  }
+
+  // Cornice.
+  context.fillStyle = style.trim;
+  context.fillRect(0, 0, width, 14);
+  context.fillStyle = 'rgba(0,0,0,0.3)';
+  context.fillRect(0, 14, width, 6);
+
+  const texture = finish(canvas);
+  cache.set(key, texture);
+  return texture;
+}
+
 // Plaster: base color with fine brightness noise. Non-directional, so stripe
 // density cannot mismatch across wall segments of different widths.
 export function plasterTexture(base) {

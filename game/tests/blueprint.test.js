@@ -78,7 +78,7 @@ test('interior zones keep their ceiling and walls', () => {
   assert.equal(waiting.exterior, false);
   assert.ok(waiting.ceiling);
   assert.ok(waiting.wallBoxes.length > 0);
-  assert.equal(waiting.windowHoles.length, 8);
+  assert.equal(waiting.windowHoles.length, 11);
   assert.equal(waiting.blockerBoxes.length, 2);
 });
 
@@ -111,7 +111,7 @@ test('openings produce headers, sills, holes, and blockers', () => {
 test('window normals point out of the room', () => {
   const room = deriveRoom(blueprint);
   const north = room.windowHoles.find((hole) => hole.id === 'window-north-1');
-  const west = room.windowHoles.find((hole) => hole.id === 'window-west');
+  const west = room.windowHoles.find((hole) => hole.id === 'window-west-1');
   assert.deepEqual(north.normal, [0, 0, -1]);
   assert.deepEqual(west.normal, [-1, 0, 0]);
 });

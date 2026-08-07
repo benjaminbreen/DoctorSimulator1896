@@ -12,6 +12,7 @@ import PlayerAvatar from './PlayerAvatar.jsx';
 import SkyRig from './SkyRig.jsx';
 import CloudDome from './CloudDome.jsx';
 import Terrain from './Terrain.jsx';
+import TreeField from './TreeField.jsx';
 import Water from './Water.jsx';
 import Effects from './Effects.jsx';
 import { zones } from '../world/zones.js';
@@ -123,6 +124,7 @@ export default function GameCanvas({ runtime, keyboard, look }) {
               <SkyRig config={lighting} runtime={runtime} />
               <CloudDome config={lighting} runtime={runtime} />
               <Terrain />
+              <TreeField items={room.furnitureBoxes.filter((item) => item.kind === 'tree')} />
               {zone.water && <Water runtime={runtime} outline={zone.water.outline} level={zone.water.level} />}
             </>
           ) : (
@@ -130,7 +132,7 @@ export default function GameCanvas({ runtime, keyboard, look }) {
           )}
           <PlayerRig room={room} runtime={runtime} keyboard={keyboard} look={look} spawn={spawn} spawnYaw={spawnYaw} />
           {values.showAvatarGlb && <PlayerAvatar />}
-          <CameraRig room={room} runtime={runtime} look={look} heightAt={room.exterior ? terrainHeight : null} />
+          <CameraRig room={room} runtime={runtime} look={look} keyboard={keyboard} heightAt={room.exterior ? terrainHeight : null} />
           <ColliderDebug room={room} runtime={runtime} />
         </Physics>
         {values.postEnabled && <Effects runtime={runtime} />}

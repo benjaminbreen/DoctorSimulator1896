@@ -6,7 +6,9 @@ Green, Fifth Avenue backdrop; authored in `src/world/centralPark.js` from
 the 1890s maps). Placeholder player with over-the-shoulder camera, jumping,
 sculpted terrain, shader sky/clouds, bloom, and a tuning panel. Walk to a
 door and press E to travel, use the panel's zone select, or
-`__game.set('zone', 'central-park')`.
+`__game.set('zone', 'central-park')`. M cycles the camera: over-the-shoulder,
+first person, overhead, hero (follows the player's facing). Defaults are
+Ben's tuned preset; Reset returns to it.
 
 Separate npm package from character-lab (own node_modules, own three version).
 
