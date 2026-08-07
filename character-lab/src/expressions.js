@@ -761,7 +761,10 @@ function collectNamedMorphs(model) {
   const bodyDictionary = body?.morphTargetDictionary;
   if (!bodyDictionary || !REQUIRED_MPFB_UNITS.every((name) => bodyDictionary[name] !== undefined)) return null;
 
-  const availableUnits = Object.keys(bodyDictionary).sort();
+  // Renderer C carries identity and demographic morphs beside the 52 MPFB
+  // face units. They must remain under the identity controller's ownership
+  // and must not appear in the expression debugger or be cleared by it.
+  const availableUnits = Object.keys(bodyDictionary).filter((name) => !name.startsWith('rc_')).sort();
   const availableSet = new Set(availableUnits);
   const bindings = new Map(availableUnits.map((name) => [name, []]));
   model.traverse((object) => {

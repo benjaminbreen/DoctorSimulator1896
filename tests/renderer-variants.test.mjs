@@ -9,6 +9,9 @@ import { createExpressions, createMhrExpressions } from '../character-lab/src/ex
 import { findBodyMesh, sampleScalp, scalpPoint } from '../character-lab/src/hair/geometry.js';
 import { createMhrController, createMhrEyeDetails } from '../character-lab/src/mhr.js';
 import { createMhrFacialDetails } from '../character-lab/src/facial-details.js';
+import {
+  createRendererCController, generateRendererCCandidates,
+} from '../character-lab/src/renderer-c.js';
 import { prepareSkinModel, updateSkinModel } from '../character-lab/src/stylized.js';
 
 globalThis.self = globalThis;
@@ -98,6 +101,74 @@ test('A/B comparison assets expose their intended rig and identity controls', as
   assert.equal(mhrBones, 126);
   assert.ok(mhrBody.geometry.attributes.skinWeight);
   assert.ok(mhrBody.geometry.attributes.skinIndex);
+});
+
+test('Renderer C cohorts retain approved anchors and deterministic restrained recipes', async () => {
+  const [manifestText, women, men] = await Promise.all([
+    readFile(new URL('../character-lab/public/models/renderer-c-cohorts.json', import.meta.url), 'utf8'),
+    loadModel('../character-lab/public/models/renderer-c-women.glb'),
+    loadModel('../character-lab/public/models/renderer-c-men.glb'),
+  ]);
+  const manifest = JSON.parse(manifestText);
+  for (const [cohort, gltf] of [['women', women], ['men', men]]) {
+    const cohortManifest = manifest.cohorts[cohort];
+    const body = gltf.scene.getObjectByName('Human_Body');
+    const garment = gltf.scene.getObjectByName('RendererC_BaseGarment');
+    const eyes = gltf.scene.getObjectByName('RendererC_Eyes_01');
+    const brows = gltf.scene.getObjectByName('RendererC_Brows_01');
+    const hair = gltf.scene.getObjectByName('RendererC_Hair_01');
+    assert.equal(cohortManifest.anchors.length, 8);
+    assert.equal(Object.keys(body.morphTargetDictionary).length, 128);
+    assert.ok(Object.keys(garment.morphTargetDictionary).length >= 10);
+    for (const morph of ['rc_age_old', 'rc_heritage_asian', 'rc_live_weight_pos', 'rc_live_proportions_neg']) {
+      assert.ok(garment.morphTargetDictionary[morph] !== undefined, `${cohort} garment is missing ${morph}`);
+    }
+    for (const object of [eyes, brows, hair]) {
+      assert.ok(object.morphTargetDictionary.rc_age_old !== undefined, `${object.name} does not follow age`);
+      assert.ok(object.morphTargetDictionary.rc_heritage_african !== undefined, `${object.name} does not follow ancestry`);
+    }
+    assert.ok(eyes.morphTargetDictionary.rc_live_eyeSpacing_pos !== undefined, `${cohort} eyes do not follow eye spacing`);
+    assert.ok(brows.morphTargetDictionary.rc_live_browHeight_pos !== undefined, `${cohort} brows do not follow brow height`);
+    assert.equal(gltf.animations.length, 2);
+    for (const anchor of cohortManifest.anchors) assert.ok(body.morphTargetDictionary[anchor.morph] !== undefined);
+  }
+
+  const options = {
+    cohort: 'men', ageBand: '30s', ancestry: 'european', seed: 1896, count: 8,
+    manifest: manifest.cohorts.men,
+  };
+  const first = generateRendererCCandidates(options);
+  const repeated = generateRendererCCandidates(options);
+  assert.deepEqual(first, repeated, 'a saved contact-sheet seed must reproduce the same faces');
+  assert.equal(new Set(first.map((candidate) => candidate.anchorIndex)).size, 8, 'a sheet should audition every approved anchor once');
+  assert.ok(first.every((candidate) => candidate.values.jawWidth >= -0.05 && candidate.values.jawWidth <= 0.05));
+  assert.ok(first.every((candidate) => candidate.values.chinHeight < -0.05 && candidate.values.chinProminence < -0.05));
+});
+
+test('Renderer C switches identity anchors and signed anatomy morphs live', async () => {
+  const [manifestText, gltf] = await Promise.all([
+    readFile(new URL('../character-lab/public/models/renderer-c-cohorts.json', import.meta.url), 'utf8'),
+    loadModel('../character-lab/public/models/renderer-c-men.glb'),
+  ]);
+  const manifest = JSON.parse(manifestText).cohorts.men;
+  const values = {
+    rendererCAnchor: 0, age: 0.555, african: 0, asian: 0, caucasian: 1,
+    height: 0.53, weight: 0.48, muscle: 0.38, proportions: 0.5,
+  };
+  const controller = createRendererCController(gltf.scene, manifest, values);
+  const body = gltf.scene.getObjectByName('Human_Body');
+  assert.equal(body.morphTargetInfluences[body.morphTargetDictionary.rc_anchor_01], 1);
+  values.rendererCAnchor = 5;
+  values.noseLength = -0.6;
+  controller.applyValues(values);
+  assert.equal(body.morphTargetInfluences[body.morphTargetDictionary.rc_anchor_01], 0);
+  assert.equal(body.morphTargetInfluences[body.morphTargetDictionary.rc_anchor_06], 1);
+  assert.equal(body.morphTargetInfluences[body.morphTargetDictionary.rc_live_noseLength_neg], 0.6);
+  values.noseLength = 0.4;
+  controller.applyValues(values);
+  assert.equal(body.morphTargetInfluences[body.morphTargetDictionary.rc_live_noseLength_neg], 0);
+  assert.equal(body.morphTargetInfluences[body.morphTargetDictionary.rc_live_noseLength_pos], 0.4);
+  for (const objects of controller.variants.values()) assert.equal(objects.filter((object) => object.visible).length, 1);
 });
 
 test('MHR identity/build controls deform the mesh and drive a seated full-body rig', async () => {

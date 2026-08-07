@@ -50,3 +50,31 @@ semantic cohort without changing those donor samples. Additional MPFB jaw and
 chin controls are constrained because the male macro already enlarges the lower
 face. Its accepted contact sheet is preserved at
 `docs/artifacts/renderer-c-identity-gate/white-men-30s-contact-sheet.png`.
+
+## Character Lab implementation
+
+Renderer C now uses two reusable consultation masters rather than baking a new
+GLB for every patient. Build them with `npm run renderer-c:masters`.
+
+- `renderer-c-women.glb` and `renderer-c-men.glb` each contain the eight
+  approved GNM-derived anchors on fixed MPFB topology.
+- Each master exports 58 signed face endpoints, six body endpoints, four
+  demographic endpoints, 52 MPFB face units, and two idle clips. Face, age,
+  ancestry, stature, body mass, muscularity, and proportions update in Three.js
+  without launching Blender.
+- Every identity anchor has its own fitted MPFB eyes, sclerae/irises, brows,
+  lashes, hair, and teeth. The selected set changes with the anchor. MPFB's
+  asset correspondence maps transfer the demographic and live anatomy deltas
+  to those fitted parts. The base garment also carries matching age, ancestry,
+  mass, muscle, and proportion morphs.
+- The Character Lab can generate a deterministic eight-face grid from cohort,
+  age-band, ancestry, and seed controls. Each grid uses every approved anchor
+  once, then adds restrained local variation. Selecting a card makes it the
+  live-editable patient.
+- Hair style, garment choice, accessories, and other topology-changing choices
+  remain asset swaps or Blender rebuilds. Crowd and nearby LODs should remain
+  baked; the parametric master is the consultation LOD.
+
+The runtime manifest is `character-lab/public/models/renderer-c-cohorts.json`.
+Do not replace the curated anchors with stock MPFB randomization; that recreates
+the repeated-face problem this pipeline is intended to solve.

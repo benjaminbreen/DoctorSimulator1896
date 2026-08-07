@@ -38,7 +38,7 @@
             <button data-view="full">Full figure</button>
             <button data-view="portrait">Head</button>
             <button data-view="exam">Examination</button>
-            <button id="render-toggle" type="button" title="Cycle A: MPFB, B: Meta MHR">Renderer A · MPFB</button>
+            <button id="render-toggle" type="button" title="Cycle A: MPFB, B: Meta MHR, C: GNM + MPFB">Renderer C · GNM + MPFB</button>
             <button id="toggle-grid">Grid</button>
             <button id="toggle-motion" class="active">Idle motion</button>
             <select id="animation-select" aria-label="Animation clip"><option>Loading animation…</option></select>
@@ -62,6 +62,39 @@
           </div>
         </section>
         <aside class="inspector-panel">
+          <section id="renderer-c-lab" hidden>
+            <p class="eyebrow">Renderer C identity lab</p>
+            <h2>Generate eight faces</h2>
+            <p class="renderer-c-intro">Choose a narrow demographic cohort, then audition eight distinct GNM-derived identities. Select any face to tune it live with the anatomy sliders.</p>
+            <div class="renderer-c-criteria">
+              <label for="renderer-c-cohort">Sex presentation</label>
+              <select id="renderer-c-cohort">
+                <option value="women">Women</option>
+                <option value="men">Men</option>
+              </select>
+              <label for="renderer-c-age">Age band</label>
+              <select id="renderer-c-age">
+                <option value="20s">20s</option>
+                <option value="30s" selected>30s</option>
+                <option value="40s">40s</option>
+                <option value="50s">50s</option>
+                <option value="60s">60s</option>
+              </select>
+              <label for="renderer-c-ancestry">Ancestry</label>
+              <select id="renderer-c-ancestry">
+                <option value="european">European American</option>
+                <option value="european-african">Mixed European / African</option>
+                <option value="european-asian">Mixed European / Asian</option>
+                <option value="african">African American</option>
+                <option value="asian">Asian American</option>
+              </select>
+              <label for="renderer-c-seed">Contact-sheet seed</label>
+              <input id="renderer-c-seed" type="number" min="1" max="999999" value="1896" />
+            </div>
+            <button id="renderer-c-generate" type="button">Generate eight</button>
+            <p id="renderer-c-grid-status" class="renderer-c-grid-status">Preparing identity bank…</p>
+            <div id="renderer-c-grid" class="renderer-c-grid" aria-live="polite"></div>
+          </section>
           <section>
             <p class="eyebrow">Current subject</p>
             <h2 id="subject-name">Mrs. Ostrander</h2>

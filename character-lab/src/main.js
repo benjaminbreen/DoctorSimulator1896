@@ -10,19 +10,25 @@ import {
   createMhrController, createMhrEyeDetails, MHR_IDENTITY_IDS, MHR_LIVE_IDENTITY_IDS, MHR_RIG_IDS,
 } from './mhr.js';
 import {
+  applyRendererCCandidate, createRendererCController, generateRendererCCandidates,
+  RENDERER_C_AGE_BANDS, RENDERER_C_ANCESTRIES, RENDERER_C_COHORTS, RENDERER_C_LIVE_IDS,
+} from './renderer-c.js';
+import {
   faceIdentityDistance, generatePatient, generateRestingFaceSignature, nextSeed,
   patientToCharacterPreset, randomSeed,
 } from './patients/index.js';
 import { prepareSkinModel, refreshSkinGeometry, updateSkinModel } from './stylized.js';
 import './style.css';
 
-const [schema, initialPreset] = await Promise.all([
+const [schema, initialPreset, rendererCManifest] = await Promise.all([
   fetch('/schema/character.schema.json').then((response) => response.json()),
   fetch('/presets/mrs-ostrander-1896.json').then((response) => response.json()),
+  fetch('/models/renderer-c-cohorts.json').then((response) => response.json()),
 ]);
 let preset = structuredClone(initialPreset);
 const definitions = schema.groups.flatMap((group) => group.parameters.map((parameter) => ({ ...parameter, mode: parameter.mode || group.mode, group: group.id })));
 for (const definition of definitions) if (preset.values[definition.id] == null) preset.values[definition.id] = structuredClone(definition.default);
+if (preset.values.rendererCAnchor == null) preset.values.rendererCAnchor = 0;
 const ui = {
   canvas: document.querySelector('#stage'), controls: document.querySelector('#controls'), status: document.querySelector('#model-status'),
   json: document.querySelector('#preset-json'), summary: document.querySelector('#subject-summary'), subjectName: document.querySelector('#subject-name'),
@@ -34,6 +40,10 @@ const ui = {
   expressionDriver: document.querySelector('#expression-driver'), faceUnitSelect: document.querySelector('#face-unit-select'),
   faceUnitValue: document.querySelector('#face-unit-value'), faceUnitOutput: document.querySelector('#face-unit-output'), faceUnitReset: document.querySelector('#face-unit-reset'),
   faceUnitSurprise: document.querySelector('#face-unit-surprise'),
+  rendererCPanel: document.querySelector('#renderer-c-lab'), rendererCCohort: document.querySelector('#renderer-c-cohort'),
+  rendererCAge: document.querySelector('#renderer-c-age'), rendererCAncestry: document.querySelector('#renderer-c-ancestry'),
+  rendererCSeed: document.querySelector('#renderer-c-seed'), rendererCGenerate: document.querySelector('#renderer-c-generate'),
+  rendererCGrid: document.querySelector('#renderer-c-grid'), rendererCGridStatus: document.querySelector('#renderer-c-grid-status'),
 };
 
 /* ids that require rebuilding costume geometry (vs material-only or animation values) */
@@ -102,6 +112,10 @@ let expressions = null;
 let mhrController = null;
 let mhrEyeDetails = null;
 let mhrFacialDetails = null;
+let rendererCController = null;
+let rendererCCohort = preset.rendererC?.cohort || (preset.values.gender >= 0.5 ? 'men' : 'women');
+let rendererCCandidates = [];
+let rendererCGridBusy = false;
 let isFallback = false;
 let costumeDirty = false;
 let lastCostumeBuild = 0;
@@ -117,10 +131,11 @@ let pendingControlAppliesLive = false;
 const RENDERER_MODES = Object.freeze({
   current: Object.freeze({ label: 'A · MPFB', path: '/models/mrs-ostrander-1896.glb', kind: 'mpfb' }),
   mhr: Object.freeze({ label: 'B · Meta MHR', path: '/models/comparison-mhr-lod1.glb', kind: 'mhr' }),
+  rendererC: Object.freeze({ label: 'C · GNM + MPFB', kind: 'rendererC' }),
 });
 const RENDERER_ORDER = Object.keys(RENDERER_MODES);
 const storedRenderer = sessionStorage.getItem('characterLabRenderStyle');
-let renderStyle = RENDERER_MODES[storedRenderer] ? storedRenderer : 'mhr';
+let renderStyle = RENDERER_MODES[storedRenderer] ? storedRenderer : 'rendererC';
 const named = new Map();
 const materials = {};
 
@@ -234,6 +249,7 @@ function disposeLoadedCharacter() {
   model = null; mixer = null; animationAction = null; animationClips = [];
   bones = null; costume = null; idle = null; expressions = null;
   mhrController = null; mhrEyeDetails = null; mhrFacialDetails = null;
+  rendererCController = null;
   poseCostumeRebuildPending = false;
   poseWasTransitioning = false;
   identityFitPending = false;
@@ -249,7 +265,8 @@ function updateComparisonMaterial(root, values) {
       if (!item?.color) continue;
       const name = item.name.toLowerCase();
       const isMhrBody = renderStyle === 'mhr' && object.name === 'body_mesh' && !item.userData.excludeComparisonSkin;
-      const isSkin = isMhrBody || name.includes('head_material') || name.includes('skin');
+      const isRendererCBody = renderStyle === 'rendererC' && object.name === 'Human_Body';
+      const isSkin = isMhrBody || isRendererCBody || name.includes('head_material') || name.includes('skin');
       if (!isSkin) continue;
       item.color.copy(skin);
       if ('roughness' in item) item.roughness = values.skinRoughness;
@@ -331,6 +348,19 @@ function updateRenderToggle() {
   ui.renderToggle.disabled = renderSwitchBusy;
 }
 
+function rendererCControlAppliesLive(definition) {
+  if (RENDERER_C_LIVE_IDS.has(definition.id)) return true;
+  if (SKIN_APPEARANCE_IDS.has(definition.id) || LIGHTING_IDS.has(definition.id)) return true;
+  if (['performance', 'pose'].includes(definition.group) && definition.id !== 'seated') return true;
+  return ['hairColor', 'browColor', 'lashColor', 'dressColor', 'trimColor', 'fabricRoughness'].includes(definition.id);
+}
+
+function controlAppliesLive(definition) {
+  if (renderStyle === 'rendererC') return rendererCControlAppliesLive(definition);
+  if (renderStyle === 'mhr' && (MHR_LIVE_IDENTITY_IDS.has(definition.id) || definition.id === 'seated')) return true;
+  return definition.mode === 'live';
+}
+
 function updatePoseToggle() {
   if (!ui.poseToggle) return;
   const supported = renderStyle === 'mhr' && mhrController && !isFallback;
@@ -356,13 +386,17 @@ function updateControlModes() {
     const row = document.querySelector(`.control[data-id="${definition.id}"]`);
     if (!row) continue;
     const mhrLive = renderStyle === 'mhr' && (MHR_LIVE_IDENTITY_IDS.has(definition.id) || definition.id === 'seated');
-    const live = definition.mode === 'live' || mhrLive;
+    const rendererCLive = renderStyle === 'rendererC' && rendererCControlAppliesLive(definition);
+    const live = controlAppliesLive(definition);
     row.classList.toggle('live', live);
     row.classList.toggle('bake', !live);
-    row.title = mhrLive && definition.mode === 'bake'
-      ? 'Live in Meta MHR; renderer A still requires regeneration'
-      : '';
+    row.title = (mhrLive || rendererCLive) && definition.mode === 'bake'
+      ? `Live in Renderer ${renderStyle === 'rendererC' ? 'C' : 'B'}; Renderer A still requires regeneration`
+      : renderStyle === 'rendererC' && definition.mode === 'live' && !rendererCLive
+        ? 'Renderer C needs an asset swap or Blender rebuild for this control'
+        : '';
   }
+  if (ui.rendererCPanel) ui.rendererCPanel.hidden = renderStyle !== 'rendererC';
 }
 
 async function loadCharacter() {
@@ -372,7 +406,10 @@ async function loadCharacter() {
   const rendererMode = RENDERER_MODES[renderStyle];
   try {
     const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-    const gltf = await loader.loadAsync(`${rendererMode.path}?v=${Date.now()}`);
+    const modelPath = renderStyle === 'rendererC'
+      ? rendererCManifest.cohorts[rendererCCohort].path
+      : rendererMode.path;
+    const gltf = await loader.loadAsync(`${modelPath}?v=${Date.now()}`);
     model = gltf.scene;
     characterRoot.add(model); animationClips = gltf.animations;
     setupAnimations();
@@ -409,6 +446,17 @@ async function loadCharacter() {
       }
       idle = mhrController;
       expressions = createMhrExpressions(model, { restingFace: preset.patient?.appearance?.restingFace });
+    } else if (renderStyle === 'rendererC') {
+      const cohortManifest = rendererCManifest.cohorts[rendererCCohort];
+      rendererCController = createRendererCController(model, cohortManifest, preset.values);
+      bones = findBones(model);
+      if (mixer) mixer.update(0);
+      model.updateMatrixWorld(true);
+      if (bones.pelvis) {
+        idle = createIdle(bones);
+        idle.captureRest();
+      }
+      expressions = createExpressions(model, { restingFace: preset.patient?.appearance?.restingFace });
     }
     refreshFaceUnitDebugger();
   }
@@ -492,41 +540,42 @@ function setMaterialLike(term, color, roughness, oldMaximum = 1) {
 }
 
 function setEyeColor(color) {
-  const eyes = named.get('Eyes');
-  if (!eyes?.isMesh) return;
-  const list = Array.isArray(eyes.material) ? eyes.material : [eyes.material];
-  for (const mat of list) {
-    if (!mat.map?.image) continue;
-    if (!mat.userData.eyeTintSource) {
-      const image = mat.map.image;
-      const canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height;
-      const context = canvas.getContext('2d', { willReadFrequently: true });
-      context.drawImage(image, 0, 0);
-      mat.userData.eyeTintSource = context.getImageData(0, 0, canvas.width, canvas.height);
-      mat.userData.eyeTintCanvas = canvas;
-      mat.map = mat.map.clone(); mat.map.image = canvas;
-    }
-    const source = mat.userData.eyeTintSource;
-    const output = new ImageData(new Uint8ClampedArray(source.data), source.width, source.height);
-    const target = [1, 3, 5].map((index) => parseInt(color.slice(index, index + 2), 16));
-    const targetLight = Math.max(1, target[0] * .299 + target[1] * .587 + target[2] * .114);
-    for (let index = 0; index < output.data.length; index += 4) {
-      const r = source.data[index], g = source.data[index + 1], b = source.data[index + 2];
-      const high = Math.max(r, g, b), low = Math.min(r, g, b), chroma = high - low;
-      const light = r * .299 + g * .587 + b * .114;
-      // The source asset has brown irises on a nearly neutral sclera. Select
-      // those chromatic midtones, preserving black pupils and white highlights.
-      const brown = r > g * 1.06 && g > b * .82;
-      const mask = brown ? Math.min(1, (chroma - 10) / 42) * Math.min(1, (218 - light) / 100) : 0;
-      if (mask <= 0) continue;
-      const contrast = THREE.MathUtils.clamp(light / targetLight, .42, 1.55);
-      for (let channel = 0; channel < 3; channel++) {
-        const tinted = THREE.MathUtils.clamp(target[channel] * contrast, 0, 255);
-        output.data[index + channel] = THREE.MathUtils.lerp(source.data[index + channel], tinted, mask * .94);
+  const eyeObjects = [named.get('Eyes'), ...objectsLike('RendererC_Eyes')].filter((object) => object?.isMesh);
+  for (const eyes of eyeObjects) {
+    const list = Array.isArray(eyes.material) ? eyes.material : [eyes.material];
+    for (const mat of list) {
+      if (!mat.map?.image) continue;
+      if (!mat.userData.eyeTintSource) {
+        const image = mat.map.image;
+        const canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height;
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        context.drawImage(image, 0, 0);
+        mat.userData.eyeTintSource = context.getImageData(0, 0, canvas.width, canvas.height);
+        mat.userData.eyeTintCanvas = canvas;
+        mat.map = mat.map.clone(); mat.map.image = canvas;
       }
+      const source = mat.userData.eyeTintSource;
+      const output = new ImageData(new Uint8ClampedArray(source.data), source.width, source.height);
+      const target = [1, 3, 5].map((index) => parseInt(color.slice(index, index + 2), 16));
+      const targetLight = Math.max(1, target[0] * .299 + target[1] * .587 + target[2] * .114);
+      for (let index = 0; index < output.data.length; index += 4) {
+        const r = source.data[index], g = source.data[index + 1], b = source.data[index + 2];
+        const high = Math.max(r, g, b), low = Math.min(r, g, b), chroma = high - low;
+        const light = r * .299 + g * .587 + b * .114;
+        // The source asset has brown irises on a nearly neutral sclera. Select
+        // those chromatic midtones, preserving black pupils and white highlights.
+        const brown = r > g * 1.06 && g > b * .82;
+        const mask = brown ? Math.min(1, (chroma - 10) / 42) * Math.min(1, (218 - light) / 100) : 0;
+        if (mask <= 0) continue;
+        const contrast = THREE.MathUtils.clamp(light / targetLight, .42, 1.55);
+        for (let channel = 0; channel < 3; channel++) {
+          const tinted = THREE.MathUtils.clamp(target[channel] * contrast, 0, 255);
+          output.data[index + channel] = THREE.MathUtils.lerp(source.data[index + channel], tinted, mask * .94);
+        }
+      }
+      const context = mat.userData.eyeTintCanvas.getContext('2d'); context.putImageData(output, 0, 0);
+      mat.map.needsUpdate = true;
     }
-    const context = mat.userData.eyeTintCanvas.getContext('2d'); context.putImageData(output, 0, 0);
-    mat.map.needsUpdate = true;
   }
 }
 
@@ -537,6 +586,26 @@ function rebuildCostumeNow() {
   costume.rebuild(preset.values);
   lastCostumeBuild = performance.now();
   costumeDirty = false;
+}
+
+function updateRendererCAppearance(values) {
+  const skinTint = new THREE.Color('#ffffff').lerp(new THREE.Color(values.skinTone), 0.22);
+  const body = named.get('Human_Body');
+  if (body?.isMesh) {
+    const bodyMaterials = Array.isArray(body.material) ? body.material : [body.material];
+    for (const mat of bodyMaterials) {
+      mat.color?.copy(skinTint);
+      setSurfaceFinish(mat, values.skinRoughness, 0.9);
+      mat.needsUpdate = true;
+    }
+  }
+  setEyeColor(values.eyeColor);
+  setMaterialLike('RendererC_Eyes', '#d9cec3', 0.42);
+  setMaterialLike('RendererC_Hair', values.hairColor, 0.88);
+  setMaterialLike('RendererC_Brows', values.browColor || values.hairColor, 0.9);
+  setMaterialLike('RendererC_Lashes', values.lashColor || '#17100c', 0.92);
+  setMaterialLike('RendererC_BaseGarment', values.dressColor, values.fabricRoughness, 1);
+  setMaterialLike('RendererC_Shoes', '#211713', 0.82);
 }
 
 function applyAll(changedId = null, { final = true } = {}) {
@@ -591,6 +660,13 @@ function applyAll(changedId = null, { final = true } = {}) {
           identityFitPending = false;
         }
         if (final && COSTUME_GEOMETRY_IDS.has(changedId)) costumeDirty = true;
+      }
+    } else if (renderStyle === 'rendererC') {
+      const identityControl = initial || RENDERER_C_LIVE_IDS.has(changedId) || changedId === 'rendererCAnchor';
+      if (identityControl) rendererCController?.applyValues(v, { force: initial || changedId === 'rendererCAnchor' });
+      if (initial || identityControl || SKIN_APPEARANCE_IDS.has(changedId)
+        || ['hairColor', 'browColor', 'lashColor', 'dressColor', 'fabricRoughness'].includes(changedId)) {
+        updateRendererCAppearance(v);
       }
     } else {
       if (initial || COMPARISON_MATERIAL_IDS.has(changedId)) updateComparisonMaterial(model, v);
@@ -668,13 +744,12 @@ function makeControl(definition) {
     preset.values[definition.id] = definition.type === 'range' ? Number(input.value) : input.value;
     output.textContent = formatValue(definition, input.value);
     if (HERITAGE_IDS.includes(definition.id)) normalizeHeritageWeights(definition.id);
-    if (definition.mode === 'bake') markRegenerationNeeded();
+    const appliesLive = controlAppliesLive(definition);
+    if (!appliesLive) markRegenerationNeeded();
     // MHR identity changes are expensive enough to miss a frame, but pointer
     // events can arrive far faster than frames. Keep only the latest value and
     // never queue a backlog. The final change event commits one hair/costume
     // refit after dragging stops.
-    const appliesLive = definition.mode === 'live'
-      || (renderStyle === 'mhr' && (MHR_LIVE_IDENTITY_IDS.has(definition.id) || definition.id === 'seated'));
     if (final) {
       pendingControlId = definition.id;
       pendingControlAppliesLive = appliesLive;
@@ -722,7 +797,11 @@ function markRegenerationNeeded() {
   regenerationNeeded = true;
   ui.regenerate?.classList.add('needed');
   if (!regenerationBusy) {
-    ui.status.textContent = renderStyle === 'mhr' ? 'Meta MHR updated live · renderer A rebuild pending' : 'Identity changes waiting for Blender';
+    ui.status.textContent = renderStyle === 'mhr'
+      ? 'Meta MHR updated live · Renderer A rebuild pending'
+      : renderStyle === 'rendererC'
+        ? 'This discrete Renderer C asset change needs a later asset-bank build'
+        : 'Identity changes waiting for Blender';
     ui.status.className = 'status warn';
   }
 }
@@ -754,13 +833,160 @@ function updateText() {
   renderPatientRecord(preset.patient);
   ui.json.value = JSON.stringify(preset, null, 2);
   ui.command.textContent = `npm run character:generate -- character-lab/public/presets/${preset.id}.json`;
-  const live = definitions.filter((definition) => definition.mode === 'live'
-    || (renderStyle === 'mhr' && (MHR_LIVE_IDENTITY_IDS.has(definition.id) || definition.id === 'seated'))).length;
+  const live = definitions.filter(controlAppliesLive).length;
   const baked = definitions.length - live;
   const expressionMode = expressions?.mode === 'mpfb-faceunits'
     ? `MPFB named · ${expressions.availableUnits.length}`
     : expressions?.mode === 'mhr-semantic' ? `MHR semantic · ${expressions.availableUnits.length} signed components` : 'baked / unavailable';
-  ui.pipeline.innerHTML = `<dt>Tunable values</dt><dd>${definitions.length}</dd><dt>Live controls</dt><dd>${live}</dd><dt>Blender controls</dt><dd>${baked}</dd><dt>Renderer</dt><dd>${RENDERER_MODES[renderStyle].label}</dd><dt>Facial driver</dt><dd>${expressionMode}</dd><dt>Regeneration</dt><dd>${regenerationNeeded ? 'needed' : 'current'}</dd><dt>Patient seed</dt><dd>${preset.patient?.seed ?? 'legacy'}</dd><dt>Appearance seed</dt><dd>${preset.values.seed}</dd><dt>Face signature</dt><dd>${preset.patient?.appearance?.faceSignatureSeed ?? 'neutral'}</dd><dt>Target runtime</dt><dd>Three.js / GLB</dd>`;
+  const rendererCState = renderStyle === 'rendererC'
+    ? `<dt>Identity anchor</dt><dd>${rendererCController?.anchors[rendererCController.activeAnchor]?.label || 'neutral'}</dd><dt>Cohort master</dt><dd>${rendererCCohort}</dd>`
+    : '';
+  ui.pipeline.innerHTML = `<dt>Tunable values</dt><dd>${definitions.length}</dd><dt>Live controls</dt><dd>${live}</dd><dt>Blender controls</dt><dd>${baked}</dd><dt>Renderer</dt><dd>${RENDERER_MODES[renderStyle].label}</dd>${rendererCState}<dt>Facial driver</dt><dd>${expressionMode}</dd><dt>Regeneration</dt><dd>${regenerationNeeded ? 'needed' : 'current'}</dd><dt>Patient seed</dt><dd>${preset.patient?.seed ?? 'legacy'}</dd><dt>Appearance seed</dt><dd>${preset.values.seed}</dd><dt>Face signature</dt><dd>${preset.patient?.appearance?.faceSignatureSeed ?? 'neutral'}</dd><dt>Target runtime</dt><dd>Three.js / GLB</dd>`;
+}
+
+function populateRendererCCriteria() {
+  const fill = (select, entries) => {
+    select.replaceChildren(...Object.entries(entries).map(([value, definition]) => new Option(definition.label, value)));
+  };
+  fill(ui.rendererCCohort, RENDERER_C_COHORTS);
+  fill(ui.rendererCAge, RENDERER_C_AGE_BANDS);
+  fill(ui.rendererCAncestry, RENDERER_C_ANCESTRIES);
+  ui.rendererCCohort.value = rendererCCohort;
+  ui.rendererCAge.value = preset.rendererC?.ageBand || '30s';
+  ui.rendererCAncestry.value = preset.rendererC?.ancestry || 'european';
+  ui.rendererCSeed.value = preset.rendererC?.gridSeed || preset.values.seed || 1896;
+}
+
+function createRendererCGridCards(candidates) {
+  ui.rendererCGrid.replaceChildren();
+  return candidates.map((candidate) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'renderer-c-card';
+    button.title = `Use ${candidate.label} as the live identity anchor`;
+    const canvas = document.createElement('canvas');
+    canvas.width = 200; canvas.height = 240;
+    const label = document.createElement('span');
+    label.textContent = `${candidate.number}. ${candidate.label}`;
+    button.append(canvas, label);
+    button.onclick = () => selectRendererCCandidate(candidate, button);
+    ui.rendererCGrid.append(button);
+    return { button, canvas };
+  });
+}
+
+function drawRenderTarget(canvas, pixels, width, height) {
+  const flipped = new Uint8ClampedArray(pixels.length);
+  const stride = width * 4;
+  for (let y = 0; y < height; y += 1) {
+    flipped.set(pixels.subarray((height - y - 1) * stride, (height - y) * stride), y * stride);
+  }
+  canvas.getContext('2d').putImageData(new ImageData(flipped, width, height), 0, 0);
+}
+
+async function captureRendererCCandidates(cards, candidates) {
+  if (!rendererCController || !bones?.head) return;
+  const width = cards[0]?.canvas.width || 200;
+  const height = cards[0]?.canvas.height || 240;
+  const target = new THREE.WebGLRenderTarget(width, height, { depthBuffer: true });
+  target.texture.colorSpace = THREE.SRGBColorSpace;
+  const pixels = new Uint8Array(width * height * 4);
+  const savedValues = structuredClone(preset.values);
+  const savedCameraPosition = camera.position.clone();
+  const savedOrbitTarget = orbit.target.clone();
+  const savedFov = camera.fov;
+  const savedAspect = camera.aspect;
+  const savedRenderTarget = renderer.getRenderTarget();
+  const savedRestingFace = preset.patient?.appearance?.restingFace || {};
+  expressions?.setRestingFace?.({});
+  try {
+    camera.fov = 27;
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    for (let index = 0; index < candidates.length; index += 1) {
+      Object.assign(preset.values, candidates[index].values);
+      rendererCController.applyValues(preset.values, { force: true });
+      updateRendererCAppearance(preset.values);
+      model.updateMatrixWorld(true);
+      const head = bones.head.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0.025, 0));
+      orbit.target.copy(head);
+      camera.position.copy(head).add(new THREE.Vector3(0.025, 0.025, 0.64));
+      camera.lookAt(head);
+      renderer.setRenderTarget(target);
+      renderer.clear();
+      renderer.render(scene, camera);
+      renderer.readRenderTargetPixels(target, 0, 0, width, height, pixels);
+      drawRenderTarget(cards[index].canvas, pixels, width, height);
+      ui.rendererCGridStatus.textContent = `Rendering face ${index + 1} of ${candidates.length}…`;
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    }
+  } finally {
+    preset.values = savedValues;
+    rendererCController.applyValues(preset.values, { force: true });
+    updateRendererCAppearance(preset.values);
+    expressions?.setRestingFace?.(savedRestingFace);
+    camera.position.copy(savedCameraPosition);
+    orbit.target.copy(savedOrbitTarget);
+    camera.fov = savedFov;
+    camera.aspect = savedAspect;
+    camera.updateProjectionMatrix();
+    renderer.setRenderTarget(savedRenderTarget);
+    target.dispose();
+    orbit.update();
+  }
+}
+
+function selectRendererCCandidate(candidate, button) {
+  if (renderStyle !== 'rendererC' || rendererCGridBusy) return;
+  applyRendererCCandidate(preset, candidate);
+  preset.rendererC.gridSeed = Number(ui.rendererCSeed.value) || 1896;
+  rendererCCohort = candidate.cohort;
+  document.querySelectorAll('.renderer-c-card').forEach((card) => card.classList.toggle('selected', card === button));
+  refreshControls(true);
+  setView('portrait');
+  ui.rendererCGridStatus.textContent = `${candidate.label} selected · anatomy sliders now tune this face live`;
+  ui.status.textContent = `Renderer C identity ${candidate.number} selected · no Blender rebuild needed`;
+  ui.status.className = 'status ok';
+}
+
+async function generateRendererCGrid() {
+  if (rendererCGridBusy) return;
+  rendererCGridBusy = true;
+  ui.rendererCGenerate.disabled = true;
+  ui.rendererCGridStatus.textContent = 'Preparing eight identities…';
+  try {
+    const requestedCohort = ui.rendererCCohort.value;
+    if (requestedCohort !== rendererCCohort) {
+      rendererCCohort = requestedCohort;
+      preset.values.gender = RENDERER_C_COHORTS[rendererCCohort].gender;
+      preset.values.rendererCAnchor = 0;
+      await loadCharacter();
+      updateControlModes();
+    }
+    const cohortManifest = rendererCManifest.cohorts[rendererCCohort];
+    rendererCCandidates = generateRendererCCandidates({
+      cohort: rendererCCohort,
+      ageBand: ui.rendererCAge.value,
+      ancestry: ui.rendererCAncestry.value,
+      seed: Number(ui.rendererCSeed.value) || 1896,
+      count: 8,
+      manifest: cohortManifest,
+    });
+    const cards = createRendererCGridCards(rendererCCandidates);
+    await captureRendererCCandidates(cards, rendererCCandidates);
+    if (rendererCCandidates[0]) {
+      applyRendererCCandidate(preset, rendererCCandidates[0]);
+      preset.rendererC.gridSeed = Number(ui.rendererCSeed.value) || 1896;
+      cards[0].button.classList.add('selected');
+      refreshControls(true);
+    }
+    ui.rendererCGridStatus.textContent = 'Eight deterministic identities ready · select one to tune';
+  } catch (error) {
+    ui.rendererCGridStatus.textContent = `Could not render identity grid: ${error.message}`;
+  } finally {
+    rendererCGridBusy = false;
+    ui.rendererCGenerate.disabled = false;
+  }
 }
 
 function syncControlValue(id, value) {
@@ -912,12 +1138,19 @@ async function toggleRenderStyle() {
   await loadCharacter();
   updateControlModes();
   if (renderStyle === 'mhr') setView('full');
+  if (renderStyle === 'rendererC') {
+    setView('portrait');
+    await generateRendererCGrid();
+  }
   renderSwitchBusy = false;
   updateRenderToggle();
   updateText();
 }
 
-makeClinic(); buildControls(); updateRenderToggle(); await loadCharacter(); updateText(); setView('clinic');
+populateRendererCCriteria();
+makeClinic(); buildControls(); updateRenderToggle(); await loadCharacter(); updateText();
+setView(renderStyle === 'rendererC' ? 'portrait' : 'clinic');
+if (renderStyle === 'rendererC') await generateRendererCGrid();
 ui.randomize.onclick = appearanceVariation;
 ui.newPatient.onclick = newRandomPatient;
 ui.regenerate.onclick = regenerateCharacter;
@@ -936,11 +1169,25 @@ ui.faceUnitSelect.onchange = applyFaceUnitDebug;
 ui.faceUnitValue.oninput = applyFaceUnitDebug;
 ui.faceUnitReset.onclick = clearFaceUnitDebug;
 ui.faceUnitSurprise.onclick = surpriseFace;
+ui.rendererCGenerate.onclick = generateRendererCGrid;
 ui.canvas.ondblclick = () => setView('clinic');
 ui.search.oninput = () => { const term = ui.search.value.toLowerCase(); document.querySelectorAll('.control').forEach((row) => row.hidden = !row.dataset.search.includes(term)); document.querySelectorAll('.control-group').forEach((group) => { const rendererMismatch = group.dataset.renderer && group.dataset.renderer !== renderStyle; group.hidden = rendererMismatch || ![...group.querySelectorAll('.control')].some((row) => !row.hidden); }); };
 
 /* console access for calibration and debugging */
-window.__lab = { scene, get bones() { return bones; }, get model() { return model; }, get preset() { return preset; }, get idle() { return idle; }, get costume() { return costume; }, get facialDetails() { return mhrFacialDetails; }, get expressions() { return expressions; }, get renderStyle() { return renderStyle; }, THREE, applyAll, rebuildCostumeNow, toggleRenderStyle };
+window.__lab = {
+  scene,
+  get bones() { return bones; },
+  get model() { return model; },
+  get preset() { return preset; },
+  get idle() { return idle; },
+  get costume() { return costume; },
+  get facialDetails() { return mhrFacialDetails; },
+  get expressions() { return expressions; },
+  get rendererC() { return rendererCController; },
+  get rendererCCandidates() { return rendererCCandidates; },
+  get renderStyle() { return renderStyle; },
+  THREE, applyAll, rebuildCostumeNow, generateRendererCGrid, toggleRenderStyle,
+};
 
 const clock = new THREE.Clock();
 function frame() {
