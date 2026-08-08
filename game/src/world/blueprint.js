@@ -128,6 +128,9 @@ export function deriveRoom(blueprint) {
     windowHoles: windowHoles.filter((hole) => hole.type === 'window'),
     furnitureBoxes: blueprint.furniture,
     lightMarkers: (blueprint.props ?? []).filter((prop) => prop.kind === 'lightMarker'),
+    // Visible burner glows, separate from the lights themselves: a fixture
+    // may show six flames while pooling its output into one source.
+    flameMarkers: (blueprint.props ?? []).filter((prop) => prop.kind === 'flame'),
     transitions: blueprint.transitions ?? [],
     spawn: blueprint.navigation.defaultSpawn,
   };

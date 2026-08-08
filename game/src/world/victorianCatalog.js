@@ -17,20 +17,38 @@ export function modelSize(name) {
   return manifest[name]?.size ?? [1, 1, 1];
 }
 
-// Height of the flame within a light fixture, as a fraction of its height.
-// Gaslights are placed here rather than at the model origin so the glow comes
-// from the burner, not the floor.
-const FLAME_FRACTION = {
-  Chandelier: 0.82,
-  Sconce: 0.72,
-  OilLamp: 0.72,
-  SmallLamp: 0.74,
+// Where the burners actually sit inside each fixture, as fractions of the
+// model's own size. A twin-armed sconce has two flames out at its shades,
+// not one hovering between them, and a candelabra has a ring of them.
+//
+// `flames` are visible glows and cost nothing, so every burner gets one.
+// `lights` are real lights and are expensive, so a chandelier pools its
+// output into a single source at the centre while a sconce — whose shades
+// are half a metre apart — gets one under each.
+const CHANDELIER_RING = Array.from({ length: 6 }, (_, i) => {
+  const angle = (i / 6) * Math.PI * 2;
+  return [Math.cos(angle) * 0.36, 0.82, Math.sin(angle) * 0.36];
+});
+
+const FIXTURES = {
+  Chandelier: { flames: CHANDELIER_RING, lights: [[0, 0.78, 0]] },
+  Sconce: {
+    flames: [[-0.33, 0.66, 0.1], [0.33, 0.66, 0.1]],
+    lights: [[-0.33, 0.62, 0.12], [0.33, 0.62, 0.12]],
+  },
+  OilLamp: { flames: [[0, 0.72, 0]], lights: [[0, 0.7, 0]] },
+  SmallLamp: { flames: [[0, 0.74, 0]], lights: [[0, 0.72, 0]] },
 };
 
-export function flameHeight(name) {
-  const fraction = FLAME_FRACTION[name];
-  if (fraction === undefined) return null;
-  return modelSize(name)[1] * fraction;
+function scalePoints(name, points) {
+  const [sx, sy, sz] = modelSize(name);
+  return points.map(([x, y, z]) => [x * sx, y * sy, z * sz]);
+}
+
+export function fixtureBurners(name) {
+  const spec = FIXTURES[name];
+  if (!spec) return null;
+  return { flames: scalePoints(name, spec.flames), lights: scalePoints(name, spec.lights) };
 }
 
 export function hasModel(name) {

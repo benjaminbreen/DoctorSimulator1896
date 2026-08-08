@@ -16,16 +16,18 @@ export default function Effects({ runtime, indoors }) {
     bloom.luminanceMaterial.threshold = runtime.values.bloomThreshold;
   });
 
-  const ao = indoors && runtime.values.aoEnabled;
+  // Outdoors wants a wider, gentler pass: it grounds building bases and tree
+  // trunks, which otherwise meet the ground with no contact darkening at all.
+  const ao = runtime.values.aoEnabled;
   return (
     <EffectComposer multisampling={4}>
       {ao ? (
         <N8AO
-          aoRadius={runtime.values.aoRadius}
-          intensity={runtime.values.aoIntensity}
+          aoRadius={runtime.values.aoRadius * (indoors ? 1 : 2.6)}
+          intensity={runtime.values.aoIntensity * (indoors ? 1 : 0.7)}
           distanceFalloff={1}
           halfRes
-          color="#120d08"
+          color={indoors ? '#120d08' : '#0e1014'}
         />
       ) : (
         <></>

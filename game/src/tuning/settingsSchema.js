@@ -127,7 +127,7 @@ export const settingsSchema = {
         { id: 'postEnabled', label: 'Post-processing', type: 'toggle', default: true, mode: 'rebuild' },
         { id: 'bloomIntensity', label: 'Bloom intensity', type: 'range', min: 0, max: 2, step: 0.05, default: 0.9 },
         { id: 'bloomThreshold', label: 'Bloom threshold', type: 'range', min: 0.2, max: 1, step: 0.02, default: 0.98 },
-        { id: 'toneMapping', label: 'Tone mapping', type: 'select', options: ['ACESFilmic', 'AgX', 'Neutral', 'Linear'], default: 'Neutral', mode: 'rebuild' },
+        { id: 'toneMapping', label: 'Tone mapping', type: 'select', options: ['ACESFilmic', 'AgX', 'Neutral', 'Linear'], default: 'AgX', mode: 'rebuild' },
         { id: 'shadowMapSize', label: 'Shadow map size', type: 'select', options: ['512', '1024', '2048'], default: '2048', mode: 'rebuild' },
         { id: 'pixelRatioCap', label: 'Pixel ratio cap', type: 'range', min: 0.5, max: 2, step: 0.25, default: 2 },
         { id: 'antialias', label: 'Antialias', type: 'toggle', default: true, mode: 'rebuild' },

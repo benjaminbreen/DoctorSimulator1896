@@ -53,6 +53,8 @@ export default function LightingRig({ room, config, runtime, skyPanes = true }) 
         .filter((gaslight) => gaslight.marker),
     [config, room],
   );
+  // Spot lights aim at a target object, so each needs its own.
+  const spotTargets = useMemo(() => gaslights.map(() => new THREE.Object3D()), [gaslights]);
 
   useFrame((state) => {
     const values = runtime.values;
@@ -160,16 +162,38 @@ export default function LightingRig({ room, config, runtime, skyPanes = true }) 
       ))}
       {gaslights.map((gaslight, index) => (
         <group key={gaslight.propId} position={gaslight.marker.position}>
-          <pointLight
-            ref={(light) => {
-              gaslightRefs.current[index] = light;
-            }}
-            distance={gaslight.distance}
-            decay={gaslight.decay}
-            shadow-mapSize-width={shadowMapSize}
-            shadow-mapSize-height={shadowMapSize}
-            shadow-bias={-0.001}
-          />
+          {/* Shadow casters are downward spots: one shadow face instead of a
+              point light's six, which is what makes three of them affordable.
+              Everything else stays a cheap unshadowed point light. */}
+          {gaslight.castShadow ? (
+            <>
+              <primitive object={spotTargets[index]} position={[0, -3, 0]} />
+              <spotLight
+                ref={(light) => {
+                  gaslightRefs.current[index] = light;
+                }}
+                target={spotTargets[index]}
+                angle={gaslight.coneAngle ?? 1.25}
+                penumbra={0.85}
+                distance={gaslight.distance}
+                decay={gaslight.decay}
+                castShadow
+                shadow-mapSize-width={shadowMapSize}
+                shadow-mapSize-height={shadowMapSize}
+                shadow-camera-near={0.2}
+                shadow-camera-far={gaslight.distance + 4}
+                shadow-bias={-0.0012}
+              />
+            </>
+          ) : (
+            <pointLight
+              ref={(light) => {
+                gaslightRefs.current[index] = light;
+              }}
+              distance={gaslight.distance}
+              decay={gaslight.decay}
+            />
+          )}
           {/* Brass stem and cup, only where no catalog model supplies one. */}
           {gaslight.marker.fixture !== false && (
             <>
@@ -183,12 +207,15 @@ export default function LightingRig({ room, config, runtime, skyPanes = true }) 
               </mesh>
             </>
           )}
-          {/* The flame itself: a small bright ball the bloom pass catches. */}
-          <mesh>
-            <sphereGeometry args={[gaslight.flameRadius ?? 0.055, 10, 8]} />
-            <meshBasicMaterial color="#ffdca6" toneMapped={false} />
-          </mesh>
         </group>
+      ))}
+      {/* Burner glows, placed per flame rather than per light — a twin-armed
+          sconce shows one under each shade, a candelabra a whole ring. */}
+      {room.flameMarkers?.map((marker) => (
+        <mesh key={marker.id} position={marker.position}>
+          <sphereGeometry args={[marker.radius ?? 0.04, 8, 6]} />
+          <meshBasicMaterial color="#ffdca6" toneMapped={false} />
+        </mesh>
       ))}
     </group>
   );

@@ -18,6 +18,7 @@ import Pedestrians from './Pedestrians.jsx';
 import VictorianProps from './VictorianProps.jsx';
 import Curtains from './Curtains.jsx';
 import WindowView from './WindowView.jsx';
+import LightShafts from './LightShafts.jsx';
 import Water from './Water.jsx';
 import Effects from './Effects.jsx';
 import { zones, getZone } from '../world/zones.js';
@@ -162,6 +163,7 @@ export default function GameCanvas({ runtime, keyboard, look }) {
                   seed={zone.interior.seed}
                 />
               )}
+              <LightShafts holes={room.windowHoles} runtime={runtime} />
             </>
           )}
           <PlayerRig room={room} runtime={runtime} keyboard={keyboard} look={look} spawn={spawn} spawnYaw={spawnYaw} />

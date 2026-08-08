@@ -8,7 +8,7 @@
 // logic does not change.
 
 import { facadeLayout, doorWorld } from './facade.js';
-import { pickModel, modelSize, flameHeight, pickSurfaces } from './victorianCatalog.js';
+import { pickModel, modelSize, fixtureBurners, pickSurfaces } from './victorianCatalog.js';
 
 // Size classes. `base` is [width, depth] in meters; the per-class tuning
 // slider (interiorScaleS..XL) multiplies it, so "make small 20% bigger" is
@@ -135,9 +135,19 @@ export function generateInterior(building, values = {}) {
   const furniture = [];
   const props = [];
   const gaslights = [];
-  // A gaslight burner. `fixture` false means a catalog model already provides
-  // the visible lamp, so the rig only adds light and a small flame glow.
+  // Visible burner glow. Free, so every flame in a fixture gets one.
+  const flame = (id, x, y, z, radius = 0.04) => {
+    props.push({ id, kind: 'flame', position: [round(x), round(y), round(z)], radius });
+  };
+
+  // A real light. Shadow-casting ones become downward spots in the rig — one
+  // shadow face instead of a point light's six — so the room can afford a
+  // few of them and the furniture actually sits on the floor.
+  let shadowsUsed = 0;
+  const SHADOW_BUDGET = 3;
   const light = (id, x, y, z, intensity, options = {}) => {
+    const castShadow = options.shadow === true && shadowsUsed < SHADOW_BUDGET;
+    if (castShadow) shadowsUsed += 1;
     props.push({ id, kind: 'lightMarker', position: [round(x), round(y), round(z)], fixture: options.fixture !== false });
     gaslights.push({
       propId: id,
@@ -146,9 +156,10 @@ export function generateInterior(building, values = {}) {
       distance: options.distance ?? 7 + intensity * 0.9,
       decay: 2,
       flicker: options.flicker ?? 0.09,
-      castShadow: gaslights.length === 0,
-      flameRadius: options.flameRadius ?? 0.05,
+      castShadow,
+      coneAngle: options.coneAngle ?? 1.25,
     });
+    if (options.flame !== false) flame(`${id}-glow`, x, y, z, options.flameRadius ?? 0.05);
   };
 
   // Place a catalog model by its floor-contact point. The collider is the
@@ -173,14 +184,32 @@ export function generateInterior(building, values = {}) {
     if (options.solid === false) item.collider = false;
     furniture.push(item);
 
-    // Lamps light themselves: the burner sits inside the model, so the glow
-    // comes from the fixture instead of a bare bulb floating nearby.
-    const flame = flameHeight(model);
-    if (flame !== null) {
-      light(`${item.id}-flame`, x, y + flame * scale, z, options.lightIntensity ?? 3.4, {
-        fixture: false,
-        distance: options.lightDistance,
-        flameRadius: options.flameRadius ?? 0.045,
+    // Lamps light themselves, from their actual burners. A twin-armed sconce
+    // gets a light under each shade; a candelabra gets six visible flames but
+    // pools its output into one source, since six point lights for one
+    // fixture is not a trade worth making.
+    const burners = fixtureBurners(model);
+    if (burners) {
+      const cos = Math.cos(item.yaw);
+      const sin = Math.sin(item.yaw);
+      const at = ([px, py, pz]) => [
+        x + (px * cos + pz * sin) * scale,
+        y + py * scale,
+        z + (-px * sin + pz * cos) * scale,
+      ];
+      burners.flames.forEach((point, index) => {
+        const [fx, fy, fz] = at(point);
+        flame(`${item.id}-flame-${index}`, fx, fy, fz, options.flameRadius ?? 0.035);
+      });
+      const share = (options.lightIntensity ?? 3.4) / burners.lights.length;
+      burners.lights.forEach((point, index) => {
+        const [lx, ly, lz] = at(point);
+        light(`${item.id}-light-${index}`, lx, ly, lz, share, {
+          fixture: false,
+          flame: false,
+          distance: options.lightDistance,
+          shadow: options.shadow,
+        });
       });
     }
 
@@ -257,7 +286,8 @@ export function generateInterior(building, values = {}) {
 
   // Chandelier hangs over the front room.
   place('ceilingLight', 0, frontZ, {
-    y: H - 1.9, solid: false, rollSalt: 17.1, lightIntensity: 5.2, lightDistance: 13, flameRadius: 0.055,
+    y: H - 1.9, solid: false, rollSalt: 17.1, lightIntensity: 5.2, lightDistance: 13,
+    flameRadius: 0.045, shadow: true,
   });
 
   // XL atrium: column ring plus a second chandelier over the back half.
@@ -335,6 +365,7 @@ export function generateInterior(building, values = {}) {
   if (hearth) {
     light('hearth-fire', hearthSide * (W / 2 - 0.75), 0.42, hearthZ, 2.6, {
       fixture: false, color: '#ff9a4a', distance: 7, flicker: 0.3, flameRadius: 0.09,
+      shadow: true, coneAngle: 1.45,
     });
   }
 
