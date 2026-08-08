@@ -152,6 +152,7 @@ export default function GameCanvas({ runtime, keyboard, look }) {
                   holes={room.windowHoles}
                   building={zone.interior.building}
                   runtime={runtime}
+                  anchor={zone.interior.viewAnchor}
                 />
               )}
               {zone.interior && (

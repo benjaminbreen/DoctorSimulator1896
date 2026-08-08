@@ -64,8 +64,11 @@ export default function Curtains({ holes, wealth = 'middling', seed = 0 }) {
       // Lace sheer across the whole opening.
       if (treatment.lace) {
         const geometry = pleatedPanel(hole.width * 1.02, hole.height * 0.98, 7, 0.02);
+        // Veiling, not blocking: the net has to read as fabric without
+        // drowning the view and the sky colour behind it.
         const material = new THREE.MeshStandardMaterial({
-          map: lace, color: '#fbf7ec', transparent: true, alphaTest: 0.28,
+          map: lace, color: '#f6f1e4', transparent: true, opacity: 0.5,
+          alphaTest: 0.06, depthWrite: false,
           side: THREE.DoubleSide, roughness: 0.95,
         });
         const mesh = new THREE.Mesh(geometry, material);

@@ -215,9 +215,9 @@ export function laceTexture() {
   context.clearRect(0, 0, size, size);
 
   // Net: fine diagonal mesh.
-  context.strokeStyle = 'rgba(255,252,244,0.85)';
-  context.lineWidth = 1;
-  for (let i = -size; i < size * 2; i += 7) {
+  context.strokeStyle = 'rgba(255,252,244,0.5)';
+  context.lineWidth = 0.6;
+  for (let i = -size; i < size * 2; i += 11) {
     context.beginPath();
     context.moveTo(i, 0);
     context.lineTo(i + size, size);
@@ -229,19 +229,19 @@ export function laceTexture() {
   }
 
   // Motifs: rosettes on a grid, denser toward the hem.
-  context.fillStyle = 'rgba(255,253,247,0.96)';
-  for (let gy = 0; gy < 4; gy += 1) {
-    for (let gx = 0; gx < 4; gx += 1) {
-      const cx = 32 + gx * 64;
-      const cy = 32 + gy * 64;
+  context.fillStyle = 'rgba(255,253,247,0.8)';
+  for (let gy = 0; gy < 3; gy += 1) {
+    for (let gx = 0; gx < 3; gx += 1) {
+      const cx = 42 + gx * 85;
+      const cy = 42 + gy * 85;
       for (let petal = 0; petal < 6; petal += 1) {
         const angle = (petal / 6) * Math.PI * 2;
         context.beginPath();
-        context.ellipse(cx + Math.cos(angle) * 9, cy + Math.sin(angle) * 9, 5, 3, angle, 0, Math.PI * 2);
+        context.ellipse(cx + Math.cos(angle) * 6, cy + Math.sin(angle) * 6, 3.2, 1.9, angle, 0, Math.PI * 2);
         context.fill();
       }
       context.beginPath();
-      context.arc(cx, cy, 4, 0, Math.PI * 2);
+      context.arc(cx, cy, 2.4, 0, Math.PI * 2);
       context.fill();
     }
   }

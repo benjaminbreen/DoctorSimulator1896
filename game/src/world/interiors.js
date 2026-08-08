@@ -403,8 +403,21 @@ export function generateInterior(building, values = {}) {
 
   // `interior` carries what the scene needs but the blueprint schema does
   // not model: window dressing keys off wealth, and the window view needs
-  // the building's real place and facing in the world.
-  return { blueprint, lighting, interior: { wealth, size, seed, building } };
+  // the building's real place and facing in the world. `viewAnchor` is the
+  // point in this room that the exterior capture is taken from — the middle
+  // of the street wall at window height — which is what the parallax
+  // correction measures against.
+  return {
+    blueprint,
+    lighting,
+    interior: {
+      wealth,
+      size,
+      seed,
+      building,
+      viewAnchor: [0, round(1.1 + winH / 2), round(D / 2)],
+    },
+  };
 }
 
 function exitTransition(building) {
