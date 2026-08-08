@@ -1,0 +1,86 @@
+{
+  "bodyParameters": {
+    "age": 0.555,
+    "cupsize": 0.3,
+    "firmness": 0.48,
+    "gender": 0.94,
+    "height": 0.53,
+    "muscle": 0.38,
+    "proportions": 0.5,
+    "race": {
+      "african": 0.0,
+      "asian": 0.0,
+      "caucasian": 1.0
+    },
+    "weight": 0.48
+  },
+  "cohort": "men",
+  "fbx": {
+    "animation": false,
+    "axisForward": "-Z",
+    "axisUp": "Y",
+    "bytes": 923756,
+    "filename": "renderer-c-male-mixamo-doll.fbx",
+    "sha256": "3b647af49d300a324f7f6f7d88150ab04ced9282f5ea1429a2e8f031ad071643",
+    "unit": "meter"
+  },
+  "mixamoDownload": {
+    "format": "FBX Binary",
+    "framesPerSecond": 30,
+    "keyframeReduction": "None",
+    "skin": "Without Skin"
+  },
+  "pipeline": "renderer-c-mixamo-doll-v1",
+  "purpose": "Upload this exact reduced doll to Mixamo for Renderer C male animations",
+  "rig": "mpfb-mixamo",
+  "roundTrip": {
+    "armatures": 1,
+    "bones": 52,
+    "boundsMeters": {
+      "max": [
+        0.563946,
+        0.104494,
+        1.752821
+      ],
+      "min": [
+        -0.563946,
+        -0.371365,
+        -0.0
+      ],
+      "size": [
+        1.127892,
+        0.475858,
+        1.752822
+      ]
+    },
+    "meshes": 1,
+    "polygons": 13378,
+    "vertices": 13380
+  },
+  "sex": "male",
+  "source": {
+    "bones": 52,
+    "boundsMeters": {
+      "max": [
+        0.563946,
+        0.104493,
+        1.752821
+      ],
+      "min": [
+        -0.563946,
+        -0.371365,
+        -0.0
+      ],
+      "size": [
+        1.127891,
+        0.475858,
+        1.752821
+      ]
+    },
+    "deformBones": 52,
+    "polygons": 13378,
+    "vertexGroups": 52,
+    "vertices": 13380,
+    "weightedVertices": 13380
+  }
+}

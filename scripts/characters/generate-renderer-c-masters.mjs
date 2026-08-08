@@ -22,6 +22,11 @@ const publicDir = path.join(root, 'character-lab/public/models');
 const scriptPath = path.join(root, 'scripts/characters/generate_renderer_c_master.py');
 const gnmPath = process.env.GNM_HEAD || '/private/tmp/gnm-head-proof/gnm/shape/data/versions/v3_0/gnm_head.npz';
 const reuseSources = process.env.RENDERER_C_REUSE_SOURCES === '1';
+const requestedCohorts = (process.env.RENDERER_C_COHORTS || 'women,men')
+  .split(',').map((value) => value.trim()).filter(Boolean);
+if (requestedCohorts.some((cohort) => !['women', 'men'].includes(cohort))) {
+  throw new Error(`Unknown Renderer C cohort list: ${requestedCohorts.join(', ')}`);
+}
 
 function runBlender(cohort, output, manifest) {
   return new Promise((resolve, reject) => {
@@ -82,6 +87,7 @@ async function validate(cohort, modelPath, manifest) {
   const arrayBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
   const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(arrayBuffer, '');
   const required = ['Human_Body', 'Patient_Rig', 'RendererC_Eyes_01', 'RendererC_Teeth_01', 'RendererC_BaseGarment'];
+  if (cohort === 'men') required.push('RendererC_WorkGarment');
   for (const name of required) if (!gltf.scene.getObjectByName(name)) throw new Error(`${cohort} master is missing ${name}`);
   const body = gltf.scene.getObjectByName('Human_Body');
   const morphs = Object.keys(body.morphTargetDictionary || {});
@@ -90,14 +96,27 @@ async function validate(cohort, modelPath, manifest) {
     for (const sign of ['pos', 'neg']) if (!morphs.includes(`rc_live_${id}_${sign}`)) throw new Error(`${cohort} master lost ${id} ${sign}`);
   }
   if (morphs.length < 120) throw new Error(`${cohort} master retained only ${morphs.length} morphs`);
-  if (gltf.animations.length < 2) throw new Error(`${cohort} master lost its idle clips`);
+  for (const clip of [
+    'ClinicIdle', 'SittingTalking', 'SittingKneeStrike', 'SittingDejected',
+    'SittingTalkingLegsCrossed', 'StandUp', 'SitDown', 'StandingIdle', 'Walk', 'RiseFromFloor',
+  ]) {
+    if (!gltf.animations.some((animation) => animation.name === clip)) throw new Error(`${cohort} master lost ${clip}`);
+  }
   return { bytes: (await stat(modelPath)).size, morphTargets: morphs.length, clips: gltf.animations.length };
 }
 
 await mkdir(generatedDir, { recursive: true });
 await mkdir(publicDir, { recursive: true });
-const cohorts = {};
-for (const cohort of ['women', 'men']) {
+const combinedPath = path.join(publicDir, 'renderer-c-cohorts.json');
+let cohorts = {};
+if (requestedCohorts.length < 2) {
+  try {
+    cohorts = JSON.parse(await readFile(combinedPath, 'utf8')).cohorts || {};
+  } catch {
+    // A partial build can still create its first cohort manifest from scratch.
+  }
+}
+for (const cohort of requestedCohorts) {
   const source = path.join(generatedDir, `renderer-c-${cohort}.source.glb`);
   const sourceManifest = path.join(generatedDir, `renderer-c-${cohort}.json`);
   const output = path.join(publicDir, `renderer-c-${cohort}.glb`);
@@ -115,5 +134,5 @@ for (const cohort of ['women', 'men']) {
 }
 
 const combined = { pipeline: 'renderer-c-parametric-master-v1', cohorts };
-await writeFile(path.join(publicDir, 'renderer-c-cohorts.json'), `${JSON.stringify(combined, null, 2)}\n`);
+await writeFile(combinedPath, `${JSON.stringify(combined, null, 2)}\n`);
 process.stdout.write(`${JSON.stringify(combined, null, 2)}\n`);

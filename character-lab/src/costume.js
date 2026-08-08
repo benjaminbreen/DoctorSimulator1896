@@ -8,27 +8,44 @@ import { createMhrHairFormSystem } from './mhr-hair-forms.js';
    The caller must snap the skeleton to rest before rebuild(). */
 
 const BONE_CANDIDATES = {
-  pelvis: ['pelvis', 'c_spine0'], spine01: ['spine_01', 'c_spine0'], spine02: ['spine_02', 'c_spine1'], spine03: ['spine_03', 'c_spine2'],
-  neck: ['neck_01', 'neck', 'c_neck'], head: ['head', 'c_head'],
-  clavicleL: ['clavicle_l', 'l_clavicle'], clavicleR: ['clavicle_r', 'r_clavicle'],
-  upperarmL: ['upperarm_l', 'l_uparm'], upperarmR: ['upperarm_r', 'r_uparm'],
-  lowerarmL: ['lowerarm_l', 'l_lowarm'], lowerarmR: ['lowerarm_r', 'r_lowarm'],
-  handL: ['hand_l', 'l_wrist'], handR: ['hand_r', 'r_wrist'],
-  thighL: ['thigh_l', 'l_upleg'], thighR: ['thigh_r', 'r_upleg'],
-  calfL: ['calf_l', 'l_lowleg'], calfR: ['calf_r', 'r_lowleg'],
-  footL: ['foot_l', 'l_foot'], footR: ['foot_r', 'r_foot'],
+  pelvis: ['pelvis', 'c_spine0', 'mixamorighips', 'mixamorig:hips'],
+  spine01: ['spine_01', 'c_spine0', 'mixamorigspine', 'mixamorig:spine'],
+  spine02: ['spine_02', 'c_spine1', 'mixamorigspine1', 'mixamorig:spine1'],
+  spine03: ['spine_03', 'c_spine2', 'mixamorigspine2', 'mixamorig:spine2'],
+  neck: ['neck_01', 'neck', 'c_neck', 'mixamorigneck', 'mixamorig:neck'],
+  head: ['head', 'c_head', 'mixamorighead', 'mixamorig:head'],
+  clavicleL: ['clavicle_l', 'l_clavicle', 'mixamorigleftshoulder', 'mixamorig:leftshoulder'],
+  clavicleR: ['clavicle_r', 'r_clavicle', 'mixamorigrightshoulder', 'mixamorig:rightshoulder'],
+  upperarmL: ['upperarm_l', 'l_uparm', 'mixamorigleftarm', 'mixamorig:leftarm'],
+  upperarmR: ['upperarm_r', 'r_uparm', 'mixamorigrightarm', 'mixamorig:rightarm'],
+  lowerarmL: ['lowerarm_l', 'l_lowarm', 'mixamorigleftforearm', 'mixamorig:leftforearm'],
+  lowerarmR: ['lowerarm_r', 'r_lowarm', 'mixamorigrightforearm', 'mixamorig:rightforearm'],
+  handL: ['hand_l', 'l_wrist', 'mixamoriglefthand', 'mixamorig:lefthand'],
+  handR: ['hand_r', 'r_wrist', 'mixamorigrighthand', 'mixamorig:righthand'],
+  thighL: ['thigh_l', 'l_upleg', 'mixamorigleftupleg', 'mixamorig:leftupleg'],
+  thighR: ['thigh_r', 'r_upleg', 'mixamorigrightupleg', 'mixamorig:rightupleg'],
+  calfL: ['calf_l', 'l_lowleg', 'mixamorigleftleg', 'mixamorig:leftleg'],
+  calfR: ['calf_r', 'r_lowleg', 'mixamorigrightleg', 'mixamorig:rightleg'],
+  footL: ['foot_l', 'l_foot', 'mixamorigleftfoot', 'mixamorig:leftfoot'],
+  footR: ['foot_r', 'r_foot', 'mixamorigrightfoot', 'mixamorig:rightfoot'],
 };
 
 export function findBones(model) {
   const all = new Map();
   model.traverse((object) => { if (object.isBone) all.set(object.name.toLowerCase(), object); });
-  const bones = { fingers: [] };
+  const bones = { fingers: [], thumbs: [], fingerRoots: { L: null, R: null } };
   for (const [key, names] of Object.entries(BONE_CANDIDATES)) {
     bones[key] = null;
     for (const name of names) if (all.has(name)) { bones[key] = all.get(name); break; }
   }
   for (const [name, bone] of all) {
-    if (/(index|middle|ring|pinky)_0[1-3]_[lr]$/.test(name)) bones.fingers.push(bone);
+    if (/(index|middle|ring|pinky)_0[1-3]_[lr]$/.test(name)
+      || /(?:left|right)hand(?:index|middle|ring|pinky)[1-3]$/.test(name)) bones.fingers.push(bone);
+    if (/thumb_0[1-3]_[lr]$/.test(name) || /(?:left|right)handthumb[1-3]$/.test(name)) bones.thumbs.push(bone);
+    const middleRoot = name.match(/middle_01_([lr])$/);
+    if (middleRoot) bones.fingerRoots[middleRoot[1].toUpperCase()] = bone;
+    if (/lefthandmiddle1$/.test(name)) bones.fingerRoots.L = bone;
+    if (/righthandmiddle1$/.test(name)) bones.fingerRoots.R = bone;
   }
   bones.all = [...all.values()];
   return bones;

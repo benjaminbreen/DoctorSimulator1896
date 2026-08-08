@@ -6,12 +6,16 @@ import { MeshoptDecoder } from 'meshoptimizer';
 import * as THREE from 'three';
 import { findBones, sampleTorsoFit } from '../character-lab/src/costume.js';
 import { createExpressions, createMhrExpressions } from '../character-lab/src/expressions.js';
+import { createIdle } from '../character-lab/src/idle.js';
 import { findBodyMesh, sampleScalp, scalpPoint } from '../character-lab/src/hair/geometry.js';
 import { createMhrController, createMhrEyeDetails } from '../character-lab/src/mhr.js';
 import { createMhrFacialDetails } from '../character-lab/src/facial-details.js';
 import {
   createRendererCController, generateRendererCCandidates,
 } from '../character-lab/src/renderer-c.js';
+import {
+  createRendererCMenswear, RENDERER_C_MENSWEAR_PALETTES,
+} from '../character-lab/src/renderer-c-menswear.js';
 import { prepareSkinModel, updateSkinModel } from '../character-lab/src/stylized.js';
 
 globalThis.self = globalThis;
@@ -19,6 +23,11 @@ globalThis.ProgressEvent ??= class ProgressEvent {
   constructor(type, properties = {}) { this.type = type; Object.assign(this, properties); }
 };
 globalThis.createImageBitmap ??= async () => ({ width: 1, height: 1, close() {} });
+
+const RENDERER_C_MOTION_CLIPS = new Set([
+  'ClinicIdle', 'SittingTalking', 'SittingKneeStrike', 'SittingDejected',
+  'SittingTalkingLegsCrossed', 'SitDown', 'StandUp', 'StandingIdle', 'Walk', 'RiseFromFloor',
+]);
 
 async function loadModel(relativePath) {
   const data = await readFile(new URL(relativePath, import.meta.url));
@@ -114,14 +123,22 @@ test('Renderer C cohorts retain approved anchors and deterministic restrained re
     const cohortManifest = manifest.cohorts[cohort];
     const body = gltf.scene.getObjectByName('Human_Body');
     const garment = gltf.scene.getObjectByName('RendererC_BaseGarment');
+    const workGarment = gltf.scene.getObjectByName('RendererC_WorkGarment');
     const eyes = gltf.scene.getObjectByName('RendererC_Eyes_01');
     const brows = gltf.scene.getObjectByName('RendererC_Brows_01');
     const hair = gltf.scene.getObjectByName('RendererC_Hair_01');
+    let boneCount = 0;
+    gltf.scene.traverse((object) => { if (object.isBone) boneCount += 1; });
     assert.equal(cohortManifest.anchors.length, 8);
+    assert.equal(cohortManifest.rig, 'mpfb-mixamo');
+    assert.equal(boneCount, 52, `${cohort} should use MPFB's full Mixamo skeleton`);
     assert.equal(Object.keys(body.morphTargetDictionary).length, 128);
     assert.ok(Object.keys(garment.morphTargetDictionary).length >= 10);
     for (const morph of ['rc_age_old', 'rc_heritage_asian', 'rc_live_weight_pos', 'rc_live_proportions_neg']) {
       assert.ok(garment.morphTargetDictionary[morph] !== undefined, `${cohort} garment is missing ${morph}`);
+      if (cohort === 'men') {
+        assert.ok(workGarment?.morphTargetDictionary[morph] !== undefined, `men's working garment is missing ${morph}`);
+      }
     }
     for (const object of [eyes, brows, hair]) {
       assert.ok(object.morphTargetDictionary.rc_age_old !== undefined, `${object.name} does not follow age`);
@@ -129,7 +146,12 @@ test('Renderer C cohorts retain approved anchors and deterministic restrained re
     }
     assert.ok(eyes.morphTargetDictionary.rc_live_eyeSpacing_pos !== undefined, `${cohort} eyes do not follow eye spacing`);
     assert.ok(brows.morphTargetDictionary.rc_live_browHeight_pos !== undefined, `${cohort} brows do not follow brow height`);
-    assert.equal(gltf.animations.length, 2);
+    assert.deepEqual(
+      new Set(gltf.animations.map((clip) => clip.name)),
+      RENDERER_C_MOTION_CLIPS,
+    );
+    assert.deepEqual(new Set(cohortManifest.motionClips), RENDERER_C_MOTION_CLIPS);
+    assert.equal(cohortManifest.motionSource, 'renderer-c-male-mixamo-doll');
     for (const anchor of cohortManifest.anchors) assert.ok(body.morphTargetDictionary[anchor.morph] !== undefined);
   }
 
@@ -143,6 +165,91 @@ test('Renderer C cohorts retain approved anchors and deterministic restrained re
   assert.equal(new Set(first.map((candidate) => candidate.anchorIndex)).size, 8, 'a sheet should audition every approved anchor once');
   assert.ok(first.every((candidate) => candidate.values.jawWidth >= -0.05 && candidate.values.jawWidth <= 0.05));
   assert.ok(first.every((candidate) => candidate.values.chinHeight < -0.05 && candidate.values.chinProminence < -0.05));
+});
+
+test('Renderer C exact-doll Mixamo actions keep full hands and plausible body motion', async () => {
+  const models = await Promise.all([
+    loadModel('../character-lab/public/models/renderer-c-women.glb'),
+    loadModel('../character-lab/public/models/renderer-c-men.glb'),
+  ]);
+  for (const [cohort, gltf] of [['women', models[0]], ['men', models[1]]]) {
+    const bones = findBones(gltf.scene);
+    assert.equal(bones.all.length, 52, `${cohort} Mixamo rig is incomplete`);
+    assert.equal(bones.fingers.length, 24, `${cohort} is missing finger chains`);
+    assert.equal(bones.thumbs.length, 6, `${cohort} is missing thumb chains`);
+    const mixer = new THREE.AnimationMixer(gltf.scene);
+    const sample = (clipName, fraction) => {
+      mixer.stopAllAction();
+      mixer.setTime(0);
+      const clip = gltf.animations.find((item) => item.name === clipName);
+      assert.ok(clip, `${cohort} ${clipName} is missing`);
+      const action = mixer.clipAction(clip).reset().setLoop(THREE.LoopOnce, 1);
+      action.clampWhenFinished = true;
+      action.play();
+      mixer.setTime(Math.min(clip.duration - 1 / 1000, clip.duration * fraction));
+      gltf.scene.updateMatrixWorld(true);
+      return {
+        clip,
+        pelvis: bones.pelvis.getWorldPosition(new THREE.Vector3()),
+        head: bones.head.getWorldPosition(new THREE.Vector3()),
+        footL: bones.footL.getWorldPosition(new THREE.Vector3()),
+        footR: bones.footR.getWorldPosition(new THREE.Vector3()),
+        handL: bones.handL.getWorldPosition(new THREE.Vector3()),
+        handR: bones.handR.getWorldPosition(new THREE.Vector3()),
+        headWorld: bones.head.getWorldQuaternion(new THREE.Quaternion()),
+      };
+    };
+    const stand = Array.from({ length: 24 }, (_, index) => sample('StandUp', index / 23));
+    const seated = stand[0];
+    const standing = stand.at(-1);
+    assert.ok(standing.head.y > seated.head.y + 0.34, `${cohort} stand-up did not lift the character`);
+    assert.ok(standing.pelvis.y > seated.pelvis.y + 0.34, `${cohort} stand-up did not straighten the hips`);
+    assert.ok(Math.min(...stand.map((pose) => pose.head.y)) > seated.head.y - 0.38, `${cohort} torso collapsed during stand-up`);
+    const maximumHeadStep = Math.max(...stand.slice(1).map((pose, index) => pose.headWorld.angleTo(stand[index].headWorld)));
+    assert.ok(maximumHeadStep < THREE.MathUtils.degToRad(20),
+      `${cohort} head spins ${THREE.MathUtils.radToDeg(maximumHeadStep).toFixed(1)}° between stand-up samples`);
+    const maximumStandSeparation = Math.max(...stand.map((pose) => pose.footL.distanceTo(pose.footR)));
+    assert.ok(maximumStandSeparation < 0.45,
+      `${cohort} stand-up opened into a ${maximumStandSeparation.toFixed(3)}m split stance`);
+    for (let frame = 1; frame < stand.length; frame += 1) {
+      const previous = stand[frame - 1];
+      const current = stand[frame];
+      assert.ok(current.handL.distanceTo(previous.handL) < 0.14, `${cohort} left arm teleported during stand-up`);
+      assert.ok(current.handR.distanceTo(previous.handR) < 0.14, `${cohort} right arm teleported during stand-up`);
+    }
+
+    const sitStart = sample('SitDown', 0);
+    const sitEnd = sample('SitDown', 0.999);
+    assert.ok(sitEnd.head.y < sitStart.head.y - 0.34, `${cohort} sit-down did not lower the torso`);
+    assert.ok(sitEnd.pelvis.y < sitStart.pelvis.y - 0.34, `${cohort} sit-down did not lower the hips`);
+
+    const clinic = sample('ClinicIdle', 0);
+    const standingIdle = sample('StandingIdle', 0);
+    assert.ok(standingIdle.head.y > clinic.head.y + 0.34, `${cohort} standing and seated idles have the same height`);
+
+    const riseStart = sample('RiseFromFloor', 0);
+    const riseEnd = sample('RiseFromFloor', 0.999);
+    assert.ok(riseEnd.head.y > riseStart.head.y + 0.72, `${cohort} floor rise did not lift the torso`);
+    assert.ok(riseEnd.pelvis.y > riseStart.pelvis.y + 0.65, `${cohort} floor rise did not lift the hips`);
+
+    const walkStart = sample('Walk', 0);
+    const walkEnd = sample('Walk', 0.999);
+    const gait = Array.from({ length: 8 }, (_, index) => sample('Walk', index / 8));
+    const standingFootHeight = Math.min(standing.footL.y, standing.footR.y);
+    const maximumFootLift = Math.max(...gait.flatMap((pose) => [pose.footL.y, pose.footR.y])) - standingFootHeight;
+    const maximumStride = Math.max(...gait.map((pose) => pose.footL.distanceTo(pose.footR)));
+    assert.ok(walkStart.clip.duration > 0.8 && walkStart.clip.duration < 1.3, `${cohort} walk cadence drifted`);
+    assert.ok(walkStart.pelvis.distanceTo(walkEnd.pelvis) < 0.03, `${cohort} in-place walk does not close its loop`);
+    assert.ok(walkStart.footL.distanceTo(walkEnd.footL) < 0.04, `${cohort} left foot does not close its walk loop`);
+    assert.ok(walkStart.footR.distanceTo(walkEnd.footR) < 0.04, `${cohort} right foot does not close its walk loop`);
+    assert.ok(maximumStride < 1.0, `${cohort} walk stride is an implausible split (${maximumStride.toFixed(3)}m)`);
+    assert.ok(maximumFootLift < 0.30, `${cohort} walk foot lifts too high (${maximumFootLift.toFixed(3)}m)`);
+
+    for (const clip of gltf.animations) {
+      assert.ok(clip.tracks.some((track) => /hand(?:index|middle|ring|pinky|thumb)/i.test(track.name)),
+        `${cohort} ${clip.name} lost its authored finger animation`);
+    }
+  }
 });
 
 test('Renderer C switches identity anchors and signed anatomy morphs live', async () => {
@@ -169,6 +276,109 @@ test('Renderer C switches identity anchors and signed anatomy morphs live', asyn
   assert.equal(body.morphTargetInfluences[body.morphTargetDictionary.rc_live_noseLength_neg], 0);
   assert.equal(body.morphTargetInfluences[body.morphTargetDictionary.rc_live_noseLength_pos], 0.4);
   for (const objects of controller.variants.values()) assert.equal(objects.filter((object) => object.visible).length, 1);
+});
+
+test('Renderer C blends between separated folded hands and hands resting on each knee', async () => {
+  const gltf = await loadModel('../character-lab/public/models/renderer-c-men.glb');
+  const bones = findBones(gltf.scene);
+  const idle = createIdle(bones);
+  gltf.scene.updateMatrixWorld(true);
+  idle.captureRest();
+  const values = {
+    seated: 1, seatedHandPose: 'folded-hands', kneesTogether: 0.7,
+    breathing: 0, breathingRate: 13, weightShift: 0, posture: 0,
+    headTurn: 0, headTilt: 0, fidget: 0, gazeDrift: 0, tremor: 0,
+    armOpenness: 0, elbowBend: 0.68, armAsymmetry: 0, wristAngle: 0,
+    foldedHandHeight: 0, foldedHandForward: 0, foldedHandSpread: 1, handTension: 0.28,
+  };
+  const position = (bone) => bone.getWorldPosition(new THREE.Vector3());
+  idle.update(1 / 60, 0, values, 'procedural');
+  gltf.scene.updateMatrixWorld(true);
+  const foldedLeft = position(bones.handL);
+  const foldedRight = position(bones.handR);
+  const foldedSeparation = foldedLeft.distanceTo(foldedRight);
+  assert.ok(foldedSeparation > 0.045, `folded wrists still collide at ${foldedSeparation}`);
+
+  values.seatedHandPose = 'hands-on-knees';
+  idle.update(1 / 60, 1 / 60, values, 'procedural');
+  assert.ok(idle.seatedHandBlend > 0 && idle.seatedHandBlend < 1, 'hand-pose change should animate instead of snapping');
+  for (let frame = 2; frame <= 120; frame += 1) idle.update(1 / 60, frame / 60, values, 'procedural');
+  gltf.scene.updateMatrixWorld(true);
+  const kneeLeft = position(bones.handL);
+  const kneeRight = position(bones.handR);
+  const distanceToThigh = (point, hip, knee) => {
+    const segment = knee.clone().sub(hip);
+    const t = THREE.MathUtils.clamp(point.clone().sub(hip).dot(segment) / segment.lengthSq(), 0, 1);
+    return point.distanceTo(hip.addScaledVector(segment, t));
+  };
+  assert.ok(kneeLeft.distanceTo(kneeRight) > foldedSeparation + 0.12, 'hands-on-knees pose did not separate the wrists');
+  assert.ok(distanceToThigh(kneeLeft, position(bones.thighL), position(bones.calfL)) < 0.16, 'left hand missed its thigh');
+  assert.ok(distanceToThigh(kneeRight, position(bones.thighR), position(bones.calfR)) < 0.16, 'right hand missed its thigh');
+  assert.ok(idle.seatedHandBlend < 0.01, 'hand-pose transition did not settle');
+});
+
+test('Renderer C menswear refits three silhouettes across body builds without Blender', async () => {
+  const [manifestText, gltf] = await Promise.all([
+    readFile(new URL('../character-lab/public/models/renderer-c-cohorts.json', import.meta.url), 'utf8'),
+    loadModel('../character-lab/public/models/renderer-c-men.glb'),
+  ]);
+  const manifest = JSON.parse(manifestText).cohorts.men;
+  const values = {
+    rendererCAnchor: 0, age: 0.555, african: 0, asian: 0, caucasian: 1,
+    gender: 0.92, height: 0.53, weight: 0.48, muscle: 0.38, proportions: 0.5,
+    seated: 1, outfitStyle: 'mens-working-clothes', menswearPalette: 'work-earth',
+    fabricPattern: 'twill', garmentWear: 0.2, fabricRoughness: 0.92,
+    coatLength: 1, coatFullness: 1, lapelWidth: 1, trouserWidth: 1, waistcoatFit: 1,
+    workingLayer: 'shirt-braces', workingSleeveRoll: 0.35,
+    formalCoatCut: 'morning-cutaway', neckwearStyle: 'automatic',
+    collarHeight: 0.8, collarSpread: 1, buttonCount: 4, buttonSpacing: 1,
+  };
+  const controller = createRendererCController(gltf.scene, manifest, values);
+  const bones = findBones(gltf.scene);
+  const menswear = createRendererCMenswear(gltf.scene, bones, gltf.scene);
+  const baseGarment = gltf.scene.getObjectByName('RendererC_BaseGarment');
+  const workGarment = gltf.scene.getObjectByName('RendererC_WorkGarment');
+  assert.equal(baseGarment.visible, true);
+  assert.ok(baseGarment.isSkinnedMesh && baseGarment.geometry.attributes.skinIndex && baseGarment.geometry.attributes.skinWeight);
+  assert.ok(baseGarment.morphTargetDictionary.rc_live_weight_pos !== undefined);
+  assert.ok(workGarment?.isSkinnedMesh && workGarment.geometry.attributes.skinIndex && workGarment.geometry.attributes.skinWeight);
+  assert.ok(workGarment.morphTargetDictionary.rc_live_weight_pos !== undefined);
+
+  const signatures = new Set();
+  for (const weight of [0.25, 0.48, 0.76]) {
+    values.weight = weight;
+    controller.applyValues(values, { force: true });
+    gltf.scene.updateMatrixWorld(true);
+    for (const style of ['mens-working-clothes', 'mens-sack-suit', 'mens-formal-suit']) {
+      values.outfitStyle = style;
+      values.menswearPalette = style === 'mens-working-clothes' ? 'work-earth'
+        : style === 'mens-formal-suit' ? 'formal-black-grey' : 'trade-charcoal';
+      menswear.rebuild(values);
+      const names = menswear.pieces().map(({ mesh }) => mesh.name);
+      const stats = menswear.stats();
+      assert.ok(stats.components >= 20 && stats.triangles > 14000 && stats.triangles < 18000);
+      assert.equal(names[0], style === 'mens-working-clothes' ? 'RendererC_WorkGarment' : 'RendererC_BaseGarment');
+      assert.ok(names.slice(1).every((name) => name.startsWith('RendererC_Menswear_')));
+      for (const { mesh } of menswear.pieces()) {
+        assert.ok([...mesh.geometry.attributes.position.array].every(Number.isFinite), `${mesh.name} contains invalid garment vertices`);
+      }
+      baseGarment.geometry.computeBoundingBox();
+      workGarment.geometry.computeBoundingBox();
+      const size = baseGarment.geometry.boundingBox.getSize(new THREE.Vector3());
+      const workSize = workGarment.geometry.boundingBox.getSize(new THREE.Vector3());
+      assert.ok(size.x < 2.1 && size.y < 3 && size.z < 1, `${style} escaped the fitted garment envelope`);
+      assert.ok(workSize.x < 2.1 && workSize.y < 3 && workSize.z < 1, `${style} escaped the working garment envelope`);
+      const activeCarrier = style === 'mens-working-clothes' ? workGarment : baseGarment;
+      signatures.add(`${style}:${activeCarrier.material.map((material) => material.name).join(',')}:${names.includes('RendererC_Menswear_Brace_L')}`);
+    }
+  }
+  assert.equal(signatures.size, 3, 'working, sack, and professional silhouettes should use different modules');
+  assert.deepEqual(Object.keys(RENDERER_C_MENSWEAR_PALETTES), [
+    'work-earth', 'work-indigo', 'trade-charcoal', 'trade-brown', 'trade-olive',
+    'formal-black-grey', 'formal-navy-grey', 'mourning',
+  ]);
+  menswear.dispose();
+  assert.equal(baseGarment.visible, true);
 });
 
 test('MHR identity/build controls deform the mesh and drive a seated full-body rig', async () => {

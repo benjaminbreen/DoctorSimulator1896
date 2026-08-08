@@ -32,11 +32,12 @@
           <div id="controls"></div>
         </aside>
         <section class="stage-wrap">
-          <canvas id="stage"></canvas>
+          <canvas id="stage" tabindex="0" aria-label="Interactive character stage"></canvas>
           <div class="stage-tools">
             <button data-view="clinic" class="active">Clinic</button>
             <button data-view="full">Full figure</button>
             <button data-view="portrait">Head</button>
+            <button data-view="hands">Hands</button>
             <button data-view="exam">Examination</button>
             <button id="render-toggle" type="button" title="Cycle A: MPFB, B: Meta MHR, C: GNM + MPFB">Renderer C · GNM + MPFB</button>
             <button id="toggle-grid">Grid</button>
@@ -46,6 +47,16 @@
           <div class="stage-perform">
             <span class="perform-label">Perform</span>
             <button id="pose-toggle" type="button" hidden title="Animate the Meta MHR patient between standing and seated poses">Sit down</button>
+            <button data-renderer-c-motion="StandUp" type="button" hidden>Stand up</button>
+            <button data-renderer-c-motion="SitDown" type="button" hidden>Sit down</button>
+            <button data-renderer-c-motion="ClinicIdle" type="button" hidden>Hands on knees</button>
+            <button data-renderer-c-motion="SittingTalking" type="button" hidden>Talk seated</button>
+            <button data-renderer-c-motion="SittingTalkingLegsCrossed" type="button" hidden>Talk cross-legged</button>
+            <button data-renderer-c-motion="SittingDejected" type="button" hidden>Dejected</button>
+            <button data-renderer-c-motion="SittingKneeStrike" type="button" hidden>Strike knee</button>
+            <button data-renderer-c-motion="StandingIdle" type="button" hidden>Standing idle</button>
+            <button data-renderer-c-motion="Walk" type="button" hidden>Walk</button>
+            <button data-renderer-c-motion="RiseFromFloor" type="button" hidden>Rise from floor</button>
             <button data-gesture="nod">Nod</button>
             <button data-gesture="shake">Shake head</button>
             <button data-gesture="sigh">Sigh</button>
@@ -55,7 +66,7 @@
             <button data-expression="fatigue">Fatigue</button>
             <button data-expression="blink">Blink</button>
           </div>
-          <div id="stage-hint">Drag to orbit · wheel to zoom · double-click to reset view</div>
+          <div id="stage-hint">Drag to orbit · wheel to zoom · WASD to walk while standing · double-click to reset view</div>
           <div id="fallback" hidden>
             <h2>Procedural preview mode</h2>
             <p>The Blender GLB has not been generated yet. The live mannequin still exposes the clothing and staging controls.</p>

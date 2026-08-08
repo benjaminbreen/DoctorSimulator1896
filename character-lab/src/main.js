@@ -14,6 +14,9 @@ import {
   RENDERER_C_AGE_BANDS, RENDERER_C_ANCESTRIES, RENDERER_C_COHORTS, RENDERER_C_LIVE_IDS,
 } from './renderer-c.js';
 import {
+  createRendererCMenswear, RENDERER_C_MENSWEAR_GEOMETRY_IDS, RENDERER_C_MENSWEAR_MATERIAL_IDS,
+} from './renderer-c-menswear.js';
+import {
   faceIdentityDistance, generatePatient, generateRestingFaceSignature, nextSeed,
   patientToCharacterPreset, randomSeed,
 } from './patients/index.js';
@@ -73,8 +76,31 @@ const MHR_EYE_DETAIL_IDS = new Set([
 const LIGHTING_IDS = new Set(['keyIntensity', 'fillIntensity', 'warmth', 'exposure', 'cameraFov', 'stylizedLightSoftness']);
 const MHR_POSE_IDS = new Set([
   'seated', 'kneesTogether', 'posture', 'headTilt', 'headTurn',
-  'armOpenness', 'elbowBend', 'armAsymmetry', 'wristAngle', 'handTension',
+  'armOpenness', 'elbowBend', 'armAsymmetry', 'wristAngle', 'seatedHandPose', 'handTension',
+  'foldedHandHeight', 'foldedHandForward', 'foldedHandSpread',
 ]);
+const RENDERER_C_MOTIONS = Object.freeze({
+  ClinicIdle: Object.freeze({ seated: true, label: 'Renderer C · hands resting on knees' }),
+  SittingTalking: Object.freeze({ seated: true, label: 'Renderer C · seated conversation' }),
+  SittingTalkingLegsCrossed: Object.freeze({ seated: true, label: 'Renderer C · cross-legged conversation' }),
+  SittingDejected: Object.freeze({ seated: true, label: 'Renderer C · seated and dejected' }),
+  SittingKneeStrike: Object.freeze({ seated: true, next: 'ClinicIdle', label: 'Renderer C · striking knee…' }),
+  SitDown: Object.freeze({ seated: false, next: 'ClinicIdle', label: 'Renderer C · sitting down…' }),
+  StandUp: Object.freeze({ seated: false, next: 'StandingIdle', label: 'Renderer C · standing up…' }),
+  StandingIdle: Object.freeze({ seated: false, label: 'Renderer C · standing idle' }),
+  Walk: Object.freeze({ seated: false, label: 'Renderer C · standard walk cycle' }),
+  RiseFromFloor: Object.freeze({ seated: false, next: 'StandingIdle', label: 'Renderer C · rising from the floor…' }),
+});
+const RENDERER_C_MOVEMENT_KEYS = new Set([
+  'KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight',
+]);
+const rendererCMoveKeys = new Set();
+const rendererCMoveDirection = new THREE.Vector3();
+const rendererCMoveStep = new THREE.Vector3();
+const rendererCCameraForward = new THREE.Vector3();
+const rendererCCameraRight = new THREE.Vector3();
+const rendererCUp = new THREE.Vector3(0, 1, 0);
+let rendererCKeyboardWalking = false;
 
 const renderer = new THREE.WebGLRenderer({ canvas: ui.canvas, antialias: true, alpha: false });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -105,6 +131,7 @@ let motionEnabled = true;
 let mixer = null;
 let animationAction = null;
 let animationClips = [];
+let animationFinishedHandler = null;
 let bones = null;
 let costume = null;
 let idle = null;
@@ -150,16 +177,19 @@ function makeClinic() {
   floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; world.add(floor);
   const back = new THREE.Mesh(new THREE.PlaneGeometry(9, 4), material('ClinicWall', '#2b2116', 0.98));
   back.position.set(0, 2, -1.3); world.add(back);
-  const desk = new THREE.Mesh(new THREE.BoxGeometry(2.65, 0.46, 0.72), material('Desk', '#29170d', 0.65));
-  desk.position.set(0, 0.32, 0.9); desk.castShadow = true; desk.receiveShadow = true; desk.name = 'ClinicDesk'; world.add(desk);
+  // The lab is a character and motion workspace, so the desk only blocked the
+  // lower body. Keep one chair aligned to Renderer C's authored seated pose.
   const chairMat = material('Chair', '#24150f', 0.8);
+  const chair = new THREE.Group();
+  chair.name = 'ClinicChair';
+  world.add(chair);
   const seat = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.05, 0.5), chairMat);
-  seat.position.set(0, 0.425, -0.06); seat.castShadow = true; seat.receiveShadow = true; world.add(seat);
+  seat.position.set(0, 0.39, -0.10); seat.castShadow = true; seat.receiveShadow = true; chair.add(seat);
   const chairBack = new THREE.Mesh(new THREE.BoxGeometry(0.56, 1.0, 0.07), chairMat);
-  chairBack.position.set(0, 0.95, -0.32); chairBack.castShadow = true; world.add(chairBack);
-  for (const [x, z] of [[-0.24, -0.27], [0.24, -0.27], [-0.24, 0.15], [0.24, 0.15]]) {
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.42, 0.05), chairMat);
-    leg.position.set(x, 0.21, z); world.add(leg);
+  chairBack.position.set(0, 0.91, -0.35); chairBack.castShadow = true; chair.add(chairBack);
+  for (const [x, z] of [[-0.24, -0.29], [0.24, -0.29], [-0.24, 0.09], [0.24, 0.09]]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.39, 0.05), chairMat);
+    leg.position.set(x, 0.195, z); chair.add(leg);
   }
   const windowFrame = material('WindowFrame', '#17110c', 0.9);
   const glass = new THREE.Mesh(new THREE.PlaneGeometry(1.25, 1.45), new THREE.MeshBasicMaterial({ color: '#6e8094' }));
@@ -227,6 +257,8 @@ function indexModel(root) {
 }
 
 function disposeLoadedCharacter() {
+  if (animationFinishedHandler && mixer) mixer.removeEventListener('finished', animationFinishedHandler);
+  animationFinishedHandler = null;
   animationAction?.stop();
   mixer?.stopAllAction();
   costume?.dispose();
@@ -250,6 +282,10 @@ function disposeLoadedCharacter() {
   bones = null; costume = null; idle = null; expressions = null;
   mhrController = null; mhrEyeDetails = null; mhrFacialDetails = null;
   rendererCController = null;
+  rendererCMoveKeys.clear();
+  rendererCKeyboardWalking = false;
+  characterRoot.position.set(0, 0, 0);
+  characterRoot.rotation.set(0, 0, 0);
   poseCostumeRebuildPending = false;
   poseWasTransitioning = false;
   identityFitPending = false;
@@ -350,6 +386,7 @@ function updateRenderToggle() {
 
 function rendererCControlAppliesLive(definition) {
   if (RENDERER_C_LIVE_IDS.has(definition.id)) return true;
+  if (RENDERER_C_MENSWEAR_GEOMETRY_IDS.has(definition.id) || RENDERER_C_MENSWEAR_MATERIAL_IDS.has(definition.id)) return true;
   if (SKIN_APPEARANCE_IDS.has(definition.id) || LIGHTING_IDS.has(definition.id)) return true;
   if (['performance', 'pose'].includes(definition.group) && definition.id !== 'seated') return true;
   return ['hairColor', 'browColor', 'lashColor', 'dressColor', 'trimColor', 'fabricRoughness'].includes(definition.id);
@@ -397,6 +434,7 @@ function updateControlModes() {
         : '';
   }
   if (ui.rendererCPanel) ui.rendererCPanel.hidden = renderStyle !== 'rendererC';
+  updateRendererCMotionButtons();
 }
 
 async function loadCharacter() {
@@ -411,7 +449,8 @@ async function loadCharacter() {
       : rendererMode.path;
     const gltf = await loader.loadAsync(`${modelPath}?v=${Date.now()}`);
     model = gltf.scene;
-    characterRoot.add(model); animationClips = gltf.animations;
+    characterRoot.add(model);
+    animationClips = gltf.animations;
     setupAnimations();
     ui.status.textContent = `${rendererMode.label} · ${countTriangles(model).toLocaleString()} triangles · ${animationClips.length} clip${animationClips.length === 1 ? '' : 's'}`; ui.status.className = 'status ok';
   } catch (error) {
@@ -455,8 +494,26 @@ async function loadCharacter() {
       if (bones.pelvis) {
         idle = createIdle(bones);
         idle.captureRest();
+        updateRendererCMotionButtons();
+        if (rendererCCohort === 'men') {
+          costume = createRendererCMenswear(characterRoot, bones, model);
+          costume.rebuild(preset.values);
+        }
       }
       expressions = createExpressions(model, { restingFace: preset.patient?.appearance?.restingFace });
+      // Renderer C's actual consultation rest pose is the Mixamo-authored
+      // ClinicIdle clip. Starting in procedural mode froze it on frame zero
+      // and then replaced it with the old, distorted seated approximation.
+      const clinicIdle = animationClips.find((clip) => clip.name === 'ClinicIdle');
+      if (clinicIdle && mixer) {
+        preset.values.idleMode = 'clip+procedural';
+        preset.values.seated = 1;
+        syncControlValue('idleMode', preset.values.idleMode);
+        syncControlValue('seated', preset.values.seated);
+        playClip(clinicIdle, { transition: 0 });
+        mixer.update(0);
+        model.updateMatrixWorld(true);
+      }
     }
     refreshFaceUnitDebugger();
   }
@@ -469,21 +526,202 @@ function setupAnimations() {
   if (!animationClips.length) {
     select.append(new Option('No embedded clips', ''));
     select.disabled = true;
+    updateRendererCMotionButtons();
     return;
   }
   mixer = new THREE.AnimationMixer(model);
   for (const clip of animationClips) select.append(new Option(clip.name || 'Unnamed clip', clip.name));
-  select.onchange = () => playClip(animationClips.find((clip) => clip.name === select.value) || animationClips[0]);
-  playClip(animationClips[0]);
+  select.onchange = () => {
+    const clip = animationClips.find((item) => item.name === select.value) || animationClips[0];
+    if (renderStyle === 'rendererC') playRendererCMotion(clip.name);
+    else playClip(clip);
+  };
+  const initialClip = renderStyle === 'rendererC'
+    ? animationClips.find((clip) => clip.name === 'ClinicIdle') || animationClips[0]
+    : animationClips[0];
+  select.value = initialClip.name;
+  playClip(initialClip);
+  updateRendererCMotionButtons();
 }
 
-function playClip(clip) {
-  animationAction?.stop();
-  animationAction = mixer.clipAction(clip);
+function playClip(clip, { once = false, onFinished = null, transition = 0.18 } = {}) {
+  if (!clip || !mixer) return;
+  if (animationFinishedHandler) mixer.removeEventListener('finished', animationFinishedHandler);
+  animationFinishedHandler = null;
+  const previousAction = animationAction;
+  const nextAction = mixer.clipAction(clip);
+  if (previousAction === nextAction) previousAction.stop();
+  animationAction = nextAction;
   // full weight immediately: a fade frozen by procedural pause would leave the
   // authored pose at zero influence and expose the standing bind pose
-  animationAction.reset().setLoop(THREE.LoopRepeat, Infinity).setEffectiveWeight(1).play();
+  animationAction.reset()
+    .setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, once ? 1 : Infinity)
+    .setEffectiveWeight(1);
+  animationAction.clampWhenFinished = once;
+  animationAction.play();
+  if (previousAction && previousAction !== animationAction) {
+    if (transition > 0) animationAction.crossFadeFrom(previousAction, transition, false);
+    else previousAction.stop();
+  }
+  if (onFinished) {
+    const completedAction = animationAction;
+    animationFinishedHandler = (event) => {
+      if (event.action !== completedAction) return;
+      mixer.removeEventListener('finished', animationFinishedHandler);
+      animationFinishedHandler = null;
+      onFinished();
+    };
+    mixer.addEventListener('finished', animationFinishedHandler);
+  }
   syncIdleMode();
+  updateRendererCMotionButtons(clip.name);
+}
+
+function updateRendererCMotionButtons(activeName = animationAction?.getClip?.()?.name || null) {
+  const buttons = document.querySelectorAll('[data-renderer-c-motion]');
+  const available = new Set(animationClips.map((clip) => clip.name));
+  const supported = renderStyle === 'rendererC' && !isFallback;
+  for (const button of buttons) {
+    const hasClip = available.has(button.dataset.rendererCMotion);
+    button.hidden = !supported || !hasClip;
+    button.disabled = !supported || !hasClip;
+    button.classList.toggle('active', supported && hasClip && button.dataset.rendererCMotion === activeName);
+    button.setAttribute('aria-pressed', String(supported && hasClip && button.dataset.rendererCMotion === activeName));
+  }
+}
+
+function playRendererCMotion(name, { preservePelvis = null } = {}) {
+  if (renderStyle !== 'rendererC' || isFallback) return;
+  const clip = animationClips.find((item) => item.name === name);
+  if (!clip) return;
+  preset.values.idleMode = 'clip+procedural';
+  syncControlValue('idleMode', preset.values.idleMode);
+  motionEnabled = true;
+  document.querySelector('#toggle-motion')?.classList.add('active');
+  const motion = RENDERER_C_MOTIONS[name] || { seated: false, label: `Renderer C · ${name}` };
+  if (name !== 'Walk') rendererCKeyboardWalking = false;
+  preset.values.seated = motion.seated ? 1 : 0;
+  syncControlValue('seated', preset.values.seated);
+  const select = document.querySelector('#animation-select');
+  if (select) select.value = name;
+  playClip(clip, {
+    once: Boolean(motion.next),
+    transition: preservePelvis ? 0 : 0.18,
+    onFinished: motion.next ? () => {
+      const pelvisPosition = bones?.pelvis?.getWorldPosition(new THREE.Vector3()) || null;
+      playRendererCMotion(motion.next, { preservePelvis: pelvisPosition });
+    } : null,
+  });
+  if (preservePelvis && bones?.pelvis) {
+    mixer.update(0);
+    model.updateMatrixWorld(true);
+    const rigNode = model.getObjectByName('Patient_Rig');
+    const currentPelvis = bones.pelvis.getWorldPosition(new THREE.Vector3());
+    if (rigNode?.parent) {
+      const targetLocal = rigNode.parent.worldToLocal(preservePelvis.clone());
+      const currentLocal = rigNode.parent.worldToLocal(currentPelvis.clone());
+      rigNode.position.add(targetLocal.sub(currentLocal));
+      model.updateMatrixWorld(true);
+    }
+  }
+  setView('full');
+  ui.status.textContent = motion.label;
+  ui.status.className = 'status ok';
+  updateRendererCMotionButtons(name);
+  updateText();
+}
+
+function isEditableTarget(target) {
+  return target instanceof HTMLInputElement
+    || target instanceof HTMLSelectElement
+    || target instanceof HTMLTextAreaElement
+    || target?.isContentEditable;
+}
+
+function rendererCStandingForMovement() {
+  if (renderStyle !== 'rendererC' || isFallback || preset.values.seated >= 0.5) return false;
+  const clipName = animationAction?.getClip?.()?.name;
+  return !['StandUp', 'SitDown', 'RiseFromFloor'].includes(clipName);
+}
+
+function rendererCPreservePelvis() {
+  return bones?.pelvis?.getWorldPosition(new THREE.Vector3()) || null;
+}
+
+function stopRendererCKeyboardWalk() {
+  if (!rendererCKeyboardWalking) return;
+  rendererCKeyboardWalking = false;
+  if (rendererCStandingForMovement()) {
+    playRendererCMotion('StandingIdle', { preservePelvis: rendererCPreservePelvis() });
+  }
+}
+
+function updateRendererCLocomotion(delta) {
+  const forwardInput = Number(rendererCMoveKeys.has('KeyW') || rendererCMoveKeys.has('ArrowUp'))
+    - Number(rendererCMoveKeys.has('KeyS') || rendererCMoveKeys.has('ArrowDown'));
+  const rightInput = Number(rendererCMoveKeys.has('KeyD') || rendererCMoveKeys.has('ArrowRight'))
+    - Number(rendererCMoveKeys.has('KeyA') || rendererCMoveKeys.has('ArrowLeft'));
+  if (!forwardInput && !rightInput) {
+    stopRendererCKeyboardWalk();
+    return;
+  }
+  if (!rendererCStandingForMovement()) return;
+
+  if (!rendererCKeyboardWalking) {
+    playRendererCMotion('Walk', { preservePelvis: rendererCPreservePelvis() });
+    rendererCKeyboardWalking = true;
+  }
+
+  camera.getWorldDirection(rendererCCameraForward);
+  rendererCCameraForward.y = 0;
+  if (rendererCCameraForward.lengthSq() < 0.001) rendererCCameraForward.set(0, 0, -1);
+  else rendererCCameraForward.normalize();
+  rendererCCameraRight.crossVectors(rendererCCameraForward, rendererCUp).normalize();
+  rendererCMoveDirection.copy(rendererCCameraForward).multiplyScalar(forwardInput)
+    .addScaledVector(rendererCCameraRight, rightInput).normalize();
+
+  const frameDelta = Math.min(delta, 1 / 15);
+  const speed = rendererCMoveKeys.has('ShiftLeft') || rendererCMoveKeys.has('ShiftRight') ? 1.8 : 1.05;
+  rendererCMoveStep.copy(rendererCMoveDirection).multiplyScalar(speed * frameDelta);
+  const previousX = characterRoot.position.x;
+  const previousZ = characterRoot.position.z;
+  characterRoot.position.add(rendererCMoveStep);
+  characterRoot.position.x = THREE.MathUtils.clamp(characterRoot.position.x, -4.5, 4.5);
+  characterRoot.position.z = THREE.MathUtils.clamp(characterRoot.position.z, -4.5, 4.5);
+  rendererCMoveStep.set(
+    characterRoot.position.x - previousX,
+    0,
+    characterRoot.position.z - previousZ,
+  );
+  camera.position.add(rendererCMoveStep);
+  orbit.target.add(rendererCMoveStep);
+
+  // Renderer C faces local +Z. Ease toward the travel direction so turns do
+  // not snap while the authored walk cycle continues to drive the skeleton.
+  const targetYaw = Math.atan2(rendererCMoveDirection.x, rendererCMoveDirection.z);
+  const yawDelta = Math.atan2(
+    Math.sin(targetYaw - characterRoot.rotation.y),
+    Math.cos(targetYaw - characterRoot.rotation.y),
+  );
+  characterRoot.rotation.y += yawDelta * (1 - Math.exp(-9 * frameDelta));
+}
+
+function applyRendererCStandingHandCorrection() {
+  if (renderStyle !== 'rendererC' || !bones || !motionEnabled) return;
+  const clipName = animationAction?.getClip?.()?.name;
+  if (!['StandingIdle', 'Walk'].includes(clipName)) return;
+
+  // The exact Mixamo rig preserves every finger track, but these two stock
+  // standing clips hold the MPFB thumb too straight. A small post-animation
+  // curl keeps the thumb and fingers relaxed without replacing wrist motion.
+  for (const thumb of bones.thumbs || []) {
+    const segment = Number(thumb.name.match(/Thumb(\d)/i)?.[1] || 1);
+    thumb.rotateX([0, 0.10, 0.14, 0.08][segment] || 0.08);
+  }
+  for (const finger of bones.fingers || []) {
+    const segment = Number(finger.name.match(/(?:Index|Middle|Ring|Pinky)(\d)/i)?.[1] || 1);
+    finger.rotateX([0, 0.025, 0.04, 0.03][segment] || 0.025);
+  }
 }
 
 function syncIdleMode() {
@@ -604,7 +842,8 @@ function updateRendererCAppearance(values) {
   setMaterialLike('RendererC_Hair', values.hairColor, 0.88);
   setMaterialLike('RendererC_Brows', values.browColor || values.hairColor, 0.9);
   setMaterialLike('RendererC_Lashes', values.lashColor || '#17100c', 0.92);
-  setMaterialLike('RendererC_BaseGarment', values.dressColor, values.fabricRoughness, 1);
+  if (costume && rendererCCohort === 'men') costume.updateMaterials?.(values);
+  else setMaterialLike('RendererC_BaseGarment', values.dressColor, values.fabricRoughness, 1);
   setMaterialLike('RendererC_Shoes', '#211713', 0.82);
 }
 
@@ -663,11 +902,15 @@ function applyAll(changedId = null, { final = true } = {}) {
       }
     } else if (renderStyle === 'rendererC') {
       const identityControl = initial || RENDERER_C_LIVE_IDS.has(changedId) || changedId === 'rendererCAnchor';
-      if (identityControl) rendererCController?.applyValues(v, { force: initial || changedId === 'rendererCAnchor' });
+      const identityChanged = identityControl
+        ? (rendererCController?.applyValues(v, { force: initial || changedId === 'rendererCAnchor' }) || false)
+        : false;
       if (initial || identityControl || SKIN_APPEARANCE_IDS.has(changedId)
-        || ['hairColor', 'browColor', 'lashColor', 'dressColor', 'fabricRoughness'].includes(changedId)) {
+        || ['hairColor', 'browColor', 'lashColor'].includes(changedId)
+        || RENDERER_C_MENSWEAR_MATERIAL_IDS.has(changedId)) {
         updateRendererCAppearance(v);
       }
+      if (costume && final && (identityChanged || RENDERER_C_MENSWEAR_GEOMETRY_IDS.has(changedId))) costumeDirty = true;
     } else {
       if (initial || COMPARISON_MATERIAL_IDS.has(changedId)) updateComparisonMaterial(model, v);
     }
@@ -742,6 +985,20 @@ function makeControl(definition) {
   input.value = preset.values[definition.id]; output.textContent = formatValue(definition, input.value);
   const applyInput = (final = false) => {
     preset.values[definition.id] = definition.type === 'range' ? Number(input.value) : input.value;
+    if (renderStyle === 'rendererC' && rendererCCohort === 'men' && ['dressColor', 'trimColor'].includes(definition.id)) {
+      preset.values.menswearPalette = 'custom';
+      syncControlValue('menswearPalette', 'custom');
+    }
+    if (renderStyle === 'rendererC' && rendererCCohort === 'men' && definition.id === 'outfitStyle') {
+      const palette = {
+        'mens-working-clothes': 'work-earth', 'mens-sack-suit': 'trade-charcoal',
+        'mens-formal-suit': 'formal-black-grey', 'mens-mourning-suit': 'mourning',
+      }[preset.values.outfitStyle];
+      if (palette) {
+        preset.values.menswearPalette = palette;
+        syncControlValue('menswearPalette', palette);
+      }
+    }
     output.textContent = formatValue(definition, input.value);
     if (HERITAGE_IDS.includes(definition.id)) normalizeHeritageWeights(definition.id);
     const appliesLive = controlAppliesLive(definition);
@@ -1113,12 +1370,24 @@ function setView(name) {
     const target = bones.head.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0.025, 0));
     orbit.target.copy(target);
     camera.position.copy(target).add(new THREE.Vector3(0.38, 0.09, 0.72));
+  } else if (name === 'hands' && bones?.handL && bones?.handR) {
+    const left = bones.handL.getWorldPosition(new THREE.Vector3());
+    const right = bones.handR.getWorldPosition(new THREE.Vector3());
+    const target = left.add(right).multiplyScalar(0.5).add(new THREE.Vector3(0, 0.025, 0));
+    orbit.target.copy(target);
+    camera.position.copy(target).add(new THREE.Vector3(0.70, 0.32, 1.20));
   } else if (name === 'full' && bones?.head && bones?.pelvis) {
     const head = bones.head.getWorldPosition(new THREE.Vector3());
     const pelvis = bones.pelvis.getWorldPosition(new THREE.Vector3());
-    const target = pelvis.clone().lerp(head, 0.48).add(new THREE.Vector3(0, -0.06, 0));
+    const activeClip = animationAction?.getClip?.()?.name;
+    const anticipateStanding = renderStyle === 'rendererC'
+      && ['StandUp', 'StandingIdle', 'Walk', 'RiseFromFloor'].includes(activeClip);
+    const target = pelvis.clone().lerp(head, 0.48)
+      .add(new THREE.Vector3(0, anticipateStanding ? 0.16 : -0.06, 0));
     orbit.target.copy(target);
-    camera.position.copy(target).add(new THREE.Vector3(1.72, 0.48, 2.75));
+    camera.position.copy(target).add(anticipateStanding
+      ? new THREE.Vector3(1.92, 0.54, 3.08)
+      : new THREE.Vector3(1.72, 0.48, 2.75));
   } else {
     camera.position.set(...views[name][0]);
     orbit.target.set(...views[name][1]);
@@ -1163,6 +1432,9 @@ document.querySelector('#toggle-motion').onclick = (event) => { motionEnabled = 
 ui.renderToggle.onclick = toggleRenderStyle;
 ui.poseToggle.onclick = toggleMhrPose;
 document.querySelectorAll('[data-view]').forEach((button) => button.onclick = () => setView(button.dataset.view));
+document.querySelectorAll('[data-renderer-c-motion]').forEach((button) => {
+  button.onclick = () => playRendererCMotion(button.dataset.rendererCMotion);
+});
 document.querySelectorAll('[data-gesture]').forEach((button) => button.onclick = () => idle?.playGesture(button.dataset.gesture, preset.values.gestureSpeed || 1));
 document.querySelectorAll('[data-expression]').forEach((button) => button.onclick = () => { clearFaceUnitDebug(); expressions?.play(button.dataset.expression, preset.values.gestureSpeed || 1); });
 ui.faceUnitSelect.onchange = applyFaceUnitDebug;
@@ -1172,6 +1444,18 @@ ui.faceUnitSurprise.onclick = surpriseFace;
 ui.rendererCGenerate.onclick = generateRendererCGrid;
 ui.canvas.ondblclick = () => setView('clinic');
 ui.search.oninput = () => { const term = ui.search.value.toLowerCase(); document.querySelectorAll('.control').forEach((row) => row.hidden = !row.dataset.search.includes(term)); document.querySelectorAll('.control-group').forEach((group) => { const rendererMismatch = group.dataset.renderer && group.dataset.renderer !== renderStyle; group.hidden = rendererMismatch || ![...group.querySelectorAll('.control')].some((row) => !row.hidden); }); };
+window.addEventListener('keydown', (event) => {
+  if (!RENDERER_C_MOVEMENT_KEYS.has(event.code) && !['ShiftLeft', 'ShiftRight'].includes(event.code)) return;
+  if (isEditableTarget(event.target) || renderStyle !== 'rendererC') return;
+  rendererCMoveKeys.add(event.code);
+  if (RENDERER_C_MOVEMENT_KEYS.has(event.code) && rendererCStandingForMovement()) event.preventDefault();
+});
+window.addEventListener('keyup', (event) => {
+  rendererCMoveKeys.delete(event.code);
+});
+window.addEventListener('blur', () => {
+  rendererCMoveKeys.clear();
+});
 
 /* console access for calibration and debugging */
 window.__lab = {
@@ -1184,7 +1468,11 @@ window.__lab = {
   get facialDetails() { return mhrFacialDetails; },
   get expressions() { return expressions; },
   get rendererC() { return rendererCController; },
+  get animationAction() { return animationAction; },
   get rendererCCandidates() { return rendererCCandidates; },
+  get rendererCKeyboardWalking() { return rendererCKeyboardWalking; },
+  get rendererCMoveKeys() { return new Set(rendererCMoveKeys); },
+  get characterRoot() { return characterRoot; },
   get renderStyle() { return renderStyle; },
   THREE, applyAll, rebuildCostumeNow, generateRendererCGrid, toggleRenderStyle,
 };
@@ -1196,7 +1484,17 @@ function frame() {
   if (costumeDirty && !mhrController?.isPoseTransitioning && performance.now() - lastCostumeBuild > 90) rebuildCostumeNow();
   if (!isFallback) {
     const mode = preset.values.idleMode || 'procedural';
-    if (motionEnabled && mixer) mixer.update(mode === 'procedural' ? 0 : delta * (0.72 + Math.min(preset.values.breathing, 1.2) * 0.9));
+    const activeClip = animationAction?.getClip?.()?.name;
+    const movementRate = renderStyle === 'rendererC' && activeClip
+      ? 1
+      : 0.72 + Math.min(preset.values.breathing, 1.2) * 0.9;
+    if (motionEnabled && mixer) {
+      mixer.update(mode === 'procedural' ? 0 : delta * movementRate);
+    }
+    if (renderStyle === 'rendererC') {
+      updateRendererCLocomotion(delta);
+      applyRendererCStandingHandCorrection();
+    }
     if (idle && renderStyle === 'mhr') {
       idle.update(delta, elapsed, preset.values, mode, motionEnabled);
       const transitioning = idle.isPoseTransitioning;
@@ -1211,7 +1509,12 @@ function frame() {
         ui.status.textContent = idle.targetSeated >= 0.5 ? 'Meta MHR patient seated' : 'Meta MHR patient standing';
         ui.status.className = 'status ok';
       }
-    } else if (motionEnabled && idle) idle.update(delta, elapsed, preset.values, mode);
+    } else if (motionEnabled && idle && (renderStyle !== 'rendererC' || mode === 'procedural')) {
+      // Renderer C's Mixamo clips include authored fingers, wrists and gaze.
+      // The generic idle layer would overwrite those bones after every mixer
+      // update, which is the source of the previously splayed, janky hands.
+      idle.update(delta, elapsed, preset.values, mode);
+    }
   }
   if (expressions && !isFallback) expressions.update(delta, elapsed, preset.values);
   if (mhrFacialDetails && renderStyle === 'mhr') mhrFacialDetails.update(preset.values);

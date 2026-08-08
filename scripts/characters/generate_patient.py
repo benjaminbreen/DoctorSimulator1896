@@ -297,6 +297,125 @@ def create_idle_actions(rig, values, posed_bones):
     return clips
 
 
+def _lerp_pose(seated, standing, amount):
+    return {
+        name: tuple(seated[name][axis] + (standing[name][axis] - seated[name][axis]) * amount for axis in range(3))
+        for name in seated
+    }
+
+
+def _author_motion_action(rig, name, keys, interpolation="BEZIER"):
+    action = bpy.data.actions.new(name)
+    rig.animation_data.action = action
+    for frame, location, pose in keys:
+        rig.location = location
+        rig.keyframe_insert(data_path="location", frame=frame, group="Root motion")
+        for bone_name, angles in pose.items():
+            bone = rig.pose.bones.get(bone_name)
+            if not bone:
+                continue
+            bone.rotation_mode = "XYZ"
+            bone.rotation_euler = angles
+            bone.keyframe_insert(data_path="rotation_euler", frame=frame, group=bone_name)
+    if hasattr(action, "fcurves"):
+        for curve in action.fcurves:
+            for point in curve.keyframe_points:
+                point.interpolation = interpolation
+    return action
+
+
+def create_movement_actions(rig):
+    """Author web-sized stand, standing-idle, and in-place walk clips."""
+    rig.animation_data_create()
+    names = (
+        "pelvis", "spine_01", "spine_02", "spine_03", "neck_01", "head",
+        "upperarm_l", "upperarm_r", "lowerarm_l", "lowerarm_r",
+        "hand_l", "hand_r", "thigh_l", "thigh_r", "calf_l", "calf_r", "foot_l", "foot_r",
+    )
+    seated = {}
+    for name in names:
+        bone = rig.pose.bones.get(name)
+        if bone:
+            bone.rotation_mode = "XYZ"
+            seated[name] = tuple(bone.rotation_euler)
+    seated_location = rig.location.copy()
+    standing_location = seated_location + Vector((0, -0.18, 0.47))
+    standing = dict(seated)
+    standing.update({
+        "pelvis": (0, 0, 0), "spine_01": (0, 0, 0), "spine_02": (0, 0, 0), "spine_03": (0, 0, 0),
+        "neck_01": (0, 0, 0), "head": (0, 0, 0),
+        "upperarm_l": (0, math.radians(70), 0), "upperarm_r": (0, math.radians(-70), 0),
+        "lowerarm_l": (0, 0, 0), "lowerarm_r": (0, 0, 0), "hand_l": (0, 0, 0), "hand_r": (0, 0, 0),
+        "thigh_l": (0, 0, 0), "thigh_r": (0, 0, 0), "calf_l": (0, 0, 0), "calf_r": (0, 0, 0),
+        "foot_l": (0, 0, 0), "foot_r": (0, 0, 0),
+    })
+
+    stand_keys = []
+    for frame, pose_amount, root_amount, lean in (
+        (1, 0.0, 0.0, 0.0),
+        (15, 0.04, 0.0, math.radians(-8)),
+        (31, 0.18, 0.04, math.radians(-17)),
+        (49, 0.52, 0.38, math.radians(-13)),
+        (67, 0.88, 0.84, math.radians(-4)),
+        (83, 1.0, 1.0, math.radians(2)),
+        (95, 1.0, 1.0, 0.0),
+    ):
+        pose = _lerp_pose(seated, standing, pose_amount)
+        pose["spine_01"] = (pose["spine_01"][0] + lean, pose["spine_01"][1], pose["spine_01"][2])
+        pose["spine_03"] = (pose["spine_03"][0] + lean * 0.55, pose["spine_03"][1], pose["spine_03"][2])
+        location = seated_location.copy().lerp(standing_location, root_amount)
+        stand_keys.append((frame, location.copy(), pose))
+    stand_up = _author_motion_action(rig, "StandUp", stand_keys)
+
+    standing_keys = []
+    for frame, breath, sway in ((1, 0, 0), (25, 1, 1), (49, 0, 0), (73, -0.7, -1), (97, 0, 0)):
+        pose = dict(standing)
+        pose["pelvis"] = (0, 0, sway * 0.012)
+        pose["spine_01"] = (breath * -0.008, 0, sway * -0.010)
+        pose["spine_03"] = (breath * 0.015, 0, sway * 0.008)
+        pose["head"] = (breath * -0.004, sway * 0.012, sway * -0.004)
+        location = standing_location + Vector((sway * 0.008, 0, max(0, breath) * 0.004))
+        standing_keys.append((frame, location.copy(), pose))
+    standing_idle = _author_motion_action(rig, "StandingIdle", standing_keys)
+
+    walk_keys = []
+    for frame, phase in ((1, 0), (13, math.pi / 2), (25, math.pi), (37, math.pi * 1.5), (49, math.pi * 2)):
+        left = math.cos(phase)
+        right = -left
+        passing = abs(math.sin(phase))
+        pose = dict(standing)
+        pose["pelvis"] = (0, 0, math.sin(phase) * 0.012)
+        pose["spine_01"] = (math.radians(-1), 0, math.sin(phase) * -0.010)
+        pose["spine_03"] = (math.radians(1.5), 0, math.sin(phase) * 0.008)
+        pose["head"] = (math.radians(-0.5), math.sin(phase) * 0.006, 0)
+        pose["thigh_l"] = (math.radians(-11 * left), 0, 0)
+        pose["thigh_r"] = (math.radians(-11 * right), 0, 0)
+        pose["calf_l"] = (math.radians(3 + max(0, right) * 17 + passing * 4), 0, 0)
+        pose["calf_r"] = (math.radians(3 + max(0, left) * 17 + passing * 4), 0, 0)
+        pose["foot_l"] = (math.radians(-3 * left - passing * 3), 0, 0)
+        pose["foot_r"] = (math.radians(-3 * right - passing * 3), 0, 0)
+        pose["upperarm_l"] = (math.radians(9 * left), math.radians(70), 0)
+        pose["upperarm_r"] = (math.radians(9 * right), math.radians(-70), 0)
+        pose["lowerarm_l"] = (math.radians(11 + max(0, -left) * 4), 0, math.radians(2))
+        pose["lowerarm_r"] = (math.radians(11 + max(0, -right) * 4), 0, math.radians(-2))
+        location = standing_location + Vector((0, 0, 0.006 + passing * 0.010))
+        walk_keys.append((frame, location.copy(), pose))
+    walk = _author_motion_action(rig, "Walk", walk_keys, interpolation="BEZIER")
+
+    clips = [stand_up, standing_idle, walk]
+    rig.animation_data.action = None
+    for action in clips:
+        track = rig.animation_data.nla_tracks.new()
+        track.name = action.name
+        track.strips.new(action.name, int(action.frame_range[0]), action)
+    for name, angles in seated.items():
+        rig.pose.bones[name].rotation_euler = angles
+    rig.location = seated_location
+    bpy.context.scene.frame_set(1)
+    bpy.context.view_layer.update()
+    return clips
+
+
 def export_glb(output, objects=None):
     os.makedirs(os.path.dirname(output), exist_ok=True)
     bpy.ops.object.select_all(action="DESELECT")

@@ -53,6 +53,35 @@ function paletteFor(outfit, random) {
   return random.pick(DRESS_PALETTES.sober);
 }
 
+function menswearFor(patient, outfit, random) {
+  const mourning = outfit === 'mens-mourning-suit';
+  const working = outfit === 'mens-working-clothes';
+  const formal = outfit === 'mens-formal-suit' || mourning;
+  const classWear = { elite: 0.05, affluent: 0.08, comfortable: 0.16, sponsored: 0.28 }[patient.social.classId] ?? 0.14;
+  const laboring = ['factory-worker', 'laborer', 'porter', 'railroad-worker', 'skilled-tradesman'].includes(patient.social.occupationId);
+  return {
+    menswearPalette: mourning ? 'mourning'
+      : working ? random.pick(['work-earth', 'work-indigo'])
+        : formal ? random.pick(['formal-black-grey', 'formal-navy-grey'])
+          : random.pick(['trade-charcoal', 'trade-brown', 'trade-olive']),
+    fabricPattern: working ? random.pick(['plain', 'twill', 'twill'])
+      : formal ? random.pick(['plain', 'plain', 'pinstripe'])
+        : random.pick(['plain', 'herringbone', 'twill', 'pinstripe']),
+    garmentWear: classWear + (laboring ? 0.12 : 0) + jitter(random, 0.08),
+    coatLength: formal ? 1.04 + jitter(random, 0.06) : 0.98 + jitter(random, 0.06),
+    coatFullness: 1 + jitter(random, 0.06),
+    lapelWidth: formal ? 0.96 + jitter(random, 0.08) : 1.02 + jitter(random, 0.10),
+    trouserWidth: (working ? 1.07 : 1) + jitter(random, 0.07),
+    waistcoatFit: 1 + jitter(random, 0.04),
+    workingLayer: random.weighted([
+      { id: 'shirt-braces', weight: laboring ? 5 : 2 },
+      { id: 'waistcoat', weight: 3 },
+      { id: 'work-jacket', weight: 2 },
+    ]).id,
+    formalCoatCut: random.chance(0.58) ? 'morning-cutaway' : 'frock-coat',
+  };
+}
+
 function ageMorph(age) {
   return 0.5 + ((age - 16) / 60) * 0.4;
 }
@@ -263,6 +292,11 @@ export function patientToCharacterPreset(patient, basePreset, definitions, optio
   for (const [id, center] of Object.entries(STYLE_VALUES[values.outfitStyle])) {
     values[id] = clamped(definitions, id, center + jitter(dressRandom, id === 'buttonCount' ? 1.5 : 0.06));
   }
+  if (patient.identity.sex === 'male') {
+    for (const [id, value] of Object.entries(menswearFor(patient, values.outfitStyle, dressRandom))) {
+      values[id] = clamped(definitions, id, value);
+    }
+  }
 
   const severity = patient.clinical.severity;
   for (const [id, neutral] of Object.entries(NEUTRAL_PERFORMANCE)) {
@@ -273,10 +307,16 @@ export function patientToCharacterPreset(patient, basePreset, definitions, optio
   values.kneesTogether = clamped(definitions, 'kneesTogether', 0.74 + jitter(performanceRandom, 0.12));
   values.headTilt = clamped(definitions, 'headTilt', jitter(performanceRandom, 0.045));
   values.headTurn = clamped(definitions, 'headTurn', jitter(performanceRandom, 0.16));
-  values.armOpenness = clamped(definitions, 'armOpenness', jitter(performanceRandom, 0.16));
-  values.elbowBend = clamped(definitions, 'elbowBend', 0.68 + jitter(performanceRandom, 0.12));
-  values.armAsymmetry = clamped(definitions, 'armAsymmetry', jitter(performanceRandom, 0.16));
-  values.wristAngle = clamped(definitions, 'wristAngle', jitter(performanceRandom, 0.14));
+  values.seatedHandPose = performanceRandom.chance(0.5) ? 'hands-on-knees' : 'folded-hands';
+  const foldedHands = values.seatedHandPose === 'folded-hands';
+  values.armOpenness = clamped(definitions, 'armOpenness', foldedHands ? 0.92 + jitter(performanceRandom, 0.12) : jitter(performanceRandom, 0.16));
+  values.elbowBend = clamped(definitions, 'elbowBend', foldedHands ? 0.05 + jitter(performanceRandom, 0.07) : 0.68 + jitter(performanceRandom, 0.12));
+  values.armAsymmetry = clamped(definitions, 'armAsymmetry', foldedHands ? 0.72 + jitter(performanceRandom, 0.12) : jitter(performanceRandom, 0.16));
+  values.wristAngle = clamped(definitions, 'wristAngle', foldedHands ? 0.18 + jitter(performanceRandom, 0.07) : jitter(performanceRandom, 0.14));
+  values.foldedHandHeight = clamped(definitions, 'foldedHandHeight', -0.045 + jitter(performanceRandom, 0.012));
+  values.foldedHandForward = clamped(definitions, 'foldedHandForward', 0.04 + jitter(performanceRandom, 0.012));
+  values.foldedHandSpread = clamped(definitions, 'foldedHandSpread', 0.99 + jitter(performanceRandom, 0.05));
+  if (foldedHands) values.handTension = clamped(definitions, 'handTension', 0.78 + jitter(performanceRandom, 0.08));
   const sadPresentations = new Set(['melancholic-withdrawal', 'bereavement-visions', 'postpartum-disturbance']);
   const tiredPresentations = new Set(['neurasthenic-exhaustion', 'persistent-insomnia', 'morphine-habit', 'postpartum-disturbance']);
   values.sadness = clamped(definitions, 'sadness', (sadPresentations.has(patient.clinical.id) ? 0.42 : 0.03) * severity + jitter(performanceRandom, 0.05));

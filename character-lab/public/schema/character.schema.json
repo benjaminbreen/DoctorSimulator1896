@@ -30,6 +30,12 @@
       ]
     },
     {
+      "id": "rendererCIdentity", "label": "Renderer C identity anchor", "mode": "live", "renderer": "rendererC",
+      "parameters": [
+        {"id":"rendererCAnchor","label":"Base face anchor","type":"range","min":0,"max":7,"step":1,"default":0}
+      ]
+    },
+    {
       "id": "heritage", "label": "Skin & phenotype", "mode": "bake",
       "parameters": [
         {"id":"african","label":"African target weight","type":"range","min":0,"max":1,"step":0.01,"default":0.04},
@@ -155,6 +161,21 @@
       ]
     },
     {
+      "id": "rendererCMenswear", "label": "Renderer C men's wardrobe · provisional", "mode": "live", "renderer": "rendererC",
+      "parameters": [
+        {"id":"menswearPalette","label":"Curated cloth palette","type":"select","options":["work-earth","work-indigo","trade-charcoal","trade-brown","trade-olive","formal-black-grey","formal-navy-grey","mourning","custom"],"default":"trade-charcoal"},
+        {"id":"fabricPattern","label":"Fabric pattern","type":"select","options":["plain","twill","herringbone","pinstripe"],"default":"plain"},
+        {"id":"garmentWear","label":"Wear and fading","type":"range","min":0,"max":1,"step":0.01,"default":0.12},
+        {"id":"coatLength","label":"Coat length","type":"range","min":0.82,"max":1.18,"step":0.01,"default":1},
+        {"id":"coatFullness","label":"Coat fullness","type":"range","min":0.82,"max":1.22,"step":0.01,"default":1},
+        {"id":"lapelWidth","label":"Lapel width","type":"range","min":0.72,"max":1.35,"step":0.01,"default":1},
+        {"id":"trouserWidth","label":"Trouser width","type":"range","min":0.82,"max":1.22,"step":0.01,"default":1},
+        {"id":"waistcoatFit","label":"Waistcoat fit","type":"range","min":0.88,"max":1.14,"step":0.01,"default":1},
+        {"id":"workingLayer","label":"Working-class upper layer","type":"select","options":["shirt-braces","waistcoat","work-jacket"],"default":"shirt-braces"},
+        {"id":"formalCoatCut","label":"Professional coat cut","type":"select","options":["morning-cutaway","frock-coat"],"default":"morning-cutaway"}
+      ]
+    },
+    {
       "id": "pose", "label": "Pose & bearing", "mode": "live",
       "parameters": [
         {"id":"seated","label":"Seated pose target","type":"range","min":0,"max":1,"step":1,"default":1,"mode":"bake"},
@@ -166,6 +187,10 @@
         {"id":"elbowBend","label":"Elbow bend","type":"range","min":0,"max":1,"step":0.01,"default":0.68},
         {"id":"armAsymmetry","label":"Left ↔ right arm bias","type":"range","min":-1,"max":1,"step":0.01,"default":0},
         {"id":"wristAngle","label":"Wrist relaxation","type":"range","min":-1,"max":1,"step":0.01,"default":0},
+        {"id":"seatedHandPose","label":"Seated hand rest","type":"select","options":["hands-on-knees","folded-hands"],"default":"folded-hands"},
+        {"id":"foldedHandHeight","label":"Folded hands height","type":"range","min":-0.14,"max":0.14,"step":0.005,"default":-0.045},
+        {"id":"foldedHandForward","label":"Folded hands forward / back","type":"range","min":-0.14,"max":0.14,"step":0.005,"default":0.04},
+        {"id":"foldedHandSpread","label":"Folded hands spacing","type":"range","min":0.55,"max":1.45,"step":0.01,"default":0.99},
         {"id":"handTension","label":"Hand tension","type":"range","min":0,"max":1,"step":0.01,"default":0.28}
       ]
     },

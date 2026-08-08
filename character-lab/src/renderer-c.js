@@ -17,7 +17,7 @@ export const RENDERER_C_LIVE_BODY_IDS = Object.freeze(['weight', 'muscle', 'prop
 export const RENDERER_C_LIVE_IDS = new Set([
   ...RENDERER_C_LIVE_FACE_IDS,
   ...RENDERER_C_LIVE_BODY_IDS,
-  'age', 'height', 'african', 'asian', 'caucasian',
+  'rendererCAnchor', 'age', 'height', 'african', 'asian', 'caucasian',
 ]);
 
 export const RENDERER_C_COHORTS = Object.freeze({

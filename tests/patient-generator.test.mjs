@@ -79,7 +79,8 @@ test('resting-face signatures cover all units with predominantly bilateral varia
 
 test('2,000 generated patients remain coherent and inside the render contract', () => {
   const names = new Set(); const faces = new Set(); const complaints = new Set();
-  const originCounts = new Map(); const sexCounts = new Map(); let withoutPaidOccupation = 0; let mourningDress = 0;
+  const originCounts = new Map(); const sexCounts = new Map(); const handPoseCounts = new Map();
+  let withoutPaidOccupation = 0; let mourningDress = 0;
   for (let seed = 1; seed <= 2000; seed += 1) {
     const patient = generatePatient({ seed });
     const preset = patientToCharacterPreset(patient, basePreset, definitions);
@@ -104,6 +105,7 @@ test('2,000 generated patients remain coherent and inside the render contract', 
     names.add(patient.identity.fullName); faces.add(preset.patient.appearance.faceArchetype); complaints.add(patient.clinical.id);
     originCounts.set(patient.identity.origin.id, (originCounts.get(patient.identity.origin.id) ?? 0) + 1);
     sexCounts.set(patient.identity.sex, (sexCounts.get(patient.identity.sex) ?? 0) + 1);
+    handPoseCounts.set(preset.values.seatedHandPose, (handPoseCounts.get(preset.values.seatedHandPose) ?? 0) + 1);
   }
   assert.ok(names.size > 900, `only ${names.size} distinct names`);
   assert.ok(faces.size >= 7, `only ${faces.size} face archetypes`);
@@ -112,6 +114,8 @@ test('2,000 generated patients remain coherent and inside the render contract', 
   assert.ok(mourningDress > 30, `only ${mourningDress} mourning presentations rendered as mourning`);
   assert.ok((sexCounts.get('female') ?? 0) > 850, `only ${sexCounts.get('female')} female patients`);
   assert.ok((sexCounts.get('male') ?? 0) > 850, `only ${sexCounts.get('male')} male patients`);
+  assert.ok(Math.abs((handPoseCounts.get('hands-on-knees') ?? 0) - (handPoseCounts.get('folded-hands') ?? 0)) < 150,
+    `seated hand rests are imbalanced: ${JSON.stringify(Object.fromEntries(handPoseCounts))}`);
   assert.ok((originCounts.get('chinese-american') ?? 0) < 30, 'clinic sample overrepresents Chinese New Yorkers');
   assert.ok((originCounts.get('african-american') ?? 0) < 100, 'clinic sample overrepresents African American New Yorkers');
 });

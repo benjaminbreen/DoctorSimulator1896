@@ -23,6 +23,7 @@ import prove_renderer_c_identity_transfer as proof
 import render_mpfb_identity_diversity as identity_gate
 import render_renderer_c_face_range_grid as female_gate
 import render_renderer_c_male_face_range_grid as male_gate
+import retarget_mixamo_actions as mixamo_actions
 
 
 PIPELINE = "renderer-c-parametric-master-v1"
@@ -76,6 +77,7 @@ def cohort_definition(cohort):
             "identity_values": male_gate.identity_values,
             "skin": "young_caucasian_male.mhmat",
             "garment": "male_elegantsuit01.mhclo",
+            "work_garment": "male_casualsuit01.mhclo",
             "hair": ("short01.mhclo", "short02.mhclo"),
             "lashes": ("eyelashes01.mhclo",),
         }
@@ -320,6 +322,43 @@ def interpolate_custom_keys_to_assets(base, fitted):
         print(f"CUSTOM_ASSET_KEYS_OK {child.name}")
 
 
+def add_fitted_garment(HumanService, AssetService, base, filename, name, color):
+    """Add one reusable garment carrier and sample its body-build endpoints."""
+    garment = renderer_c.add_named_asset(
+        HumanService, AssetService, base, "clothes", filename, "Clothes", name
+    )
+    renderer_c.set_material_override(garment, f"{name}_Material", color, 0.84)
+    garment.shape_key_add(name="Basis", from_mix=False)
+    garment_morphs = (
+        *DEMOGRAPHIC_KEY_NAMES,
+        "rc_live_weight_neg", "rc_live_weight_pos",
+        "rc_live_muscle_neg", "rc_live_muscle_pos",
+        "rc_live_proportions_neg", "rc_live_proportions_pos",
+    )
+    for morph_name in garment_morphs:
+        for key in base.data.shape_keys.key_blocks[1:]:
+            key.value = 0.0
+        base.data.shape_keys.key_blocks[morph_name].value = 1.0
+        bpy.context.view_layer.update()
+        endpoint = renderer_c.add_named_asset(
+            HumanService, AssetService, base, "clothes", filename, "Clothes", f"Endpoint_{name}_{morph_name}"
+        )
+        if len(endpoint.data.vertices) != len(garment.data.vertices):
+            raise RuntimeError(f"{name} topology changed while fitting {morph_name}")
+        garment_key = garment.shape_key_add(name=morph_name, from_mix=False)
+        for point, vertex in zip(garment_key.data, endpoint.data.vertices):
+            point.co = vertex.co
+        endpoint_mesh = endpoint.data
+        bpy.data.objects.remove(endpoint, do_unlink=True)
+        if endpoint_mesh.users == 0:
+            bpy.data.meshes.remove(endpoint_mesh)
+        print(f"GARMENT_KEY_OK {name} {morph_name}")
+    for key in base.data.shape_keys.key_blocks[1:]:
+        key.value = 0.0
+    bpy.context.view_layer.update()
+    return garment
+
+
 def add_variant_assets(services, definition, base):
     HumanService, _TargetService, AssetService, _LocationService, _FaceService, _ExportService = services
     fitted = []
@@ -369,41 +408,19 @@ def add_variant_assets(services, definition, base):
     for key in base.data.shape_keys.key_blocks[1:]:
         key.value = 0.0
     bpy.context.view_layer.update()
-    garment = renderer_c.add_named_asset(
-        HumanService, AssetService, base, "clothes", definition["garment"], "Clothes", "RendererC_BaseGarment"
+    garment = add_fitted_garment(
+        HumanService, AssetService, base, definition["garment"], "RendererC_BaseGarment", "#183326"
     )
-    renderer_c.set_material_override(garment, "RendererC_Garment", "#183326", 0.84)
-    garment.shape_key_add(name="Basis", from_mix=False)
-    garment_morphs = (
-        *DEMOGRAPHIC_KEY_NAMES,
-        "rc_live_weight_neg", "rc_live_weight_pos",
-        "rc_live_muscle_neg", "rc_live_muscle_pos",
-        "rc_live_proportions_neg", "rc_live_proportions_pos",
-    )
-    for morph_name in garment_morphs:
-        for key in base.data.shape_keys.key_blocks[1:]:
-            key.value = 0.0
-        base.data.shape_keys.key_blocks[morph_name].value = 1.0
-        bpy.context.view_layer.update()
-        endpoint_garment = renderer_c.add_named_asset(
-            HumanService, AssetService, base, "clothes", definition["garment"], "Clothes", f"EndpointGarment_{morph_name}"
+    garment["renderer_c_wardrobe_role"] = "suit"
+    work_garment = None
+    if definition.get("work_garment"):
+        work_garment = add_fitted_garment(
+            HumanService, AssetService, base, definition["work_garment"], "RendererC_WorkGarment", "#4d4638"
         )
-        if len(endpoint_garment.data.vertices) != len(garment.data.vertices):
-            raise RuntimeError(f"Garment topology changed while fitting {morph_name}")
-        garment_key = garment.shape_key_add(name=morph_name, from_mix=False)
-        for point, vertex in zip(garment_key.data, endpoint_garment.data.vertices):
-            point.co = vertex.co
-        endpoint_mesh = endpoint_garment.data
-        bpy.data.objects.remove(endpoint_garment, do_unlink=True)
-        if endpoint_mesh.users == 0:
-            bpy.data.meshes.remove(endpoint_mesh)
-        print(f"GARMENT_KEY_OK {morph_name}")
-    for key in base.data.shape_keys.key_blocks[1:]:
-        key.value = 0.0
-    bpy.context.view_layer.update()
+        work_garment["renderer_c_wardrobe_role"] = "working"
     shoes = renderer_c.add_named_asset(HumanService, AssetService, base, "clothes", "shoes05.mhclo", "Clothes", "RendererC_Shoes")
     renderer_c.set_material_override(shoes, "RendererC_Shoes_Material", "#211713", 0.78)
-    return [*fitted, garment, shoes]
+    return [*fitted, garment, *([work_garment] if work_garment else []), shoes]
 
 
 def main():
@@ -454,15 +471,21 @@ def main():
         load_arkit_faceunits=True,
     )
 
-    rig = HumanService.add_builtin_rig(base, "game_engine")
+    # Renderer C uses MPFB's native Mixamo rig.  The downloaded actions share
+    # this skeleton, so they can be constrained and baked without translating
+    # between incompatible bone axes.
+    rig = HumanService.add_builtin_rig(base, "mixamo")
     rig.name = "Patient_Rig"
     rig["renderer_c_pipeline"] = PIPELINE
     fitted = add_variant_assets(services, definition, base)
     FaceService.interpolate_targets(base)
     interpolate_custom_keys_to_assets(base, fitted)
 
-    posed_bones = common.pose_character(rig, neutral)
-    common.create_idle_actions(rig, neutral, posed_bones)
+    motion_dir = os.path.join(
+        output_dir, "..", "..", "assets", "mixamo", "renderer-c-male-doll", "downloads"
+    )
+    motion_dir = os.path.abspath(motion_dir)
+    motion_actions = mixamo_actions.attach_mixamo_actions(rig, motion_dir)
     ExportService.bake_modifiers_remove_helpers(
         base,
         bake_masks=True,
@@ -475,6 +498,9 @@ def main():
         "pipeline": PIPELINE,
         "cohort": args.cohort,
         "sex": definition["sex"],
+        "rig": "mpfb-mixamo",
+        "motionSource": "renderer-c-male-mixamo-doll",
+        "motionClips": [action.name for action in motion_actions],
         "neutralAge": NEUTRAL_AGE,
         "anchors": anchors,
         "liveFaceIds": list(LIVE_FACE_IDS),
@@ -492,6 +518,7 @@ def main():
             "eyes": len(definition["anchors"]),
             "teeth": len(definition["anchors"]),
         },
+        "wardrobeCarriers": ["RendererC_BaseGarment", *(["RendererC_WorkGarment"] if definition.get("work_garment") else [])],
     }
     bpy.context.scene["renderer_c_manifest"] = json.dumps(scene_manifest, separators=(",", ":"))
     renderer_c.export_glb(output, [base, rig, *fitted])
