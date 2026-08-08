@@ -98,8 +98,12 @@ export function generateInterior(building, values = {}) {
   const layout = facadeLayout(building.size[0], building.size[1]);
   const door = layout.ground.find((win) => win.isDoor);
   const doorAlong = round(Math.max(-W / 2 + 1.6, Math.min(W / 2 - 1.6, ((door.x + door.w / 2) / layout.texW - 0.5) * W)));
-  // Sash height clamps to the ceiling so low rooms keep a header above.
-  const winH = round(Math.min(grand ? 3.0 : 2.6, H - 1.4));
+  // 1896 parlor sashes are tall and narrow with a low sill — near enough
+  // floor to ceiling that you could step out to a balcony. A high sill and
+  // a squat opening is what makes a room read as modern.
+  const sill = humble ? 0.55 : 0.42;
+  const winW = grand ? 1.45 : 1.3;
+  const winH = round(Math.min(grand ? 3.5 : 3.1, H - sill - 0.75));
   const southOpenings = [
     { id: 'front-door', type: 'door', center: [doorAlong, 1.35], size: [1.4, 2.7], sillHeight: 0, blocked: true },
   ];
@@ -107,13 +111,14 @@ export function generateInterior(building, values = {}) {
     const along = round(Math.max(-W / 2 + 1.2, Math.min(W / 2 - 1.2, ((win.x + win.w / 2) / layout.texW - 0.5) * W)));
     if (Math.abs(along - doorAlong) < 1.6) continue;
     southOpenings.push({
-      id: `window-s-${win.col}`, type: 'window', center: [along, 1.1 + winH / 2], size: [1.5, winH], sillHeight: 1.1,
+      id: `window-s-${win.col}`, type: 'window',
+      center: [along, round(sill + winH / 2)], size: [winW, winH], sillHeight: sill,
     });
   }
   // Rear windows for cross light.
   const rearOpenings = [-1, 1].map((side) => ({
     id: `window-n${side > 0 ? 'e' : 'w'}`, type: 'window',
-    center: [round((side * W) / 4), 1.1 + winH / 2], size: [1.5, winH], sillHeight: 1.1,
+    center: [round((side * W) / 4), round(sill + winH / 2)], size: [winW, winH], sillHeight: sill,
   }));
 
   const walls = [
@@ -135,6 +140,9 @@ export function generateInterior(building, values = {}) {
   const furniture = [];
   const props = [];
   const gaslights = [];
+  // Height of the chair rail capping the dado; the wainscot panels below it
+  // are sized from this, so it has to be known before either is placed.
+  const dadoY = 0.95;
   // Visible burner glow. Free, so every flame in a fixture gets one.
   const flame = (id, x, y, z, radius = 0.04) => {
     props.push({ id, kind: 'flame', position: [round(x), round(y), round(z)], radius });
@@ -144,7 +152,7 @@ export function generateInterior(building, values = {}) {
   // shadow face instead of a point light's six — so the room can afford a
   // few of them and the furniture actually sits on the floor.
   let shadowsUsed = 0;
-  const SHADOW_BUDGET = 3;
+  const SHADOW_BUDGET = 2;
   const light = (id, x, y, z, intensity, options = {}) => {
     const castShadow = options.shadow === true && shadowsUsed < SHADOW_BUDGET;
     if (castShadow) shadowsUsed += 1;
@@ -188,7 +196,7 @@ export function generateInterior(building, values = {}) {
     // gets a light under each shade; a candelabra gets six visible flames but
     // pools its output into one source, since six point lights for one
     // fixture is not a trade worth making.
-    const burners = fixtureBurners(model);
+    const burners = options.unlit ? null : fixtureBurners(model);
     if (burners) {
       const cos = Math.cos(item.yaw);
       const sin = Math.sin(item.yaw);
@@ -225,7 +233,13 @@ export function generateInterior(building, values = {}) {
   const rugD = rug ? rug.size[2] : rugW * 0.72;
   place('centerTable', 0, frontZ, { rollSalt: 1.1 });
 
-  const seatCount = Math.max(2, Math.round((humble ? 2 : grand ? 5 : 3) * density));
+  // Counts follow floor area, not the wealth tier alone: a flat count leaves
+  // the bigger rooms looking abandoned, since the same six pieces have three
+  // times the floor to cover.
+  const areaScale = Math.min(1.5, Math.sqrt((W * D) / 300));
+  const scaled = (base) => Math.max(1, Math.round(base * density * areaScale));
+
+  const seatCount = Math.max(2, scaled(humble ? 2 : grand ? 4 : 3));
   for (let i = 0; i < seatCount; i += 1) {
     // Ring the rug: alternate sides, facing inward.
     const angle = (i / seatCount) * Math.PI * 2 + hash01(seed + i) * 0.3;
@@ -233,6 +247,12 @@ export function generateInterior(building, values = {}) {
     const z = frontZ + Math.cos(angle) * (rugD / 2 + 0.65);
     if (Math.abs(x) > W / 2 - 0.8 || Math.abs(z) > D / 2 - 0.8) continue;
     place(i % 3 === 0 ? 'seating' : 'sideChair', x, z, { yaw: angle + Math.PI, rollSalt: i * 3.1 });
+    // A footstool drawn up to every third seat.
+    if (i % 3 === 0) {
+      place('footstool', x * 0.72, frontZ + (z - frontZ) * 0.72, {
+        yaw: angle + Math.PI, rollSalt: i * 4.9,
+      });
+    }
   }
 
   // Hearth on a party wall, in the back room when the arch exists.
@@ -250,25 +270,72 @@ export function generateInterior(building, values = {}) {
   place('storage', -hearthSide * (W / 2 - 0.6), round(D * 0.1), {
     yaw: -hearthSide > 0 ? -Math.PI / 2 : Math.PI / 2, rollSalt: 2.9,
   });
-  const cornerCount = Math.round((grand ? 4 : humble ? 1 : 2) * density);
+  const cornerCount = scaled(grand ? 3 : humble ? 1 : 2);
   for (let i = 0; i < cornerCount; i += 1) {
     const cx = (i % 2 === 0 ? -1 : 1) * (W / 2 - 0.8);
-    const cz = (i < 2 ? -1 : 1) * (D / 2 - 1.0);
+    const cz = (i < 2 ? -1 : 1) * (D / 2 - 1.0) * (i < 4 ? 1 : 0.45);
     place('pedestal', cx, cz, { rollSalt: i * 5.7 });
   }
-  place('radiator', round(W * 0.28), D / 2 - 0.45, { yaw: Math.PI, rollSalt: 4.1 });
+  // Radiators under the street windows, where they belong.
+  for (const opening of southOpenings.filter((o) => o.type === 'window')) {
+    place('radiator', opening.center[0], D / 2 - 0.42, { yaw: Math.PI, rollSalt: opening.center[0] * 2.3 });
+  }
   if (humble) place('work', hearthSide * (W / 2 - 1.0), round(D * 0.22), { yaw: 0.2, rollSalt: 6.7 });
 
-  // Side tables carry the lamps.
-  const sideTable = place('sideTable', -rugW / 2 - 1.1, frontZ - rugD / 2 - 0.4, { rollSalt: 8.9 });
-  if (sideTable) {
-    place('tableLamp', sideTable.position[0], sideTable.position[2], {
-      y: sideTable.size[1], solid: false, rollSalt: 9.3,
-    });
+  // Side tables carry the lamps; bigger rooms get more of both.
+  const tableCount = scaled(humble ? 1 : 2);
+  for (let i = 0; i < tableCount; i += 1) {
+    const side = i % 2 === 0 ? -1 : 1;
+    const bank = i < 2 ? -1 : 1;
+    const tx = side * (rugW / 2 + 1.1);
+    const tz = frontZ + bank * (rugD / 2 + 0.5);
+    if (Math.abs(tx) > W / 2 - 0.9 || Math.abs(tz) > D / 2 - 0.9) continue;
+    const sideTable = place('sideTable', tx, tz, { rollSalt: 8.9 + i * 2.7 });
+    if (sideTable) {
+      place('tableLamp', sideTable.position[0], sideTable.position[2], {
+        y: sideTable.size[1], solid: false, rollSalt: 9.3 + i * 3.1,
+        lightIntensity: 2.6, lightDistance: 6.5,
+        // Only the first pair are actually lit; the rest stand unlit, which
+        // is both cheaper and truer to a room lit lamp by lamp.
+        unlit: i >= 2,
+      });
+    }
   }
 
   // Wall decor and sconces on the party walls, clear of the hearth.
-  const decorCount = Math.round((grand ? 4 : humble ? 0 : 2) * density);
+  // Carved brackets either side of the double-parlor arch.
+  if (archZ !== null) {
+    for (const side of [-1, 1]) {
+      place('bracket', side * round(W * 0.25), archZ, {
+        y: round(H - 1.55), yaw: side > 0 ? -Math.PI / 2 : Math.PI / 2,
+        solid: false, rollSalt: side * 21.7,
+      });
+    }
+  }
+
+  // Dado panelling below the chair rail on the party walls.
+  if (grand) {
+    const panel = pickModel('wainscot', wealth, hash01(seed * 6.1));
+    if (panel) {
+      const [pw, ph] = modelSize(panel);
+      const panelScale = round((dadoY - 0.28) / ph);
+      const step = pw * panelScale;
+      const runs = Math.floor((D - 1.5) / step);
+      for (const side of [-1, 1]) {
+        for (let i = 0; i < runs; i += 1) {
+          const pz = round(-D / 2 + 0.75 + (i + 0.5) * step);
+          furniture.push({
+            id: `wainscot-${side}-${i}`, kind: 'furniture', model: panel, modelScale: panelScale,
+            position: [round(side * (W / 2 - 0.14)), 0.26, pz],
+            size: [round(step), dadoY - 0.28, 0.1],
+            yaw: side > 0 ? -Math.PI / 2 : Math.PI / 2, collider: false,
+          });
+        }
+      }
+    }
+  }
+
+  const decorCount = scaled(grand ? 3 : humble ? 0 : 2);
   for (let i = 0; i < decorCount; i += 1) {
     const side = i % 2 === 0 ? -1 : 1;
     const z = round(frontZ + (i < 2 ? -1 : 1) * D * 0.14);
@@ -292,17 +359,41 @@ export function generateInterior(building, values = {}) {
 
   // XL atrium: column ring plus a second chandelier over the back half.
   if (size === 'XL') {
+    // Carved shafts on plain drums: the drum carries the height, the model
+    // gives the ring of columns something worth looking at.
     for (const sx of [-1, 1]) {
       for (const sz2 of [-1, 1]) {
+        const cx = round((sx * W) / 4);
+        const cz = round((sz2 * D) / 4);
         furniture.push({
-          id: `column-${sx}-${sz2}`, kind: 'furniture', shape: 'cylinder',
-          position: [round((sx * W) / 4), H / 2, round((sz2 * D) / 4)], size: [0.7, H, 0.7], yaw: 0, color: palette.ceiling,
+          id: `column-drum-${sx}-${sz2}`, kind: 'furniture', shape: 'cylinder',
+          position: [cx, H / 2, cz], size: [0.7, H, 0.7], yaw: 0, color: palette.ceiling,
         });
+        place('column', cx, cz, { solid: false, rollSalt: sx * 3 + sz2 * 7 });
       }
     }
     place('ceilingLight', 0, round(-D * 0.28), {
       y: H - 1.9, solid: false, rollSalt: 19.3, lightIntensity: 5.0, lightDistance: 13,
     });
+
+    // Gallery railing running the long walls at half height, which is what
+    // makes the void read as two storeys rather than one very tall room.
+    const rail = pickModel('railing', wealth, hash01(seed * 8.3));
+    if (rail) {
+      const [rw] = modelSize(rail);
+      const step = rw;
+      const spans = Math.floor((D - 4) / step);
+      for (const side of [-1, 1]) {
+        for (let i = 0; i < spans; i += 1) {
+          furniture.push({
+            id: `gallery-${side}-${i}`, kind: 'furniture', model: rail, modelScale: 1,
+            position: [round(side * (W / 2 - 2.2)), round(H / 2), round(-D / 2 + 2 + (i + 0.5) * step)],
+            size: [round(step), 1.2, 0.24],
+            yaw: side > 0 ? -Math.PI / 2 : Math.PI / 2, collider: false,
+          });
+        }
+      }
+    }
   }
 
   // The front door leaf, shut in its opening. The opening is already blocked
@@ -346,19 +437,37 @@ export function generateInterior(building, values = {}) {
     { id: 'west', x: -W / 2 + 0.14, z: 0, sx: 0.09, sz: D },
     { id: 'east', x: W / 2 - 0.14, z: 0, sx: 0.09, sz: D },
   ];
+  // Each moulding is built from stepped members rather than one flat board.
+  // A single box reads as a painted stripe; the step is what catches the
+  // light and says joinery.
   for (const run of runs) {
     // Only the thin axis — the projection out from the wall — changes per
-    // moulding; the run's length stays as authored.
+    // member; the run's length stays as authored.
     const alongX = run.sx >= run.sz;
     const proud = (factor) => (alongX ? [run.sx, run.sz * factor] : [run.sx * factor, run.sz]);
-    const [skirtX, skirtZ] = proud(1);
-    trim(`skirting-${run.id}`, run.x, 0.12, run.z, skirtX, 0.24, skirtZ, palette.trim);
+    const member = (id, y, height, factor, color) => {
+      const [mx, mz] = proud(factor);
+      trim(`${id}-${run.id}`, run.x, y, run.z, mx, height, mz, color);
+    };
+
+    // Skirting: plinth board with a cap moulding standing proud of it.
+    member('skirting', 0.11, 0.22, 1.0, palette.trim);
+    member('skirting-cap', 0.245, 0.05, 1.9, palette.trim);
+
     if (!humble) {
-      const [railX, railZ] = proud(0.8);
-      trim(`picture-rail-${run.id}`, run.x, railY, run.z, railX, 0.07, railZ, palette.trim);
+      // Picture rail: the rail itself over a slim bead.
+      member('picture-rail', railY, 0.05, 1.9, palette.trim);
+      member('picture-bead', railY - 0.045, 0.03, 1.2, palette.trim);
     }
-    const [corniceX, corniceZ] = proud(2.2);
-    trim(`cornice-${run.id}`, run.x, H - 0.13, run.z, corniceX, 0.26, corniceZ, palette.ceiling);
+    if (grand) {
+      // Chair rail capping the dado, with a bead under it.
+      member('chair-rail', dadoY, 0.07, 2.0, palette.trim);
+      member('chair-bead', dadoY - 0.055, 0.03, 1.3, palette.trim);
+    }
+
+    // Cornice: a deep cove with a bed moulding tucked beneath.
+    member('cornice', H - 0.1, 0.2, 2.6, palette.ceiling);
+    member('cornice-bed', H - 0.235, 0.08, 1.6, palette.ceiling);
   }
 
   // Hearth fire: a low warm light at the grate, the room's other anchor.

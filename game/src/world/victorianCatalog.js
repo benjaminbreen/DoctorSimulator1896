@@ -120,8 +120,37 @@ export const SLOTS = {
   },
   pedestal: {
     humble: [],
-    middling: ['Pilar_wooden'],
-    grand: ['Bust_Pilar_01', 'Pilar_wooden'],
+    middling: ['Bust_Pilar_01'],
+    grand: ['Bust_Pilar_01'],
+  },
+  // Full-height shafts, only where there is height to carry them.
+  column: {
+    humble: [],
+    middling: [],
+    grand: ['Pilar_wooden', 'PilarConcrete'],
+  },
+  footstool: {
+    humble: [],
+    middling: ['stool'],
+    grand: ['stool'],
+  },
+  // Carved bracket, used in pairs flanking the double-parlor arch.
+  bracket: {
+    humble: [],
+    middling: ['Wooden_Detail_01'],
+    grand: ['Wooden_Detail_01', 'ConcreteDecor'],
+  },
+  // Dado panelling below the chair rail, tiled along the party walls.
+  wainscot: {
+    humble: [],
+    middling: [],
+    grand: ['WoodenWallPanel'],
+  },
+  // Gallery railing around the atrium void.
+  railing: {
+    humble: [],
+    middling: [],
+    grand: ['Balustrade_Medium', 'Balustrade_Short'],
   },
   radiator: {
     humble: ['Radiator'],
