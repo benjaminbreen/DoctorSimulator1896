@@ -64,30 +64,11 @@ function seededRandom(seed) {
   };
 }
 
-// Facade grid shared by the painted texture and the instanced window
-// geometry (WindowField), so glass panes land exactly on the painted
-// openings: one column per ~2.8m of width, one floor per ~3.4m of height.
-export function facadeLayout(widthM, heightM) {
-  const floors = Math.min(8, Math.max(2, Math.round((heightM - 2) / 3.4)));
-  const cols = Math.min(6, Math.max(2, Math.round(widthM / 2.8)));
-  const unit = 52;
-  const texW = cols * unit + 16;
-  const texH = floors * unit + 22;
-  // 1896 sash proportions: tall and narrow, wall dominating glass. A 52px
-  // unit is ~2.8m, so 20px is a ~1.1m opening about two panes high.
-  const upper = [];
-  for (let floor = 0; floor < floors - 1; floor += 1) {
-    for (let col = 0; col < cols; col += 1) {
-      upper.push({ col, floor, x: 18 + col * unit, y: 26 + floor * unit, w: 20, h: 34 });
-    }
-  }
-  const groundBandY = texH - unit - 4;
-  const ground = [];
-  for (let col = 0; col < cols; col += 1) {
-    ground.push({ col, x: 16 + col * unit, y: groundBandY + 4, w: 24, h: unit - 10, isDoor: col === Math.floor(cols / 2) });
-  }
-  return { floors, cols, unit, texW, texH, upper, ground, groundBandY };
-}
+// The facade grid lives in world/facade.js (interiors derive from it too);
+// re-exported here for the scene modules that paint and dress facades.
+import { facadeLayout } from '../world/facade.js';
+
+export { facadeLayout };
 
 // Painted openings stay uniformly dark: they read as interior depth behind
 // the instanced glass, which owns lit panes, frames, and shutters.
@@ -172,6 +153,52 @@ export function plasterTexture(base) {
   }
   context.putImageData(image, 0, 0);
   const texture = finish(canvas);
+  cache.set(key, texture);
+  return texture;
+}
+
+// What a sash window shows from inside: sky graded down to a hazy horizon,
+// with the dark smudge of buildings across the street at the bottom. A flat
+// bright pane is the single thing that makes an interior read as fake, so
+// this is deliberately not a solid colour.
+export function windowSkyTexture() {
+  const key = 'windowSky';
+  if (cache.has(key)) return cache.get(key);
+  const width = 64;
+  const height = 256;
+  const canvas = makeCanvas(width);
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+
+  const sky = context.createLinearGradient(0, 0, 0, height);
+  sky.addColorStop(0, '#8fa8cc');
+  sky.addColorStop(0.45, '#b9c8dd');
+  sky.addColorStop(0.72, '#d8dbdb');
+  sky.addColorStop(1, '#c8c3b8');
+  context.fillStyle = sky;
+  context.fillRect(0, 0, width, height);
+
+  // Rooftops opposite: irregular dark blocks along the lower third.
+  context.fillStyle = 'rgba(78,72,66,0.85)';
+  let x = 0;
+  let index = 0;
+  while (x < width) {
+    const w = 7 + ((index * 13) % 11);
+    const top = height * (0.7 + (((index * 7) % 5) / 60));
+    context.fillRect(x, top, w, height - top);
+    x += w;
+    index += 1;
+  }
+  // Soot haze over the roofline.
+  const haze = context.createLinearGradient(0, height * 0.62, 0, height);
+  haze.addColorStop(0, 'rgba(205,205,200,0.55)');
+  haze.addColorStop(1, 'rgba(150,145,138,0.1)');
+  context.fillStyle = haze;
+  context.fillRect(0, height * 0.62, width, height * 0.38);
+
+  const texture = finish(canvas);
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
   cache.set(key, texture);
   return texture;
 }

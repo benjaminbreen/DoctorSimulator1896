@@ -21,3 +21,7 @@ character-lab/authoring/hair/victorian-low-bun.blend
 mockups/character-engine-comparison/mhr-live-*.png
 mockups/character-engine-comparison/mhr-*-2026-*.png
 mockups/character-engine-comparison/mhr-anatomical-eyes-contact-sheet-*.png
+
+# Purchased asset sources (CGTrader Victorian pack, etc). Converted GLBs are
+# tracked under game/public/models/; the multi-GB sources stay local.
+assets-src/

@@ -1,0 +1,1276 @@
+{
+ "Armchair02": {
+  "file": "Armchair02.glb",
+  "min": [
+   -0.5967,
+   0.0,
+   -0.6001
+  ],
+  "size": [
+   1.1934,
+   1.4712,
+   1.2001
+  ]
+ },
+ "Balustrade": {
+  "file": "Balustrade.glb",
+  "min": [
+   -1.0,
+   0.0,
+   -0.1003
+  ],
+  "size": [
+   2.0,
+   1.1265,
+   0.2005
+  ]
+ },
+ "Balustrade_Medium": {
+  "file": "Balustrade_Medium.glb",
+  "min": [
+   -0.75,
+   0.0,
+   -0.1003
+  ],
+  "size": [
+   1.5,
+   1.1265,
+   0.2005
+  ]
+ },
+ "Balustrade_Short": {
+  "file": "Balustrade_Short.glb",
+  "min": [
+   -0.5,
+   0.0,
+   -0.1003
+  ],
+  "size": [
+   1.0,
+   1.1265,
+   0.2005
+  ]
+ },
+ "Bedside_Cabinet": {
+  "file": "Bedside_Cabinet.glb",
+  "min": [
+   -0.3864,
+   0.0,
+   -0.3532
+  ],
+  "size": [
+   0.7728,
+   0.828,
+   0.7063
+  ]
+ },
+ "Bust_Pilar_01": {
+  "file": "Bust_Pilar_01.glb",
+  "min": [
+   -0.2619,
+   0.0,
+   -0.2619
+  ],
+  "size": [
+   0.5238,
+   1.759,
+   0.5238
+  ]
+ },
+ "Cabinet": {
+  "file": "Cabinet.glb",
+  "min": [
+   -0.8101,
+   0.0,
+   -0.3959
+  ],
+  "size": [
+   1.6202,
+   2.664,
+   0.7918
+  ]
+ },
+ "Cabinet_Small": {
+  "file": "Cabinet_Small.glb",
+  "min": [
+   -0.792,
+   0.0,
+   -0.3959
+  ],
+  "size": [
+   1.584,
+   1.152,
+   0.7918
+  ]
+ },
+ "Ceiling2": {
+  "file": "Ceiling2.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -2.0
+  ],
+  "size": [
+   4.0,
+   0.0471,
+   4.0
+  ]
+ },
+ "Ceiling_2_Ledge": {
+  "file": "Ceiling_2_Ledge.glb",
+  "min": [
+   -0.3829,
+   0.0,
+   -2.0
+  ],
+  "size": [
+   0.7658,
+   0.25,
+   4.0
+  ]
+ },
+ "Ceiling_2_Ledge_Corner_1": {
+  "file": "Ceiling_2_Ledge_Corner_1.glb",
+  "min": [
+   -0.3829,
+   0.0,
+   -2.0
+  ],
+  "size": [
+   0.7658,
+   0.25,
+   3.9999
+  ]
+ },
+ "Ceiling_2_Ledge_Corner_2": {
+  "file": "Ceiling_2_Ledge_Corner_2.glb",
+  "min": [
+   -0.3829,
+   0.0,
+   -2.0
+  ],
+  "size": [
+   0.7658,
+   0.25,
+   4.0
+  ]
+ },
+ "Ceiling_2_Ledge_Corner_Small": {
+  "file": "Ceiling_2_Ledge_Corner_Small.glb",
+  "min": [
+   -0.3829,
+   0.0,
+   -0.3829
+  ],
+  "size": [
+   0.7658,
+   0.25,
+   0.7658
+  ]
+ },
+ "Ceiling_2_Ledge_Corners": {
+  "file": "Ceiling_2_Ledge_Corners.glb",
+  "min": [
+   -0.3829,
+   0.0,
+   -2.0
+  ],
+  "size": [
+   0.7658,
+   0.25,
+   4.0
+  ]
+ },
+ "Ceiling_2_Ledge_Corners_Short": {
+  "file": "Ceiling_2_Ledge_Corners_Short.glb",
+  "min": [
+   -0.3829,
+   0.0,
+   -1.8
+  ],
+  "size": [
+   0.7658,
+   0.25,
+   3.6
+  ]
+ },
+ "Ceiling_Wooden_01": {
+  "file": "Ceiling_Wooden_01.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -2.0
+  ],
+  "size": [
+   4.0,
+   0.1493,
+   4.0
+  ]
+ },
+ "Ceiling_Wooden_02": {
+  "file": "Ceiling_Wooden_02.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -2.0
+  ],
+  "size": [
+   4.0,
+   0.1966,
+   4.0
+  ]
+ },
+ "Ceiling_Wooden_03": {
+  "file": "Ceiling_Wooden_03.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -2.0
+  ],
+  "size": [
+   4.0,
+   0.2502,
+   4.0
+  ]
+ },
+ "ChairSmall2": {
+  "file": "ChairSmall2.glb",
+  "min": [
+   -0.2801,
+   0.0,
+   -0.3752
+  ],
+  "size": [
+   0.5602,
+   1.276,
+   0.7505
+  ]
+ },
+ "Chandelier": {
+  "file": "Chandelier.glb",
+  "min": [
+   -0.5893,
+   0.0,
+   -0.6636
+  ],
+  "size": [
+   1.1787,
+   0.964,
+   1.3273
+  ]
+ },
+ "Clock": {
+  "file": "Clock.glb",
+  "min": [
+   -0.2834,
+   0.0,
+   -0.1102
+  ],
+  "size": [
+   0.5669,
+   1.3793,
+   0.2205
+  ]
+ },
+ "ConcreteDecor": {
+  "file": "ConcreteDecor.glb",
+  "min": [
+   -0.1151,
+   0.0,
+   -0.1925
+  ],
+  "size": [
+   0.2302,
+   0.4226,
+   0.3849
+  ]
+ },
+ "Door_02_Frame": {
+  "file": "Door_02_Frame.glb",
+  "min": [
+   -0.9039,
+   0.0,
+   -0.2267
+  ],
+  "size": [
+   1.8078,
+   3.15,
+   0.4533
+  ]
+ },
+ "Door_02_Wing": {
+  "file": "Door_02_Wing.glb",
+  "min": [
+   -0.6,
+   0.0,
+   -0.0848
+  ],
+  "size": [
+   1.2,
+   2.8,
+   0.1696
+  ]
+ },
+ "Fireplace": {
+  "file": "Fireplace.glb",
+  "min": [
+   -1.0223,
+   0.0,
+   -0.3945
+  ],
+  "size": [
+   2.0446,
+   1.9581,
+   0.7891
+  ]
+ },
+ "Floor": {
+  "file": "Floor.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -2.0
+  ],
+  "size": [
+   4.0,
+   0.0,
+   4.0
+  ]
+ },
+ "Floor_small": {
+  "file": "Floor_small.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -0.1
+  ],
+  "size": [
+   4.0,
+   0.0,
+   0.2
+  ]
+ },
+ "OilLamp": {
+  "file": "OilLamp.glb",
+  "min": [
+   -0.1649,
+   0.0,
+   -0.1649
+  ],
+  "size": [
+   0.3298,
+   0.5699,
+   0.3298
+  ]
+ },
+ "Painting": {
+  "file": "Painting.glb",
+  "min": [
+   -0.5623,
+   0.0,
+   -0.0087
+  ],
+  "size": [
+   1.1245,
+   0.7898,
+   0.0174
+  ]
+ },
+ "Painting2": {
+  "file": "Painting2.glb",
+  "min": [
+   -0.3173,
+   0.0,
+   -0.013
+  ],
+  "size": [
+   0.6346,
+   0.7908,
+   0.0261
+  ]
+ },
+ "PilarConcrete": {
+  "file": "PilarConcrete.glb",
+  "min": [
+   -0.2782,
+   0.0,
+   -0.27
+  ],
+  "size": [
+   0.5564,
+   3.9997,
+   0.54
+  ]
+ },
+ "Pilar_wooden": {
+  "file": "Pilar_wooden.glb",
+  "min": [
+   -0.3897,
+   0.0,
+   -0.3868
+  ],
+  "size": [
+   0.7793,
+   4.0,
+   0.7737
+  ]
+ },
+ "Radiator": {
+  "file": "Radiator.glb",
+  "min": [
+   -0.9682,
+   0.0,
+   -0.1429
+  ],
+  "size": [
+   1.9364,
+   0.9255,
+   0.2859
+  ]
+ },
+ "Rug01": {
+  "file": "Rug01.glb",
+  "min": [
+   -1.9912,
+   0.0,
+   -2.9866
+  ],
+  "size": [
+   3.9825,
+   0.05,
+   5.9732
+  ]
+ },
+ "Sconce": {
+  "file": "Sconce.glb",
+  "min": [
+   -0.3809,
+   0.0,
+   -0.1805
+  ],
+  "size": [
+   0.7618,
+   0.5782,
+   0.3609
+  ]
+ },
+ "Sewing Machine": {
+  "file": "Sewing_Machine.glb",
+  "min": [
+   -0.5385,
+   0.0,
+   -0.3435
+  ],
+  "size": [
+   1.077,
+   1.4408,
+   0.687
+  ]
+ },
+ "SmallLamp": {
+  "file": "SmallLamp.glb",
+  "min": [
+   -0.188,
+   0.0,
+   -0.188
+  ],
+  "size": [
+   0.3761,
+   0.6959,
+   0.3761
+  ]
+ },
+ "SmallTable02": {
+  "file": "SmallTable02.glb",
+  "min": [
+   -0.2768,
+   0.0,
+   -0.2636
+  ],
+  "size": [
+   0.5536,
+   0.855,
+   0.5272
+  ]
+ },
+ "Stairs": {
+  "file": "Stairs.glb",
+  "min": [
+   -2.4466,
+   0.0,
+   -2.5623
+  ],
+  "size": [
+   4.8932,
+   2.4597,
+   5.1247
+  ]
+ },
+ "Stairs_Fliped": {
+  "file": "Stairs_Fliped.glb",
+  "min": [
+   -2.4466,
+   0.0,
+   -1.2299
+  ],
+  "size": [
+   4.8932,
+   5.1247,
+   2.4597
+  ]
+ },
+ "Table_01": {
+  "file": "Table_01.glb",
+  "min": [
+   -0.5882,
+   0.0,
+   -0.9277
+  ],
+  "size": [
+   1.1763,
+   1.0122,
+   1.8554
+  ]
+ },
+ "Table_02": {
+  "file": "Table_02.glb",
+  "min": [
+   -0.5612,
+   0.0,
+   -0.381
+  ],
+  "size": [
+   1.1225,
+   1.0588,
+   0.7619
+  ]
+ },
+ "Wall01": {
+  "file": "Wall01.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -0.0927
+  ],
+  "size": [
+   4.0001,
+   4.0001,
+   0.1855
+  ]
+ },
+ "Wall01Corner": {
+  "file": "Wall01Corner.glb",
+  "min": [
+   -1.0682,
+   0.0,
+   -1.0682
+  ],
+  "size": [
+   2.1363,
+   4.0001,
+   2.1363
+  ]
+ },
+ "Wall01Short": {
+  "file": "Wall01Short.glb",
+  "min": [
+   -1.0,
+   0.0,
+   -0.0927
+  ],
+  "size": [
+   2.0,
+   4.0001,
+   0.1855
+  ]
+ },
+ "Wall01_Hole_small": {
+  "file": "Wall01_Hole_small.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -2.0001
+  ],
+  "size": [
+   4.0001,
+   0.1855,
+   4.0001
+  ]
+ },
+ "Wall01_Hole_small_NoLedge": {
+  "file": "Wall01_Hole_small_NoLedge.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -2.0
+  ],
+  "size": [
+   4.0001,
+   0.1269,
+   4.0
+  ]
+ },
+ "Wall01_Hole_small_NoLedge_Panelling_L": {
+  "file": "Wall01_Hole_small_NoLedge_Panelling_L.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -2.0
+  ],
+  "size": [
+   4.0001,
+   0.1269,
+   4.0
+  ]
+ },
+ "Wall01_Hole_small_NoLedge_Panelling_R": {
+  "file": "Wall01_Hole_small_NoLedge_Panelling_R.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -2.0
+  ],
+  "size": [
+   4.0001,
+   0.1269,
+   4.0
+  ]
+ },
+ "Wall01_hole": {
+  "file": "Wall01_hole.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -0.0927
+  ],
+  "size": [
+   4.0001,
+   4.0001,
+   0.1855
+  ]
+ },
+ "Wall02": {
+  "file": "Wall02.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -0.0962
+  ],
+  "size": [
+   4.0,
+   4.0001,
+   0.1924
+  ]
+ },
+ "Wall02Corner": {
+  "file": "Wall02Corner.glb",
+  "min": [
+   -1.0682,
+   0.0,
+   -1.0682
+  ],
+  "size": [
+   2.1363,
+   4.0001,
+   2.1363
+  ]
+ },
+ "Wall02Short": {
+  "file": "Wall02Short.glb",
+  "min": [
+   -1.0,
+   0.0,
+   -0.0962
+  ],
+  "size": [
+   2.0,
+   4.0001,
+   0.1924
+  ]
+ },
+ "Wall02_Hole_small_NoLedge": {
+  "file": "Wall02_Hole_small_NoLedge.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -2.0
+  ],
+  "size": [
+   4.0,
+   0.1092,
+   4.0
+  ]
+ },
+ "Wall02_WindowHole": {
+  "file": "Wall02_WindowHole.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -0.0971
+  ],
+  "size": [
+   4.0,
+   4.0001,
+   0.1942
+  ]
+ },
+ "Wall02_WindowHole_NoLedge": {
+  "file": "Wall02_WindowHole_NoLedge.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -0.059
+  ],
+  "size": [
+   4.0,
+   4.0,
+   0.1179
+  ]
+ },
+ "Wall02_hole": {
+  "file": "Wall02_hole.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -0.0946
+  ],
+  "size": [
+   4.0,
+   4.0001,
+   0.1892
+  ]
+ },
+ "Wall02_hole_NoLedge": {
+  "file": "Wall02_hole_NoLedge.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -0.0564
+  ],
+  "size": [
+   4.0,
+   4.0,
+   0.1129
+  ]
+ },
+ "WallPlane01": {
+  "file": "WallPlane01.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -0.0167
+  ],
+  "size": [
+   4.0,
+   2.7,
+   0.0334
+  ]
+ },
+ "Wall_01Corner_noLedge": {
+  "file": "Wall_01Corner_noLedge.glb",
+  "min": [
+   -1.0389,
+   0.0,
+   -1.0388
+  ],
+  "size": [
+   2.0777,
+   4.0001,
+   2.0777
+  ]
+ },
+ "Wall_01Short_NoLedge": {
+  "file": "Wall_01Short_NoLedge.glb",
+  "min": [
+   -1.0,
+   0.0,
+   -0.0634
+  ],
+  "size": [
+   2.0,
+   4.0,
+   0.1269
+  ]
+ },
+ "Wall_01_NoLedge": {
+  "file": "Wall_01_NoLedge.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -0.0634
+  ],
+  "size": [
+   4.0001,
+   4.0,
+   0.1269
+  ]
+ },
+ "Wall_01_hole_NoLedge": {
+  "file": "Wall_01_hole_NoLedge.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -0.0634
+  ],
+  "size": [
+   4.0001,
+   4.0001,
+   0.1269
+  ]
+ },
+ "Wall_01_hole_NoLedge_Panneling_L": {
+  "file": "Wall_01_hole_NoLedge_Panneling_L.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -0.0653
+  ],
+  "size": [
+   4.0,
+   4.0,
+   0.1305
+  ]
+ },
+ "Wall_01_hole_NoLedge_Panneling_R": {
+  "file": "Wall_01_hole_NoLedge_Panneling_R.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -0.0653
+  ],
+  "size": [
+   4.0,
+   4.0,
+   0.1305
+  ]
+ },
+ "Wall_Simple": {
+  "file": "Wall_Simple.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -0.0127
+  ],
+  "size": [
+   4.0,
+   4.0,
+   0.0255
+  ]
+ },
+ "Wall_SimpleHalf": {
+  "file": "Wall_SimpleHalf.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -0.0127
+  ],
+  "size": [
+   4.0,
+   2.0,
+   0.0255
+  ]
+ },
+ "Wall_SimpleHalfVertical": {
+  "file": "Wall_SimpleHalfVertical.glb",
+  "min": [
+   -1.0,
+   0.0,
+   -0.0127
+  ],
+  "size": [
+   2.0,
+   4.0,
+   0.0255
+  ]
+ },
+ "Wall_Simple_Hole_small": {
+  "file": "Wall_Simple_Hole_small.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -2.0
+  ],
+  "size": [
+   4.0,
+   0.0492,
+   4.0
+  ]
+ },
+ "Wall_Simple_WindowHole": {
+  "file": "Wall_Simple_WindowHole.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -0.029
+  ],
+  "size": [
+   4.0,
+   4.0,
+   0.0579
+  ]
+ },
+ "Wall_Simple_WindowHole02": {
+  "file": "Wall_Simple_WindowHole02.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -2.0
+  ],
+  "size": [
+   4.0,
+   0.0579,
+   4.0
+  ]
+ },
+ "Wall_Wooden01": {
+  "file": "Wall_Wooden01.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -0.0928
+  ],
+  "size": [
+   4.0,
+   4.0001,
+   0.1857
+  ]
+ },
+ "Wall_Wooden01Short": {
+  "file": "Wall_Wooden01Short.glb",
+  "min": [
+   -1.0,
+   0.0,
+   -0.0825
+  ],
+  "size": [
+   2.0,
+   4.0001,
+   0.165
+  ]
+ },
+ "Wall_Wooden01_hole": {
+  "file": "Wall_Wooden01_hole.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -0.0928
+  ],
+  "size": [
+   4.0,
+   4.0001,
+   0.1857
+  ]
+ },
+ "Wall_Wooden_01_WindowHole": {
+  "file": "Wall_Wooden_01_WindowHole.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -0.1091
+  ],
+  "size": [
+   4.0,
+   4.0001,
+   0.2182
+  ]
+ },
+ "Wardrobe_gothic": {
+  "file": "Wardrobe_gothic.glb",
+  "min": [
+   -1.1314,
+   0.0,
+   -0.4158
+  ],
+  "size": [
+   2.2629,
+   2.1005,
+   0.8316
+  ]
+ },
+ "Window_01": {
+  "file": "Window_01.glb",
+  "min": [
+   -1.3303,
+   0.0,
+   -0.2979
+  ],
+  "size": [
+   2.6606,
+   3.5401,
+   0.5958
+  ]
+ },
+ "Window_02": {
+  "file": "Window_02.glb",
+  "min": [
+   -1.15,
+   0.0,
+   -1.3065
+  ],
+  "size": [
+   2.3,
+   0.3887,
+   2.6131
+  ]
+ },
+ "WoodenWallPanel": {
+  "file": "WoodenWallPanel.glb",
+  "min": [
+   -1.0,
+   0.0,
+   -0.0711
+  ],
+  "size": [
+   2.0,
+   3.3073,
+   0.1422
+  ]
+ },
+ "WoodenWallPanelStairs": {
+  "file": "WoodenWallPanelStairs.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -0.04
+  ],
+  "size": [
+   4.0,
+   2.7778,
+   0.08
+  ]
+ },
+ "WoodenWallPanelStairsFliped": {
+  "file": "WoodenWallPanelStairsFliped.glb",
+  "min": [
+   -2.0,
+   0.0,
+   -1.3889
+  ],
+  "size": [
+   4.0,
+   0.08,
+   2.7778
+  ]
+ },
+ "WoodenWallPanel_Short": {
+  "file": "WoodenWallPanel_Short.glb",
+  "min": [
+   -0.1901,
+   0.0,
+   -0.0711
+  ],
+  "size": [
+   0.3802,
+   3.3073,
+   0.1422
+  ]
+ },
+ "Wooden_Detail_01": {
+  "file": "Wooden_Detail_01.glb",
+  "min": [
+   -0.2318,
+   0.0,
+   -0.6265
+  ],
+  "size": [
+   0.4636,
+   0.8398,
+   1.2529
+  ]
+ },
+ "Wooden_Detail_02": {
+  "file": "Wooden_Detail_02.glb",
+  "min": [
+   -0.2,
+   0.0,
+   -2.0
+  ],
+  "size": [
+   0.4,
+   0.5002,
+   4.0
+  ]
+ },
+ "Wooden_Detail_02_cut": {
+  "file": "Wooden_Detail_02_cut.glb",
+  "min": [
+   -0.2,
+   0.0,
+   -2.0
+  ],
+  "size": [
+   0.4,
+   0.5002,
+   4.0
+  ]
+ },
+ "Wooden_Detail_03": {
+  "file": "Wooden_Detail_03.glb",
+  "min": [
+   -0.0125,
+   0.0,
+   -2.0
+  ],
+  "size": [
+   0.0249,
+   1.0,
+   4.0
+  ]
+ },
+ "Wooden_Door_Connector": {
+  "file": "Wooden_Door_Connector.glb",
+  "min": [
+   -1.3,
+   0.0,
+   -0.0473
+  ],
+  "size": [
+   2.6,
+   2.783,
+   0.0945
+  ]
+ },
+ "Wooden_Door_Frame01": {
+  "file": "Wooden_Door_Frame01.glb",
+  "min": [
+   -1.7321,
+   0.0,
+   -1.6536
+  ],
+  "size": [
+   3.4642,
+   0.5892,
+   3.3073
+  ]
+ },
+ "Wooden_Door_Lwing": {
+  "file": "Wooden_Door_Lwing.glb",
+  "min": [
+   -0.6,
+   0.0,
+   -1.3915
+  ],
+  "size": [
+   1.2,
+   0.1638,
+   2.783
+  ]
+ },
+ "Wooden_Door_Rwing": {
+  "file": "Wooden_Door_Rwing.glb",
+  "min": [
+   -0.6,
+   0.0,
+   -1.3915
+  ],
+  "size": [
+   1.2,
+   0.1638,
+   2.783
+  ]
+ },
+ "Wooden_Ledge[white]_03": {
+  "file": "Wooden_Ledge_white__03.glb",
+  "min": [
+   -1.0,
+   0.0,
+   -0.03
+  ],
+  "size": [
+   2.0,
+   0.2662,
+   0.06
+  ]
+ },
+ "Wooden_ledge01": {
+  "file": "Wooden_ledge01.glb",
+  "min": [
+   -1.0,
+   0.0,
+   -0.0682
+  ],
+  "size": [
+   2.0,
+   0.425,
+   0.1363
+  ]
+ },
+ "Wooden_ledge01_Corner": {
+  "file": "Wooden_ledge01_Corner.glb",
+  "min": [
+   -1.0682,
+   0.0,
+   -0.2125
+  ],
+  "size": [
+   2.1363,
+   2.1363,
+   0.425
+  ]
+ },
+ "Wooden_ledge02": {
+  "file": "Wooden_ledge02.glb",
+  "min": [
+   -1.0,
+   0.0,
+   -0.1331
+  ],
+  "size": [
+   2.0,
+   0.06,
+   0.2662
+  ]
+ },
+ "Wooden_ledge02_Corner": {
+  "file": "Wooden_ledge02_Corner.glb",
+  "min": [
+   -1.03,
+   0.0,
+   -0.1331
+  ],
+  "size": [
+   2.06,
+   2.06,
+   0.2662
+  ]
+ },
+ "chair_big_01": {
+  "file": "chair_big_01.glb",
+  "min": [
+   -0.4868,
+   0.0,
+   -0.4771
+  ],
+  "size": [
+   0.9736,
+   1.3672,
+   0.9543
+  ]
+ },
+ "chair_small_01": {
+  "file": "chair_small_01.glb",
+  "min": [
+   -0.3187,
+   0.0,
+   -0.2839
+  ],
+  "size": [
+   0.6373,
+   1.445,
+   0.5678
+  ]
+ },
+ "stool": {
+  "file": "stool.glb",
+  "min": [
+   -0.4364,
+   0.0,
+   -0.364
+  ],
+  "size": [
+   0.8727,
+   0.6195,
+   0.7281
+  ]
+ }
+}

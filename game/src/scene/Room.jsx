@@ -1,6 +1,26 @@
 import { useMemo } from 'react';
+import * as THREE from 'three';
+import { useLoader } from '@react-three/fiber';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import { woodTexture, plasterTexture } from './textures.js';
+import { surfaceUrl } from '../world/victorianCatalog.js';
+
+// Seamless wall/floor images from the Victorian pack, when a room names
+// them. Both slots always load together so the hook order stays stable.
+function useLoaderMaps(wallName, floorName) {
+  const urls = [
+    wallName ? surfaceUrl(wallName) : surfaceUrl('Plaster01'),
+    floorName ? surfaceUrl(floorName) : surfaceUrl('WoodenFloor_01'),
+  ];
+  const [wall, floor] = useLoader(THREE.TextureLoader, urls);
+  return useMemo(() => {
+    for (const texture of [wall, floor]) {
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    }
+    return { wall: wallName ? wall : null, floor: floorName ? floor : null };
+  }, [wall, floor, wallName, floorName]);
+}
 
 // Wood trim around an opening: two jambs, a lintel, and a sill for windows.
 // Visual only — the derived wall boxes stay the collision truth.
@@ -47,20 +67,30 @@ function OpeningFrame({ hole, color }) {
 // ground; only blockers and any walls remain here.
 export default function Room({ room, lighting }) {
   const colors = lighting.materials;
+  // Generated interiors name a seamless surface from the Victorian pack;
+  // hand-authored rooms fall back to the canvas textures.
+  const packMaps = useLoaderMaps(colors.wallTexture, colors.floorTexture);
   const floorMap = useMemo(() => {
     if (room.exterior) return null;
-    const texture = woodTexture(colors.floor).clone();
+    const texture = (packMaps.floor ?? woodTexture(colors.floor)).clone();
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
     texture.needsUpdate = true;
-    texture.repeat.set(room.floor.size[0] / 2.4, room.floor.size[2] / 2.4);
+    // The pack's parquet tile is about 1.6m across; the canvas fallback was
+    // authored for 2.4m.
+    const tile = packMaps.floor ? 1.6 : 2.4;
+    texture.repeat.set(room.floor.size[0] / tile, room.floor.size[2] / tile);
     return texture;
-  }, [room, colors]);
+  }, [room, colors, packMaps]);
   const wallMap = useMemo(() => {
     if (room.exterior) return null;
-    const texture = plasterTexture(colors.wall).clone();
+    const texture = (packMaps.wall ?? plasterTexture(colors.wall)).clone();
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
     texture.needsUpdate = true;
-    texture.repeat.set(2.5, 2.5);
+    // Wallpaper repeats are per-wall-box, and boxes vary in width, so scale
+    // by the box rather than a fixed count. Roughly a 1.2m paper drop.
+    texture.repeat.set(packMaps.wall ? 3.2 : 2.5, packMaps.wall ? 2.2 : 2.5);
     return texture;
-  }, [room, colors]);
+  }, [room, colors, packMaps]);
 
   const colliderBoxes = [
     ...(room.exterior ? [] : [room.floor]),
@@ -84,7 +114,9 @@ export default function Room({ room, lighting }) {
       {!room.exterior && (
         <mesh position={room.floor.position} receiveShadow>
           <boxGeometry args={room.floor.size} />
-          <meshStandardMaterial map={floorMap} roughness={0.8} />
+          {/* Pack textures already carry their colour, so they go untinted;
+              variety comes from which one the room picked. */}
+          <meshStandardMaterial map={floorMap} roughness={0.72} />
         </mesh>
       )}
       {room.ceiling && (
@@ -96,7 +128,7 @@ export default function Room({ room, lighting }) {
       {room.wallBoxes.map((box) => (
         <mesh key={box.id} position={box.position} castShadow receiveShadow>
           <boxGeometry args={box.size} />
-          <meshStandardMaterial map={wallMap} roughness={0.9} />
+          <meshStandardMaterial map={wallMap} roughness={0.88} />
         </mesh>
       ))}
       {room.openingHoles.map((hole) => (

@@ -90,10 +90,15 @@ function ItemCollider({ item }) {
   if (item.shape === 'cylinder' || item.shape === 'tree') {
     return <CylinderCollider args={[item.size[1] / 2, item.size[0] / 2]} position={item.position} />;
   }
+  // Catalog models are positioned by their floor contact, so the collider
+  // centre sits half a height above the placement point.
+  const position = item.model
+    ? [item.position[0], item.position[1] + item.size[1] / 2, item.position[2]]
+    : item.position;
   return (
     <CuboidCollider
       args={[item.size[0] / 2, item.size[1] / 2, item.size[2] / 2]}
-      position={item.position}
+      position={position}
       rotation={item.rotation ?? [0, item.yaw ?? 0, 0]}
     />
   );
@@ -171,8 +176,9 @@ export default function Furniture({ items }) {
       </RigidBody>
       {items.map((item) => {
         if (item.kind === 'backdrop') return <Backdrop key={item.id} item={item} />;
-        // Trees render through the instanced TreeField.
-        if (item.kind === 'tree') return null;
+        // Trees render through the instanced TreeField, catalog pieces
+        // through VictorianProps; both still take their colliders here.
+        if (item.kind === 'tree' || item.model) return null;
         return (
           <mesh
             key={item.id}

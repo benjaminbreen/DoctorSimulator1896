@@ -2,6 +2,8 @@ import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { degToRad } from '../movement/mathUtils.js';
+import { windowSkyTexture } from './textures.js';
+import { solarRamps } from '../world/solar.js';
 
 // Sun offset outside a window: the hole normal rotated by azimuth, tilted up
 // by elevation.
@@ -29,7 +31,10 @@ export default function LightingRig({ room, config, runtime }) {
   const hemisphereRef = useRef();
   const portalRefs = useRef([]);
   const gaslightRefs = useRef([]);
+  const skyRefs = useRef([]);
+  const skyMap = useMemo(() => windowSkyTexture(), []);
   const shadowMapSize = Number(runtime.values.shadowMapSize);
+  skyRefs.current = [];
 
   const portals = useMemo(
     () =>
@@ -50,8 +55,14 @@ export default function LightingRig({ room, config, runtime }) {
   useFrame((state) => {
     const values = runtime.values;
     const time = state.clock.elapsedTime;
-    if (ambientRef.current) ambientRef.current.intensity = values.ambientIntensity;
-    if (hemisphereRef.current) hemisphereRef.current.intensity = values.hemisphereIntensity;
+    // `scale` lets a zone dim the panel's global fill without the panel
+    // losing meaning. Gas-lit interiors use very little.
+    if (ambientRef.current) {
+      ambientRef.current.intensity = values.ambientIntensity * (config.ambient.scale ?? 1);
+    }
+    if (hemisphereRef.current) {
+      hemisphereRef.current.intensity = values.hemisphereIntensity * (config.hemisphere.scale ?? 1);
+    }
 
     portals.forEach((portal, index) => {
       const light = portalRefs.current[index];
@@ -67,6 +78,19 @@ export default function LightingRig({ room, config, runtime }) {
       light.castShadow = values.shadowsEnabled;
       light.shadow.radius = values.shadowRadius;
     });
+
+    // The view outside dims and warms with the sun, so a lamp-lit dusk room
+    // does not sit behind a noon-bright pane.
+    const { daylight, golden, night } = solarRamps(values.timeOfDay);
+    for (const mesh of skyRefs.current) {
+      const material = mesh.material;
+      const level = 0.1 + daylight * 0.95;
+      material.color.setRGB(
+        level * (1 + golden * 0.35),
+        level * (1 + golden * 0.1),
+        level * (1 - golden * 0.15 + night * 0.25),
+      );
+    }
 
     gaslights.forEach((gaslight, index) => {
       const light = gaslightRefs.current[index];
@@ -90,14 +114,18 @@ export default function LightingRig({ room, config, runtime }) {
         intensity={config.hemisphere.intensity}
       />
       {room.windowHoles.map((hole) => (
-        // Unlit sky pane in the hole so windows read as windows, not voids.
+        // Sky pane in the hole: graded sky over the rooftops opposite, dimmed
+        // toward dusk by the frame loop, so the window is not a white slab.
         <mesh
           key={`${hole.id}:sky`}
+          ref={(mesh) => {
+            if (mesh) skyRefs.current.push(mesh);
+          }}
           position={hole.position}
           rotation={[0, Math.atan2(-hole.normal[0], -hole.normal[2]), 0]}
         >
           <planeGeometry args={[hole.width, hole.height]} />
-          <meshBasicMaterial color={config.windowSky ?? '#b8c4de'} side={2} />
+          <meshBasicMaterial map={skyMap} side={THREE.DoubleSide} toneMapped={false} />
         </mesh>
       ))}
       {portals.map((portal, index) => (
@@ -140,18 +168,23 @@ export default function LightingRig({ room, config, runtime }) {
             shadow-mapSize-height={shadowMapSize}
             shadow-bias={-0.001}
           />
-          {/* Simple fixture: brass stem, cup, glowing globe. */}
-          <mesh position={[0, -0.22, 0]}>
-            <cylinderGeometry args={[0.014, 0.014, 0.3, 8]} />
-            <meshStandardMaterial color="#8a6b3a" roughness={0.35} metalness={0.4} />
-          </mesh>
-          <mesh position={[0, -0.06, 0]}>
-            <cylinderGeometry args={[0.05, 0.02, 0.05, 10]} />
-            <meshStandardMaterial color="#8a6b3a" roughness={0.35} metalness={0.4} />
-          </mesh>
+          {/* Brass stem and cup, only where no catalog model supplies one. */}
+          {gaslight.marker.fixture !== false && (
+            <>
+              <mesh position={[0, -0.22, 0]}>
+                <cylinderGeometry args={[0.014, 0.014, 0.3, 8]} />
+                <meshStandardMaterial color="#8a6b3a" roughness={0.35} metalness={0.4} />
+              </mesh>
+              <mesh position={[0, -0.06, 0]}>
+                <cylinderGeometry args={[0.05, 0.02, 0.05, 10]} />
+                <meshStandardMaterial color="#8a6b3a" roughness={0.35} metalness={0.4} />
+              </mesh>
+            </>
+          )}
+          {/* The flame itself: a small bright ball the bloom pass catches. */}
           <mesh>
-            <sphereGeometry args={[0.055, 12, 8]} />
-            <meshStandardMaterial emissive="#ffc57a" emissiveIntensity={4} color="#664a22" />
+            <sphereGeometry args={[gaslight.flameRadius ?? 0.055, 10, 8]} />
+            <meshBasicMaterial color="#ffdca6" toneMapped={false} />
           </mesh>
         </group>
       ))}

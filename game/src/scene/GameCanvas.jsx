@@ -15,9 +15,10 @@ import Terrain from './Terrain.jsx';
 import TreeField from './TreeField.jsx';
 import WindowField from './WindowField.jsx';
 import Pedestrians from './Pedestrians.jsx';
+import VictorianProps from './VictorianProps.jsx';
 import Water from './Water.jsx';
 import Effects from './Effects.jsx';
-import { zones } from '../world/zones.js';
+import { zones, getZone } from '../world/zones.js';
 import { takeArrival } from '../world/travel.js';
 import { terrainHeight } from '../world/terrain.js';
 import { deriveRoom, validateBlueprint } from '../world/blueprint.js';
@@ -65,18 +66,22 @@ export default function GameCanvas({ runtime, keyboard, look }) {
   // Rebuild params (zone included) are read once per mount; App remounts this
   // canvas on change.
   const values = runtime.values;
-  const zone = zones[values.zone] ?? zones['consulting-office'];
+  const zone = getZone(values.zone, values) ?? zones['consulting-office'];
   const { blueprint, lighting } = zone;
   const room = useMemo(() => {
     const errors = validateBlueprint(blueprint);
     if (errors.length > 0) throw new Error(`Blueprint invalid: ${errors.join('; ')}`);
     const derived = deriveRoom(blueprint);
-    if (!derived.exterior) return derived;
+    // Zone entries may add transitions beyond the blueprint's own (interior
+    // entry triggers on the street).
+    const transitions = [...derived.transitions, ...(zone.extraTransitions ?? [])];
+    if (!derived.exterior) return { ...derived, transitions };
     // Exterior zones merge authored layout items; props sit on the terrain
     // unless they opt into absolute placement (bridges, walls, backdrop).
     const items = [...derived.furnitureBoxes, ...(zone.extraItems ?? [])];
     return {
       ...derived,
+      transitions,
       furnitureBoxes: items.map((item) =>
         item.absoluteY
           ? item
@@ -121,6 +126,7 @@ export default function GameCanvas({ runtime, keyboard, look }) {
         <Physics gravity={[0, -9.81, 0]}>
           <Room room={room} lighting={lighting} />
           <Furniture items={room.furnitureBoxes} />
+          <VictorianProps items={room.furnitureBoxes.filter((item) => item.model)} />
           {room.exterior ? (
             <>
               <SkyRig config={lighting} runtime={runtime} />
@@ -139,7 +145,7 @@ export default function GameCanvas({ runtime, keyboard, look }) {
           <CameraRig room={room} runtime={runtime} look={look} keyboard={keyboard} heightAt={room.exterior ? terrainHeight : null} />
           <ColliderDebug room={room} runtime={runtime} />
         </Physics>
-        {values.postEnabled && <Effects runtime={runtime} />}
+        {values.postEnabled && <Effects runtime={runtime} indoors={!room.exterior} />}
       </Suspense>
     </Canvas>
   );

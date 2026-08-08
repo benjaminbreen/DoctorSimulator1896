@@ -301,6 +301,12 @@ export const streetItems = buildStreets();
 // Free-standing laundry lines in the back lots and alleys. Anchors are hand
 // picked so no line threads a building; the dressing (posts, sag, cloth)
 // stays procedural in WindowField.
+// Interior-enabled buildings: one Fifth Avenue block for testing, plus one
+// Navarro tower as the grand-atrium sample.
+export const INTERIOR_BUILDINGS = streetItems.filter(
+  (item) => item.kind === 'backdrop' && (item.id.startsWith('fifth-east-a-') || item.id === 'navarro-flats-b'),
+);
+
 export const ALLEY_LINES = [
   { x: 130, z: 116, yaw: 0, length: 7 },
   { x: 145, z: 113, yaw: 0.4, length: 6 },
