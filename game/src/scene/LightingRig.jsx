@@ -26,7 +26,9 @@ function flickerNoise(time, seed) {
   );
 }
 
-export default function LightingRig({ room, config, runtime }) {
+// `skyPanes` off means WindowView is drawing the real captured view instead
+// of the procedural gradient stand-in.
+export default function LightingRig({ room, config, runtime, skyPanes = true }) {
   const ambientRef = useRef();
   const hemisphereRef = useRef();
   const portalRefs = useRef([]);
@@ -113,7 +115,7 @@ export default function LightingRig({ room, config, runtime }) {
         groundColor={config.hemisphere.groundColor}
         intensity={config.hemisphere.intensity}
       />
-      {room.windowHoles.map((hole) => (
+      {skyPanes && room.windowHoles.map((hole) => (
         // Sky pane in the hole: graded sky over the rooftops opposite, dimmed
         // toward dusk by the frame loop, so the window is not a white slab.
         <mesh

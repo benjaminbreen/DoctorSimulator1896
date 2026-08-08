@@ -402,8 +402,9 @@ export function generateInterior(building, values = {}) {
   };
 
   // `interior` carries what the scene needs but the blueprint schema does
-  // not model — window dressing keys off wealth.
-  return { blueprint, lighting, interior: { wealth, size, seed } };
+  // not model: window dressing keys off wealth, and the window view needs
+  // the building's real place and facing in the world.
+  return { blueprint, lighting, interior: { wealth, size, seed, building } };
 }
 
 function exitTransition(building) {

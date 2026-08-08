@@ -17,6 +17,7 @@ import WindowField from './WindowField.jsx';
 import Pedestrians from './Pedestrians.jsx';
 import VictorianProps from './VictorianProps.jsx';
 import Curtains from './Curtains.jsx';
+import WindowView from './WindowView.jsx';
 import Water from './Water.jsx';
 import Effects from './Effects.jsx';
 import { zones, getZone } from '../world/zones.js';
@@ -140,7 +141,19 @@ export default function GameCanvas({ runtime, keyboard, look }) {
             </>
           ) : (
             <>
-              <LightingRig room={room} config={lighting} runtime={runtime} />
+              <LightingRig
+                room={room}
+                config={lighting}
+                runtime={runtime}
+                skyPanes={!zone.interior?.building}
+              />
+              {zone.interior?.building && (
+                <WindowView
+                  holes={room.windowHoles}
+                  building={zone.interior.building}
+                  runtime={runtime}
+                />
+              )}
               {zone.interior && (
                 <Curtains
                   holes={room.windowHoles}
