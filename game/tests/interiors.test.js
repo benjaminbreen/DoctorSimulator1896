@@ -59,6 +59,34 @@ test('furniture stays inside the room and off the door path', () => {
   }
 });
 
+test('mouldings stop at openings instead of running through them', () => {
+  for (const building of INTERIOR_BUILDINGS) {
+    const { blueprint } = generateInterior(building);
+    const { depth } = blueprint.dimensions;
+    const south = blueprint.walls.find((wall) => wall.id === 'south-wall');
+    const trim = blueprint.furniture.filter((item) => /^(skirting|picture|chair|cornice)/.test(item.id));
+    assert.ok(trim.length > 0, 'the room is trimmed at all');
+
+    for (const item of trim) {
+      // Only members on the street wall can collide with its openings.
+      if (Math.abs(item.position[2] - (depth / 2 - 0.14)) > 0.2) continue;
+      const [lo, hi] = [item.position[1] - item.size[1] / 2, item.position[1] + item.size[1] / 2];
+      const [left, right] = [item.position[0] - item.size[0] / 2, item.position[0] + item.size[0] / 2];
+      for (const opening of south.openings) {
+        const bottom = opening.center[1] - opening.size[1] / 2;
+        const top = opening.center[1] + opening.size[1] / 2;
+        if (hi <= bottom || lo >= top) continue;
+        const oLeft = opening.center[0] - opening.size[0] / 2;
+        const oRight = opening.center[0] + opening.size[0] / 2;
+        assert.ok(
+          right <= oLeft + 0.01 || left >= oRight - 0.01,
+          `${building.id}/${item.id} runs through ${opening.id}`,
+        );
+      }
+    }
+  }
+});
+
 test('entry triggers sit at the building doors on the street side', () => {
   const transitions = interiorEntryTransitions(INTERIOR_BUILDINGS);
   assert.equal(transitions.length, INTERIOR_BUILDINGS.length);

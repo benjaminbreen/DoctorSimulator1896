@@ -24,19 +24,19 @@ export const SIZE_CLASSES = {
 const PALETTES = {
   humble: {
     walls: ['#b5a98c', '#a8977a', '#9aa08a'],
-    floor: '#6b543c', ceiling: '#e8e2d2', trim: '#4c3a28',
+    floor: '#6b543c', ceiling: '#e4e5e2', trim: '#4c3a28',
     rugs: ['#5d5648', '#635043'],
     wood: '#5a4632', upholstery: ['#5d5244', '#4f4a3c'],
   },
   middling: {
     walls: ['#8f7f96', '#7d8a6f', '#a08a70', '#87919e'],
-    floor: '#5f4832', ceiling: '#efe9da', trim: '#3c2d1e',
+    floor: '#5f4832', ceiling: '#eef0ed', trim: '#3c2d1e',
     rugs: ['#6d3f38', '#4f5a4a', '#54476b'],
     wood: '#4a3626', upholstery: ['#5a3f38', '#44503f', '#4a4458'],
   },
   grand: {
     walls: ['#7d4238', '#3c554e', '#6d5c3a', '#584668'],
-    floor: '#4c3423', ceiling: '#f6f1e4', trim: '#2c2013',
+    floor: '#4c3423', ceiling: '#f6f8f5', trim: '#2c2013',
     rugs: ['#7c2f2a', '#31504a', '#5d4a24'],
     wood: '#3a2a1c', upholstery: ['#6d2f2a', '#2f4a44', '#4d3a5e'],
   },
@@ -237,6 +237,9 @@ export function generateInterior(building, values = {}) {
   // the bigger rooms looking abandoned, since the same six pieces have three
   // times the floor to cover.
   const areaScale = Math.min(1.5, Math.sqrt((W * D) / 300));
+  // Cased goods and pictures scale with the room, not with the person: an
+  // atrium wants a press twice the height of a parlor's.
+  const caseScale = size === 'XL' ? 1.8 : 1;
   const scaled = (base) => Math.max(1, Math.round(base * density * areaScale));
 
   const seatCount = Math.max(2, scaled(humble ? 2 : grand ? 4 : 3));
@@ -267,8 +270,8 @@ export function generateInterior(building, values = {}) {
 
   // Perimeter: storage against the far wall, pedestals in the corners, a
   // radiator under a street window, work table for humble rooms.
-  place('storage', -hearthSide * (W / 2 - 0.6), round(D * 0.1), {
-    yaw: -hearthSide > 0 ? -Math.PI / 2 : Math.PI / 2, rollSalt: 2.9,
+  place('storage', -hearthSide * round(W / 2 - 0.6 * caseScale), round(D * 0.1), {
+    yaw: -hearthSide > 0 ? -Math.PI / 2 : Math.PI / 2, rollSalt: 2.9, scale: caseScale,
   });
   const cornerCount = scaled(grand ? 3 : humble ? 1 : 2);
   for (let i = 0; i < cornerCount; i += 1) {
@@ -341,13 +344,15 @@ export function generateInterior(building, values = {}) {
     const z = round(frontZ + (i < 2 ? -1 : 1) * D * 0.14);
     if (side === hearthSide && Math.abs(z - hearthZ) < 2.4) continue;
     place('wallDecor', side * (W / 2 - 0.14), z, {
-      y: 1.75, yaw: side > 0 ? -Math.PI / 2 : Math.PI / 2, solid: false, rollSalt: i * 11.3,
+      y: round(1.75 * caseScale), yaw: side > 0 ? -Math.PI / 2 : Math.PI / 2,
+      solid: false, rollSalt: i * 11.3, scale: caseScale,
     });
   }
   for (const side of [-1, 1]) {
-    place('wallLight', side * (W / 2 - 0.18), round(frontZ + D * 0.05), {
-      y: 1.85, yaw: side > 0 ? -Math.PI / 2 : Math.PI / 2, solid: false, rollSalt: side * 13.7,
-      lightIntensity: 2.8, lightDistance: 7,
+    place('wallLight', side * round(W / 2 - 0.18 * (size === 'XL' ? 1.5 : 1)), round(frontZ + D * 0.05), {
+      y: round(1.85 * (size === 'XL' ? 1.5 : 1)), yaw: side > 0 ? -Math.PI / 2 : Math.PI / 2,
+      solid: false, rollSalt: side * 13.7, lightIntensity: 2.8, lightDistance: 7,
+      scale: size === 'XL' ? 1.5 : 1,
     });
   }
 
@@ -419,55 +424,75 @@ export function generateInterior(building, values = {}) {
       size: [round(sx), round(sy), round(sz)], yaw: 0, color, collider: false,
     });
   };
-  const railY = round(Math.min(H - 0.85, 2.35));
+  const railY = round(Math.min(H - 0.5, sill + winH + 0.3));
   // Runs are [alongCentre, length] pairs per wall; the south wall breaks
   // either side of the front door.
-  const doorHalf = 0.85;
-  const southSpans = [
-    [-W / 2, doorAlong - doorHalf],
-    [doorAlong + doorHalf, W / 2],
+  // A moulding stops at an opening and picks up on the far side — it cannot
+  // run through a window. Each wall is cut into spans by whichever openings
+  // that member's own height band actually crosses, so the skirting ignores
+  // a window with a raised sill while the chair rail below the head does not.
+  const WALLS = [
+    { id: 'south', length: W, openings: southOpenings, along: 'x', fixed: D / 2 - 0.14 },
+    { id: 'north', length: W, openings: rearOpenings, along: 'x', fixed: -D / 2 + 0.14 },
+    { id: 'west', length: D, openings: [], along: 'z', fixed: -W / 2 + 0.14 },
+    { id: 'east', length: D, openings: [], along: 'z', fixed: W / 2 - 0.14 },
   ];
-  const runs = [
-    ...southSpans
-      .filter(([from, to]) => to - from > 0.2)
-      .map(([from, to], index) => ({
-        id: `south-${index}`, x: (from + to) / 2, z: D / 2 - 0.14, sx: to - from, sz: 0.09,
-      })),
-    { id: 'north', x: 0, z: -D / 2 + 0.14, sx: W, sz: 0.09 },
-    { id: 'west', x: -W / 2 + 0.14, z: 0, sx: 0.09, sz: D },
-    { id: 'east', x: W / 2 - 0.14, z: 0, sx: 0.09, sz: D },
-  ];
+
+  function spansFor(wall, low, high) {
+    const blocked = wall.openings
+      .filter((opening) => {
+        const bottom = opening.center[1] - opening.size[1] / 2;
+        const top = opening.center[1] + opening.size[1] / 2;
+        return high > bottom && low < top;
+      })
+      .map((opening) => [opening.center[0] - opening.size[0] / 2 - 0.09, opening.center[0] + opening.size[0] / 2 + 0.09])
+      .sort((a, b) => a[0] - b[0]);
+
+    const spans = [];
+    let cursor = -wall.length / 2;
+    for (const [from, to] of blocked) {
+      if (from - cursor > 0.25) spans.push([cursor, from]);
+      cursor = Math.max(cursor, to);
+    }
+    if (wall.length / 2 - cursor > 0.25) spans.push([cursor, wall.length / 2]);
+    return spans;
+  }
+
   // Each moulding is built from stepped members rather than one flat board.
   // A single box reads as a painted stripe; the step is what catches the
   // light and says joinery.
-  for (const run of runs) {
-    // Only the thin axis — the projection out from the wall — changes per
-    // member; the run's length stays as authored.
-    const alongX = run.sx >= run.sz;
-    const proud = (factor) => (alongX ? [run.sx, run.sz * factor] : [run.sx * factor, run.sz]);
-    const member = (id, y, height, factor, color) => {
-      const [mx, mz] = proud(factor);
-      trim(`${id}-${run.id}`, run.x, y, run.z, mx, height, mz, color);
-    };
+  const member = (wall, id, y, height, factor, color) => {
+    for (const [from, to] of spansFor(wall, y - height / 2, y + height / 2)) {
+      const centre = (from + to) / 2;
+      const length = to - from;
+      const thickness = 0.09 * factor;
+      const [x, z, sx, sz] =
+        wall.along === 'x'
+          ? [centre, wall.fixed, length, thickness]
+          : [wall.fixed, centre, thickness, length];
+      trim(`${id}-${wall.id}-${round(centre)}`, x, y, z, sx, height, sz, color);
+    }
+  };
 
+  for (const wall of WALLS) {
     // Skirting: plinth board with a cap moulding standing proud of it.
-    member('skirting', 0.11, 0.22, 1.0, palette.trim);
-    member('skirting-cap', 0.245, 0.05, 1.9, palette.trim);
+    member(wall, 'skirting', 0.11, 0.22, 1.0, palette.trim);
+    member(wall, 'skirting-cap', 0.245, 0.05, 1.9, palette.trim);
 
     if (!humble) {
       // Picture rail: the rail itself over a slim bead.
-      member('picture-rail', railY, 0.05, 1.9, palette.trim);
-      member('picture-bead', railY - 0.045, 0.03, 1.2, palette.trim);
+      member(wall, 'picture-rail', railY, 0.05, 1.9, palette.trim);
+      member(wall, 'picture-bead', railY - 0.045, 0.03, 1.2, palette.trim);
     }
     if (grand) {
       // Chair rail capping the dado, with a bead under it.
-      member('chair-rail', dadoY, 0.07, 2.0, palette.trim);
-      member('chair-bead', dadoY - 0.055, 0.03, 1.3, palette.trim);
+      member(wall, 'chair-rail', dadoY, 0.07, 2.0, palette.trim);
+      member(wall, 'chair-bead', dadoY - 0.055, 0.03, 1.3, palette.trim);
     }
 
     // Cornice: a deep cove with a bed moulding tucked beneath.
-    member('cornice', H - 0.1, 0.2, 2.6, palette.ceiling);
-    member('cornice-bed', H - 0.235, 0.08, 1.6, palette.ceiling);
+    member(wall, 'cornice', H - 0.1, 0.2, 2.6, palette.ceiling);
+    member(wall, 'cornice-bed', H - 0.235, 0.08, 1.6, palette.ceiling);
   }
 
   // Hearth fire: a low warm light at the grate, the room's other anchor.
