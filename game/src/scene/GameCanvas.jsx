@@ -16,6 +16,7 @@ import TreeField from './TreeField.jsx';
 import WindowField from './WindowField.jsx';
 import Pedestrians from './Pedestrians.jsx';
 import VictorianProps from './VictorianProps.jsx';
+import Curtains from './Curtains.jsx';
 import Water from './Water.jsx';
 import Effects from './Effects.jsx';
 import { zones, getZone } from '../world/zones.js';
@@ -138,7 +139,16 @@ export default function GameCanvas({ runtime, keyboard, look }) {
               {zone.water && <Water runtime={runtime} outline={zone.water.outline} level={zone.water.level} />}
             </>
           ) : (
-            <LightingRig room={room} config={lighting} runtime={runtime} />
+            <>
+              <LightingRig room={room} config={lighting} runtime={runtime} />
+              {zone.interior && (
+                <Curtains
+                  holes={room.windowHoles}
+                  wealth={zone.interior.wealth}
+                  seed={zone.interior.seed}
+                />
+              )}
+            </>
           )}
           <PlayerRig room={room} runtime={runtime} keyboard={keyboard} look={look} spawn={spawn} spawnYaw={spawnYaw} />
           {values.showAvatarGlb && <PlayerAvatar />}

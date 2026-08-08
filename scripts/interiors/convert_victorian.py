@@ -41,9 +41,6 @@ ROTATE_X = {
     "Stairs_Fliped": -90,
     "Door_02_Wing": -90,
     "Door_02_Frame": -90,
-    "Wooden_Door_Lwing": -90,
-    "Wooden_Door_Rwing": -90,
-    "Wooden_Door_Frame01": -90,
 }
 
 

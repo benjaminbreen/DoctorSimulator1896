@@ -275,6 +275,62 @@ export function generateInterior(building, values = {}) {
     });
   }
 
+  // The front door leaf, shut in its opening. The opening is already blocked
+  // by the wall derivation, so this is the visible half of that.
+  const leafHeight = modelSize('Door_02_Wing')[1];
+  furniture.push({
+    id: 'front-door-leaf',
+    kind: 'furniture',
+    model: 'Door_02_Wing',
+    modelScale: round(2.68 / leafHeight),
+    position: [doorAlong, 0, round(D / 2 - 0.16)],
+    size: [1.3, 2.68, 0.18],
+    yaw: 0,
+    collider: false,
+  });
+
+  // Joinery: skirting, picture rail, and cornice around the perimeter. A
+  // room whose walls run straight into the floor and ceiling is the clearest
+  // tell that an interior was not built by a joiner.
+  const trim = (id, x, y, z, sx, sy, sz, color) => {
+    furniture.push({
+      id, kind: 'furniture', position: [round(x), round(y), round(z)],
+      size: [round(sx), round(sy), round(sz)], yaw: 0, color, collider: false,
+    });
+  };
+  const railY = round(Math.min(H - 0.85, 2.35));
+  // Runs are [alongCentre, length] pairs per wall; the south wall breaks
+  // either side of the front door.
+  const doorHalf = 0.85;
+  const southSpans = [
+    [-W / 2, doorAlong - doorHalf],
+    [doorAlong + doorHalf, W / 2],
+  ];
+  const runs = [
+    ...southSpans
+      .filter(([from, to]) => to - from > 0.2)
+      .map(([from, to], index) => ({
+        id: `south-${index}`, x: (from + to) / 2, z: D / 2 - 0.14, sx: to - from, sz: 0.09,
+      })),
+    { id: 'north', x: 0, z: -D / 2 + 0.14, sx: W, sz: 0.09 },
+    { id: 'west', x: -W / 2 + 0.14, z: 0, sx: 0.09, sz: D },
+    { id: 'east', x: W / 2 - 0.14, z: 0, sx: 0.09, sz: D },
+  ];
+  for (const run of runs) {
+    // Only the thin axis — the projection out from the wall — changes per
+    // moulding; the run's length stays as authored.
+    const alongX = run.sx >= run.sz;
+    const proud = (factor) => (alongX ? [run.sx, run.sz * factor] : [run.sx * factor, run.sz]);
+    const [skirtX, skirtZ] = proud(1);
+    trim(`skirting-${run.id}`, run.x, 0.12, run.z, skirtX, 0.24, skirtZ, palette.trim);
+    if (!humble) {
+      const [railX, railZ] = proud(0.8);
+      trim(`picture-rail-${run.id}`, run.x, railY, run.z, railX, 0.07, railZ, palette.trim);
+    }
+    const [corniceX, corniceZ] = proud(2.2);
+    trim(`cornice-${run.id}`, run.x, H - 0.13, run.z, corniceX, 0.26, corniceZ, palette.ceiling);
+  }
+
   // Hearth fire: a low warm light at the grate, the room's other anchor.
   if (hearth) {
     light('hearth-fire', hearthSide * (W / 2 - 0.75), 0.42, hearthZ, 2.6, {
@@ -345,7 +401,9 @@ export function generateInterior(building, values = {}) {
     },
   };
 
-  return { blueprint, lighting };
+  // `interior` carries what the scene needs but the blueprint schema does
+  // not model — window dressing keys off wealth.
+  return { blueprint, lighting, interior: { wealth, size, seed } };
 }
 
 function exitTransition(building) {

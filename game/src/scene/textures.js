@@ -202,3 +202,95 @@ export function windowSkyTexture() {
   cache.set(key, texture);
   return texture;
 }
+
+// Lace under-curtain: a net ground with a repeating floral motif, punched
+// out so the sky reads through it. Alpha-tested, not blended, so it costs
+// nothing in sort order.
+export function laceTexture() {
+  const key = 'lace';
+  if (cache.has(key)) return cache.get(key);
+  const size = 256;
+  const canvas = makeCanvas(size);
+  const context = canvas.getContext('2d');
+  context.clearRect(0, 0, size, size);
+
+  // Net: fine diagonal mesh.
+  context.strokeStyle = 'rgba(255,252,244,0.85)';
+  context.lineWidth = 1;
+  for (let i = -size; i < size * 2; i += 7) {
+    context.beginPath();
+    context.moveTo(i, 0);
+    context.lineTo(i + size, size);
+    context.stroke();
+    context.beginPath();
+    context.moveTo(i + size, 0);
+    context.lineTo(i, size);
+    context.stroke();
+  }
+
+  // Motifs: rosettes on a grid, denser toward the hem.
+  context.fillStyle = 'rgba(255,253,247,0.96)';
+  for (let gy = 0; gy < 4; gy += 1) {
+    for (let gx = 0; gx < 4; gx += 1) {
+      const cx = 32 + gx * 64;
+      const cy = 32 + gy * 64;
+      for (let petal = 0; petal < 6; petal += 1) {
+        const angle = (petal / 6) * Math.PI * 2;
+        context.beginPath();
+        context.ellipse(cx + Math.cos(angle) * 9, cy + Math.sin(angle) * 9, 5, 3, angle, 0, Math.PI * 2);
+        context.fill();
+      }
+      context.beginPath();
+      context.arc(cx, cy, 4, 0, Math.PI * 2);
+      context.fill();
+    }
+  }
+  // Scalloped hem along the bottom edge.
+  context.fillStyle = 'rgba(255,253,247,0.96)';
+  context.fillRect(0, size - 14, size, 6);
+  for (let x = 8; x < size; x += 16) {
+    context.beginPath();
+    context.arc(x, size - 8, 7, 0, Math.PI);
+    context.fill();
+  }
+
+  const texture = finish(canvas);
+  cache.set(key, texture);
+  return texture;
+}
+
+// Damask over-curtain: a heavy ground with a tone-on-tone repeat. Colour
+// comes from the material tint, so one texture serves every fabric.
+export function damaskTexture() {
+  const key = 'damask';
+  if (cache.has(key)) return cache.get(key);
+  const size = 256;
+  const canvas = makeCanvas(size);
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#ffffff';
+  context.fillRect(0, 0, size, size);
+  context.fillStyle = 'rgba(0,0,0,0.13)';
+  for (let gy = 0; gy < 3; gy += 1) {
+    for (let gx = 0; gx < 3; gx += 1) {
+      const cx = 43 + gx * 85 + (gy % 2) * 42;
+      const cy = 43 + gy * 85;
+      // A stylised ogee: four lobes around a centre.
+      for (let lobe = 0; lobe < 4; lobe += 1) {
+        const angle = (lobe / 4) * Math.PI * 2 + Math.PI / 4;
+        context.beginPath();
+        context.ellipse(cx + Math.cos(angle) * 16, cy + Math.sin(angle) * 16, 13, 7, angle, 0, Math.PI * 2);
+        context.fill();
+      }
+      context.beginPath();
+      context.arc(cx, cy, 7, 0, Math.PI * 2);
+      context.fill();
+    }
+  }
+  // Vertical weave so the folds catch the light.
+  context.fillStyle = 'rgba(0,0,0,0.05)';
+  for (let x = 0; x < size; x += 4) context.fillRect(x, 0, 1, size);
+
+  const texture = finish(canvas);
+  cache.set(key, texture);
+  return texture;
+}
