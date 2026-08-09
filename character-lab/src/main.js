@@ -39,6 +39,7 @@ const ui = {
   command: document.querySelector('#generate-command'), fallback: document.querySelector('#fallback'), search: document.querySelector('#control-search'),
   regenerate: document.querySelector('#regenerate'), randomize: document.querySelector('#randomize'), newPatient: document.querySelector('#new-patient'),
   renderToggle: document.querySelector('#render-toggle'),
+  dressStudy: document.querySelector('#dress-study'),
   poseToggle: document.querySelector('#pose-toggle'),
   expressionDriver: document.querySelector('#expression-driver'), faceUnitSelect: document.querySelector('#face-unit-select'),
   faceUnitValue: document.querySelector('#face-unit-value'), faceUnitOutput: document.querySelector('#face-unit-output'), faceUnitReset: document.querySelector('#face-unit-reset'),
@@ -64,6 +65,7 @@ const COMPARISON_MATERIAL_IDS = new Set(['skinTone', 'skinRoughness']);
 const COSTUME_MATERIAL_IDS = new Set([
   'dressColor', 'trimColor', 'fabricRoughness', 'hairShade', 'hairColor', 'strandContrast', 'greyAmount',
 ]);
+const RENDERER_C_WOMEN_WARDROBE_IDS = new Set(['womenGarmentMode']);
 const MHR_FACE_DETAIL_GEOMETRY_IDS = new Set([
   'browDensity', 'browThickness', 'browArch', 'browAsymmetry',
   'lashDensity', 'lashLength', 'lashCurl',
@@ -386,7 +388,11 @@ function updateRenderToggle() {
 
 function rendererCControlAppliesLive(definition) {
   if (RENDERER_C_LIVE_IDS.has(definition.id)) return true;
-  if (RENDERER_C_MENSWEAR_GEOMETRY_IDS.has(definition.id) || RENDERER_C_MENSWEAR_MATERIAL_IDS.has(definition.id)) return true;
+  if (rendererCCohort === 'men'
+    && (RENDERER_C_MENSWEAR_GEOMETRY_IDS.has(definition.id) || RENDERER_C_MENSWEAR_MATERIAL_IDS.has(definition.id))) return true;
+  if (rendererCCohort === 'women'
+    && (COSTUME_GEOMETRY_IDS.has(definition.id) || COSTUME_MATERIAL_IDS.has(definition.id)
+      || RENDERER_C_WOMEN_WARDROBE_IDS.has(definition.id))) return true;
   if (SKIN_APPEARANCE_IDS.has(definition.id) || LIGHTING_IDS.has(definition.id)) return true;
   if (['performance', 'pose'].includes(definition.group) && definition.id !== 'seated') return true;
   return ['hairColor', 'browColor', 'lashColor', 'dressColor', 'trimColor', 'fabricRoughness'].includes(definition.id);
@@ -434,6 +440,7 @@ function updateControlModes() {
         : '';
   }
   if (ui.rendererCPanel) ui.rendererCPanel.hidden = renderStyle !== 'rendererC';
+  if (ui.dressStudy) ui.dressStudy.hidden = renderStyle !== 'rendererC' || rendererCCohort !== 'women';
   updateRendererCMotionButtons();
 }
 
@@ -497,6 +504,13 @@ async function loadCharacter() {
         updateRendererCMotionButtons();
         if (rendererCCohort === 'men') {
           costume = createRendererCMenswear(characterRoot, bones, model);
+          costume.rebuild(preset.values);
+        } else if (bones.head) {
+          stabilizeRendererCProductionSkirt();
+          // The fitted MPFB garment is the skinned underlayer. The live outer
+          // dress supplies the period silhouette while the carrier prevents
+          // body exposure through broad Mixamo arm and torso poses.
+          costume = createCostume(characterRoot, bones, model);
           costume.rebuild(preset.values);
         }
       }
@@ -624,6 +638,16 @@ function playRendererCMotion(name, { preservePelvis = null } = {}) {
       model.updateMatrixWorld(true);
     }
   }
+  if (costume && rendererCCohort === 'women' && [
+    'ClinicIdle', 'SittingTalking', 'SittingTalkingLegsCrossed',
+    'SittingDejected', 'SittingKneeStrike', 'StandingIdle',
+  ].includes(name)) {
+    // Fit again only at stable endpoints. Rebuilding during the transition
+    // would bake an arbitrary in-between frame into the dress form.
+    model.updateMatrixWorld(true);
+    rebuildCostumeNow({ preserveCurrentPose: true });
+  }
+  if (costume && rendererCCohort === 'women') updateRendererCWomenWardrobe(preset.values);
   setView('full');
   ui.status.textContent = motion.label;
   ui.status.className = 'status ok';
@@ -817,13 +841,73 @@ function setEyeColor(color) {
   }
 }
 
-function rebuildCostumeNow() {
+function rebuildCostumeNow({ preserveCurrentPose = false } = {}) {
   if (!costume || !idle) return;
-  idle.snapToRest();
+  if (!preserveCurrentPose) idle.snapToRest();
   model.updateMatrixWorld(true);
   costume.rebuild(preset.values);
+  if (renderStyle === 'rendererC' && rendererCCohort === 'women') updateRendererCWomenWardrobe(preset.values);
   lastCostumeBuild = performance.now();
   costumeDirty = false;
+}
+
+function stabilizeRendererCProductionSkirt() {
+  const production = model?.getObjectByName?.('RendererC_VictorianDress');
+  production?.traverse?.((object) => {
+    if (!object.isSkinnedMesh) return;
+    const hips = object.skeleton.bones.findIndex((bone) => bone.name.endsWith('Hips'));
+    const joints = object.geometry.attributes.skinIndex;
+    const weights = object.geometry.attributes.skinWeight;
+    const position = object.geometry.attributes.position;
+    if (hips < 0 || !joints || !weights || !position) return;
+    for (let vertex = 0; vertex < joints.count; vertex += 1) {
+      joints.setXYZW(vertex, hips, 0, 0, 0);
+      weights.setXYZW(vertex, 1, 0, 0, 0);
+      const fall = THREE.MathUtils.clamp((0.88 - position.getY(vertex)) / 0.88, 0, 1);
+      const depthScale = 1 + 0.32 * (fall ** 1.3);
+      position.setZ(vertex, position.getZ(vertex) * depthScale);
+      for (const morph of object.geometry.morphAttributes.position || []) {
+        morph.setZ(vertex, morph.getZ(vertex) * depthScale);
+        morph.needsUpdate = true;
+      }
+    }
+    joints.needsUpdate = true;
+    weights.needsUpdate = true;
+    position.needsUpdate = true;
+  });
+}
+
+function updateRendererCWomenWardrobe(values) {
+  if (rendererCCohort !== 'women') return;
+  const mode = values.womenGarmentMode || 'production-dress';
+  const activeClip = animationAction?.getClip?.()?.name;
+  const fittedSeated = new Set([
+    'ClinicIdle', 'SittingTalking', 'SittingTalkingLegsCrossed', 'SittingDejected', 'SittingKneeStrike',
+  ]).has(activeClip);
+  const useFittedSource = mode === 'production-dress' && fittedSeated;
+  const production = model?.getObjectByName?.('RendererC_VictorianDress');
+  const details = model?.getObjectByName?.('RendererC_VictorianDetails');
+  const fitSource = model?.getObjectByName?.('RendererC_VictorianDressFitSource');
+  const carrier = model?.getObjectByName?.('RendererC_BaseGarment');
+  const shoes = model?.getObjectByName?.('RendererC_Shoes');
+  if (production) production.visible = mode === 'production-dress' && !useFittedSource;
+  if (details) {
+    details.visible = mode === 'production-dress' && !useFittedSource;
+    details.traverse?.((object) => {
+      if (!object.isMesh) return;
+      const materials = (Array.isArray(object.material) ? object.material : [object.material]).filter(Boolean);
+      object.visible = mode === 'production-dress' && !useFittedSource
+        && materials.some((material) => material.name.includes('Trim'));
+    });
+  }
+  if (fitSource) fitSource.visible = useFittedSource;
+  if (shoes) shoes.visible = mode !== 'production-dress';
+  // The fitted carrier supplies long sleeves beneath the period overdress and
+  // remains available as the isolated carrier comparison.
+  if (carrier) carrier.visible = true;
+  for (const { mesh } of costume?.pieces?.() || []) {
+    mesh.visible = mode === 'concept-shell';
+  }
 }
 
 function updateRendererCAppearance(values) {
@@ -843,6 +927,33 @@ function updateRendererCAppearance(values) {
   setMaterialLike('RendererC_Brows', values.browColor || values.hairColor, 0.9);
   setMaterialLike('RendererC_Lashes', values.lashColor || '#17100c', 0.92);
   if (costume && rendererCCohort === 'men') costume.updateMaterials?.(values);
+  else if (costume && rendererCCohort === 'women') {
+    costume.materials.dress.color.set(values.dressColor);
+    setSurfaceFinish(costume.materials.dress, values.fabricRoughness, 1);
+    costume.materials.trim.color.set(values.trimColor);
+    costume.updateHair(values);
+    setMaterialLike('RendererC_BaseGarment', values.dressColor, values.fabricRoughness, 1);
+    const productionRoots = [
+      model?.getObjectByName?.('RendererC_VictorianDress'),
+      model?.getObjectByName?.('RendererC_VictorianDetails'),
+      model?.getObjectByName?.('RendererC_VictorianDressFitSource'),
+    ].filter(Boolean);
+    const productionMaterials = [];
+    for (const root of productionRoots) {
+      root.traverse?.((object) => {
+        if (!object.isMesh) return;
+        productionMaterials.push(...(Array.isArray(object.material) ? object.material : [object.material]).filter(Boolean));
+      });
+    }
+    for (const material of productionMaterials) {
+      const trim = material.name.includes('Trim');
+      material.color?.set(trim ? values.trimColor : values.dressColor);
+      material.side = THREE.DoubleSide;
+      setSurfaceFinish(material, trim ? Math.max(0.45, values.fabricRoughness * 0.84) : values.fabricRoughness, 1);
+      material.needsUpdate = true;
+    }
+    updateRendererCWomenWardrobe(values);
+  }
   else setMaterialLike('RendererC_BaseGarment', values.dressColor, values.fabricRoughness, 1);
   setMaterialLike('RendererC_Shoes', '#211713', 0.82);
 }
@@ -907,10 +1018,14 @@ function applyAll(changedId = null, { final = true } = {}) {
         : false;
       if (initial || identityControl || SKIN_APPEARANCE_IDS.has(changedId)
         || ['hairColor', 'browColor', 'lashColor'].includes(changedId)
-        || RENDERER_C_MENSWEAR_MATERIAL_IDS.has(changedId)) {
+        || (rendererCCohort === 'men' && RENDERER_C_MENSWEAR_MATERIAL_IDS.has(changedId))
+        || (rendererCCohort === 'women' && (COSTUME_MATERIAL_IDS.has(changedId)
+          || RENDERER_C_WOMEN_WARDROBE_IDS.has(changedId)))) {
         updateRendererCAppearance(v);
       }
-      if (costume && final && (identityChanged || RENDERER_C_MENSWEAR_GEOMETRY_IDS.has(changedId))) costumeDirty = true;
+      if (costume && final && (identityChanged
+        || (rendererCCohort === 'men' && RENDERER_C_MENSWEAR_GEOMETRY_IDS.has(changedId))
+        || (rendererCCohort === 'women' && COSTUME_GEOMETRY_IDS.has(changedId)))) costumeDirty = true;
     } else {
       if (initial || COMPARISON_MATERIAL_IDS.has(changedId)) updateComparisonMaterial(model, v);
     }
@@ -1217,6 +1332,8 @@ async function generateRendererCGrid() {
       rendererCCohort = requestedCohort;
       preset.values.gender = RENDERER_C_COHORTS[rendererCCohort].gender;
       preset.values.rendererCAnchor = 0;
+      const mensStyle = String(preset.values.outfitStyle || '').startsWith('mens-');
+      if (rendererCCohort === 'women' && mensStyle) preset.values.outfitStyle = 'conservative-day';
       await loadCharacter();
       updateControlModes();
     }
@@ -1244,6 +1361,22 @@ async function generateRendererCGrid() {
     rendererCGridBusy = false;
     ui.rendererCGenerate.disabled = false;
   }
+}
+
+async function openRendererCDressStudy() {
+  if (renderStyle !== 'rendererC' || rendererCCohort !== 'women' || rendererCGridBusy) return;
+  Object.assign(preset.values, {
+    outfitStyle: 'fashionable-1896',
+    womenGarmentMode: 'production-dress',
+    dressColor: '#4b263b',
+    trimColor: '#c2a56f',
+    skirtFullness: 1.12,
+    sleeveVolume: 1.04,
+  });
+  refreshControls(true);
+  setView('full');
+  ui.status.textContent = 'Renderer C · production 1896 dress proof';
+  ui.status.className = 'status ok';
 }
 
 function syncControlValue(id, value) {
@@ -1442,6 +1575,7 @@ ui.faceUnitValue.oninput = applyFaceUnitDebug;
 ui.faceUnitReset.onclick = clearFaceUnitDebug;
 ui.faceUnitSurprise.onclick = surpriseFace;
 ui.rendererCGenerate.onclick = generateRendererCGrid;
+ui.dressStudy.onclick = openRendererCDressStudy;
 ui.canvas.ondblclick = () => setView('clinic');
 ui.search.oninput = () => { const term = ui.search.value.toLowerCase(); document.querySelectorAll('.control').forEach((row) => row.hidden = !row.dataset.search.includes(term)); document.querySelectorAll('.control-group').forEach((group) => { const rendererMismatch = group.dataset.renderer && group.dataset.renderer !== renderStyle; group.hidden = rendererMismatch || ![...group.querySelectorAll('.control')].some((row) => !row.hidden); }); };
 window.addEventListener('keydown', (event) => {
@@ -1481,7 +1615,9 @@ const clock = new THREE.Clock();
 function frame() {
   const delta = clock.getDelta();
   const elapsed = clock.elapsedTime;
-  if (costumeDirty && !mhrController?.isPoseTransitioning && performance.now() - lastCostumeBuild > 90) rebuildCostumeNow();
+  if (costumeDirty && !mhrController?.isPoseTransitioning && performance.now() - lastCostumeBuild > 90) {
+    rebuildCostumeNow({ preserveCurrentPose: renderStyle === 'rendererC' && rendererCCohort === 'women' });
+  }
   if (!isFallback) {
     const mode = preset.values.idleMode || 'procedural';
     const activeClip = animationAction?.getClip?.()?.name;

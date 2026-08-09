@@ -147,6 +147,23 @@ from regularized local deformation fields. Smile, sadness and fatigue share
 the same attack/hold/release scheduler as renderer A, and MPFB resting-face
 signatures are translated into the corresponding MHR controls.
 
+### Renderer C dress study
+
+The **Dress study** stage button opens a Renderer C woman with a Blender-authored
+gored skirt on the same 52-bone Mixamo skeleton as the body. The fitted
+MPFB/MakeClothes carrier supplies the bodice, sleeves, body mask and body-build
+morphs. The visible A-line skirt uses one continuous hip-driven envelope for
+standing and walking, so Mixamo leg motion cannot split it into separate lobes.
+
+Long skirts need different deformation strategies for locomotion and sitting.
+At stable seated clips Character Lab switches to the authored fitted garment
+surface, which follows the legs across the lap without rebuilding geometry into
+an animation frame. The procedural shell is available only as an explicit
+comparison in the **Women’s garment proof** selector. This is deterministic
+prototype behavior, not cloth simulation; approved final garments should add
+skirt bones, corrective shapes, or secondary physics where the animation set
+needs them.
+
 `character:generate` and the local regeneration endpoint produce/cache A. The
 full 35 MB MHR asset remains the live-authoring master. `npm run mhr:generate`
 bakes the selected patient's 45 identity coefficients into the base mesh,
@@ -185,8 +202,9 @@ than during every animation frame.
   the standing bind pose. Set full effective weight before pausing.
 - Thigh Y is bone twist (invisible); knee adduction is local Z, applied live
   by the `kneesTogether` control, mirrored between legs.
-- The costume must be rebuilt with the skeleton snapped to rest, or the
-  current animation pose bakes into the geometry.
+- Generated Renderer C garments keep one bind pose. Runtime may switch between
+  authored skinned surfaces at stable clip endpoints, but it never rebuilds
+  baked geometry into an in-between animation frame.
 - `window.__lab` in the viewer console exposes scene/bones/preset/idle for
   calibration probes.
 - Orange controls alter identity and require **Regenerate model**. In local

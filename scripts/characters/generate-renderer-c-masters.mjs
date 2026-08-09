@@ -57,25 +57,23 @@ async function runBlenderWithRetry(cohort, output, manifest) {
   }
 }
 
-async function compressGlb(source, output) {
+async function compressGlb(source, output, { quantizationVolume = 'mesh' } = {}) {
   await MeshoptEncoder.ready;
   const io = new NodeIO()
     .registerExtensions([EXTMeshoptCompression, KHRMeshQuantization])
     .registerDependencies({ 'meshopt.encoder': MeshoptEncoder, 'meshopt.decoder': MeshoptDecoder });
   const document = await io.read(source);
-  await document.transform(
-    dedup(),
-    prune(),
-    reorder({ encoder: MeshoptEncoder, target: 'size' }),
-    quantize({
+  const transforms = [dedup(), prune(), reorder({ encoder: MeshoptEncoder, target: 'size' })];
+  transforms.push(quantize({
+      quantizationVolume,
       quantizePosition: 16,
       quantizeNormal: 12,
       quantizeTexcoord: 14,
       quantizeColor: 10,
       quantizeWeight: 12,
       quantizeGeneric: 16,
-    }),
-  );
+    }));
+  await document.transform(...transforms);
   document.createExtension(EXTMeshoptCompression)
     .setRequired(true)
     .setEncoderOptions({ method: EXTMeshoptCompression.EncoderMethod.QUANTIZE });
@@ -87,9 +85,57 @@ async function validate(cohort, modelPath, manifest) {
   const arrayBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
   const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(arrayBuffer, '');
   const required = ['Human_Body', 'Patient_Rig', 'RendererC_Eyes_01', 'RendererC_Teeth_01', 'RendererC_BaseGarment'];
+  if (cohort === 'women') required.push('RendererC_VictorianDress', 'RendererC_VictorianDetails');
   if (cohort === 'men') required.push('RendererC_WorkGarment');
   for (const name of required) if (!gltf.scene.getObjectByName(name)) throw new Error(`${cohort} master is missing ${name}`);
   const body = gltf.scene.getObjectByName('Human_Body');
+  if (cohort === 'women') {
+    const dressRoot = gltf.scene.getObjectByName('RendererC_VictorianDress');
+    const dressMeshes = [];
+    dressRoot.traverse((object) => { if (object.isMesh) dressMeshes.push(object); });
+    if (!dressMeshes.length || dressMeshes.some((dress) => !dress.isSkinnedMesh
+      || !dress.geometry.attributes.skinIndex || !dress.geometry.attributes.skinWeight)) {
+      throw new Error('women master lost the production dress skin weights');
+    }
+    if (dressMeshes.some((dress) => !Object.hasOwn(dress.morphTargetDictionary || {}, 'rc_live_weight_pos'))) {
+      throw new Error('women master lost the production dress body-build morphs');
+    }
+    const carrier = gltf.scene.getObjectByName('RendererC_BaseGarment');
+    if (dressMeshes.some((dress) => dress.skeleton.bones.length !== carrier.skeleton.bones.length
+      || dress.skeleton.bones.some((bone, index) => bone !== carrier.skeleton.bones[index]))) {
+      throw new Error('women master assigned the production dress to a fallback skeleton');
+    }
+    const usedDressJoints = new Set();
+    for (const dress of dressMeshes) {
+      const joints = dress.geometry.attributes.skinIndex;
+      const weights = dress.geometry.attributes.skinWeight;
+      for (let vertex = 0; vertex < joints.count; vertex += 1) {
+        for (let influence = 0; influence < 4; influence += 1) {
+          if (weights.getComponent(vertex, influence) > 0.01) {
+            usedDressJoints.add(joints.getComponent(vertex, influence));
+          }
+        }
+      }
+    }
+    if (usedDressJoints.size < 4) {
+      throw new Error('women production dress lost its fitted MakeClothes body weighting');
+    }
+    if (dressMeshes.some((dress) => dress.skeleton.boneInverses.some(
+      (inverse, index) => !inverse.equals(carrier.skeleton.boneInverses[index]),
+    ))) throw new Error('women master changed the production dress bind space');
+    const detailsRoot = gltf.scene.getObjectByName('RendererC_VictorianDetails');
+    const detailsMeshes = [];
+    detailsRoot?.traverse((object) => { if (object.isMesh) detailsMeshes.push(object); });
+    if (!detailsMeshes.length || detailsMeshes.some((details) => !details.isSkinnedMesh
+      || !details.geometry.attributes.skinIndex || !details.geometry.attributes.skinWeight
+      || !Object.hasOwn(details.morphTargetDictionary || {}, 'rc_live_weight_pos'))) {
+      throw new Error('women master lost its fitted period dress details');
+    }
+    if (detailsMeshes.some((details) => details.skeleton.bones.length !== carrier.skeleton.bones.length
+      || details.skeleton.bones.some((bone, index) => bone !== carrier.skeleton.bones[index]))) {
+      throw new Error('women period details changed skeletons');
+    }
+  }
   const morphs = Object.keys(body.morphTargetDictionary || {});
   for (const anchor of manifest.anchors) if (!morphs.includes(anchor.morph)) throw new Error(`${cohort} master lost ${anchor.morph}`);
   for (const id of manifest.liveFaceIds) {
@@ -127,7 +173,10 @@ for (const cohort of requestedCohorts) {
     await Promise.all([access(source), access(sourceManifest)]);
   }
   const manifest = JSON.parse(await readFile(sourceManifest, 'utf8'));
-  await compressGlb(source, output);
+  // Use one shared position-decode volume for women. Per-mesh bounds assign
+  // different transforms to the fitted carrier and broad skirt, corrupting
+  // their shared inverse-bind space.
+  await compressGlb(source, output, { quantizationVolume: cohort === 'women' ? 'scene' : 'mesh' });
   const facts = await validate(cohort, output, manifest);
   cohorts[cohort] = { ...manifest, ...facts, path: `/models/renderer-c-${cohort}.glb` };
   process.stdout.write(`${cohort}: ${(facts.bytes / 1024 / 1024).toFixed(1)} MB, ${facts.morphTargets} morphs\n`);

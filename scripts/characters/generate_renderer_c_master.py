@@ -7,6 +7,7 @@ Character Lab can tune anatomy without starting Blender again.
 
 import argparse
 import json
+import math
 import os
 import sys
 
@@ -16,6 +17,12 @@ import bpy
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
+
+PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", ".."))
+VICTORIAN_WOMENSWEAR_ROOT = os.path.join(
+    PROJECT_ROOT,
+    "assets", "source", "renderer-c", "womenswear", "toigo_halter_dress_with_fluted_skirt",
+)
 
 import generate_patient as common
 import generate_renderer_c as renderer_c
@@ -91,6 +98,9 @@ def cohort_definition(cohort):
         "identity_values": female_gate.identity_values,
         "skin": "young_caucasian_female.mhmat",
         "garment": "female_elegantsuit01.mhclo",
+        "period_garment": os.path.join(
+            VICTORIAN_WOMENSWEAR_ROOT, "toigo_halter_dress_with_fluted_skirt.mhclo"
+        ),
         "hair": ("authored-victorian-low-bun",),
         "lashes": ("eyelashes01.mhclo", "eyelashes02.mhclo", "eyelashes03.mhclo"),
     }
@@ -289,6 +299,11 @@ def interpolate_custom_keys_to_assets(base, fitted):
     ]
     basis = [vertex.co.copy() for vertex in base.data.vertices]
     for child in fitted:
+        if child.get("renderer_c_wardrobe_role") == "production-dress":
+            # These garments copy a carrier only to inherit its exact bind
+            # space. Their custom topology already has sampled body keys and
+            # must not be treated as the carrier's MHCLO vertex mapping.
+            continue
         path = ClothesService.find_clothes_absolute_path(child)
         if not path:
             continue
@@ -322,11 +337,29 @@ def interpolate_custom_keys_to_assets(base, fitted):
         print(f"CUSTOM_ASSET_KEYS_OK {child.name}")
 
 
-def add_fitted_garment(HumanService, AssetService, base, filename, name, color):
-    """Add one reusable garment carrier and sample its body-build endpoints."""
-    garment = renderer_c.add_named_asset(
-        HumanService, AssetService, base, "clothes", filename, "Clothes", name
+def add_garment_asset(HumanService, AssetService, base, source, name):
+    if os.path.isabs(source):
+        if not os.path.exists(source):
+            raise RuntimeError(f"Missing project garment asset: {source}")
+        garment = HumanService.add_mhclo_asset(
+            source,
+            base,
+            asset_type="Clothes",
+            material_type="GAMEENGINE",
+        )
+        if garment is None or not hasattr(garment, "name"):
+            raise RuntimeError(f"MPFB failed to add project garment {source}")
+        garment.name = name
+        garment["renderer_c_role"] = "clothe"
+        return garment
+    return renderer_c.add_named_asset(
+        HumanService, AssetService, base, "clothes", source, "Clothes", name
     )
+
+
+def add_fitted_garment(HumanService, AssetService, base, source, name, color):
+    """Add one reusable garment carrier and sample its body-build endpoints."""
+    garment = add_garment_asset(HumanService, AssetService, base, source, name)
     renderer_c.set_material_override(garment, f"{name}_Material", color, 0.84)
     garment.shape_key_add(name="Basis", from_mix=False)
     garment_morphs = (
@@ -340,8 +373,8 @@ def add_fitted_garment(HumanService, AssetService, base, filename, name, color):
             key.value = 0.0
         base.data.shape_keys.key_blocks[morph_name].value = 1.0
         bpy.context.view_layer.update()
-        endpoint = renderer_c.add_named_asset(
-            HumanService, AssetService, base, "clothes", filename, "Clothes", f"Endpoint_{name}_{morph_name}"
+        endpoint = add_garment_asset(
+            HumanService, AssetService, base, source, f"Endpoint_{name}_{morph_name}"
         )
         if len(endpoint.data.vertices) != len(garment.data.vertices):
             raise RuntimeError(f"{name} topology changed while fitting {morph_name}")
@@ -357,6 +390,192 @@ def add_fitted_garment(HumanService, AssetService, base, filename, name, color):
         key.value = 0.0
     bpy.context.view_layer.update()
     return garment
+
+
+def add_period_gored_skirt(rig, fitted_source):
+    """Build a clean A-line skirt and inherit the fitted gown's weights."""
+    vertices = []
+    faces = []
+    face_materials = []
+    rings = 20
+    segments = 64
+    for ring in range(rings):
+        fall = ring / (rings - 1)
+        shaped = fall ** 0.88
+        z = 0.90 - 0.88 * fall
+        radius_x = 0.178 + 0.312 * shaped
+        radius_y = 0.128 + 0.292 * shaped
+        center_y = -0.020 + 0.026 * fall
+        for segment in range(segments):
+            angle = 2.0 * math.pi * segment / segments
+            vertices.append((
+                radius_x * math.cos(angle),
+                center_y + radius_y * math.sin(angle),
+                z,
+            ))
+    for ring in range(rings - 1):
+        for segment in range(segments):
+            nxt = (segment + 1) % segments
+            a = ring * segments + segment
+            b = ring * segments + nxt
+            c = (ring + 1) * segments + nxt
+            d = (ring + 1) * segments + segment
+            faces.append((a, d, c, b))
+            face_materials.append(1 if ring >= rings - 2 else 0)
+
+    mesh = bpy.data.meshes.new("RendererC_VictorianDress_Mesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update(calc_edges=True)
+    skirt = fitted_source.copy()
+    skirt.data = mesh
+    skirt.name = "RendererC_VictorianDress"
+    bpy.context.collection.objects.link(skirt)
+    for group in list(skirt.vertex_groups):
+        skirt.vertex_groups.remove(group)
+    skirt["renderer_c_role"] = "clothe"
+    skirt["renderer_c_wardrobe_role"] = "production-dress"
+    skirt["renderer_c_skinning"] = "makeclothes-weight-transfer"
+    skirt["renderer_c_period_silhouette"] = "1896-gored-a-line"
+    skirt.data.materials.append(common.material("RendererC_VictorianDress_Material", "#4b263b", 0.88))
+    skirt.data.materials.append(common.material("RendererC_VictorianDress_Trim", "#b99a67", 0.76))
+    for polygon, material_index in zip(skirt.data.polygons, face_materials):
+        polygon.material_index = material_index
+        polygon.use_smooth = True
+
+    source_basis = fitted_source.data.shape_keys.key_blocks["Basis"]
+    nearest = []
+    for vertex in vertices:
+        nearest.append(min(
+            range(len(source_basis.data)),
+            key=lambda index: (
+                (source_basis.data[index].co.x - vertex[0]) ** 2
+                + (source_basis.data[index].co.y - vertex[1]) ** 2
+                + (source_basis.data[index].co.z - vertex[2]) ** 2
+            ),
+        ))
+    target_groups = {}
+    for group in fitted_source.vertex_groups:
+        target_groups[group.index] = skirt.vertex_groups.new(name=group.name)
+    for skirt_index, source_index in enumerate(nearest):
+        for membership in fitted_source.data.vertices[source_index].groups:
+            target_groups[membership.group].add([skirt_index], membership.weight, "REPLACE")
+
+    skirt.shape_key_add(name="Basis", from_mix=False)
+    for source_key in fitted_source.data.shape_keys.key_blocks:
+        if source_key.name == "Basis":
+            continue
+        target_key = skirt.shape_key_add(name=source_key.name, from_mix=False)
+        for skirt_index, source_index in enumerate(nearest):
+            delta = source_key.data[source_index].co - source_basis.data[source_index].co
+            vertex = vertices[skirt_index]
+            target_key.data[skirt_index].co = (
+                vertex[0] + delta.x,
+                vertex[1] + delta.y,
+                vertex[2] + delta.z,
+            )
+    armature = next((modifier for modifier in skirt.modifiers if modifier.type == "ARMATURE"), None)
+    if armature is None:
+        armature = skirt.modifiers.new(name="RendererC_VictorianDress_Armature", type="ARMATURE")
+    armature.object = rig
+    armature.use_deform_preserve_volume = True
+    print(f"PERIOD_SKIRT_OK vertices={len(vertices)} faces={len(faces)}")
+    return skirt
+
+
+def add_period_dress_details(rig, carrier):
+    """Add a fitted high collar, closed yoke, waist seam, and front buttons."""
+    vertices = []
+    faces = []
+    face_materials = []
+
+    def add_quad(a, b, c, d, material=0):
+        first = len(vertices)
+        vertices.extend((a, b, c, d))
+        faces.append((first, first + 1, first + 2, first + 3))
+        face_materials.append(material)
+
+    def add_oval_band(z_top, z_bottom, radius_x, radius_y, center_y, material, segments=32):
+        first = len(vertices)
+        for z in (z_top, z_bottom):
+            for segment in range(segments):
+                angle = 2.0 * math.pi * segment / segments
+                vertices.append((radius_x * math.cos(angle), center_y + radius_y * math.sin(angle), z))
+        for segment in range(segments):
+            nxt = (segment + 1) % segments
+            faces.append((first + segment, first + nxt, first + segments + nxt, first + segments + segment))
+            face_materials.append(material)
+
+    # The yoke closes the modern V-neck. The surface sits just outside the
+    # fitted carrier so it reads as one bodice without z-fighting.
+    add_quad((-0.066, -0.130, 1.355), (0.066, -0.130, 1.355), (0.092, -0.173, 1.270), (-0.092, -0.173, 1.270), 0)
+    first = len(vertices)
+    vertices.extend(((-0.092, -0.173, 1.270), (0.092, -0.173, 1.270), (0.0, -0.181, 1.112)))
+    faces.append((first, first + 1, first + 2))
+    face_materials.append(0)
+
+    add_oval_band(1.405, 1.352, 0.086, 0.065, -0.026, 0)
+    add_oval_band(0.920, 0.898, 0.174, 0.122, -0.025, 1)
+
+    # A narrow placket and four low-profile buttons keep the detail legible at
+    # game distance without turning the bodice into floating ornament.
+    add_quad((-0.009, -0.174, 1.112), (0.009, -0.174, 1.112), (0.009, -0.158, 0.925), (-0.009, -0.158, 0.925), 1)
+    for button in range(4):
+        z = 1.075 - button * 0.047
+        segments = 12
+        first = len(vertices)
+        for segment in range(segments):
+            angle = 2.0 * math.pi * segment / segments
+            vertices.append((0.009 * math.cos(angle), -0.178, z + 0.009 * math.sin(angle)))
+        vertices.append((0.0, -0.181, z))
+        center = len(vertices) - 1
+        for segment in range(segments):
+            faces.append((center, first + segment, first + (segment + 1) % segments))
+            face_materials.append(1)
+
+    mesh = bpy.data.meshes.new("RendererC_VictorianDetails_Mesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update(calc_edges=True)
+    details = carrier.copy()
+    details.data = mesh
+    details.name = "RendererC_VictorianDetails"
+    bpy.context.collection.objects.link(details)
+    for group in list(details.vertex_groups):
+        details.vertex_groups.remove(group)
+    details["renderer_c_role"] = "clothe"
+    details["renderer_c_wardrobe_role"] = "production-dress"
+    details["renderer_c_skinning"] = "torso-segmented"
+    details.data.materials.append(common.material("RendererC_VictorianDetails_Material", "#4b263b", 0.86))
+    details.data.materials.append(common.material("RendererC_VictorianDetails_Trim", "#b99a67", 0.76))
+    for polygon, material_index in zip(details.data.polygons, face_materials):
+        polygon.material_index = material_index
+        polygon.use_smooth = True
+
+    groups = {
+        name: details.vertex_groups.new(name=name)
+        for name in ("mixamorig:Neck", "mixamorig:Spine2", "mixamorig:Spine1")
+    }
+    for detail_index, vertex in enumerate(vertices):
+        if vertex[2] >= 1.33:
+            group_name = "mixamorig:Neck"
+        elif vertex[2] >= 0.94:
+            group_name = "mixamorig:Spine2"
+        else:
+            group_name = "mixamorig:Spine1"
+        groups[group_name].add([detail_index], 1.0, "REPLACE")
+
+    details.shape_key_add(name="Basis", from_mix=False)
+    for source_key in carrier.data.shape_keys.key_blocks:
+        if source_key.name == "Basis":
+            continue
+        details.shape_key_add(name=source_key.name, from_mix=False)
+
+    armature = next((modifier for modifier in details.modifiers if modifier.type == "ARMATURE"), None)
+    if armature is None:
+        armature = details.modifiers.new(name="RendererC_VictorianDetails_Armature", type="ARMATURE")
+    armature.object = rig
+    armature.use_deform_preserve_volume = True
+    print(f"PERIOD_DETAILS_OK vertices={len(vertices)} faces={len(faces)}")
+    return details
 
 
 def add_variant_assets(services, definition, base):
@@ -412,6 +631,29 @@ def add_variant_assets(services, definition, base):
         HumanService, AssetService, base, definition["garment"], "RendererC_BaseGarment", "#183326"
     )
     garment["renderer_c_wardrobe_role"] = "suit"
+    rig = bpy.data.objects.get("Patient_Rig")
+    period_dress = (
+        add_fitted_garment(
+            HumanService,
+            AssetService,
+            base,
+            definition["period_garment"],
+            "RendererC_VictorianDress",
+            "#4b263b",
+        )
+        if definition["sex"] == "female"
+        else None
+    )
+    if period_dress:
+        period_dress.name = "RendererC_VictorianDressFitSource"
+        period_dress["renderer_c_wardrobe_role"] = "production-dress-source"
+        period_dress["renderer_c_skinning"] = "makeclothes-fitted-source"
+        period_source = period_dress
+        period_dress = add_period_gored_skirt(rig, period_source)
+        period_details = add_period_dress_details(rig, garment)
+    else:
+        period_source = None
+        period_details = None
     work_garment = None
     if definition.get("work_garment"):
         work_garment = add_fitted_garment(
@@ -420,7 +662,15 @@ def add_variant_assets(services, definition, base):
         work_garment["renderer_c_wardrobe_role"] = "working"
     shoes = renderer_c.add_named_asset(HumanService, AssetService, base, "clothes", "shoes05.mhclo", "Clothes", "RendererC_Shoes")
     renderer_c.set_material_override(shoes, "RendererC_Shoes_Material", "#211713", 0.78)
-    return [*fitted, garment, *([work_garment] if work_garment else []), shoes]
+    return [
+        *fitted,
+        garment,
+        *([work_garment] if work_garment else []),
+        *([period_source] if period_source else []),
+        *([period_dress] if period_dress else []),
+        *([period_details] if period_details else []),
+        shoes,
+    ]
 
 
 def main():
@@ -518,7 +768,12 @@ def main():
             "eyes": len(definition["anchors"]),
             "teeth": len(definition["anchors"]),
         },
-        "wardrobeCarriers": ["RendererC_BaseGarment", *(["RendererC_WorkGarment"] if definition.get("work_garment") else [])],
+        "wardrobeCarriers": [
+            "RendererC_BaseGarment",
+            *(["RendererC_VictorianDress"] if definition["sex"] == "female" else []),
+            *(["RendererC_VictorianDetails"] if definition["sex"] == "female" else []),
+            *(["RendererC_WorkGarment"] if definition.get("work_garment") else []),
+        ],
     }
     bpy.context.scene["renderer_c_manifest"] = json.dumps(scene_manifest, separators=(",", ":"))
     renderer_c.export_glb(output, [base, rig, *fitted])

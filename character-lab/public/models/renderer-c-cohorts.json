@@ -184,9 +184,11 @@
         "teeth": 8
       },
       "wardrobeCarriers": [
-        "RendererC_BaseGarment"
+        "RendererC_BaseGarment",
+        "RendererC_VictorianDress",
+        "RendererC_VictorianDetails"
       ],
-      "bytes": 25404132,
+      "bytes": 25696424,
       "morphTargets": 128,
       "clips": 10,
       "path": "/models/renderer-c-women.glb"

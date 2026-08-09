@@ -1,0 +1,23 @@
+# MakeHuman Material definition
+
+name dress02Material
+
+// Color shading attributes
+diffuseColor  0.06401 0.002897 0.002897
+specularColor  0.04183 0.004135 0.004135
+shininess 0.07843
+opacity 1
+
+// Textures and properties
+diffuseTexture DressCloth2UV.png
+
+// Shader programme
+shader data/shaders/glsl/phong
+
+// Configure built-in shader defines
+shaderConfig diffuse true
+shaderConfig bump false
+shaderConfig normal  false
+shaderConfig displacement  false
+shaderConfig spec  false
+shaderConfig vertexColors false

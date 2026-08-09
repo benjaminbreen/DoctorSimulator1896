@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'meshoptimizer';
 import * as THREE from 'three';
-import { findBones, sampleTorsoFit } from '../character-lab/src/costume.js';
+import { createCostume, findBones, sampleTorsoFit } from '../character-lab/src/costume.js';
 import { createExpressions, createMhrExpressions } from '../character-lab/src/expressions.js';
 import { createIdle } from '../character-lab/src/idle.js';
 import { findBodyMesh, sampleScalp, scalpPoint } from '../character-lab/src/hair/geometry.js';
@@ -252,6 +252,102 @@ test('Renderer C exact-doll Mixamo actions keep full hands and plausible body mo
   }
 });
 
+test('Renderer C women ship a morphable production dress on the Mixamo skeleton', async () => {
+  const gltf = await loadModel('../character-lab/public/models/renderer-c-women.glb');
+  const carrier = gltf.scene.getObjectByName('RendererC_BaseGarment');
+  const dressRoot = gltf.scene.getObjectByName('RendererC_VictorianDress');
+  const detailsRoot = gltf.scene.getObjectByName('RendererC_VictorianDetails');
+  const detailMeshes = [];
+  detailsRoot.traverse((object) => { if (object.isMesh) detailMeshes.push(object); });
+  const dressMeshes = [];
+  dressRoot.traverse((object) => { if (object.isMesh) dressMeshes.push(object); });
+  assert.ok(dressMeshes.length >= 1, 'dress should contain fitted cloth geometry');
+  const usedJoints = new Set();
+  for (const dress of dressMeshes) {
+    assert.ok(dress.isSkinnedMesh && dress.geometry.attributes.skinIndex && dress.geometry.attributes.skinWeight);
+    assert.deepEqual(dress.skeleton.bones.map((bone) => bone.name), carrier.skeleton.bones.map((bone) => bone.name));
+    for (let vertex = 0; vertex < dress.geometry.attributes.skinIndex.count; vertex += 1) {
+      for (let influence = 0; influence < 4; influence += 1) {
+        if (dress.geometry.attributes.skinWeight.getComponent(vertex, influence) > 0.01) {
+          usedJoints.add(dress.geometry.attributes.skinIndex.getComponent(vertex, influence));
+        }
+      }
+    }
+    for (const morph of ['rc_live_weight_pos', 'rc_live_muscle_neg', 'rc_live_proportions_pos']) {
+      assert.notEqual(dress.morphTargetDictionary[morph], undefined, `dress lost ${morph}`);
+    }
+  }
+  assert.ok(usedJoints.size >= 4, 'dress should preserve fitted body weighting instead of collapsing to one rigid bone');
+  assert.ok(detailMeshes.length >= 1 && detailMeshes.every((details) => details.isSkinnedMesh
+    && details.geometry.attributes.skinIndex && details.geometry.attributes.skinWeight),
+    'collar, yoke, waist seam, and buttons should be skinned geometry');
+  for (const details of detailMeshes) {
+    assert.deepEqual(details.skeleton.bones.map((bone) => bone.name), carrier.skeleton.bones.map((bone) => bone.name));
+    assert.notEqual(details.morphTargetDictionary.rc_live_weight_pos, undefined,
+      'period details should follow supported body-build morphs');
+  }
+
+  const root = new THREE.Group();
+  root.add(gltf.scene);
+  root.updateMatrixWorld(true);
+  const hips = gltf.scene.getObjectByName('mixamorigHips');
+  const before = new THREE.Vector3();
+  const hipBefore = new THREE.Vector3();
+  dressMeshes[0].getVertexPosition(0, before).applyMatrix4(dressMeshes[0].matrixWorld);
+  hips.getWorldPosition(hipBefore);
+  const relativeBefore = before.clone().sub(hipBefore);
+  root.position.set(3.2, 0, -1.7);
+  root.updateMatrixWorld(true);
+  const after = new THREE.Vector3();
+  const hipAfter = new THREE.Vector3();
+  dressMeshes[0].getVertexPosition(0, after).applyMatrix4(dressMeshes[0].matrixWorld);
+  hips.getWorldPosition(hipAfter);
+  assert.ok(after.clone().sub(hipAfter).distanceTo(relativeBefore) < 1e-5,
+    'walking the character root must not leave the production dress behind');
+});
+
+test('Renderer C women retain the procedural dress as a coordinate-safe concept comparison', async () => {
+  const gltf = await loadModel('../character-lab/public/models/renderer-c-women.glb');
+  const characterRoot = new THREE.Group();
+  characterRoot.position.set(2.4, 0, -1.1);
+  characterRoot.add(gltf.scene);
+  const bones = findBones(gltf.scene);
+  const mixer = new THREE.AnimationMixer(gltf.scene);
+  const clinic = gltf.animations.find((clip) => clip.name === 'ClinicIdle');
+  mixer.clipAction(clinic).play();
+  mixer.setTime(0);
+  characterRoot.updateMatrixWorld(true);
+  const carrier = gltf.scene.getObjectByName('RendererC_BaseGarment');
+  const dress = createCostume(characterRoot, bones, gltf.scene);
+  const values = {
+    seed: 1896, gender: 0.05, weight: 0.48, seated: 1,
+    outfitStyle: 'conservative-day', dressColor: '#4b263b', trimColor: '#c2a56f', fabricRoughness: 1,
+    bodiceFit: 0.96, waistHeight: 0.03, skirtFullness: 1.08, skirtLength: 1,
+    skirtDrape: 0.62, bustleAmount: 0.12, sleeveVolume: 0.82, sleeveLength: 0.98,
+    collarHeight: 0.86, collarSpread: 0.92, buttonCount: 6, buttonSpacing: 0.95,
+    hairColor: '#171311',
+  };
+  dress.rebuild(values);
+  const pieceNames = new Set(dress.pieces().map(({ mesh }) => mesh.name));
+  for (const required of ['Costume_Bodice', 'Costume_Skirt', 'Costume_WaistSeam', 'Costume_PetticoatThigh_L']) {
+    assert.ok(pieceNames.has(required), `dress is missing ${required}`);
+  }
+  assert.equal(carrier.visible, true, 'the fitted MakeClothes carrier must remain as the animated underlayer');
+  for (const { mesh } of dress.pieces()) {
+    const position = mesh.geometry.attributes.position;
+    if (!position) continue;
+    assert.ok(position.array.every(Number.isFinite), `${mesh.name} contains invalid geometry`);
+  }
+  characterRoot.updateMatrixWorld(true);
+  const skirt = dress.pieces().find(({ mesh }) => mesh.name === 'Costume_Skirt').mesh;
+  const skirtCenter = new THREE.Box3().setFromObject(skirt).getCenter(new THREE.Vector3());
+  const hips = new THREE.Vector3();
+  bones.pelvis.getWorldPosition(hips);
+  assert.ok(Math.abs(skirtCenter.x - hips.x) < 0.7 && Math.abs(skirtCenter.z - hips.z) < 0.7,
+    'concept dress rebuilt in character-root space instead of being double-translated');
+  dress.dispose();
+});
+
 test('Renderer C switches identity anchors and signed anatomy morphs live', async () => {
   const [manifestText, gltf] = await Promise.all([
     readFile(new URL('../character-lab/public/models/renderer-c-cohorts.json', import.meta.url), 'utf8'),
@@ -343,7 +439,6 @@ test('Renderer C menswear refits three silhouettes across body builds without Bl
   assert.ok(baseGarment.morphTargetDictionary.rc_live_weight_pos !== undefined);
   assert.ok(workGarment?.isSkinnedMesh && workGarment.geometry.attributes.skinIndex && workGarment.geometry.attributes.skinWeight);
   assert.ok(workGarment.morphTargetDictionary.rc_live_weight_pos !== undefined);
-
   const signatures = new Set();
   for (const weight of [0.25, 0.48, 0.76]) {
     values.weight = weight;
