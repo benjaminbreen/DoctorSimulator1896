@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import GameCanvas from './scene/GameCanvas.jsx';
 import Toasts from './hud/Toasts.jsx';
 import InstrumentPanel from './hud/InstrumentPanel.jsx';
@@ -145,7 +146,9 @@ export default function App() {
   }, [runtime, keyboard, look]);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-neutral-950 text-neutral-200">
+    <>
+      <Analytics />
+      <div className="flex h-screen w-screen overflow-hidden bg-neutral-950 text-neutral-200">
       <main className="relative min-w-0 flex-1">
         <GameCanvas
           rebuildVersion={rebuildVersion}
@@ -200,6 +203,7 @@ export default function App() {
           <PropsPanel onClose={() => setPropsOpen(false)} />
         </Suspense>
       )}
-    </div>
+      </div>
+    </>
   );
 }
