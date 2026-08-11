@@ -19,6 +19,7 @@
     "@react-three/fiber": "^9.0.0",
     "@react-three/postprocessing": "^3.0.4",
     "@react-three/rapier": "^2.0.0",
+    "@vercel/analytics": "^2.0.1",
     "meshoptimizer": "^1.2.0",
     "postprocessing": "^6.39.4",
     "react": "^19.1.0",
