@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { gameDebug } from '../debug.js';
 
 // Corner readout and travel prompt, refreshed on an interval, never per frame.
-export default function DebugHud() {
+// The prompt remains game-facing; the stats block follows the tuning panel.
+export default function DebugHud({ showStats = false }) {
   const [snapshot, setSnapshot] = useState(null);
 
   useEffect(() => {
@@ -25,18 +26,21 @@ export default function DebugHud() {
   if (!snapshot) return null;
   return (
     <>
-      <div className="pointer-events-none absolute left-3 top-3 rounded bg-black/55 px-3 py-2 font-mono text-[11px] leading-relaxed text-neutral-300">
-        <div className="text-amber-200">{snapshot.zone}</div>
-        <div>{snapshot.fps} fps</div>
-        <div>
-          pos {snapshot.x}, {snapshot.y}, {snapshot.z}
+      {showStats && (
+        /* Below the game chrome's top bar, clear of the clock overhang. */
+        <div className="pointer-events-none absolute left-3 top-28 rounded bg-black/55 px-3 py-2 font-mono text-[11px] leading-relaxed text-neutral-300">
+          <div className="text-amber-200">{snapshot.zone}</div>
+          <div>{snapshot.fps} fps</div>
+          <div>
+            pos {snapshot.x}, {snapshot.y}, {snapshot.z}
+          </div>
+          <div>
+            {snapshot.grounded ? 'grounded' : 'airborne'} · cam {snapshot.camera}m
+          </div>
         </div>
-        <div>
-          {snapshot.grounded ? 'grounded' : 'airborne'} · cam {snapshot.camera}m
-        </div>
-      </div>
+      )}
       {snapshot.prompt && (
-        <div className="pointer-events-none absolute bottom-14 left-1/2 -translate-x-1/2 rounded border border-amber-300/40 bg-black/70 px-4 py-2 text-sm text-amber-100">
+        <div className="pointer-events-none absolute bottom-32 left-1/2 -translate-x-1/2 rounded border border-amber-300/40 bg-black/70 px-4 py-2 text-sm text-amber-100">
           <span className="mr-2 rounded border border-amber-300/60 px-1.5 font-mono text-xs">E</span>
           {snapshot.prompt}
         </div>

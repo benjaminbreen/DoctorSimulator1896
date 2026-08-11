@@ -157,59 +157,16 @@ export function plasterTexture(base) {
   return texture;
 }
 
-// What a sash window shows from inside: sky graded down to a hazy horizon,
-// with the dark smudge of buildings across the street at the bottom. A flat
-// bright pane is the single thing that makes an interior read as fake, so
-// this is deliberately not a solid colour.
-export function windowSkyTexture() {
-  const key = 'windowSky';
-  if (cache.has(key)) return cache.get(key);
-  const width = 64;
-  const height = 256;
-  const canvas = makeCanvas(width);
-  canvas.height = height;
-  const context = canvas.getContext('2d');
-
-  const sky = context.createLinearGradient(0, 0, 0, height);
-  sky.addColorStop(0, '#8fa8cc');
-  sky.addColorStop(0.45, '#b9c8dd');
-  sky.addColorStop(0.72, '#d8dbdb');
-  sky.addColorStop(1, '#c8c3b8');
-  context.fillStyle = sky;
-  context.fillRect(0, 0, width, height);
-
-  // Rooftops opposite: irregular dark blocks along the lower third.
-  context.fillStyle = 'rgba(78,72,66,0.85)';
-  let x = 0;
-  let index = 0;
-  while (x < width) {
-    const w = 7 + ((index * 13) % 11);
-    const top = height * (0.7 + (((index * 7) % 5) / 60));
-    context.fillRect(x, top, w, height - top);
-    x += w;
-    index += 1;
-  }
-  // Soot haze over the roofline.
-  const haze = context.createLinearGradient(0, height * 0.62, 0, height);
-  haze.addColorStop(0, 'rgba(205,205,200,0.55)');
-  haze.addColorStop(1, 'rgba(150,145,138,0.1)');
-  context.fillStyle = haze;
-  context.fillRect(0, height * 0.62, width, height * 0.38);
-
-  const texture = finish(canvas);
-  texture.wrapS = THREE.ClampToEdgeWrapping;
-  texture.wrapT = THREE.ClampToEdgeWrapping;
-  cache.set(key, texture);
-  return texture;
-}
-
 // Lace under-curtain: a net ground with a repeating floral motif, punched
 // out so the sky reads through it. Alpha-tested, not blended, so it costs
 // nothing in sort order.
 export function laceTexture() {
   const key = 'lace';
   if (cache.has(key)) return cache.get(key);
-  const size = 256;
+  // One copy of this covers a whole sash, so the mesh has to be drawn much
+  // finer than it looks on the canvas: at 11px on 256 the net came out with
+  // a six-centimetre gauge and read as chicken wire.
+  const size = 512;
   const canvas = makeCanvas(size);
   const context = canvas.getContext('2d');
   context.clearRect(0, 0, size, size);
@@ -217,7 +174,7 @@ export function laceTexture() {
   // Net: fine diagonal mesh.
   context.strokeStyle = 'rgba(255,252,244,0.5)';
   context.lineWidth = 0.6;
-  for (let i = -size; i < size * 2; i += 11) {
+  for (let i = -size; i < size * 2; i += 7) {
     context.beginPath();
     context.moveTo(i, 0);
     context.lineTo(i + size, size);
@@ -228,29 +185,30 @@ export function laceTexture() {
     context.stroke();
   }
 
-  // Motifs: rosettes on a grid, denser toward the hem.
+  // Motifs: rosettes on a grid. Six across a sash puts them about a hand's
+  // width apart, which is what a machine-made Nottingham net looked like.
   context.fillStyle = 'rgba(255,253,247,0.8)';
-  for (let gy = 0; gy < 3; gy += 1) {
-    for (let gx = 0; gx < 3; gx += 1) {
+  for (let gy = 0; gy < 7; gy += 1) {
+    for (let gx = 0; gx < 6; gx += 1) {
       const cx = 42 + gx * 85;
-      const cy = 42 + gy * 85;
+      const cy = 42 + gy * 74;
       for (let petal = 0; petal < 6; petal += 1) {
         const angle = (petal / 6) * Math.PI * 2;
         context.beginPath();
-        context.ellipse(cx + Math.cos(angle) * 6, cy + Math.sin(angle) * 6, 3.2, 1.9, angle, 0, Math.PI * 2);
+        context.ellipse(cx + Math.cos(angle) * 7, cy + Math.sin(angle) * 7, 3.6, 2.1, angle, 0, Math.PI * 2);
         context.fill();
       }
       context.beginPath();
-      context.arc(cx, cy, 2.4, 0, Math.PI * 2);
+      context.arc(cx, cy, 2.6, 0, Math.PI * 2);
       context.fill();
     }
   }
   // Scalloped hem along the bottom edge.
   context.fillStyle = 'rgba(255,253,247,0.96)';
-  context.fillRect(0, size - 14, size, 6);
-  for (let x = 8; x < size; x += 16) {
+  context.fillRect(0, size - 22, size, 7);
+  for (let x = 10; x < size; x += 20) {
     context.beginPath();
-    context.arc(x, size - 8, 7, 0, Math.PI);
+    context.arc(x, size - 13, 9, 0, Math.PI);
     context.fill();
   }
 
@@ -289,6 +247,239 @@ export function damaskTexture() {
   // Vertical weave so the folds catch the light.
   context.fillStyle = 'rgba(0,0,0,0.05)';
   for (let x = 0; x < size; x += 4) context.fillRect(x, 0, 1, size);
+
+  const texture = finish(canvas);
+  cache.set(key, texture);
+  return texture;
+}
+
+// Dirt on window glass. Transparent where the pane is clean, so the layer
+// alpha-blends over the view instead of tinting the whole opening. A city
+// window in 1896 sat in coal smoke and was washed twice a year, so the grime
+// banks up against the sash and rain cuts runs down the middle of it.
+export function glassGrimeTexture() {
+  const key = 'glass-grime';
+  if (cache.has(key)) return cache.get(key);
+  const size = 256;
+  const canvas = makeCanvas(size);
+  const context = canvas.getContext('2d');
+  context.clearRect(0, 0, size, size);
+
+  // Soot banks against all four edges of the sash.
+  for (const [x0, y0, x1, y1, near, far] of [
+    [0, 0, 0, size, 0.4, 0.5],
+    [0, 0, size, 0, 0.34, 0.34],
+  ]) {
+    const gradient = context.createLinearGradient(x0, y0, x1, y1);
+    gradient.addColorStop(0, `rgba(46,40,32,${near})`);
+    gradient.addColorStop(0.26, 'rgba(46,40,32,0)');
+    gradient.addColorStop(0.74, 'rgba(46,40,32,0)');
+    gradient.addColorStop(1, `rgba(46,40,32,${far})`);
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, size, size);
+  }
+
+  // An even film over the whole pane, heavier low down.
+  const film = context.createLinearGradient(0, 0, 0, size);
+  film.addColorStop(0, 'rgba(60,54,44,0.08)');
+  film.addColorStop(1, 'rgba(60,54,44,0.17)');
+  context.fillStyle = film;
+  context.fillRect(0, 0, size, size);
+
+  // Rain runs cut the film away in vertical stripes.
+  context.globalCompositeOperation = 'destination-out';
+  for (let i = 0; i < 20; i += 1) {
+    const x = (Math.abs(Math.sin(i * 91.7) * 43758.5453) % 1) * size;
+    const run = context.createLinearGradient(0, 0, 0, size);
+    run.addColorStop(0, 'rgba(0,0,0,0)');
+    run.addColorStop(0.4, 'rgba(0,0,0,0.75)');
+    run.addColorStop(1, 'rgba(0,0,0,0.15)');
+    context.fillStyle = run;
+    context.fillRect(x, 0, 2 + (i % 4) * 3, size);
+  }
+
+  // Arcs where a cloth last went over it, cleaner than the film around them.
+  for (let i = 0; i < 7; i += 1) {
+    context.strokeStyle = 'rgba(0,0,0,0.28)';
+    context.lineWidth = 7 + (i % 3) * 8;
+    context.beginPath();
+    context.arc(size * 0.5, size * (0.22 + i * 0.11), size * 0.4, 0.25, Math.PI - 0.25);
+    context.stroke();
+  }
+  context.globalCompositeOperation = 'source-over';
+
+  const texture = finish(canvas);
+  texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+  cache.set(key, texture);
+  return texture;
+}
+
+// The stain a burner leaves on the ceiling above it: dark at the plume,
+// transparent well before the edge of the quad.
+export function sootTexture() {
+  const key = 'soot';
+  if (cache.has(key)) return cache.get(key);
+  const size = 128;
+  const canvas = makeCanvas(size);
+  const context = canvas.getContext('2d');
+  context.clearRect(0, 0, size, size);
+  const plume = context.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  plume.addColorStop(0, 'rgba(34,28,22,0.8)');
+  plume.addColorStop(0.3, 'rgba(48,40,32,0.45)');
+  plume.addColorStop(0.65, 'rgba(70,60,48,0.14)');
+  plume.addColorStop(1, 'rgba(70,60,48,0)');
+  context.fillStyle = plume;
+  context.fillRect(0, 0, size, size);
+  const texture = finish(canvas);
+  texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+  cache.set(key, texture);
+  return texture;
+}
+
+// What hangs in a frame. Nothing here is legible at the size these render —
+// a diploma reads as ruled script under a seal, an engraving as a tonal
+// scene — and that is the point: a photograph would date the room to the
+// wrong century, and lettering you can read would have to be written.
+export function printTexture(kind, seed = 0) {
+  const key = `print:${kind}:${seed}`;
+  if (cache.has(key)) return cache.get(key);
+  const width = 256;
+  const height = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  const rand = (n) => Math.abs(Math.sin((seed + n) * 127.1) * 43758.5453) % 1;
+
+  if (kind === 'newspaper') {
+    context.fillStyle = '#ded7c4';
+    context.fillRect(0, 0, width, height);
+    // Masthead: a heavy blackletter band under a rule, then the date line.
+    context.fillStyle = 'rgba(28,24,18,0.86)';
+    context.fillRect(26, 16, width - 52, 17);
+    context.fillStyle = 'rgba(40,34,26,0.6)';
+    context.fillRect(20, 40, width - 40, 1.5);
+    context.fillRect(70, 46, width - 140, 3);
+    // Four columns of type, with a rule between each and a cut at the top of
+    // one of them where a woodcut sits.
+    const cols = 4;
+    const gutter = 6;
+    const colW = (width - 40 - gutter * (cols - 1)) / cols;
+    for (let c = 0; c < cols; c += 1) {
+      const x = 20 + c * (colW + gutter);
+      if (c > 0) {
+        context.fillStyle = 'rgba(40,34,26,0.28)';
+        context.fillRect(x - gutter / 2, 56, 1, height - 70);
+      }
+      let y = 58;
+      if (c === 2) {
+        context.fillStyle = 'rgba(48,42,32,0.5)';
+        context.fillRect(x, y, colW, 34);
+        y += 40;
+      }
+      context.fillStyle = 'rgba(45,38,28,0.55)';
+      context.fillRect(x, y, colW * 0.8, 4);
+      y += 10;
+      while (y < height - 16) {
+        context.fillStyle = `rgba(52,45,34,${0.3 + rand(c * 20 + y) * 0.12})`;
+        context.fillRect(x, y, colW * (0.82 + rand(y + c) * 0.18), 2);
+        y += 5;
+      }
+    }
+    const texture = finish(canvas);
+    texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+    cache.set(key, texture);
+    return texture;
+  }
+
+  if (kind === 'diploma') {
+    context.fillStyle = '#e8dfc4';
+    context.fillRect(0, 0, width, height);
+    // Foxing: the brown spotting old paper takes.
+    for (let i = 0; i < 40; i += 1) {
+      context.fillStyle = `rgba(150,120,70,${0.03 + rand(i) * 0.05})`;
+      context.beginPath();
+      context.arc(rand(i * 3) * width, rand(i * 5) * height, 2 + rand(i * 7) * 5, 0, Math.PI * 2);
+      context.fill();
+    }
+    // Ruled border, an engraved heading, body lines, and two signatures.
+    context.strokeStyle = 'rgba(60,45,28,0.5)';
+    context.lineWidth = 2;
+    context.strokeRect(16, 16, width - 32, height - 32);
+    context.fillStyle = 'rgba(50,38,24,0.8)';
+    context.fillRect(60, 44, width - 120, 9);
+    context.fillStyle = 'rgba(60,48,32,0.55)';
+    for (let line = 0; line < 8; line += 1) {
+      const inset = 44 + rand(line) * 26;
+      context.fillRect(inset, 76 + line * 13, width - inset * 2, 3);
+    }
+    for (const x of [70, 160]) {
+      context.fillStyle = 'rgba(40,32,20,0.7)';
+      context.fillRect(x, 210, 52, 3);
+      context.fillStyle = 'rgba(60,48,32,0.5)';
+      context.fillRect(x, 198, 40 + rand(x) * 14, 2);
+    }
+    // Wafer seal, bottom left.
+    context.fillStyle = 'rgba(140,40,34,0.85)';
+    context.beginPath();
+    context.arc(46, 208, 15, 0, Math.PI * 2);
+    context.fill();
+  } else {
+    // A sepia engraving: a pale sky, a soft horizon, a mass of dark below.
+    context.fillStyle = '#c6b696';
+    context.fillRect(0, 0, width, height);
+    context.fillStyle = 'rgba(70,58,40,0.35)';
+    context.beginPath();
+    context.moveTo(0, height * 0.72);
+    for (let x = 0; x <= width; x += 16) {
+      context.lineTo(x, height * (0.66 + rand(x) * 0.1));
+    }
+    context.lineTo(width, height);
+    context.lineTo(0, height);
+    context.fill();
+    context.fillStyle = 'rgba(48,40,28,0.5)';
+    context.beginPath();
+    context.ellipse(width * (0.2 + rand(1) * 0.6), height * 0.68, 46, 34, 0, 0, Math.PI * 2);
+    context.fill();
+    // Engraver's hatching over the whole plate.
+    context.strokeStyle = 'rgba(60,50,36,0.12)';
+    context.lineWidth = 0.7;
+    for (let y = 0; y < height; y += 3) {
+      context.beginPath();
+      context.moveTo(0, y);
+      context.lineTo(width, y + 2);
+      context.stroke();
+    }
+  }
+
+  const texture = finish(canvas);
+  texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+  cache.set(key, texture);
+  return texture;
+}
+
+// Holland shade cloth: a sized linen, plain and close-woven. Colour comes
+// from the material tint, so one texture serves cream, buff and drab.
+export function hollandTexture() {
+  const key = 'holland';
+  if (cache.has(key)) return cache.get(key);
+  const size = 128;
+  const canvas = makeCanvas(size);
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#ffffff';
+  context.fillRect(0, 0, size, size);
+  // Warp and weft, both faint: shade cloth is smooth, not sacking.
+  context.fillStyle = 'rgba(0,0,0,0.05)';
+  for (let x = 0; x < size; x += 3) context.fillRect(x, 0, 1, size);
+  context.fillStyle = 'rgba(0,0,0,0.035)';
+  for (let y = 0; y < size; y += 3) context.fillRect(0, y, size, 1);
+  // Slubs, so a flat panel is not perfectly even under a raking sun.
+  context.fillStyle = 'rgba(0,0,0,0.05)';
+  for (let i = 0; i < 40; i += 1) {
+    const x = (Math.abs(Math.sin(i * 12.9898) * 43758.5453) % 1) * size;
+    const y = (Math.abs(Math.sin(i * 78.233) * 43758.5453) % 1) * size;
+    context.fillRect(x, y, 4 + (i % 3) * 3, 1);
+  }
 
   const texture = finish(canvas);
   cache.set(key, texture);

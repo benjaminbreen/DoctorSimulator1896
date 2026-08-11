@@ -28,9 +28,18 @@ const FRAME_COLORS = ['#3b332a', '#443a2f', '#4d443a', '#332c25', '#57503f'];
 const SILL_COLORS = ['#57453a', '#5e3b2e', '#726a5c', '#4c433b', '#a8a191'];
 const SHUTTER_STYLES = new Set([0, 3]);
 const CLOTH_COLORS = ['#e8e2d4', '#ddd3bf', '#cfc8b8', '#8d95a8', '#b9a08a'];
+// Painted deal window boxes, and what was in them: geraniums above all, which
+// is why the reds outnumber everything else.
+const PLANTER_COLORS = ['#3f4a34', '#5a4632', '#41352a', '#4a4038'];
+const BLOOM_COLORS = ['#b8392f', '#c4483a', '#a8322c', '#cf7368', '#e0d6c6'];
 // Single-pane 1896 glass: dark interior behind wavy glass, muted sky catch,
 // never a bright modern mirror.
 const GLASS_TINTS = ['#454e58', '#3a4149', '#2c3138', '#5a636e', '#41453f'];
+// Splay per sash, in radians. Old windows never sat flush in their openings,
+// and non-aligned reflections are the whole difference between a wall of
+// glass and a painted grid of rectangles. Keep it under a degree: much more
+// and a tall pane's edge sinks behind the facade it stands off.
+const SASH_SKEW = 0.014;
 
 function hash01(seed) {
   const value = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
@@ -59,6 +68,66 @@ function makeFrameTexture() {
   context.fillRect(59, 0, 5, 96);
   context.fillRect(0, 45, 64, 6);
   context.fillRect(30, 0, 3, 96);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+// Fall-off down a pane: sky caught in the top of the glass, the unlit room
+// behind it toward the bottom. Multiplies the per-instance tint, so it darkens
+// rather than colours.
+function makeGlassGradient() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 4;
+  canvas.height = 64;
+  const context = canvas.getContext('2d');
+  const gradient = context.createLinearGradient(0, 0, 0, 64);
+  gradient.addColorStop(0, '#ffffff');
+  gradient.addColorStop(0.4, '#cfcfcf');
+  gradient.addColorStop(1, '#5c5c5c');
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 4, 64);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+// Window-box planting, as two alpha-cut layers: a mass of leaves and the
+// blooms over it. Both are drawn white so the per-instance colour can carry
+// the green and the geranium red separately.
+function makeFoliageTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 48;
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#ffffff';
+  for (let i = 0; i < 24; i += 1) {
+    const x = 4 + hash01(i * 3.1 + 0.7) * 56;
+    const y = 12 + hash01(i * 7.7 + 1.3) * 32;
+    const r = 5 + hash01(i * 2.3) * 5;
+    context.beginPath();
+    context.ellipse(x, y, r, r * 0.7, hash01(i * 1.9) * Math.PI, 0, Math.PI * 2);
+    context.fill();
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function makeBloomTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 48;
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#ffffff';
+  for (let i = 0; i < 10; i += 1) {
+    const x = 6 + hash01(i * 5.3 + 2.1) * 52;
+    const y = 8 + hash01(i * 9.1 + 0.9) * 24;
+    const r = 2.4 + hash01(i * 4.7) * 1.9;
+    context.beginPath();
+    context.arc(x, y, r, 0, Math.PI * 2);
+    context.fill();
+  }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
@@ -135,6 +204,8 @@ export default function WindowField({ items, runtime }) {
     const railings = [];
     const awningsRed = [];
     const awningsGreen = [];
+    const plants = [];
+    const blooms = [];
 
     for (const item of items) {
       const faces = item.windowFaces ?? [];
@@ -181,6 +252,10 @@ export default function WindowField({ items, runtime }) {
           const openSash = upperFloor && !shutClosed && roll > 0.34 && roll < 0.5;
           const lit = !shutClosed && hash01(seed + win.col * 11.7 + (win.floor ?? 9) * 5.3) < (hotel ? 0.1 : 0.05);
 
+          // Glass and its frame share one splay, so the sash stays a sash.
+          const skewTilt = (hash01(seed * 3.1 + win.col * 4.7 + (win.floor ?? 0) * 9.1) - 0.5) * SASH_SKEW;
+          const skewPitch = (hash01(seed * 5.9 + win.col * 2.3 + (win.floor ?? 0) * 6.7) - 0.5) * SASH_SKEW;
+
           // Glass: full pane, or the upper half only when the sash is open.
           const [gx, gy, gz] = place(u, win.y + win.h / 2, 0.03);
           const target = lit ? litGlass : glass;
@@ -192,14 +267,14 @@ export default function WindowField({ items, runtime }) {
               );
           if (openSash) {
             const [ox, oy, oz] = place(u, win.y + win.h * 0.26, 0.045);
-            pushInstance(target, ox, oy, oz, face.yaw, wM, hM * 0.52, 1, tint);
+            pushInstance(target, ox, oy, oz, face.yaw, wM, hM * 0.52, 1, tint, skewTilt, skewPitch);
           } else if (!shutClosed) {
-            pushInstance(target, gx, gy, gz, face.yaw, wM, hM, 1, tint);
+            pushInstance(target, gx, gy, gz, face.yaw, wM, hM, 1, tint, skewTilt, skewPitch);
           }
 
           // Sash frame overlay.
           if (!shutClosed) {
-            pushInstance(frames, ...place(u, win.y + win.h / 2, 0.06), face.yaw, wM * 1.08, hM * 1.04, 1, jitterColor(frameColor, seed + win.col, 0.06));
+            pushInstance(frames, ...place(u, win.y + win.h / 2, 0.06), face.yaw, wM * 1.08, hM * 1.04, 1, jitterColor(frameColor, seed + win.col, 0.06), skewTilt, skewPitch);
           }
 
           // Projecting stone sill and the heavier hood lintel above.
@@ -247,6 +322,39 @@ export default function WindowField({ items, runtime }) {
                 pushInstance(railings, rx, ry - drop / 2, rz, face.yaw, 0.028, Math.hypot(drop, proj), 0.028, '#2c3134', tilt, pitch);
               }
             }
+          }
+
+          // A window box of geraniums on one upper window in six, where no
+          // awning is already occupying the sill.
+          const boxRoll = hash01(seed * 0.91 + faceIndex * 4.3 + (win.floor ?? 0) * 8.9 + win.col * 2.7);
+          const awninged = item.awnings && upperFloor && awningRoll < 0.2;
+          if (upperFloor && !shutClosed && !awninged && boxRoll < 0.17) {
+            const boxW = wM * 0.84;
+            const [px, py, pz] = place(u, win.y + win.h + 1, 0.13);
+            pushInstance(
+              trimBoxes, px, py, pz, face.yaw, boxW, 0.17, 0.2,
+              jitterColor(PLANTER_COLORS[Math.floor(boxRoll * 331) % PLANTER_COLORS.length], seed + win.col, 0.07),
+            );
+            // Leaves, then blooms a centimetre proud of them.
+            const [fx, , fz] = place(u, win.y + win.h + 1, 0.15);
+            pushInstance(plants, fx, py + 0.19, fz, face.yaw, boxW * 1.06, 0.28, 1, jitterColor('#4c6636', seed + win.col * 3, 0.14));
+            const [bx, , bz] = place(u, win.y + win.h + 1, 0.17);
+            pushInstance(
+              blooms, bx, py + 0.22, bz, face.yaw, boxW * 1.06, 0.28, 1,
+              jitterColor(BLOOM_COLORS[Math.floor(boxRoll * 977) % BLOOM_COLORS.length], seed + win.col * 5, 0.1),
+            );
+          }
+
+          // Muslin behind an open sash. It goes in the laundry bucket, so the
+          // same breeze that moves the washing stirs it.
+          if (openSash && hash01(seed * 1.37 + win.col * 6.1 + (win.floor ?? 0) * 2.9) < 0.65) {
+            const lean = (hash01(seed * 2.9 + win.col * 1.7) - 0.5) * 0.6;
+            const [qx, qy, qz] = place(u + (lean * wM * 0.16) / faceWidth, win.y + win.h * 0.72, 0.035);
+            pushInstance(
+              cloths, qx, qy, qz, face.yaw,
+              wM * (0.44 + hash01(seed + win.col * 4.1) * 0.22), hM * 0.44, 1,
+              jitterColor('#e6e0d2', seed + win.col * 2.7, 0.07), lean * 0.14,
+            );
           }
         }
 
@@ -448,8 +556,14 @@ export default function WindowField({ items, runtime }) {
     });
 
     const built = [
+      // Glass is a dielectric, not a half-metal. At metalness 0.55 every pane
+      // carried the same dull sheen whatever angle you saw it from; at 0 the
+      // Fresnel does its job, so a pane looked straight into stays dark and
+      // one seen along the row flares. That difference between neighbours is
+      // what reads as glass. The per-instance tint is the interior behind it.
       buildMesh(glass, plane, new THREE.MeshStandardMaterial({
-        color: '#ffffff', metalness: 0.55, roughness: 0.3, envMapIntensity: 0.55,
+        color: '#ffffff', map: makeGlassGradient(),
+        metalness: 0, roughness: 0.06, envMapIntensity: 1.2,
       })),
       buildMesh(litGlass, plane, litMaterial),
       buildMesh(frames, plane, new THREE.MeshStandardMaterial({
@@ -461,6 +575,14 @@ export default function WindowField({ items, runtime }) {
       buildMesh(bayBodies, box, new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.85 }), true),
       buildMesh(railings, box, new THREE.MeshStandardMaterial({
         color: '#ffffff', roughness: 0.35, metalness: 0.85, envMapIntensity: 0.8,
+      })),
+      buildMesh(plants, plane, new THREE.MeshStandardMaterial({
+        color: '#ffffff', map: makeFoliageTexture(), alphaTest: 0.45,
+        side: THREE.DoubleSide, roughness: 0.9,
+      })),
+      buildMesh(blooms, plane, new THREE.MeshStandardMaterial({
+        color: '#ffffff', map: makeBloomTexture(), alphaTest: 0.45,
+        side: THREE.DoubleSide, roughness: 0.85,
       })),
     ];
     // Cloth and canvas sway in the frame loop, so they keep their records.

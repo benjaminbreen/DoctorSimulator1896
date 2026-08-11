@@ -2,7 +2,7 @@
 
 ## Decision
 
-Renderer A uses MPFB's official `faceunits01` deformation library as its
+Renderer C uses MPFB's official `faceunits01` deformation library as its
 facial-control foundation. The project keeps its existing runtime performance
 scheduler and replaces topology-dependent JavaScript vertex manufacture with
 semantic recipes made from named units such as `mouthSmileLeft`,
@@ -46,24 +46,19 @@ on the exported body. Use it before judging a compound recipe: first verify the
 individual units on several identities, then adjust the recipe weights and
 timing.
 
-## Comparison-engine boundary
+## Retired comparison engines
 
-Renderer A directly carries the named MPFB library. Meta MHR exports 72 numbered
-facial components intact, but the upstream release does not publish a
-FACS/semantic name mapping. The lab therefore exposes those
-MHR components by number for isolation tests and does not pretend they are
-interchangeable with MPFB's ARKit-compatible names.
+Renderer A and Meta MHR are no longer selectable in Character Lab. Their test
+assets remain temporarily as regression references. Renderer C directly
+carries the named MPFB library used by the game.
 
 ## Acceptance checks
 
-- Renderer A exposes the required named controls and at least the currently
+- Renderer C exposes the required named controls and at least the currently
   expected scale of the library without requiring an exact count.
 - Brow and jaw-related controls exist on more than the skin mesh where fitted
   assets support them.
 - A semantic expression drives every mesh carrying each selected target.
 - Debug isolation zeros the preceding compound expression and drives only the
   selected unit.
-- MHR retains all 72 expression components. The current proof keeps float morph
-  normals while the aggressively quantized export is evaluated separately from
-  the viewer's former shadow-map banding.
 - Multiple patient identities are visually compared before choosing a new base.

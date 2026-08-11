@@ -1,0 +1,527 @@
+{
+ "ArmChair_01": {
+  "file": "ArmChair_01.glb",
+  "min": [
+   -0.4242,
+   0,
+   -0.3829
+  ],
+  "size": [
+   0.8484,
+   1.0651,
+   0.7658
+  ],
+  "credit": {
+   "title": "Arm Chair 01",
+   "author": "Kirill Sannikov",
+   "license": "CC0-1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+   "source": "https://polyhaven.com/a/ArmChair_01"
+  }
+ },
+ "book_encyclopedia_set_01": {
+  "file": "book_encyclopedia_set_01.glb",
+  "min": [
+   -0.2756,
+   0,
+   -0.0815
+  ],
+  "size": [
+   0.5513,
+   0.2374,
+   0.1631
+  ],
+  "credit": {
+   "title": "Book Encyclopedia Set 01",
+   "author": "John Malcolm",
+   "license": "CC0-1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+   "source": "https://polyhaven.com/a/book_encyclopedia_set_01"
+  }
+ },
+ "chemistry_set": {
+  "file": "chemistry_set.glb",
+  "min": [
+   -0.5392,
+   0,
+   -0.177
+  ],
+  "size": [
+   1.0784,
+   0.429,
+   0.3539
+  ],
+  "credit": {
+   "title": "Chemistry Set",
+   "author": "Jiří Ptáček",
+   "license": "CC0-1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+   "source": "https://polyhaven.com/a/chemistry_set"
+  }
+ },
+ "elegan_old_book_pack__Book_pack_2": {
+  "file": "elegan_old_book_pack__Book_pack_2.glb",
+  "min": [
+   -0.1082,
+   0,
+   -0.174
+  ],
+  "size": [
+   0.2164,
+   0.2447,
+   0.3479
+  ],
+  "credit": {
+   "title": "Elegan old book pack",
+   "author": "3D_for_everyone (https://sketchfab.com/boglarka4)",
+   "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+   "source": "https://sketchfab.com/3d-models/elegan-old-book-pack-4cc9ecf0531b463dada8262851ca87f8"
+  }
+ },
+ "elegan_old_book_pack__Book_pack_3": {
+  "file": "elegan_old_book_pack__Book_pack_3.glb",
+  "min": [
+   -0.1043,
+   0,
+   -0.2106
+  ],
+  "size": [
+   0.2086,
+   0.2916,
+   0.4212
+  ],
+  "credit": {
+   "title": "Elegan old book pack",
+   "author": "3D_for_everyone (https://sketchfab.com/boglarka4)",
+   "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+   "source": "https://sketchfab.com/3d-models/elegan-old-book-pack-4cc9ecf0531b463dada8262851ca87f8"
+  }
+ },
+ "elegan_old_book_pack__Book_pack_4": {
+  "file": "elegan_old_book_pack__Book_pack_4.glb",
+  "min": [
+   -0.1153,
+   0,
+   -0.1878
+  ],
+  "size": [
+   0.2307,
+   0.2568,
+   0.3757
+  ],
+  "credit": {
+   "title": "Elegan old book pack",
+   "author": "3D_for_everyone (https://sketchfab.com/boglarka4)",
+   "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+   "source": "https://sketchfab.com/3d-models/elegan-old-book-pack-4cc9ecf0531b463dada8262851ca87f8"
+  }
+ },
+ "elegan_old_book_pack__Book_pack_5": {
+  "file": "elegan_old_book_pack__Book_pack_5.glb",
+  "min": [
+   -0.1321,
+   0,
+   -0.1984
+  ],
+  "size": [
+   0.2643,
+   0.2857,
+   0.3968
+  ],
+  "credit": {
+   "title": "Elegan old book pack",
+   "author": "3D_for_everyone (https://sketchfab.com/boglarka4)",
+   "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+   "source": "https://sketchfab.com/3d-models/elegan-old-book-pack-4cc9ecf0531b463dada8262851ca87f8"
+  }
+ },
+ "elegan_old_book_pack__Book_pack_7": {
+  "file": "elegan_old_book_pack__Book_pack_7.glb",
+  "min": [
+   -0.109,
+   0,
+   -0.179
+  ],
+  "size": [
+   0.2179,
+   0.2521,
+   0.358
+  ],
+  "credit": {
+   "title": "Elegan old book pack",
+   "author": "3D_for_everyone (https://sketchfab.com/boglarka4)",
+   "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+   "source": "https://sketchfab.com/3d-models/elegan-old-book-pack-4cc9ecf0531b463dada8262851ca87f8"
+  }
+ },
+ "elegan_old_book_pack__Book_pack_8": {
+  "file": "elegan_old_book_pack__Book_pack_8.glb",
+  "min": [
+   -0.1147,
+   0,
+   -0.1635
+  ],
+  "size": [
+   0.2295,
+   0.2488,
+   0.327
+  ],
+  "credit": {
+   "title": "Elegan old book pack",
+   "author": "3D_for_everyone (https://sketchfab.com/boglarka4)",
+   "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+   "source": "https://sketchfab.com/3d-models/elegan-old-book-pack-4cc9ecf0531b463dada8262851ca87f8"
+  }
+ },
+ "elegan_old_book_pack__Book_pack_9": {
+  "file": "elegan_old_book_pack__Book_pack_9.glb",
+  "min": [
+   -0.1098,
+   0,
+   -0.1606
+  ],
+  "size": [
+   0.2196,
+   0.2523,
+   0.3212
+  ],
+  "credit": {
+   "title": "Elegan old book pack",
+   "author": "3D_for_everyone (https://sketchfab.com/boglarka4)",
+   "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+   "source": "https://sketchfab.com/3d-models/elegan-old-book-pack-4cc9ecf0531b463dada8262851ca87f8"
+  }
+ },
+ "elegan_old_book_pack__Book_pack_6": {
+  "file": "elegan_old_book_pack__Book_pack_6.glb",
+  "min": [
+   -0.0943,
+   0,
+   -0.1486
+  ],
+  "size": [
+   0.1885,
+   0.2522,
+   0.2972
+  ],
+  "credit": {
+   "title": "Elegan old book pack",
+   "author": "3D_for_everyone (https://sketchfab.com/boglarka4)",
+   "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+   "source": "https://sketchfab.com/3d-models/elegan-old-book-pack-4cc9ecf0531b463dada8262851ca87f8"
+  }
+ },
+ "elegan_old_book_pack__Book_3": {
+  "file": "elegan_old_book_pack__Book_3.glb",
+  "min": [
+   -0.0991,
+   0,
+   -0.032
+  ],
+  "size": [
+   0.1982,
+   0.2644,
+   0.0639
+  ],
+  "credit": {
+   "title": "Elegan old book pack",
+   "author": "3D_for_everyone (https://sketchfab.com/boglarka4)",
+   "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+   "source": "https://sketchfab.com/3d-models/elegan-old-book-pack-4cc9ecf0531b463dada8262851ca87f8"
+  }
+ },
+ "elegan_old_book_pack__Book_6": {
+  "file": "elegan_old_book_pack__Book_6.glb",
+  "min": [
+   -0.0915,
+   0,
+   -0.0182
+  ],
+  "size": [
+   0.183,
+   0.2243,
+   0.0363
+  ],
+  "credit": {
+   "title": "Elegan old book pack",
+   "author": "3D_for_everyone (https://sketchfab.com/boglarka4)",
+   "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+   "source": "https://sketchfab.com/3d-models/elegan-old-book-pack-4cc9ecf0531b463dada8262851ca87f8"
+  }
+ },
+ "explorers_globe": {
+  "file": "explorers_globe.glb",
+  "min": [
+   -0.4023,
+   0,
+   -0.4074
+  ],
+  "size": [
+   0.8045,
+   1.1455,
+   0.8148
+  ],
+  "credit": {
+   "title": "Explorer's Globe",
+   "author": "RittikaSen (https://sketchfab.com/RittikaSen)",
+   "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+   "source": "https://sketchfab.com/3d-models/explorers-globe-d6a54ef22fb44b77aa2db6e3f42ce47f"
+  }
+ },
+ "game_ready_carpet": {
+  "file": "game_ready_carpet.glb",
+  "min": [
+   -2.0987,
+   0,
+   -1.3669
+  ],
+  "size": [
+   4.1974,
+   0.0117,
+   2.7338
+  ],
+  "credit": {
+   "title": "Game Ready Carpet",
+   "author": "Voidy Entertainment (https://sketchfab.com/VoidyAssets)",
+   "license": "CC-BY-NC-4.0 (http://creativecommons.org/licenses/by-nc/4.0/)",
+   "source": "https://sketchfab.com/3d-models/game-ready-carpet-3b21fb92803448a8ae72471bf4f39144"
+  }
+ },
+ "mantel_clock_01": {
+  "file": "mantel_clock_01.glb",
+  "min": [
+   -0.1712,
+   0,
+   -0.0631
+  ],
+  "size": [
+   0.3423,
+   0.1605,
+   0.1262
+  ],
+  "credit": {
+   "title": "Mantel Clock 01",
+   "author": "Yann Kervran, Rico Cilliers",
+   "license": "CC0-1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+   "source": "https://polyhaven.com/a/mantel_clock_01"
+  }
+ },
+ "medieval_telescope": {
+  "file": "medieval_telescope.glb",
+  "min": [
+   -0.3998,
+   0,
+   -0.3493
+  ],
+  "size": [
+   0.7997,
+   1.5969,
+   0.6985
+  ],
+  "credit": {
+   "title": "Medieval telescope",
+   "author": "chaschinkaa (https://sketchfab.com/chaschinkaa)",
+   "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+   "source": "https://sketchfab.com/3d-models/medieval-telescope-8414fb67e992492e801f85150d801041"
+  }
+ },
+ "old_bed_frame": {
+  "file": "old_bed_frame.glb",
+  "min": [
+   -0.4523,
+   0,
+   -1.0009
+  ],
+  "size": [
+   0.9047,
+   1.2015,
+   2.0017
+  ],
+  "credit": {
+   "title": "Old Bed Frame",
+   "author": "Luca B",
+   "license": "CC0-1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+   "source": "https://polyhaven.com/a/old_bed_frame"
+  }
+ },
+ "round_spectacles": {
+  "file": "round_spectacles.glb",
+  "min": [
+   -0.0789,
+   0,
+   -0.0745
+  ],
+  "size": [
+   0.1578,
+   0.0463,
+   0.149
+  ],
+  "credit": {
+   "title": "Round Spectacles",
+   "author": "Sean Buckley",
+   "license": "CC0-1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+   "source": "https://polyhaven.com/a/round_spectacles"
+  }
+ },
+ "tea_set_01": {
+  "file": "tea_set_01.glb",
+  "min": [
+   -0.4592,
+   0,
+   -0.2419
+  ],
+  "size": [
+   0.9185,
+   0.165,
+   0.4839
+  ],
+  "credit": {
+   "title": "Tea Set 01",
+   "author": "James Ray Cock, Rico Cilliers, Jurita Burger",
+   "license": "CC0-1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+   "source": "https://polyhaven.com/a/tea_set_01"
+  }
+ },
+ "victorian_style_sofa": {
+  "file": "victorian_style_sofa.glb",
+  "min": [
+   -1.4479,
+   0,
+   -0.6161
+  ],
+  "size": [
+   2.8959,
+   1.1115,
+   1.2321
+  ],
+  "measured": [
+   2.4943,
+   0.9574,
+   1.0613
+  ],
+  "presence": 1.161,
+  "credit": {
+   "title": "Victorian Style Sofa",
+   "author": "ryankentpaule (https://sketchfab.com/ryankentpaule)",
+   "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+   "source": "https://sketchfab.com/3d-models/victorian-style-sofa-919854763a7640dc8c72afbfccd3e3ee"
+  }
+ },
+ "vintage_crutches_01": {
+  "file": "vintage_crutches_01.glb",
+  "min": [
+   -0.1919,
+   0,
+   -0.1018
+  ],
+  "size": [
+   0.3838,
+   1.605,
+   0.2036
+  ],
+  "credit": {
+   "title": "Vintage Crutches 01",
+   "author": "James Ray Cock",
+   "license": "CC0-1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+   "source": "https://polyhaven.com/a/vintage_crutches_01"
+  }
+ },
+ "vintage_day_bed": {
+  "file": "vintage_day_bed.glb",
+  "min": [
+   -0.9863,
+   0,
+   -0.4274
+  ],
+  "size": [
+   1.9726,
+   1.1273,
+   0.8548
+  ],
+  "credit": {
+   "title": "Vintage Day Bed",
+   "author": "Aron Łyczek",
+   "license": "CC0-1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+   "source": "https://polyhaven.com/a/vintage_day_bed"
+  }
+ },
+ "vintage_microscope": {
+  "file": "vintage_microscope.glb",
+  "min": [
+   -0.0534,
+   0,
+   -0.0909
+  ],
+  "size": [
+   0.1068,
+   0.3996,
+   0.1819
+  ],
+  "credit": {
+   "title": "Vintage Microscope",
+   "author": "Luis José Fernández Rodríguez",
+   "license": "CC0-1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+   "source": "https://polyhaven.com/a/vintage_microscope"
+  }
+ },
+ "vintage_pocket_watch": {
+  "file": "vintage_pocket_watch.glb",
+  "min": [
+   -0.0307,
+   0,
+   -0.0068
+  ],
+  "size": [
+   0.0613,
+   0.0799,
+   0.0135
+  ],
+  "credit": {
+   "title": "Vintage Pocket Watch",
+   "author": "Tal Swicegood",
+   "license": "CC0-1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+   "source": "https://polyhaven.com/a/vintage_pocket_watch"
+  }
+ },
+ "vintage_wooden_workdesk": {
+  "file": "vintage_wooden_workdesk.glb",
+  "min": [
+   -0.7614,
+   0,
+   -0.4187
+  ],
+  "size": [
+   1.5227,
+   0.9128,
+   0.8373
+  ],
+  "measured": [
+   1.2637,
+   0.7575,
+   0.6949
+  ],
+  "presence": 1.205,
+  "credit": {
+   "title": "Vintage Wooden Workdesk",
+   "author": "Poring (https://sketchfab.com/poring)",
+   "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+   "source": "https://sketchfab.com/3d-models/vintage-wooden-workdesk-f1eddff773a740b78110610cef248093"
+  }
+ },
+ "wooden_candlestick": {
+  "file": "wooden_candlestick.glb",
+  "min": [
+   -0.0486,
+   0,
+   -0.0493
+  ],
+  "size": [
+   0.0972,
+   0.2196,
+   0.0986
+  ],
+  "credit": {
+   "title": "Wooden Candlestick",
+   "author": "Josh Dean",
+   "license": "CC0-1.0 (https://creativecommons.org/publicdomain/zero/1.0/)",
+   "source": "https://polyhaven.com/a/wooden_candlestick"
+  }
+ }
+}

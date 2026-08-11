@@ -1,0 +1,7 @@
+{
+  "glass": {"source":"physical dielectric model","ior":1.5,"historicalEvidence":false},
+  "liquid": {"source":"physical dielectric model","ior":1.333,"historicalEvidence":false},
+  "cork": {"albedo":"game/public/textures/props/labeled-bottle/cork-albedo.webp","roughness":"game/public/textures/props/labeled-bottle/cork-roughness.webp","normal":"game/public/textures/props/labeled-bottle/cork-normal.webp"},
+  "paper": {"albedo":"composited into the dynamic label canvas","roughness":"game/public/textures/props/labeled-bottle/paper-roughness.webp","normal":"game/public/textures/props/labeled-bottle/paper-normal.webp"},
+  "limitation":"All surface art is provisional and does not establish a historical specimen."
+}

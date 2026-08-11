@@ -11,11 +11,16 @@ export function useCharacterController(runtime) {
   useEffect(() => {
     const values = runtime.values;
     const controller = world.createCharacterController(0.045);
-    controller.enableAutostep(values.autostepHeight, 0.34, true);
+    // Dynamic bodies excluded from autostep: climbing a chair while shoving it
+    // pops it into the air.
+    controller.enableAutostep(values.autostepHeight, 0.34, false);
     controller.enableSnapToGround(values.snapToGround);
     controller.setMaxSlopeClimbAngle(degToRad(values.maxSlopeClimbDeg));
     controller.setMinSlopeSlideAngle(degToRad(values.minSlopeSlideDeg));
-    controller.setApplyImpulsesToDynamicBodies(false);
+    // Walking into a loose chair should move it. The character's mass sets how
+    // hard: the controller is kinematic, so this is the only weight it has.
+    controller.setApplyImpulsesToDynamicBodies(values.pushProps);
+    controller.setCharacterMass(values.characterMass);
     controllerRef.current = controller;
     return () => {
       controllerRef.current = null;

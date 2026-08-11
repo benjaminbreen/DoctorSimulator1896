@@ -1,5 +1,9 @@
 // Solar position and lighting ramps, framework-free. All outdoor lighting
 // keys off solar altitude (Darwin's approach), not hour-of-day directly.
+//
+// The game opens on 3 August 1896 in New York. Daylight saving does not reach
+// the United States until 1918, so the clock is Eastern Standard year round
+// and the sun peaks near noon rather than near one.
 
 import { degToRad, clamp } from '../movement/mathUtils.js';
 
@@ -8,27 +12,51 @@ export function smoothstep(edge0, edge1, x) {
   return t * t * (3 - 2 * t);
 }
 
-// Sun direction from time of day: rises in the east, 15 degrees of azimuth
-// per hour, elevation on a sine arc between ~5:30 and ~21:00.
-export function sunDirection(timeOfDay) {
-  const elevation = degToRad(Math.sin((Math.PI * (timeOfDay - 5.5)) / 15.5) * 68);
-  const azimuth = degToRad(90 + (timeOfDay - 13) * 15);
-  return [
-    Math.cos(elevation) * Math.sin(azimuth),
-    Math.sin(elevation),
-    -Math.cos(elevation) * Math.cos(azimuth),
-  ];
+// 3 August; 1896 was a leap year.
+export const START_DAY_OF_YEAR = 216;
+const LATITUDE = degToRad(40.78); // Central Park
+
+// How far local apparent noon sits from 12:00 on the clock. New York is about
+// a degree east of the 75 W standard meridian, which puts the sun four minutes
+// early, and the equation of time runs some six minutes slow in early August.
+// One constant until there is a real calendar to vary it.
+const SOLAR_NOON = 12.03;
+
+// Cooper's approximation: within half a degree, which is finer than the half
+// degree the sun's own disc subtends.
+export function solarDeclination(dayOfYear) {
+  return degToRad(23.45 * Math.sin(degToRad((360 * (284 + dayOfYear)) / 365)));
+}
+
+// Sun direction in world axes: +x east, +z south, +y up (see centralPark.js).
+// Hour angle is negative before noon, which puts the morning sun in the east.
+export function sunDirection(timeOfDay, dayOfYear = START_DAY_OF_YEAR) {
+  const declination = solarDeclination(dayOfYear);
+  const hourAngle = degToRad((timeOfDay - SOLAR_NOON) * 15);
+  const sinDec = Math.sin(declination);
+  const cosDec = Math.cos(declination);
+  const sinLat = Math.sin(LATITUDE);
+  const cosLat = Math.cos(LATITUDE);
+  const up = sinDec * sinLat + cosDec * cosLat * Math.cos(hourAngle);
+  const east = -cosDec * Math.sin(hourAngle);
+  const north = sinDec * cosLat - cosDec * sinLat * Math.cos(hourAngle);
+  return [east, up, -north];
 }
 
 // Golden hour trades fill for key light; these ramps drive that everywhere.
-export function solarRamps(timeOfDay) {
-  const direction = sunDirection(timeOfDay);
+export function solarRamps(timeOfDay, dayOfYear = START_DAY_OF_YEAR) {
+  const direction = sunDirection(timeOfDay, dayOfYear);
   const altitude = (Math.asin(clamp(direction[1], -1, 1)) * 180) / Math.PI;
+  // Light ages through the afternoon: brightness eases to 82% as the sun
+  // drops from 28 to 4 degrees, instead of holding full until dusk.
+  const shoulder = 0.82 + 0.18 * smoothstep(4, 28, altitude);
   return {
     direction,
     altitude,
-    daylight: smoothstep(-6, 3, altitude),
-    golden: smoothstep(-5, 0.5, altitude) * (1 - smoothstep(14, 30, altitude)) * 0.55,
+    daylight: smoothstep(-6, 3, altitude) * shoulder,
+    // Onset near 25 degrees, full by 2, gone below -5: golden builds through
+    // the afternoon and peaks at the horizon.
+    golden: smoothstep(-5, 0.5, altitude) * (1 - smoothstep(2, 25, altitude)),
     night: 1 - smoothstep(-12, -4, altitude),
   };
 }

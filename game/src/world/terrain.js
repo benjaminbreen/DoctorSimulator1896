@@ -1,10 +1,10 @@
 // Central Park terrain, framework-free and deterministic. The land climbs
-// gently to the north and west, the Pond sits in a sunken hollow below the
-// Plaza, Hallett's knoll and the schist outcrops rise from the lawn, and
+// gently to the north and west, the Pond sits in its sunken hollow,
+// Hallett's knoll and the schist outcrops rise from the lawn, and
 // every path grades the ground it crosses.
 
 import { clamp } from '../movement/mathUtils.js';
-import { POND_OUTLINE, PATHS, KNOLLS, MEADOW, GATE } from './centralPark.js';
+import { POND_OUTLINE, PATHS, KNOLLS, MEADOW, GATE, PADS } from './centralPark.js';
 import { STREET_LEVEL } from './streetGrid.js';
 
 function hash(ix, iz) {
@@ -86,6 +86,19 @@ export function rockiness(x, z) {
 }
 
 export function terrainHeight(x, z) {
+  let height = baseHeight(x, z);
+  // Building pads: flat at the pad center's own height inside `flat`,
+  // eased off toward `radius`, so a shelter never straddles a slope.
+  for (const pad of PADS) {
+    const distance = Math.hypot(x - pad.x, z - pad.z);
+    if (distance >= pad.radius) continue;
+    const weight = 1 - smooth(clamp((distance - pad.flat) / (pad.radius - pad.flat), 0, 1));
+    height = height * (1 - weight) + baseHeight(pad.x, pad.z) * weight;
+  }
+  return height;
+}
+
+function baseHeight(x, z) {
   // The land climbs away from the Pond corner, toward the north and west.
   const base = (58 - z) * 0.012 + Math.max(0, -x - 20) * 0.008;
 
@@ -120,10 +133,13 @@ export function terrainHeight(x, z) {
   const gate = 1 - smooth(clamp((gateDistance - GATE.flat) / (GATE.radius - GATE.flat), 0, 1));
   height = height * (1 - gate) + GATE.height * gate;
 
-  // The Pond: beach at the rim, carved hollow inside.
+  // The Pond: beach at the rim, carved hollow inside. The flat -0.55 term
+  // keeps even the narrowest channel (the west hook, the Gapstow neck)
+  // under the water surface; without it, water shallower than the edge
+  // gradient pokes through as dry terrain.
   const pond = pondDepth(x, z);
   if (pond < 0) {
-    height = Math.min(height, -0.05) + pond * 2.1;
+    height = Math.min(height, -0.05) - 0.55 + pond * 1.7;
   } else {
     const shore = smooth(clamp(pond, 0, 1));
     height = -0.05 * (1 - shore) + height * shore;

@@ -13,16 +13,30 @@
     "character:generate": "make character",
     "character:validate": "node scripts/characters/validate-preset.mjs",
     "patient:test": "node --test tests/patient-generator.test.mjs",
+    "character-runtime:test": "node --test tests/character-runtime.test.mjs",
     "hair:test": "node --test tests/hair-geometry.test.mjs",
     "renderer:test": "node --test tests/renderer-variants.test.mjs",
+    "wardrobe:test": "node --test tests/wardrobe.test.mjs",
+    "hopper:score": "python3 tools/hopper/score_server.py",
+    "hopper:search": "node tools/hopper/search.mjs",
+    "models:inspect": "node scripts/models/inspect-glb.mjs",
+    "models:convert": "node scripts/models/convert-pack.mjs",
+    "models:download-polyhaven": "node scripts/models/download-polyhaven.mjs",
+    "models:texture": "node scripts/models/extract-texture.mjs",
     "patient:audit": "node scripts/characters/audit-patients.mjs",
     "mhr:audit": "node scripts/characters/audit-mhr-identity.mjs",
     "mhr:generate": "node scripts/characters/generate-mhr.mjs",
     "renderer-c:generate": "node scripts/characters/generate-renderer-c.mjs",
     "renderer-c:masters": "node scripts/characters/generate-renderer-c-masters.mjs",
     "renderer-c:mixamo": "npm run renderer-c:masters",
+    "renderer-c:publish": "node scripts/characters/publish-renderer-c.mjs",
+    "renderer-c:publish:check": "node scripts/characters/publish-renderer-c.mjs --check",
+    "renderer-c:smoke": "node scripts/characters/smoke-character-runtime.mjs",
+    "tripo-player:export": "/Applications/Blender.app/Contents/MacOS/Blender --factory-startup --background --python-exit-code 1 --python scripts/characters/export_tripo_player.py -- --output game/public/models/tripo-victorian-player.glb",
     "mhr:contact-sheet": "node scripts/characters/render-mhr-demographic-contact-sheet.mjs && sleep 1 && (/Applications/Blender.app/Contents/MacOS/Blender --factory-startup --background --python-exit-code 1 --python \"$PWD/scripts/characters/render_mhr_demographic_contact_sheet.py\" -- --model \"$PWD/character-lab/public/models/comparison-mhr-lod1.glb\" --manifest \"$PWD/character-lab/.generated/mhr-demographic-audit/manifest.json\" --output \"$PWD/mockups/character-engine-comparison/mhr-representation-cohorts-2026-08-07.png\" || (sleep 1 && /Applications/Blender.app/Contents/MacOS/Blender --factory-startup --background --python-exit-code 1 --python \"$PWD/scripts/characters/render_mhr_demographic_contact_sheet.py\" -- --model \"$PWD/character-lab/public/models/comparison-mhr-lod1.glb\" --manifest \"$PWD/character-lab/.generated/mhr-demographic-audit/manifest.json\" --output \"$PWD/mockups/character-engine-comparison/mhr-representation-cohorts-2026-08-07.png\"))",
-    "test": "npm run character:validate && npm run patient:test && npm run hair:test && npm run renderer:test && npm run lab:build && npm run game:test"
+    "test": "npm run character:validate && npm run patient:test && npm run character-runtime:test && npm run hair:test && npm run renderer:test && npm run wardrobe:test && npm run lab:build && npm run game:test",
+    "hopper:rate": "python3 tools/hopper/rate.py",
+    "hopper:train": "python3 tools/hopper/train_reward.py"
   },
   "dependencies": {
     "meshoptimizer": "^1.2.0",
@@ -32,6 +46,7 @@
     "@gltf-transform/core": "^4.4.2",
     "@gltf-transform/extensions": "^4.4.2",
     "@gltf-transform/functions": "^4.4.2",
+    "playwright-core": "^1.62.1",
     "vite": "^7.1.1"
   }
 }

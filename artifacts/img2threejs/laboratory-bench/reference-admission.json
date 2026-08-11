@@ -1,0 +1,15 @@
+{
+  "admitted": true,
+  "reasons": [],
+  "provenance": {
+    "viewpoint": "three-quarter",
+    "sourcePath": "artifacts/img2threejs/laboratory-bench/reference-isolated.png",
+    "width": 1400,
+    "height": 900,
+    "foregroundCoverage": 0.2023,
+    "largestComponentFraction": 1.0,
+    "pHash": 17892986385128292088,
+    "duplicateOfHash": null
+  },
+  "note": "The isolated image is a mechanical background cleanup of the original screenshot; no bench pixels were generated or reshaped."
+}

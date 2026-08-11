@@ -1,0 +1,16 @@
+{
+  "_comment": "Set from 182 ratings: see README, 'What the ratings showed'.",
+  "flatness": 0.03,
+  "emptiness": 0.03,
+  "tonal_range": 0.06,
+  "light_split": 0.02,
+  "light_balance": 0.06,
+  "shadow_edge": 0.12,
+  "rectilinear": 0.11,
+  "raking": 0.02,
+  "palette": 0.02,
+  "figure": 0.08,
+  "window": 0.04,
+  "clip": 0.35,
+  "taste": 0.90
+}

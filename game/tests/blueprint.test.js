@@ -7,7 +7,7 @@ function loadBlueprint(id) {
   return JSON.parse(readFileSync(new URL(`../src/world/${id}.blueprint.json`, import.meta.url), 'utf8'));
 }
 
-const ZONE_IDS = ['consulting-office', 'waiting-room', 'central-park'];
+const ZONE_IDS = ['consulting-office', 'waiting-room', 'foyer', 'cattell-lab', 'central-park'];
 const blueprint = loadBlueprint('consulting-office');
 
 test('every zone blueprint validates', () => {
@@ -61,6 +61,19 @@ test('arrival spawns land outside the target zone triggers', () => {
   }
 });
 
+// The same rule as arrival spawns, for the spawn a zone uses by default:
+// standing in your own exit means the first E you press leaves the room.
+test('a default spawn is clear of the zone own triggers', () => {
+  for (const id of ZONE_IDS) {
+    const blueprint = loadBlueprint(id);
+    const [x, , z] = blueprint.navigation.defaultSpawn;
+    for (const trigger of blueprint.transitions ?? []) {
+      const distance = Math.hypot(x - trigger.position[0], z - trigger.position[1]);
+      assert.ok(distance > trigger.radius, `${id}: defaultSpawn sits inside ${trigger.id}`);
+    }
+  }
+});
+
 test('every zone with a way in has a way back', () => {
   const reachable = new Set();
   for (const id of ZONE_IDS) {
@@ -78,7 +91,9 @@ test('interior zones keep their ceiling and walls', () => {
   assert.equal(waiting.exterior, false);
   assert.ok(waiting.ceiling);
   assert.ok(waiting.wallBoxes.length > 0);
-  assert.equal(waiting.windowHoles.length, 11);
+  // Three sashes on the street wall; the party walls carry none.
+  assert.equal(waiting.windowHoles.length, 3);
+  // Both doors are blocked leaves: the office and the hall.
   assert.equal(waiting.blockerBoxes.length, 2);
 });
 
@@ -110,10 +125,18 @@ test('openings produce headers, sills, holes, and blockers', () => {
 
 test('window normals point out of the room', () => {
   const room = deriveRoom(blueprint);
-  const north = room.windowHoles.find((hole) => hole.id === 'window-north-1');
-  const west = room.windowHoles.find((hole) => hole.id === 'window-west-1');
-  assert.deepEqual(north.normal, [0, 0, -1]);
-  assert.deepEqual(west.normal, [-1, 0, 0]);
+  for (const hole of room.windowHoles) {
+    assert.deepEqual(hole.normal, [0, 0, -1], `${hole.id} faces the wrong way`);
+  }
+});
+
+// A row house shares both side walls with its neighbours, so a window in one
+// would look into somebody's parlor. The office is lit from the street end.
+test('the party walls carry no openings', () => {
+  for (const id of ['west-wall', 'east-wall']) {
+    const wall = blueprint.walls.find((entry) => entry.id === id);
+    assert.equal(wall.openings?.length ?? 0, 0, `${id} has an opening`);
+  }
 });
 
 test('validation rejects an opening wider than its wall', () => {

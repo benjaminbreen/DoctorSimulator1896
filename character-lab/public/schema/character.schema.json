@@ -41,9 +41,21 @@
         {"id":"african","label":"African target weight","type":"range","min":0,"max":1,"step":0.01,"default":0.04},
         {"id":"asian","label":"Asian target weight","type":"range","min":0,"max":1,"step":0.01,"default":0.03},
         {"id":"caucasian","label":"European target weight","type":"range","min":0,"max":1,"step":0.01,"default":0.93},
-        {"id":"skinTone","label":"Skin tone","type":"color","default":"#b98569","mode":"live"},
-        {"id":"eyeColor","label":"Eye color","type":"color","default":"#4c3020","mode":"live"},
+        {"id":"skinTone","label":"Skin tone","type":"select","options":["#f2cdb5","#ddb095","#c58a6b","#a87355","#885a45","#6d4738"],"optionLabels":["1 · Porcelain","2 · Light","3 · Tan","4 · Brown","5 · Deep brown","6 · Dark brown"],"default":"#ddb095","mode":"live"},
+        {"id":"eyeColor","label":"Eye color","type":"select","options":["#52666c","#555f60","#4d5b45","#5c5137","#49372a","#2d2420"],"optionLabels":["Light blue","Blue-grey","Green","Hazel","Brown","Dark brown"],"default":"#49372a","mode":"live"},
         {"id":"skinRoughness","label":"Skin roughness / matte finish","type":"range","min":0.35,"max":1.5,"step":0.01,"default":0.9,"mode":"live"}
+      ]
+    },
+    {
+      "id": "rendererCSurface", "label": "Age & complexion", "mode": "live", "renderer": "rendererC",
+      "parameters": [
+        {"id":"ageGeometry","label":"Later-life face shape","type":"range","min":0,"max":1,"step":0.01,"default":0.18,"mode":"live"},
+        {"id":"wrinkleAmount","label":"Wrinkle depth","type":"range","min":0,"max":1,"step":0.01,"default":0.22},
+        {"id":"skinTexture","label":"Fine skin texture","type":"range","min":0,"max":1,"step":0.01,"default":0.34},
+        {"id":"pigmentVariation","label":"Complexion variation","type":"range","min":0,"max":1,"step":0.01,"default":0.24},
+        {"id":"freckleAmount","label":"Freckles / small marks","type":"range","min":0,"max":1,"step":0.01,"default":0.08},
+        {"id":"ageSpotAmount","label":"Age spots / mottling","type":"range","min":0,"max":1,"step":0.01,"default":0.04},
+        {"id":"underEyeDarkness","label":"Under-eye depth","type":"range","min":0,"max":1,"step":0.01,"default":0.24}
       ]
     },
     {
@@ -109,7 +121,8 @@
         {"id":"wispAmount","label":"Hairline wisps","type":"range","min":0,"max":1,"step":0.01,"default":0.48},
         {"id":"waveAmount","label":"Wave / texture","type":"range","min":0,"max":1,"step":0.01,"default":0.35},
         {"id":"strandContrast","label":"Strand contrast","type":"range","min":0,"max":1,"step":0.01,"default":0.42},
-        {"id":"greyAmount","label":"Grey percentage","type":"range","min":0,"max":1,"step":0.01,"default":0}
+        {"id":"greyAmount","label":"Grey hair","type":"range","min":0,"max":1,"step":0.01,"default":0},
+        {"id":"greyPattern","label":"Grey distribution","type":"select","options":["temples-first","scattered","uniform"],"optionLabels":["Temples first","Scattered strands","Evenly distributed"],"default":"temples-first"}
       ]
     },
     {
@@ -142,10 +155,26 @@
     {
       "id": "dress", "label": "1890s clothing", "mode": "live",
       "parameters": [
-        {"id":"outfitStyle","label":"Outfit style","type":"select","options":["conservative-day","fashionable-1896","mourning-dress","working-day","visiting-dress","mens-sack-suit","mens-formal-suit","mens-working-clothes","mens-mourning-suit"],"default":"conservative-day"},
-        {"id":"dressColor","label":"Dress color","type":"color","default":"#171525"},
-        {"id":"trimColor","label":"Trim color","type":"color","default":"#4f4333"},
+        {"id":"womenGarmentMode","label":"Women’s garment proof","type":"select","options":["golden-dress","production-dress","concept-shell","carrier-only"],"default":"golden-dress"},
+        {"id":"outfitStyle","label":"Outfit style","type":"select","options":["conservative-day","fashionable-1896","mourning-dress","working-day","visiting-dress","mens-sack-suit","mens-formal-suit","mens-working-clothes","mens-mourning-suit","mens-victorian-sample","mens-authored-victorian-set"],"default":"conservative-day"},
+        {"id":"womenPalette","label":"Matched women’s palette","type":"select","options":["custom","plum-taupe","forest-cream","navy-burgundy","rust-olive","dove-mauve","mourning"],"optionLabels":["Custom colors","Plum, taupe & brass","Forest, cream & brown","Navy, burgundy & gold","Rust, olive & ochre","Dove, mauve & cream","Mourning black & charcoal"],"default":"plum-taupe"},
+        {"id":"fabricType","label":"Fabric","type":"select","options":["cotton","wool","silk","velvet","brocade"],"optionLabels":["Cotton plain weave","Worsted wool","Silk satin","Cut velvet","Woven brocade"],"default":"wool"},
+        {"id":"dressColor","label":"Primary color","type":"color","default":"#38202f"},
+        {"id":"secondaryColor","label":"Secondary color","type":"color","default":"#817064"},
+        {"id":"trimColor","label":"Accent color","type":"color","default":"#b08a62"},
+        {"id":"fabricScale","label":"Fabric pattern scale","type":"range","min":0.45,"max":2.5,"step":0.01,"default":1},
+        {"id":"fabricRelief","label":"Weave relief","type":"range","min":0,"max":1.5,"step":0.01,"default":0.72},
+        {"id":"fabricSheen","label":"Fabric sheen","type":"range","min":0,"max":1.5,"step":0.01,"default":0.72},
         {"id":"fabricRoughness","label":"Fabric roughness / matte finish","type":"range","min":0.35,"max":1.5,"step":0.01,"default":1.0},
+        {"id":"dressDetailPattern","label":"Stitched detail pattern","type":"select","options":["plain","double-stitch","chevron","diamond","braid","vine"],"optionLabels":["No stitched pattern","Double stitch","Chevron","Diamond lattice","Braided line","Vine and leaf"],"default":"double-stitch"},
+        {"id":"dressDetailAmount","label":"Stitched detail prominence","type":"range","min":0,"max":1.5,"step":0.01,"default":0.72},
+        {"id":"dressDetailScale","label":"Stitched detail scale","type":"range","min":0.5,"max":2.5,"step":0.01,"default":1},
+        {"id":"necklineHeight","label":"Bust / neckline coverage","type":"range","min":0,"max":1,"step":0.01,"default":0.78},
+        {"id":"cuffWidth","label":"Cuff width","type":"range","min":0,"max":1,"step":0.01,"default":0.58},
+        {"id":"collarThickness","label":"Collar material thickness","type":"range","min":0,"max":1.5,"step":0.01,"default":0.35},
+        {"id":"cuffThickness","label":"Cuff material thickness","type":"range","min":0,"max":1.5,"step":0.01,"default":0.35},
+        {"id":"trimWidth","label":"Trim width","type":"range","min":0,"max":1,"step":0.01,"default":0.42},
+        {"id":"placketWidth","label":"Front placket width","type":"range","min":0,"max":1,"step":0.01,"default":0.34},
         {"id":"bodiceFit","label":"Bodice fit","type":"range","min":0.82,"max":1.18,"step":0.01,"default":0.96},
         {"id":"waistHeight","label":"Waist height","type":"range","min":-0.12,"max":0.12,"step":0.005,"default":0.03},
         {"id":"skirtFullness","label":"Skirt fullness","type":"range","min":0.72,"max":1.5,"step":0.01,"default":1.08},
@@ -163,7 +192,7 @@
     {
       "id": "rendererCMenswear", "label": "Renderer C men's wardrobe · provisional", "mode": "live", "renderer": "rendererC",
       "parameters": [
-        {"id":"menswearPalette","label":"Curated cloth palette","type":"select","options":["work-earth","work-indigo","trade-charcoal","trade-brown","trade-olive","formal-black-grey","formal-navy-grey","mourning","custom"],"default":"trade-charcoal"},
+        {"id":"menswearPalette","label":"Curated cloth palette","type":"select","options":["work-earth","work-indigo","trade-charcoal","trade-brown","trade-olive","formal-black-grey","formal-navy-grey","elite-charcoal-dove","elite-midnight-buff","mourning","custom"],"default":"trade-charcoal"},
         {"id":"fabricPattern","label":"Fabric pattern","type":"select","options":["plain","twill","herringbone","pinstripe"],"default":"plain"},
         {"id":"garmentWear","label":"Wear and fading","type":"range","min":0,"max":1,"step":0.01,"default":0.12},
         {"id":"coatLength","label":"Coat length","type":"range","min":0.82,"max":1.18,"step":0.01,"default":1},

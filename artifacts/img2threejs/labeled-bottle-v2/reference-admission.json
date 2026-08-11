@@ -1,0 +1,10 @@
+{
+  "admitted": true,
+  "suitability": "conditional",
+  "sourcePath": "artifacts/img2threejs/labeled-bottle-v2/reference/current-editor.png",
+  "use": "current-state defect baseline",
+  "limitations": [
+    "The screenshot contains editor UI and a stylized render.",
+    "It is not historical evidence and cannot approve final form or materials."
+  ]
+}

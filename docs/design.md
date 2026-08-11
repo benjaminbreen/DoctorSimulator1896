@@ -2,8 +2,8 @@
 
 ## Concept
 
-The player is a physician in New York, c. 1880s–1890s (exact window open — see
-[research.md](research.md#chronology)). Patients arrive with complaints the era
+The player is a physician in New York beginning on 3 August 1896. Patients
+arrive with complaints the era
 reads through its own categories: neurasthenia, hysteria, nervous exhaustion,
 spirit communication. The player examines, diagnoses in period vocabulary,
 treats with period modalities, and writes case notes. The game scores both how
@@ -48,9 +48,14 @@ patients (via the historical-persona-generator) supply queue pressure and
 social texture and populate the contagion graph. The generator is a casting
 and variation system, not the author of the central cases.
 
-Body pipeline for 3D patients: `character-lab/` (preset JSON → headless
-Blender/MPFB build → rigged GLB with an idle clip). Status and gaps in
-[decisions.md](decisions.md).
+Body pipeline for 3D patients: Renderer C in `character-lab/`. It combines
+curated GNM-derived face anchors with MPFB topology, rigging, live morphs, and
+modular hair and clothing. Deterministic character recipes select a reusable
+foundation, bounded anatomy and resting-face variation, presentation assets,
+and a scene-appropriate LOD. Facial diversity within the same demographic
+cohort is a primary acceptance requirement, not optional polish. See the
+[Renderer C production objective](renderer-c-production-objective.md) for the
+current architecture and gates.
 
 ## Ground truth beneath the LLM
 
@@ -99,7 +104,7 @@ attach to the player's practice.
 
 ## UI modes
 
-Three presentation modes over one world state:
+Four presentation modes over one world state:
 
 1. **Patient mode** — first-person at the physician's desk, patient seated
    across in 3D, full working chrome: top bar (clinic nameplate, clock, date,
@@ -117,6 +122,36 @@ Three presentation modes over one world state:
 3. **Exploration mode** — close third-person over-the-shoulder hero camera
    for areas with 3D movement (the street, Central Park, house calls, the
    lab). Patient-mode chrome density, minus the consultation panels.
+4. **Instrument mode** — the camera leaves the player, moves to a framing
+   pose stored on the apparatus, and hands input to the instrument. Entered
+   with E from exploration mode, left with Escape. Used for the laboratory
+   apparatus, where operating the thing *is* the mechanic.
+
+### What E does, and to what
+
+One field on a furniture item, three tiers:
+
+| `affordance` | Example | What happens |
+|---|---|---|
+| absent | table, wall, carpet | no prompt at all |
+| `{ verb, kind: 'act' }` | chair, couch, lamp, vase | prompt, then an action in place — sit, extinguish, take a flower. The camera does not move. |
+| `{ verb, kind: 'instrument' }` | tachistoscope, colour wheel, chronoscope | prompt, then instrument mode |
+
+The prompt and the proximity test are shared; only the payload differs. This
+is the same channel the door triggers already use.
+
+### The rule instrument mode has to keep
+
+An instrument view is **a view onto a simulation, not a scripted animation**
+— the same constraint the LLM systems work under. The tachistoscope has a
+shutter position, a drop height and a slot width; the exposure the player
+gets is whatever those produce, computed from `v = sqrt(2gd)`. A hard-coded
+"40ms flash" would teach nothing, could not be tuned, and could not be got
+wrong — and being able to get it wrong is the point of an instrument.
+
+Each instrument is therefore a module with `{ framing, state, step(dt, input) }`
+and no renderer, so its physics is unit-tested like the movement math is. The
+3D view reads that state and draws it.
 
 ## LLM roles (all JSON-contract, all on deterministic ground truth)
 
@@ -145,7 +180,10 @@ Three presentation modes over one world state:
 **M1 — the consultation, proven.** One consulting room. Three patients: one
 organic disease mislabeled as nerves, one true neurasthenia presentation, one
 psychical-research case (hears a dead sibling). One modality set. Case-note
-assessment working end to end. No contagion sim, no park, no lab.
+assessment working end to end. No contagion sim, no park, no lab. M1 has three
+internal phases: the character runtime foundation, the consultation MVP with
+basic placeholder controls, and the production patient UI. See
+[m1-work-plan.md](m1-work-plan.md).
 
 **M2 — the pool.** Weekly tick, social graph, newspaper column, dual ledger
 surfaced in UI.

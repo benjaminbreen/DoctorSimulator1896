@@ -4,6 +4,12 @@ Repo for *Ghosts of the Machine Age: The Game*. Two apps: `character-lab/`
 (character design dev environment, `npm run lab`) and `game/` (the playable
 game, own package, `npm run game`, port 5175).
 
+- This is a non-commercial educational project, written by a historian for
+  teaching use. It is not sold. **Non-commercial asset licences (CC-BY-NC,
+  CC-BY-NC-SA) are fine here** — credit them in `docs/credits.md` and move on.
+  Do not flag them as a problem or plan to replace them. The only licence bar
+  is redistribution: a web build serves the `.glb`, so an asset with no
+  redistribution right cannot ship.
 - Read `docs/design.md`, `docs/research.md`, `docs/engine-reuse.md`, and
   `docs/decisions.md` before doing anything.
 - Historical claims need Ben's verification before becoming game content;

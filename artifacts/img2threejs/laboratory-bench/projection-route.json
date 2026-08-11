@@ -1,0 +1,12 @@
+{
+  "route": "authored-texture",
+  "exactnessTier": "image-only",
+  "projectionApplicable": false,
+  "reason": "The supplied screenshot contains a flat placeholder beige material with baked scene lighting, not real timber pixels. Projecting it would preserve the weakness the user asked to replace.",
+  "surfacePlan": "Use ImageGen for a seamless, flat-lit pale softwood albedo. Derive independent roughness and normal channels locally, record their provenance, and expose texture scale and wear in the deterministic recipe.",
+  "limitations": [
+    "The generated surface is art direction, not recovered historical evidence.",
+    "The screenshot does not establish species, finish, grain scale, stains, or plank layout.",
+    "A real bench photograph should replace this texture proof for final historical approval."
+  ]
+}

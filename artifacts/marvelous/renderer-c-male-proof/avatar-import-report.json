@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "avatar": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/marvelous/renderer-c-male-proof/renderer-c-male-md-fitting-avatar.fbx",
+  "project": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/marvelous/renderer-c-male-proof/renderer-c-male-md-fitting-avatar.zprj",
+  "appliedImportOptions": {
+    "ImportObjectType": 0,
+    "bAdd": false,
+    "bAutoTranslate": true,
+    "bAddArrangementPoints": true,
+    "bAutoCreateFittingSuit": false,
+    "bCreateCamera": false
+  },
+  "unavailableImportOptions": [
+    "bCreateAnimation",
+    "bCreateCacheAnimation"
+  ],
+  "imported": true,
+  "avatarCount": 1,
+  "avatarNames": [
+    "renderer-c-male-md-fitting-avatar"
+  ],
+  "avatarGenders": [
+    -1
+  ],
+  "arrangements": [],
+  "patternCount": 0,
+  "projectExport": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/marvelous/renderer-c-male-proof/renderer-c-male-md-fitting-avatar.zprj",
+  "thumbnailExport": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/marvelous/renderer-c-male-proof/renderer-c-male-md-fitting-avatar.png"
+}

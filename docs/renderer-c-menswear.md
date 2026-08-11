@@ -1,81 +1,81 @@
 # Renderer C men's wardrobe
 
-Status: working implementation with provisional historical labels. Ben must
-approve the historical interpretation before these labels become game content.
+Status: working technical proof with provisional historical labels. Ben must
+approve both the historical interpretation and asset licensing before this
+wardrobe becomes shipped game content.
 
-## Runtime architecture
+## Current architecture
 
-Renderer C exports two fitted MPFB garments with each male cohort: one tailored
-carrier for suits and one simpler shirt-and-trouser carrier for working clothes.
-Both keep their original skeleton weights and body-build morphs. This gives the
-clothing continuous deformation across the neck, shoulders, elbows, waist,
-hips, knees, and ankles.
+Renderer C has three proven MPFB garment carriers: tailored suit, working
+shirt-and-trousers, and the `mens-victorian-sample` import. They share the
+character's Mixamo skeleton and body-build morphs, so shoulders, elbows, hips,
+knees, and ankles follow all ten current motion clips.
 
-At runtime, Character Lab identifies each carrier's connected cloth regions and
-assigns separate materials for coat, trousers, waistcoat, shirt, collar, and
-hardware. The wardrobe families switch between and reshape those weighted
-regions. Only one carrier is rendered at a time. They do not add rigid limb
-tubes, derive clothes from masked body polygons, or replace the current patient
-with a fixed body.
+`mens-authored-victorian-set` is the first imported-art hybrid. It uses the
+authored waistcoat, collar, buttons, and red cravat from
+`a_set_of_victorian_clothes.glb`, but not that asset's limb surfaces. The source
+file divides its sleeve and trouser surfaces into disconnected front and rear
+objects. Generic weight transfer made those pieces open into large planes when
+the elbows or knees bent. They are not production-safe.
 
-Body and identity changes follow this sequence:
+The hybrid therefore combines:
 
-1. Renderer C applies the selected identity anchor and body morphs.
-2. Both garments' matching morph targets follow the current body immediately.
-3. When the slider is released, Three.js reapplies the chosen coat and trouser
-   silhouette to the fitted carrier. Blender is not involved.
+- the authored textured waistcoat, collar, and cravat as a fitted skinned
+  overlay;
+- the existing MPFB working carrier's proven shirt sleeves and trousers;
+- the existing Renderer C shoes, skeleton, body morphs, and ten animations.
 
-Material, palette, pattern, and wear controls update immediately. Coat length,
-coat fullness, lapel width, trouser width, waistcoat fit, collar proportions,
-working layer, and professional coat cut rebuild only the small runtime
-silhouette state and do not require a GLB export.
+Character Lab keeps the working carrier's shirt and trousers continuous beneath
+the authored overlay. An earlier experiment hid individual torso triangles by
+their dominant skinning bone, but blended shoulder weights created visibly torn
+armholes. The small amount of concealed overlap is preferable to broken cloth.
+
+The separate `1830s_frock_coat_unbuttoned.glb` is retained as a source study but
+is not exported in the male master. It is earlier than the game's 1896 date and
+its long unsupported panels need a dedicated coat-tail rig before use.
+
+## Live controls
+
+Body weight, muscle, and proportion morphs are baked into the authored overlay
+and update in real time. The MPFB underlayer already supports those controls.
+Material palette, subtle pattern, roughness, and wear also update immediately
+on the MPFB pieces.
+
+The authored waistcoat currently keeps its supplied texture. Recolouring it
+well requires either a mask texture or separate waistcoat, shirt, and cravat
+materials in the source asset; applying one flat tint would destroy its useful
+striping and trim.
+
+Changing garment topology or selecting a different authored asset still
+requires a prebuilt GLB. Renderer C should not rebuild clothes at runtime.
 
 ## Provisional wardrobe families
 
-- `mens-working-clothes`: the dedicated shirt-and-trouser carrier, with braces
-  or waistcoat material blocking; a practical jacket switches to the tailored
-  carrier.
-- `mens-sack-suit`: sack coat, waistcoat, shirt, and trousers with restrained
-  neck and lapel proportions.
-- `mens-formal-suit`: morning-cutaway or frock-coat treatment with a sober
-  professional palette.
-- `mens-mourning-suit`: the professional construction with a controlled black
-  palette.
+- `mens-working-clothes`: fitted shirt and trousers, with optional braces or a
+  working jacket treatment.
+- `mens-sack-suit`: the fitted MPFB tailored carrier.
+- `mens-victorian-sample`: a third-party MPFB suit carrier used to test the
+  standard fitted-asset path.
+- `mens-authored-victorian-set`: authored waistcoat/cravat over the reliable
+  MPFB shirt sleeves and trousers.
+- `mens-formal-suit` and `mens-mourning-suit`: provisional palette and
+  silhouette treatments, not approved final 1896 garments.
 
-These are art-direction categories, not final historical claims. Useful review
-references include the Metropolitan Museum's 1894 American morning suit and
-1890–95 American suit, the Library of Congress's 1895 tailoring manual, and the
-Smithsonian's 1875–96 work-trouser object record.
-
-## Curated palettes
-
-The deterministic patient generator selects from class-appropriate muted
-families: two working palettes, three tradesman palettes, two professional
-palettes, and mourning. `custom` is available for manual art direction and is
-activated automatically when the existing main or trim color is edited.
-
-Pattern choices are plain, twill, herringbone, and pinstripe. They are subtle
-procedural shader treatments so they remain lightweight on the web and do not
-depend on a separate texture download per outfit.
+These are art-direction categories, not historical claims.
 
 ## Validation gate
 
-Before treating an outfit as approved, check:
+An outfit is not approved until it passes:
 
 - light, average, and heavy Renderer C body builds;
 - all eight male identity anchors;
-- seated front, side, and three-quarter views;
-- idle shoulder, elbow, wrist, hip, and knee motion;
-- no exposed body seam at the neck, shoulder, elbow, waist, or knee;
-- no garment vertex outside a finite and bounded envelope;
-- consultation LOD readability and mobile frame cost.
+- seated idle, talking, stand-up, standing idle, and walking clips;
+- front, side, and three-quarter views;
+- continuous shoulders, elbows, wrists, waist, hips, knees, and ankles;
+- no body exposure caused by hidden underlayers;
+- no garment vertex outside a finite bounded envelope;
+- consultation LOD readability and mobile frame cost;
+- verified redistribution licence and complete attribution.
 
-Both Renderer C cohort masters now contain `StandUp`, `StandingIdle`, and
-in-place `Walk` clips in addition to their seated idle clips. Character Lab
-exposes all three in the Perform row. `StandUp` is a one-shot clip and hands off
-to `StandingIdle`; `Walk` closes as a two-second loop so the game can supply
-world-space locomotion independently.
-
-The fitted garments and shoes remain attached to the same weighted rig during
-all three clips. Crowd LODs, gameplay navigation/root motion, authored cloth
-fold normals, and final collision review remain separate gates.
+The current authored hybrid is a consultation-LOD proof. A lower-triangle,
+texture-compressed nearby LOD and a baked crowd LOD remain separate work.

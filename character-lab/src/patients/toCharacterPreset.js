@@ -6,6 +6,15 @@ import {
 } from './data/appearance.js';
 import { nearestHairShade } from '../hair/palette.js';
 import { generateRestingFaceSignature } from './faceSignature.js';
+import {
+  resolveRendererCRecipe,
+  rendererCAncestryForValues,
+} from '../../../shared/characters/rendererCRecipe.js';
+import { appearancePaletteForAncestry } from '../../../shared/characters/appearancePalettes.js';
+import {
+  deriveAgeAppearance,
+  rendererCYearsToAgeValue,
+} from '../../../shared/characters/ageAppearance.js';
 
 const NEUTRAL_PERFORMANCE = {
   posture: 0.1, breathing: 1, breathingRate: 13, fidget: 0.85, gazeDrift: 0.9,
@@ -13,11 +22,11 @@ const NEUTRAL_PERFORMANCE = {
 };
 
 const STYLE_VALUES = {
-  'conservative-day': { bodiceFit: 0.96, waistHeight: 0.03, skirtFullness: 1.02, skirtLength: 1.02, skirtDrape: 0.67, bustleAmount: 0.1, sleeveVolume: 0.82, sleeveLength: 1.0, collarHeight: 0.95, collarSpread: 0.88, buttonCount: 7, buttonSpacing: 0.92 },
-  'fashionable-1896': { bodiceFit: 0.93, waistHeight: 0.055, skirtFullness: 1.2, skirtLength: 1.02, skirtDrape: 0.72, bustleAmount: 0.18, sleeveVolume: 1.4, sleeveLength: 0.98, collarHeight: 1.08, collarSpread: 1.06, buttonCount: 6, buttonSpacing: 0.95 },
-  'mourning-dress': { bodiceFit: 0.98, waistHeight: 0.025, skirtFullness: 1.08, skirtLength: 1.04, skirtDrape: 0.72, bustleAmount: 0.08, sleeveVolume: 0.92, sleeveLength: 1.02, collarHeight: 1.12, collarSpread: 0.82, buttonCount: 8, buttonSpacing: 0.86 },
-  'working-day': { bodiceFit: 1.02, waistHeight: 0.015, skirtFullness: 0.88, skirtLength: 0.94, skirtDrape: 0.58, bustleAmount: 0.03, sleeveVolume: 0.72, sleeveLength: 0.94, collarHeight: 0.72, collarSpread: 1.08, buttonCount: 6, buttonSpacing: 1.0 },
-  'visiting-dress': { bodiceFit: 0.94, waistHeight: 0.045, skirtFullness: 1.15, skirtLength: 1.01, skirtDrape: 0.7, bustleAmount: 0.15, sleeveVolume: 1.22, sleeveLength: 0.99, collarHeight: 1.0, collarSpread: 1.12, buttonCount: 6, buttonSpacing: 0.92 },
+  'conservative-day': { bodiceFit: 0.96, waistHeight: 0.03, skirtFullness: 1.02, skirtLength: 1.02, skirtDrape: 0.67, bustleAmount: 0.1, sleeveVolume: 0.82, sleeveLength: 1.0, collarHeight: 0.95, collarSpread: 0.88, necklineHeight: 0.86, cuffWidth: 0.62, trimWidth: 0.34, placketWidth: 0.30, buttonCount: 7, buttonSpacing: 0.92 },
+  'fashionable-1896': { bodiceFit: 0.93, waistHeight: 0.055, skirtFullness: 1.2, skirtLength: 1.02, skirtDrape: 0.72, bustleAmount: 0.18, sleeveVolume: 1.4, sleeveLength: 0.98, collarHeight: 1.08, collarSpread: 1.06, necklineHeight: 0.82, cuffWidth: 0.72, trimWidth: 0.54, placketWidth: 0.42, buttonCount: 6, buttonSpacing: 0.95 },
+  'mourning-dress': { bodiceFit: 0.98, waistHeight: 0.025, skirtFullness: 1.08, skirtLength: 1.04, skirtDrape: 0.72, bustleAmount: 0.08, sleeveVolume: 0.92, sleeveLength: 1.02, collarHeight: 1.12, collarSpread: 0.82, necklineHeight: 0.94, cuffWidth: 0.52, trimWidth: 0.20, placketWidth: 0.24, buttonCount: 8, buttonSpacing: 0.86 },
+  'working-day': { bodiceFit: 1.02, waistHeight: 0.015, skirtFullness: 0.88, skirtLength: 0.94, skirtDrape: 0.58, bustleAmount: 0.03, sleeveVolume: 0.72, sleeveLength: 0.94, collarHeight: 0.72, collarSpread: 1.08, necklineHeight: 0.78, cuffWidth: 0.70, trimWidth: 0.18, placketWidth: 0.28, buttonCount: 6, buttonSpacing: 1.0 },
+  'visiting-dress': { bodiceFit: 0.94, waistHeight: 0.045, skirtFullness: 1.15, skirtLength: 1.01, skirtDrape: 0.7, bustleAmount: 0.15, sleeveVolume: 1.22, sleeveLength: 0.99, collarHeight: 1.0, collarSpread: 1.12, necklineHeight: 0.84, cuffWidth: 0.66, trimWidth: 0.60, placketWidth: 0.38, buttonCount: 6, buttonSpacing: 0.92 },
   'mens-sack-suit': { bodiceFit: 1.05, waistHeight: 0, skirtFullness: 0.9, skirtLength: 0.95, skirtDrape: 0.5, bustleAmount: 0, sleeveVolume: 0.58, sleeveLength: 1.0, collarHeight: 0.72, collarSpread: 1.08, buttonCount: 4, buttonSpacing: 1.0 },
   'mens-formal-suit': { bodiceFit: 1.0, waistHeight: 0, skirtFullness: 0.9, skirtLength: 0.95, skirtDrape: 0.5, bustleAmount: 0, sleeveVolume: 0.52, sleeveLength: 1.02, collarHeight: 0.92, collarSpread: 0.96, buttonCount: 5, buttonSpacing: 0.90 },
   'mens-working-clothes': { bodiceFit: 1.08, waistHeight: 0, skirtFullness: 0.9, skirtLength: 0.95, skirtDrape: 0.5, bustleAmount: 0, sleeveVolume: 0.46, sleeveLength: 0.94, collarHeight: 0.50, collarSpread: 1.12, buttonCount: 4, buttonSpacing: 1.05 },
@@ -62,7 +71,7 @@ function menswearFor(patient, outfit, random) {
   return {
     menswearPalette: mourning ? 'mourning'
       : working ? random.pick(['work-earth', 'work-indigo'])
-        : formal ? random.pick(['formal-black-grey', 'formal-navy-grey'])
+        : formal ? random.pick(['elite-charcoal-dove', 'elite-midnight-buff'])
           : random.pick(['trade-charcoal', 'trade-brown', 'trade-olive']),
     fabricPattern: working ? random.pick(['plain', 'twill', 'twill'])
       : formal ? random.pick(['plain', 'plain', 'pinstripe'])
@@ -80,10 +89,6 @@ function menswearFor(patient, outfit, random) {
     ]).id,
     formalCoatCut: random.chance(0.58) ? 'morning-cutaway' : 'frock-coat',
   };
-}
-
-function ageMorph(age) {
-  return 0.5 + ((age - 16) / 60) * 0.4;
 }
 
 function skinAge(age) {
@@ -139,7 +144,7 @@ function descriptionFor(patient) {
 }
 
 const FACE_IDENTITY_IDS = Object.freeze([
-  'gender', 'african', 'asian', 'caucasian',
+  'rendererCAnchor', 'gender', 'african', 'asian', 'caucasian',
   'headShapeStrength', ...FACE_VALUE_IDS, ...FACE_DETAIL_IDS, 'browHeight', 'faceAsymmetry',
 ]);
 
@@ -179,7 +184,7 @@ export function patientToCharacterPreset(patient, basePreset, definitions, optio
 
   values.seed = appearanceSeed;
   values.gender = clamped(definitions, 'gender', (female ? 0.035 : 0.90) + jitter(bodyRandom, 0.035));
-  values.age = clamped(definitions, 'age', ageMorph(patient.identity.age));
+  values.age = clamped(definitions, 'age', rendererCYearsToAgeValue(patient.identity.age));
   values.height = clamped(definitions, 'height', (female ? 0.44 : 0.53) + jitter(bodyRandom, 0.22));
   values.weight = clamped(definitions, 'weight', bodyMass(patient, bodyRandom));
   const laboring = ['domestic-servant', 'laundress', 'factory-worker', 'laborer', 'porter', 'railroad-worker', 'skilled-tradesman'].includes(patient.social.occupationId);
@@ -198,9 +203,15 @@ export function patientToCharacterPreset(patient, basePreset, definitions, optio
   values.mhrEyeSpacing = clamped(definitions, 'mhrEyeSpacing', jitter(faceRandom, 0.22));
 
   [values.african, values.asian, values.caucasian] = origin.heritage;
-  values.skinTone = bodyRandom.pick(origin.skinTones);
-  values.eyeColor = bodyRandom.pick(origin.eyeColors);
+  const appearancePalette = appearancePaletteForAncestry(rendererCAncestryForValues(values));
+  values.skinTone = bodyRandom.pick(appearancePalette.skinTones);
+  values.eyeColor = bodyRandom.pick(appearancePalette.eyeColors);
   values.skinRoughness = clamped(definitions, 'skinRoughness', 1.02 + surfaceAge * 0.32 + jitter(bodyRandom, 0.18));
+  const ageAppearance = deriveAgeAppearance({ ageYears: patient.identity.age, seed: appearanceSeed });
+  for (const id of [
+    'ageGeometry', 'wrinkleAmount', 'skinTexture', 'pigmentVariation',
+    'freckleAmount', 'ageSpotAmount', 'underEyeDarkness',
+  ]) values[id] = clamped(definitions, id, ageAppearance[id]);
 
   const face = faceRandom.weighted(FACE_ARCHETYPES);
   const featureScale = faceRandom.between(0.85, 1.38);
@@ -245,7 +256,8 @@ export function patientToCharacterPreset(patient, basePreset, definitions, optio
   values.wispAmount = clamped(definitions, 'wispAmount', 0.24 + groomingDisarray(patient, hairRandom) * 0.58);
   values.waveAmount = clamped(definitions, 'waveAmount', 0.38 + jitter(hairRandom, 0.34));
   values.strandContrast = clamped(definitions, 'strandContrast', 0.42 + jitter(hairRandom, 0.24));
-  values.greyAmount = clamped(definitions, 'greyAmount', Math.max(0, patient.identity.age - 42) / 38 + jitter(hairRandom, 0.13));
+  values.greyAmount = clamped(definitions, 'greyAmount', ageAppearance.greyAmount);
+  values.greyPattern = ageAppearance.greyPattern;
   // Brows usually sit darker and less chromatic than scalp hair; lashes are
   // darker again.  They remain independent live controls after generation.
   values.browColor = mixHex(values.hairColor, '#21150f', 0.42);
@@ -288,7 +300,27 @@ export function patientToCharacterPreset(patient, basePreset, definitions, optio
 
   values.outfitStyle = outfitFor(patient, dressRandom);
   [values.dressColor, values.trimColor] = paletteFor(values.outfitStyle, dressRandom);
-  values.fabricRoughness = clamped(definitions, 'fabricRoughness', 1.42 + jitter(dressRandom, 0.14));
+  values.womenPalette = 'custom';
+  values.secondaryColor = values.outfitStyle === 'mourning-dress'
+    ? mixHex(values.dressColor, '#777078', 0.46)
+    : mixHex(values.dressColor, '#cfbea2', values.outfitStyle === 'working-day' ? 0.34 : 0.52);
+  if (female) {
+    const fabrics = values.outfitStyle === 'working-day'
+      ? [{ id: 'cotton', weight: 5 }, { id: 'wool', weight: 3 }]
+      : values.outfitStyle === 'mourning-dress'
+        ? [{ id: 'wool', weight: 5 }, { id: 'velvet', weight: 2 }, { id: 'silk', weight: 1 }]
+        : values.outfitStyle === 'fashionable-1896' || values.outfitStyle === 'visiting-dress'
+          ? [{ id: 'silk', weight: 3 }, { id: 'brocade', weight: 3 }, { id: 'wool', weight: 2 }, { id: 'velvet', weight: 1 }]
+          : [{ id: 'wool', weight: 4 }, { id: 'cotton', weight: 3 }, { id: 'silk', weight: 1 }];
+    values.fabricType = dressRandom.weighted(fabrics).id;
+    values.fabricScale = clamped(definitions, 'fabricScale', 0.92 + jitter(dressRandom, 0.22));
+    values.fabricRelief = clamped(definitions, 'fabricRelief', values.fabricType === 'brocade' ? 0.95 : 0.66 + jitter(dressRandom, 0.16));
+    values.fabricSheen = clamped(definitions, 'fabricSheen', ['silk', 'velvet'].includes(values.fabricType) ? 0.95 + jitter(dressRandom, 0.16) : 0.42 + jitter(dressRandom, 0.15));
+    values.dressDetailPattern = dressRandom.pick(['plain', 'double-stitch', 'chevron', 'diamond', 'braid', 'vine']);
+    values.dressDetailAmount = clamped(definitions, 'dressDetailAmount', 0.68 + jitter(dressRandom, 0.24));
+    values.dressDetailScale = clamped(definitions, 'dressDetailScale', 1 + jitter(dressRandom, 0.32));
+  }
+  values.fabricRoughness = clamped(definitions, 'fabricRoughness', 1.08 + jitter(dressRandom, 0.12));
   for (const [id, center] of Object.entries(STYLE_VALUES[values.outfitStyle])) {
     values[id] = clamped(definitions, id, center + jitter(dressRandom, id === 'buttonCount' ? 1.5 : 0.06));
   }
@@ -324,8 +356,20 @@ export function patientToCharacterPreset(patient, basePreset, definitions, optio
   values.seated = 1;
   values.idleMode = 'procedural';
 
+  const restingFace = generateRestingFaceSignature(appearanceSeed);
+  const rendererCRecipe = resolveRendererCRecipe({
+    patient,
+    values,
+    restingFace,
+    manifest: options.rendererCManifest,
+    appearanceSeed,
+    anchorCount: options.rendererCAnchorCount ?? 8,
+  });
+  values.rendererCAnchor = rendererCRecipe.anchor.index;
+
   preset.name = patient.identity.displayName;
   preset.description = descriptionFor(patient);
+  preset.characterRecipe = rendererCRecipe;
   preset.patient = {
     ...patient,
     appearance: {
@@ -339,14 +383,27 @@ export function patientToCharacterPreset(patient, basePreset, definitions, optio
       },
       wardrobeSex: patient.identity.sex,
       faceSignatureSeed: appearanceSeed,
-      restingFace: generateRestingFaceSignature(appearanceSeed),
+      restingFace,
+      rendererC: {
+        cohort: rendererCRecipe.cohort,
+        anchorIndex: rendererCRecipe.anchor.index,
+        anchorId: rendererCRecipe.anchor.id,
+      },
       faceArchetype: face.id, bodyMass: values.weight, stature: values.height,
       skinTone: values.skinTone, eyeColor: values.eyeColor, hairColor: values.hairColor,
       hairShade: values.hairShade, hairStyle: values.hairStyle, flowSweep: values.flowSweep,
-      greyAmount: values.greyAmount, browColor: values.browColor, browDensity: values.browDensity,
+      greyAmount: values.greyAmount, greyPattern: values.greyPattern,
+      browColor: values.browColor, browDensity: values.browDensity,
       lashColor: values.lashColor, lashDensity: values.lashDensity, outfitStyle: values.outfitStyle,
-      dressColor: values.dressColor, trimColor: values.trimColor,
+      dressColor: values.dressColor, secondaryColor: values.secondaryColor, trimColor: values.trimColor,
+      fabricType: values.fabricType, fabricScale: values.fabricScale,
       skinRendering: {
+        wrinkles: values.wrinkleAmount,
+        texture: values.skinTexture,
+        complexionVariation: values.pigmentVariation,
+        freckles: values.freckleAmount,
+        ageSpots: values.ageSpotAmount,
+        underEyeDarkness: values.underEyeDarkness,
         microDetail: values.stylizedSkinDetail,
         poreScale: values.stylizedPoreScale,
         pigmentVariation: values.stylizedPigmentVariation,

@@ -1,6 +1,8 @@
 // Keyboard state polled by the frame loop. Listeners sit on window so canvas
 // focus does not matter.
 
+import { isGameplayInputBlocked } from './uiMode.js';
+
 const BINDINGS = {
   KeyW: 'forward', ArrowUp: 'forward',
   KeyS: 'back', ArrowDown: 'back',
@@ -13,6 +15,7 @@ const BINDINGS = {
 };
 
 const FORM_TAGS = new Set(['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA']);
+const MOVEMENT_ACTIONS = new Set(['forward', 'back', 'left', 'right']);
 
 export function createKeyboard() {
   const state = { forward: false, back: false, left: false, right: false, run: false, interact: false };
@@ -20,9 +23,20 @@ export function createKeyboard() {
   function onKey(event, pressed) {
     const action = BINDINGS[event.code];
     if (!action) return;
+    if (pressed && isGameplayInputBlocked()) return;
     // Filter keydown only: a keyup landing on a focused panel control must
     // still release the key, or movement sticks on.
-    if (pressed && FORM_TAGS.has(event.target?.tagName)) return;
+    if (pressed && FORM_TAGS.has(event.target?.tagName)) {
+      // A modal may restore focus to the button that opened it. Movement
+      // keys must leave that button and move the character; Tab is how the
+      // player deliberately enters the HUD controls.
+      if (event.target.tagName === 'BUTTON' && MOVEMENT_ACTIONS.has(action)) {
+        event.target.blur();
+      } else {
+        return;
+      }
+    }
+    if (pressed && MOVEMENT_ACTIONS.has(action)) event.preventDefault();
     if (event.code === 'Space' && pressed) event.preventDefault();
     state[action] = pressed;
   }

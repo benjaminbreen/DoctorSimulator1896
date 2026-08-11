@@ -1,0 +1,186 @@
+{
+  "schemaVersion": "2.1",
+  "targetName": "Procedural reagent bottle rack",
+  "targetId": "reagent-bottle-rack",
+  "sourceImage": "artifacts/img2threejs/reagent-bottle-rack/reference/imagegen-concept.png",
+  "suitability": "conditional",
+  "historicalStatus": "draft — reference required",
+  "terminologyProfile": {
+    "domain": "real-time procedural Three.js asset",
+    "geometryTerms": ["silhouette", "topology", "lathe", "bevel", "repetition system", "compound collider"],
+    "materialTerms": ["albedo", "roughness", "normal map", "transmission", "IOR", "attenuation", "ambient occlusion"],
+    "lightingTerms": ["key light", "fill light", "environment reflection", "contact shadow"],
+    "descriptionRule": "Use measurable geometry and material terms."
+  },
+  "scores": {
+    "object_isolation": 3,
+    "silhouette_readability": 3,
+    "depth_inference": 2,
+    "primitive_decomposition": 3,
+    "material_procedurality": 3,
+    "occlusion_risk": 2,
+    "interaction_fit": 3
+  },
+  "preSpecAssessment": {
+    "objectClass": {
+      "primaryType": "compound laboratory storage prop",
+      "primaryDomain": "object",
+      "formLanguage": ["rectilinear rack", "lathed bottles", "repeated bays", "rounded member edges"],
+      "structureKind": ["wooden frame", "repetition system", "separable vessel set"],
+      "motionPotential": ["whole-rack motion", "future bottle removal", "breakable glass children"],
+      "materialFamilies": ["unfinished wood", "transparent glass", "transparent liquid", "cork", "aged paper"],
+      "notes": "The ImageGen concept is a provisional geometric target, not historical evidence."
+    },
+    "complexity": {
+      "tier": "complex",
+      "scores": {"silhouetteComplexity":2,"componentCount":3,"hierarchyDepth":3,"repetitionDensity":3,"materialLayerCount":3,"localDetailDensity":3,"occlusionRisk":2,"actionReadinessNeed":3},
+      "estimatedCounts": {"macroComponents":3,"mesoComponents":9,"microFeatureGroups":5,"materialLayers":5,"repetitionSystems":2},
+      "reasoning": [
+        "The rack frame and bottle set are separate macro systems with named construction members.",
+        "Repeated bottle bays each contain a shell, contents, closure, label, and meniscus.",
+        "Nested transparent materials and future-removable slots require a stable hierarchy."
+      ]
+    },
+    "specDepthDecision": {
+      "requiredDepth": "complex",
+      "minimumComponentLevels": ["macro", "meso", "micro"],
+      "needsRepetitionSystems": true,
+      "needsMaterialLocalOverrides": true,
+      "needsMultipleReviewViews": true,
+      "needsActionReadyHierarchy": true,
+      "rationale": "The repeated compound bottles and physical material layers need more than a furniture blockout."
+    },
+    "unknownsToResolveBeforeImplementation": [],
+    "detailInventory": {
+      "scanMethod": "semantic-components",
+      "targetMinDetails": 10,
+      "details": [
+        {"id":"rack-rounded-edges","kind":"bevel","description":"Rounded bevels on all rack members.","region":{"x":0.04,"y":0.2,"width":0.92,"height":0.7,"units":"normalized"},"scale":"2-5 mm","affects":"silhouette and highlights","mapsTo":{"type":"component.localFeatures","ref":"rack-frame/edge-bevel"},"evidenceRef":"rack-frame","confidence":0.96},
+        {"id":"rack-member-overlap","kind":"seam","description":"Overlapping contacts between rack members.","region":{"x":0.04,"y":0.2,"width":0.92,"height":0.7,"units":"normalized"},"scale":"8-20 mm","affects":"construction","mapsTo":{"type":"component.localFeatures","ref":"rack-frame/member-contacts"},"evidenceRef":"rack-frame","confidence":0.94},
+        {"id":"repeated-slot-dividers","kind":"ridge","description":"Short dividers establish repeated bottle bays.","region":{"x":0.04,"y":0.2,"width":0.92,"height":0.7,"units":"normalized"},"scale":"10-18 mm","affects":"repetition","mapsTo":{"type":"component.localFeatures","ref":"rack-frame/slot-dividers"},"evidenceRef":"rack-frame","confidence":0.95},
+        {"id":"bottle-profile-variation","kind":"contour","description":"Controlled height, radius, neck, and shoulder variation.","region":{"x":0.1,"y":0.23,"width":0.8,"height":0.55,"units":"normalized"},"scale":"5-25 mm","affects":"bottle silhouette","mapsTo":{"type":"component.localFeatures","ref":"bottle-family/profile-variation"},"evidenceRef":"bottle-row","confidence":0.92},
+        {"id":"rolled-glass-lips","kind":"ridge","description":"Thick annular rolled lips on bottle necks.","region":{"x":0.1,"y":0.23,"width":0.8,"height":0.55,"units":"normalized"},"scale":"2-4 mm","affects":"glass silhouette","mapsTo":{"type":"component.localFeatures","ref":"glass-shell/rolled-lip"},"evidenceRef":"bottle-row","confidence":0.97},
+        {"id":"curved-paper-labels","kind":"decal","description":"Paper labels curve around bottle bodies.","region":{"x":0.1,"y":0.23,"width":0.8,"height":0.55,"units":"normalized"},"scale":"30-55 mm","affects":"identity and text","mapsTo":{"type":"component.localFeatures","ref":"curved-paper-label/curved-label"},"evidenceRef":"bottle-row","confidence":0.96},
+        {"id":"liquid-menisci","kind":"contour","description":"Visible meniscus surfaces at varied liquid heights.","region":{"x":0.1,"y":0.23,"width":0.8,"height":0.55,"units":"normalized"},"scale":"1-3 mm","affects":"liquid depth","mapsTo":{"type":"component.localFeatures","ref":"liquid-meniscus/meniscus"},"evidenceRef":"bottle-row","confidence":0.93},
+        {"id":"wood-grain","kind":"linework","description":"Directional deal grain and scratches.","region":{"x":0.08,"y":0.13,"width":0.84,"height":0.72,"units":"normalized"},"scale":"1-30 mm","affects":"wood PBR","mapsTo":{"type":"material.localOverrides","ref":"deal-wood/directional-grain"},"evidenceRef":"materials","confidence":0.9},
+        {"id":"wood-edge-wear","kind":"stain","description":"Lighter high edges and darker contacts.","region":{"x":0.08,"y":0.13,"width":0.84,"height":0.72,"units":"normalized"},"scale":"2-12 mm","affects":"wood PBR","mapsTo":{"type":"material.localOverrides","ref":"deal-wood/edge-wear"},"evidenceRef":"materials","confidence":0.86},
+        {"id":"glass-highlight-bands","kind":"gloss","description":"Bright reflection bands and darker transmitted edges.","region":{"x":0.08,"y":0.13,"width":0.84,"height":0.72,"units":"normalized"},"scale":"2-20 mm","affects":"glass response","mapsTo":{"type":"material.localOverrides","ref":"clear-glass/edge-response"},"evidenceRef":"materials","confidence":0.96},
+        {"id":"paper-mottling","kind":"stain","description":"Warm paper mottling and printed borders.","region":{"x":0.08,"y":0.13,"width":0.84,"height":0.72,"units":"normalized"},"scale":"0.5-8 mm","affects":"paper PBR","mapsTo":{"type":"material.localOverrides","ref":"aged-paper/mottling"},"evidenceRef":"materials","confidence":0.88},
+        {"id":"cork-porosity","kind":"stain","description":"Matte granular cork pores.","region":{"x":0.08,"y":0.13,"width":0.84,"height":0.72,"units":"normalized"},"scale":"0.5-3 mm","affects":"cork PBR","mapsTo":{"type":"material.localOverrides","ref":"cork/porosity"},"evidenceRef":"materials","confidence":0.91}
+      ]
+    },
+    "anatomy": {"applies": false}
+  },
+  "qualityContract": {
+    "qualityBar": "complex",
+    "definitionOfDone": [
+      "The rack remains joined across every layout setting.",
+      "Filled and empty bays are deterministic for a seed.",
+      "Every bottle keeps a curved label, nested liquid, meniscus, and physical glass material.",
+      "The editor exposes layout, variation, label, liquid, glass, and wood controls."
+    ],
+    "reviewViewpoints": ["front-three-quarter", "rear-three-quarter", "side", "grazing-close-up"],
+    "visualDeltaChecks": ["rack silhouette", "slot rhythm", "bottle variety", "label conformance", "material separation"],
+    "minimumSpecDepth": {"macroComponents":3,"mesoComponents":8,"microFeatureGroups":5,"materialLayers":5,"repetitionSystems":2,"reviewViewpoints":4},
+    "featureGroups": [
+      {"id":"rack-construction","name":"Joined wooden rack","required":true,"qualityCriteria":["Base, back, cheeks, rail, and dividers visibly overlap."],"evidenceRefs":["rack-frame"],"failureModes":["floating members","flat panel silhouette"]},
+      {"id":"bottle-system","name":"Repeated bottle family","required":true,"qualityCriteria":["Bottle profiles vary without clipping adjacent bays."],"evidenceRefs":["bottle-row"],"failureModes":["identical clones","intersections"]},
+      {"id":"nested-materials","name":"Physical vessel materials","required":true,"qualityCriteria":["Glass, liquid, cork, and paper remain optically distinct."],"evidenceRefs":["materials"],"failureModes":["opaque glass","flat liquid","plastic paper"]}
+    ]
+  },
+  "qualityTargets": {"targetFidelity":0.72,"mustMatch":["joined rack","repeated removable bottles","curved labels","nested liquid","physical material response"],"niceToHave":["small bottle yaw variation"],"fpsTarget":60,"reviewViewpoints":["front","three-quarter","side","grazing-close-up"]},
+  "selfCorrectLoop": {"enabled":true,"visualAcceptance":{"reviewer":"ai-vision","threshold":0.7,"comparisonArtifactRequired":true,"layerScoresRequired":true,"codePixelDiffIsAcceptanceAuthority":false,"featureReviewPolicy":{"enabled":true,"reviewUnit":"semantic-subsystem","maxCriticalFeaturesPerPass":3,"maxImportantFeaturesPerPass":2,"criticalDefaultThreshold":0.8,"importantAverageThreshold":0.65,"adaptiveEscalation":true,"singleImagePairOnly":true}},"reviewAfterPasses":["structural-pass","material-pass","lighting-pass"],"allowedActions":["continue","refine-spec","refine-code","request-input","stop"],"stopCriteria":["visual target accepted","new historical reference required"],"screenshotPolicy":{"requiredForPasses":["structural-pass","material-pass","lighting-pass"],"preferredCapture":"in-app-browser-screenshot","fallbackCapture":"user-supplied-screenshot-path"}},
+  "featureReviewTargets": [
+    {"id":"rack-construction","name":"Joined rack silhouette and contacts","tier":"critical","passIds":["structural-pass"],"minimumScore":0.8,"mustPass":true,"componentRefs":["rack-frame","rack-base","rack-back","side-cheeks","front-rail","slot-dividers"],"evidenceRefs":["rack-frame"]},
+    {"id":"bottle-repetition","name":"Bottle spacing, variety, and empty bays","tier":"critical","passIds":["structural-pass","interaction-pass"],"minimumScore":0.8,"mustPass":true,"componentRefs":["bottle-family","glass-shell","liquid-volume","curved-paper-label"],"evidenceRefs":["bottle-row"]},
+    {"id":"material-system","name":"Wood, glass, liquid, cork, and paper response","tier":"critical","passIds":["material-pass","lighting-pass"],"minimumScore":0.75,"mustPass":true,"componentRefs":["rack-frame","glass-shell","liquid-volume","cork-stopper","curved-paper-label"],"evidenceRefs":["materials"]}
+  ],
+  "sculptPipeline": {"passGateMode":"locked-sequential","passOrder":["blockout","structural-pass","material-pass","lighting-pass","interaction-pass"],"currentPass":"structural-pass","completedPasses":[],"lastCompletedPass":"","blockedReason":"browser capture pending","nextRequiredEvidence":["in-app render screenshot","multi-angle review"]},
+  "lookDevTargets": {
+    "qualityPriority": "plausible physical response",
+    "materialPass": {
+      "albedoPaletteRequired": true,
+      "albedoPalette": ["warm deal wood", "nearly clear glass", "muted liquid palette", "tan cork", "cream paper"],
+      "roughnessVariationRequired": true,
+      "normalOrBumpRequired": true,
+      "localOverridesRequired": true,
+      "minimumTextureResolution": 1024,
+      "independentMapChannels": ["albedo", "roughness", "normal", "ambient-occlusion"],
+      "requiredSurfaceFrequencyBands": ["macro", "meso", "micro"],
+      "geometryReliefRequiredWhenSilhouetteAffected": true,
+      "referencePbrExtraction": {"requiredWhenSourceImagePresent":false,"targetThreshold":0.7,"stopOnLowConfidence":false,"acceptedLimitation":"The source is a generated concept with baked studio lighting. The runtime reuses authored independent deal-wood maps and physical bottle materials instead of treating concept pixels as measured PBR evidence."},
+      "localOverrides": ["directional wood grain", "wood edge wear", "glass attenuation", "liquid meniscus", "paper mottling", "cork pores"]
+    },
+    "lightingPass": {"requiredTerms":["key light","fill light","environment reflection","exposure","tone mapping","background","contact shadow"],"environment":"RoomEnvironment","keyLight":"soft upper-left area light","fillLight":"low neutral ambient fill","exposure":1,"toneMapping":"ACES Filmic","background":"dark neutral","contactShadow":"soft floor contact"},
+    "screenshotReview": ["neutral three-quarter", "grazing close-up", "side view"]
+  },
+  "coordinateFrame": {"front":"+z label centre","up":"+y","scaleReference":"metres"},
+  "silhouette": {"boundingShape":"wide low rectangular rack with raised back and six bottle peaks","aspectRatios":["width:height about 3.4","depth:height about 0.45"],"symmetry":"bilateral rack with seeded bottle variation","dominantCurves":["side-cheek shoulders","bottle shoulders","rolled lips"],"negativeSpaces":["gaps between bottle necks","empty bay openings"],"landmarks":["base","back top","front rail","bottle mouths"]},
+  "viewEvidence": [
+    {"id":"full-object","view":"three-quarter front","imageRegion":{"x":0,"y":0,"width":1,"height":1,"units":"normalized"},"observations":["wide rack silhouette","six bottle peaks","low front rail"],"confidence":0.9},
+    {"id":"rack-frame","view":"rack crop","imageRegion":{"x":0.04,"y":0.2,"width":0.92,"height":0.7,"units":"normalized"},"observations":["base","back","cheeks","front rail","dividers"],"confidence":0.91},
+    {"id":"bottle-row","view":"bottle crop","imageRegion":{"x":0.1,"y":0.23,"width":0.8,"height":0.55,"units":"normalized"},"observations":["six varied bottles","rolled lips","curved labels","liquid levels"],"confidence":0.93},
+    {"id":"materials","view":"material crop","imageRegion":{"x":0.08,"y":0.13,"width":0.84,"height":0.72,"units":"normalized"},"observations":["wood grain","glass highlights","liquid depth","paper mottling","cork pores"],"confidence":0.86}
+  ],
+  "componentTree": [
+    {"id":"rack-root","level":"macro","primitive":"box","topologyClass":"assembled-solid","topologyRationale":"Runtime root contains a joined frame and repeated bottle system.","parent":null,"transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]},"actionProfile":{"animationRole":"root","pivot":{"mode":"base","localPosition":[0,0,0],"axis":[0,1,0]},"collider":{"type":"compound-box"},"destruction":{"breakable":false}},"colorMaterialRecipe":{"dominantAlbedo":"rgba(0, 0, 0, 0)","secondaryAlbedo":"rgba(0, 0, 0, 0)","materialClass":"unknown","materialClassConfidence":1},"children":["rack-frame","bottle-family"]},
+    {"id":"rack-frame","level":"macro","primitive":"box","topologyClass":"assembled-solid","topologyRationale":"Separate bevelled wooden members form a stable joined frame.","parent":"rack-root","transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]},"actionProfile":{"animationRole":"static-assembly","pivot":{"mode":"base","localPosition":[0,0,0],"axis":[0,1,0]},"collider":{"type":"compound-box"},"destruction":{"breakable":false}},"colorMaterialRecipe":{"dominantAlbedo":"rgba(130, 87, 49, 1)","secondaryAlbedo":"rgba(185, 135, 80, 1)","materialClass":"wood","materialClassConfidence":0.95},"localFeatures":[{"id":"edge-bevel","type":"bevel","evidenceRefs":["rack-frame"]},{"id":"member-contacts","type":"seam","evidenceRefs":["rack-frame"]},{"id":"slot-dividers","type":"ridge","evidenceRefs":["rack-frame"]}],"material":"deal-wood"},
+    {"id":"bottle-family","level":"macro","primitive":"lathe","topologyClass":"assembled-solid","topologyRationale":"A repeated family contains separable continuous bottle shells and their nested parts.","parent":"rack-root","transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]},"actionProfile":{"animationRole":"detachable-set","pivot":{"mode":"slot-base","localPosition":[0,0,0],"axis":[0,1,0]},"collider":{"type":"repeated-cylinder"},"destruction":{"breakable":false,"detachableFragments":["bottle-slot"]}},"colorMaterialRecipe":{"dominantAlbedo":"rgba(169, 199, 189, 0.18)","secondaryAlbedo":"rgba(111, 75, 37, 0.72)","materialClass":"glass","materialClassConfidence":0.9},"localFeatures":[{"id":"profile-variation","type":"contour","evidenceRefs":["bottle-row"]}],"material":"clear-glass"},
+    {"id":"rack-base","level":"meso","primitive":"box","topologyClass":"assembled-solid","topologyRationale":"One bevelled plank supports the rack and bottle feet.","parent":"rack-frame","transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]},"actionProfile":{"animationRole":"static-part","pivot":{"mode":"base","localPosition":[0,0,0],"axis":[0,1,0]},"collider":{"type":"box"},"destruction":{"breakable":false}},"colorMaterialRecipe":{"dominantAlbedo":"rgba(130, 87, 49, 1)","secondaryAlbedo":"rgba(185, 135, 80, 1)","materialClass":"wood","materialClassConfidence":0.95},"material":"deal-wood"},
+    {"id":"rack-back","level":"meso","primitive":"box","topologyClass":"assembled-solid","topologyRationale":"A bevelled rear board overlaps the base and cheeks.","parent":"rack-frame","transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]},"actionProfile":{"animationRole":"static-part","pivot":{"mode":"lower-edge","localPosition":[0,0,0],"axis":[0,1,0]},"collider":{"type":"box"},"destruction":{"breakable":false}},"colorMaterialRecipe":{"dominantAlbedo":"rgba(130, 87, 49, 1)","secondaryAlbedo":"rgba(185, 135, 80, 1)","materialClass":"wood","materialClassConfidence":0.95},"material":"deal-wood"},
+    {"id":"side-cheeks","level":"meso","primitive":"box","topologyClass":"assembled-solid","topologyRationale":"Mirrored side members connect base, back, and retaining rail.","parent":"rack-frame","transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]},"actionProfile":{"animationRole":"static-part","pivot":{"mode":"base","localPosition":[0,0,0],"axis":[0,1,0]},"collider":{"type":"box-pair"},"destruction":{"breakable":false}},"colorMaterialRecipe":{"dominantAlbedo":"rgba(130, 87, 49, 1)","secondaryAlbedo":"rgba(185, 135, 80, 1)","materialClass":"wood","materialClassConfidence":0.95},"material":"deal-wood"},
+    {"id":"front-rail","level":"meso","primitive":"box","topologyClass":"assembled-solid","topologyRationale":"A slender horizontal rail retains bottles below the labels.","parent":"rack-frame","attachment":{"parentId":"rack-frame","parentSocket":"side-cheek-front-sockets","localStart":[-0.3,0.06,0.08],"localEnd":[0.3,0.06,0.08],"contactType":"embedded","overlap":0.01,"gapTolerance":0.001,"evidenceRefs":["rack-frame"]},"transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]},"actionProfile":{"animationRole":"static-connector","pivot":{"mode":"left-end","localPosition":[-0.3,0,0],"axis":[1,0,0]},"collider":{"type":"box"},"destruction":{"breakable":false}},"colorMaterialRecipe":{"dominantAlbedo":"rgba(130, 87, 49, 1)","secondaryAlbedo":"rgba(185, 135, 80, 1)","materialClass":"wood","materialClassConfidence":0.95},"material":"deal-wood"},
+    {"id":"slot-dividers","level":"meso","primitive":"box","topologyClass":"assembled-solid","topologyRationale":"Short repeated members separate neighbouring bottle bases.","parent":"rack-frame","transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]},"actionProfile":{"animationRole":"static-repeat","pivot":{"mode":"base","localPosition":[0,0,0],"axis":[0,1,0]},"collider":{"type":"box-repeat"},"destruction":{"breakable":false}},"colorMaterialRecipe":{"dominantAlbedo":"rgba(130, 87, 49, 1)","secondaryAlbedo":"rgba(185, 135, 80, 1)","materialClass":"wood","materialClassConfidence":0.95},"material":"deal-wood"},
+    {"id":"glass-shell","level":"meso","primitive":"lathe","topologyClass":"continuous-sculpt","topologyRationale":"Each bottle is one closed radial loop containing outer wall, lip, inner wall, and base.","parent":"bottle-family","transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]},"actionProfile":{"animationRole":"detachable-shell","pivot":{"mode":"base","localPosition":[0,0,0],"axis":[0,1,0]},"collider":{"type":"cylinder"},"destruction":{"breakable":true,"fractureGroup":"bottle-glass"}},"colorMaterialRecipe":{"dominantAlbedo":"rgba(169, 199, 189, 0.18)","secondaryAlbedo":"rgba(220, 240, 234, 0.08)","materialClass":"glass","materialClassConfidence":0.95},"localFeatures":[{"id":"rolled-lip","type":"ridge","evidenceRefs":["bottle-row"]}],"material":"clear-glass"},
+    {"id":"liquid-volume","level":"meso","primitive":"lathe","topologyClass":"continuous-sculpt","topologyRationale":"The liquid volume derives from the bottle inner-radius profile.","parent":"glass-shell","transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]},"actionProfile":{"animationRole":"material-state","pivot":{"mode":"fill-centre","localPosition":[0,0,0],"axis":[0,1,0]},"collider":{"type":"none"},"destruction":{"breakable":false}},"colorMaterialRecipe":{"dominantAlbedo":"rgba(111, 75, 37, 0.72)","secondaryAlbedo":"rgba(205, 170, 90, 0.35)","materialClass":"unknown","materialClassConfidence":0.8},"material":"reagent-liquid"},
+    {"id":"cork-stopper","level":"meso","primitive":"lathe","topologyClass":"assembled-solid","topologyRationale":"A closed tapered profile provides a press-fit stopper with chamfered ends.","parent":"glass-shell","attachment":{"parentId":"glass-shell","parentSocket":"bottle-mouth","localStart":[0,0.15,0],"localEnd":[0,0.18,0],"contactType":"socket","embedDepth":0.012,"gapTolerance":0.001,"evidenceRefs":["bottle-row"]},"transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]},"actionProfile":{"animationRole":"detachable-stopper","pivot":{"mode":"lower-centre","localPosition":[0,0,0],"axis":[0,1,0]},"collider":{"type":"none"},"destruction":{"breakable":false,"detachableFragments":["cork-stopper"]}},"colorMaterialRecipe":{"dominantAlbedo":"rgba(178, 127, 75, 1)","secondaryAlbedo":"rgba(91, 62, 37, 1)","materialClass":"wood","materialClassConfidence":0.82},"material":"cork"},
+    {"id":"curved-paper-label","level":"meso","primitive":"cylinder","topologyClass":"conforming-shell","topologyRationale":"An open cylinder sector follows the bottle body and supplies stable dynamic-text UVs.","parent":"glass-shell","attachment":{"parentId":"glass-shell","parentSocket":"glass-body-front","localStart":[0,0.06,0.033],"localEnd":[0,0.10,0.033],"contactType":"surface-contact","overlap":0.002,"gapTolerance":0.0005,"evidenceRefs":["bottle-row"]},"transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]},"actionProfile":{"animationRole":"static-label","pivot":{"mode":"bottle-centre","localPosition":[0,0,0],"axis":[0,1,0]},"collider":{"type":"none"},"destruction":{"breakable":false,"detachableFragments":["curved-paper-label"]}},"colorMaterialRecipe":{"dominantAlbedo":"rgba(222, 208, 170, 1)","secondaryAlbedo":"rgba(45, 33, 24, 1)","materialClass":"unknown","materialClassConfidence":0.9},"localFeatures":[{"id":"curved-label","type":"decal","evidenceRefs":["bottle-row"]}],"material":"aged-paper"},
+    {"id":"edge-bevel-system","level":"micro","primitive":"box","topologyClass":"surface-relief","topologyRationale":"Real bevel geometry supplies catch-light edges on rack members.","parent":"rack-frame","transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]},"actionProfile":{"animationRole":"surface-detail","pivot":{"mode":"parent","localPosition":[0,0,0],"axis":[0,1,0]},"collider":{"type":"none"},"destruction":{"breakable":false}},"colorMaterialRecipe":{"dominantAlbedo":"rgba(160, 108, 61, 1)","secondaryAlbedo":"rgba(194, 146, 92, 1)","materialClass":"wood","materialClassConfidence":0.9},"material":"deal-wood"},
+    {"id":"member-contact-system","level":"micro","primitive":"box","topologyClass":"surface-relief","topologyRationale":"Member overlap and cavity shadow mark real construction seams.","parent":"rack-frame","transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]},"actionProfile":{"animationRole":"surface-detail","pivot":{"mode":"parent","localPosition":[0,0,0],"axis":[0,1,0]},"collider":{"type":"none"},"destruction":{"breakable":false}},"colorMaterialRecipe":{"dominantAlbedo":"rgba(105, 69, 39, 1)","secondaryAlbedo":"rgba(130, 87, 49, 1)","materialClass":"wood","materialClassConfidence":0.9},"material":"deal-wood"},
+    {"id":"rolled-lip-system","level":"micro","primitive":"lathe","topologyClass":"surface-relief","topologyRationale":"An annular profile thickens every bottle mouth and catches reflections.","parent":"glass-shell","transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]},"actionProfile":{"animationRole":"surface-detail","pivot":{"mode":"parent","localPosition":[0,0,0],"axis":[0,1,0]},"collider":{"type":"none"},"destruction":{"breakable":false}},"colorMaterialRecipe":{"dominantAlbedo":"rgba(200, 225, 218, 0.18)","secondaryAlbedo":"rgba(240, 250, 247, 0.08)","materialClass":"glass","materialClassConfidence":0.95},"material":"clear-glass"},
+    {"id":"liquid-meniscus","level":"micro","primitive":"torus","topologyClass":"surface-relief","topologyRationale":"A concave top and narrow contact ring reinforce fill depth.","parent":"liquid-volume","transform":{"position":[0,0,0],"rotation":[1.5708,0,0],"scale":[1,1,1]},"actionProfile":{"animationRole":"fill-level-child","pivot":{"mode":"fill-height","localPosition":[0,0,0],"axis":[0,1,0]},"collider":{"type":"none"},"destruction":{"breakable":false}},"colorMaterialRecipe":{"dominantAlbedo":"rgba(111, 75, 37, 0.72)","secondaryAlbedo":"rgba(255, 248, 237, 0.24)","materialClass":"unknown","materialClassConfidence":0.8},"localFeatures":[{"id":"meniscus","type":"contour","evidenceRefs":["bottle-row"]}],"material":"reagent-liquid"},
+    {"id":"surface-detail-system","level":"micro","primitive":"plane-card","topologyClass":"material-only","topologyRationale":"Independent normal and roughness maps supply wood grain, paper fibres, and cork pores without changing the main silhouette.","parent":"rack-root","transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]},"actionProfile":{"animationRole":"material-state","pivot":{"mode":"parent","localPosition":[0,0,0],"axis":[0,1,0]},"collider":{"type":"none"},"destruction":{"breakable":false}},"material":"deal-wood"}
+  ],
+  "materials": [
+    {"id":"deal-wood","model":"MeshStandardMaterial","channels":["albedo","roughness","normal","ambient-occlusion"],"frequencyBands":["broad warm drift","directional grain","fine scratches"],"albedo":{"dominant":"warm deal brown","secondary":["darker growth lines","lighter worn edges"]},"roughness":{"base":0.72,"variation":0.18,"map":"/textures/props/laboratory-bench/deal-roughness.png"},"normal":{"pattern":"/textures/props/laboratory-bench/deal-normal.png","strength":0.55},"ambientOcclusion":{"map":"/textures/props/laboratory-bench/deal-ao.png","cavityStrength":0.3},"localOverrides":[{"id":"directional-grain","effect":"normal and albedo grain follows board scale","evidenceRefs":["materials"]},{"id":"edge-wear","effect":"lighter smoother high edges and darker contacts","evidenceRefs":["materials"]}]},
+    {"id":"clear-glass","model":"MeshPhysicalMaterial","properties":{"ior":1.5,"transmission":0.96,"roughness":0.07,"metalness":0},"albedo":{"dominant":"near-clear blue-green tint","secondary":["bright rim","thicker tinted base"]},"roughness":{"base":0.07,"variation":0.04},"normal":{"pattern":"geometric wall normals","strength":1},"localOverrides":[{"id":"edge-response","effect":"stronger environment reflection at curved lips and walls","evidenceRefs":["materials"]}]},
+    {"id":"reagent-liquid","model":"MeshPhysicalMaterial","properties":{"ior":1.333,"transmission":0.72,"roughness":0.11,"metalness":0},"albedo":{"dominant":"seeded muted liquid tint","secondary":["meniscus highlight","darker transmitted depth"]},"roughness":{"base":0.11,"variation":0.03},"normal":{"pattern":"concave geometric meniscus","strength":1},"localOverrides":[{"id":"meniscus-depth","effect":"concave surface and wall contact ring","evidenceRefs":["bottle-row"]}]},
+    {"id":"cork","model":"MeshStandardMaterial","channels":["albedo","roughness","normal"],"frequencyBands":["cell clusters","pores","fine relief"],"albedo":{"dominant":"warm tan","secondary":["dark pores","light cork cells"]},"roughness":{"base":0.9,"variation":0.08,"map":"/textures/props/labeled-bottle/cork-roughness.webp"},"normal":{"pattern":"/textures/props/labeled-bottle/cork-normal.webp","strength":0.55},"localOverrides":[{"id":"porosity","effect":"dark pores and granular highlight breakup","evidenceRefs":["materials"]}]},
+    {"id":"aged-paper","model":"MeshStandardMaterial","channels":["dynamic albedo and ink","roughness","normal"],"frequencyBands":["warm drift","foxing","paper fibres"],"albedo":{"dominant":"editable cream paper","secondary":["dark ink","restrained foxing"]},"roughness":{"base":0.92,"variation":0.06,"map":"/textures/props/labeled-bottle/paper-roughness.webp"},"normal":{"pattern":"/textures/props/labeled-bottle/paper-normal.webp","strength":0.18},"localOverrides":[{"id":"mottling","effect":"paper-age controlled foxing and dynamic ink","evidenceRefs":["materials"]}]}
+  ],
+  "repetitionSystems": [
+    {"id":"bottle-slots","componentRef":"bottle-family","pattern":"row-grid","count":{"columns":"4-10","rows":"1-2"},"spacing":"derived from bottle radius plus slot clearance","variation":"seeded occupancy, yaw, height, radius, neck ratio, and shoulder profile"},
+    {"id":"rack-dividers","componentRef":"slot-dividers","pattern":"between-column repeat","count":"columns minus one per row","spacing":"same slot pitch as bottle-slots","variation":"none"}
+  ],
+  "editableParameters": ["columns","rows","slotSpacing","rowSpacing","emptyRate","bottleHeight","bottleRadius","shapeVariety","liquidVariation","labelText","labelFont","paperAge","glassRoughness","glassClarity","liquidDepth","woodTint","woodRoughness","textureIntensity"],
+  "actionReadiness": {"root":"rack-root","namedParts":true,"singleDynamicBody":true,"collider":"compound boxes on rack root","slotSockets":"one stable ID per bottle bay","detachableCandidates":["bottle-slot","cork-stopper","curved-paper-label"],"destructionGroups":["rack-frame","bottle-glass","bottle-contents"]},
+  "buildPasses": [
+    {"id":"blockout","goal":"Match rack width, height, bottle count, and negative spaces.","componentRefs":["rack-root","rack-frame","bottle-family"],"acceptance":["The object reads as a filled laboratory bottle rack without materials."]},
+    {"id":"structural-pass","goal":"Build joined rack members and stable repeated bottle slots.","componentRefs":["rack-base","rack-back","side-cheeks","front-rail","slot-dividers","glass-shell","cork-stopper","curved-paper-label"],"acceptance":["No floating rack members, clipped bottles, or detached labels."]},
+    {"id":"material-pass","goal":"Wire independent wood, glass, liquid, cork, and paper response.","componentRefs":["rack-frame","glass-shell","liquid-volume","cork-stopper","curved-paper-label"],"acceptance":["Transmission, attenuation, roughness variation, and mapped relief are visible."]},
+    {"id":"lighting-pass","goal":"Prove optical depth and surface relief under a neutral environment.","componentRefs":["rack-root"],"acceptance":["Glass highlights, liquid depth, wood grain, and contact shadows are readable."]},
+    {"id":"interaction-pass","goal":"Keep deterministic controls, named slots, and a bounded compound collider.","componentRefs":["rack-root","bottle-family"],"acceptance":["Recipe tests and performance budgets pass."]}
+  ],
+  "lightingFromPhoto": [
+    {"type":"key light","direction":"upper-left-front","color":"neutral warm","intensity":"soft"},
+    {"type":"fill light","direction":"environment","color":"neutral","intensity":"low"},
+    {"type":"environment reflection","source":"RoomEnvironment","intensity":"material dependent"},
+    {"type":"contact shadow","source":"floor receiver","softness":"high"},
+    {"type":"exposure","value":1},
+    {"type":"tone mapping","value":"ACES Filmic"}
+  ],
+  "proceduralStrategy": [
+    "Build the rack from bevelled box members with explicit overlaps.",
+    "Generate deterministic slot occupancy and bottle variation from the asset seed.",
+    "Reuse the existing closed bottle profiles, curved labels, nested liquid volumes, and physical materials.",
+    "Keep stable semantic names for rack members, slots, bottles, and bottle sub-parts."
+  ],
+  "animationAnchors": ["rack-root base pivot", "one semantic bottle socket per bay", "one lower-centre pivot per cork"],
+  "destructionAnchors": ["rack member seams", "individual bottle glass groups", "individual cork and label detach points"],
+  "risks": ["ImageGen construction is not historical evidence", "rear joinery is inferred", "second row and empty slots are procedural extensions"],
+  "assumptions": ["Ben will verify rack form, label wording, and bottle contents before they become game content."],
+  "visualEvidence": [],
+  "reviewHistory": [],
+  "lodPlan": [{"tier":"near","distance":0,"strategy":"full rack and all filled bottle parts"},{"tier":"far","distance":12,"strategy":"merge static rack members and omit labels and meniscus rings"}],
+  "performanceBudget": {"qualityPriority":"reference-fidelity","targetTriangles":50000,"maxDrawCalls":90,"textureSize":2048,"fpsTarget":60,"optimizationPolicy":"Keep bottle profiles and material identity; reduce segments and surface details first."}
+}

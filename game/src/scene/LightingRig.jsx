@@ -2,8 +2,7 @@ import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { degToRad } from '../movement/mathUtils.js';
-import { windowSkyTexture } from './textures.js';
-import { solarRamps } from '../world/solar.js';
+import { portalDimming } from '../world/windowDressing.js';
 
 // Sun offset outside a window: the hole normal rotated by azimuth, tilted up
 // by elevation.
@@ -17,6 +16,21 @@ function sunOffset(normal, elevationDeg, azimuthDeg) {
   return [hx * Math.cos(elevation), Math.sin(elevation), hz * Math.cos(elevation)];
 }
 
+// One window carries the room's shadow. Six windows each casting their own
+// soft shadow set is six full scene passes a frame and reads as mud on the
+// floor; one dominant sun with the rest as unshadowed fill reads as a room
+// with a light direction. A portal can claim it with `castShadow: true`,
+// otherwise the brightest one takes it.
+const SHADOW_PORTALS = 1;
+
+// The shadow camera stays a box around the caster's own window, and that is
+// deliberate: three treats anything outside it as lit, so the far side of the
+// room keeps the flat window light it has always had. Widening it to the
+// whole room puts the ceiling between the sun and the floor and the room goes
+// dark, because a portal light is light that has already come through the
+// glass and should not be blocked by the shell a second time.
+const SHADOW_EXTENT = 4.5;
+
 // Smooth deterministic flicker in roughly [-1, 1].
 function flickerNoise(time, seed) {
   return (
@@ -26,26 +40,36 @@ function flickerNoise(time, seed) {
   );
 }
 
-// `skyPanes` off means WindowView is drawing the real captured view instead
-// of the procedural gradient stand-in.
-export default function LightingRig({ room, config, runtime, skyPanes = true }) {
+// What a window shows is WindowView's or WindowSky's job; this rig only makes
+// light.
+export default function LightingRig({ room, config, runtime, dressing }) {
   const ambientRef = useRef();
   const hemisphereRef = useRef();
   const portalRefs = useRef([]);
   const gaslightRefs = useRef([]);
-  const skyRefs = useRef([]);
-  const skyMap = useMemo(() => windowSkyTexture(), []);
   const shadowMapSize = Number(runtime.values.shadowMapSize);
-  skyRefs.current = [];
 
-  const portals = useMemo(
-    () =>
-      config.windowPortals
-        .map((portal) => ({ ...portal, hole: room.windowHoles.find((hole) => hole.id === portal.windowId) }))
-        .filter((portal) => portal.hole)
-        .map((portal) => ({ ...portal, target: new THREE.Object3D() })),
-    [config, room],
-  );
+  const portals = useMemo(() => {
+    const found = config.windowPortals
+      .map((portal) => ({ ...portal, hole: room.windowHoles.find((hole) => hole.id === portal.windowId) }))
+      .filter((portal) => portal.hole)
+      .map((portal) => ({ ...portal, target: new THREE.Object3D() }));
+    // Pinned portals first, then the brightest, until the budget is spent.
+    // `castShadow: false` takes a window out of the running.
+    const casters = new Set(
+      found
+        .filter((portal) => portal.castShadow !== false)
+        .sort((a, b) => (b.castShadow === true) - (a.castShadow === true) || b.intensity - a.intensity)
+        .slice(0, SHADOW_PORTALS)
+        .map((portal) => portal.windowId),
+    );
+    // A shade half down or a blind turned nearly shut is worth less light.
+    return found.map((portal) => ({
+      ...portal,
+      casts: casters.has(portal.windowId),
+      dimming: portalDimming(dressing?.get(portal.windowId)),
+    }));
+  }, [config, room, dressing]);
   const gaslights = useMemo(
     () =>
       config.gaslights
@@ -77,24 +101,11 @@ export default function LightingRig({ room, config, runtime, skyPanes = true }) 
         portal.hole.position[1] + offset[1] * 4,
         portal.hole.position[2] + offset[2] * 4,
       );
-      light.intensity = portal.intensity * values.windowIntensity;
+      light.intensity = portal.intensity * values.windowIntensity * portal.dimming;
       light.color.set(values.windowColor);
-      light.castShadow = values.shadowsEnabled;
+      light.castShadow = values.shadowsEnabled && portal.casts;
       light.shadow.radius = values.shadowRadius;
     });
-
-    // The view outside dims and warms with the sun, so a lamp-lit dusk room
-    // does not sit behind a noon-bright pane.
-    const { daylight, golden, night } = solarRamps(values.timeOfDay);
-    for (const mesh of skyRefs.current) {
-      const material = mesh.material;
-      const level = 0.1 + daylight * 0.95;
-      material.color.setRGB(
-        level * (1 + golden * 0.35),
-        level * (1 + golden * 0.1),
-        level * (1 - golden * 0.15 + night * 0.25),
-      );
-    }
 
     gaslights.forEach((gaslight, index) => {
       const light = gaslightRefs.current[index];
@@ -117,21 +128,6 @@ export default function LightingRig({ room, config, runtime, skyPanes = true }) 
         groundColor={config.hemisphere.groundColor}
         intensity={config.hemisphere.intensity}
       />
-      {skyPanes && room.windowHoles.map((hole) => (
-        // Sky pane in the hole: graded sky over the rooftops opposite, dimmed
-        // toward dusk by the frame loop, so the window is not a white slab.
-        <mesh
-          key={`${hole.id}:sky`}
-          ref={(mesh) => {
-            if (mesh) skyRefs.current.push(mesh);
-          }}
-          position={hole.position}
-          rotation={[0, Math.atan2(-hole.normal[0], -hole.normal[2]), 0]}
-        >
-          <planeGeometry args={[hole.width, hole.height]} />
-          <meshBasicMaterial map={skyMap} side={THREE.DoubleSide} toneMapped={false} />
-        </mesh>
-      ))}
       {portals.map((portal, index) => (
         <group key={portal.windowId}>
           <primitive
@@ -142,20 +138,22 @@ export default function LightingRig({ room, config, runtime, skyPanes = true }) 
               portal.hole.position[2] - portal.hole.normal[2] * 2,
             ]}
           />
+          {/* The caster's map is doubled so the one remaining shadow keeps the
+              texel density all six used to have. */}
           <directionalLight
             ref={(light) => {
               portalRefs.current[index] = light;
             }}
             target={portal.target}
-            castShadow
-            shadow-mapSize-width={shadowMapSize}
-            shadow-mapSize-height={shadowMapSize}
+            castShadow={portal.casts}
+            shadow-mapSize-width={portal.casts ? Math.min(shadowMapSize * 2, 2048) : shadowMapSize}
+            shadow-mapSize-height={portal.casts ? Math.min(shadowMapSize * 2, 2048) : shadowMapSize}
             shadow-camera-near={0.1}
             shadow-camera-far={16}
-            shadow-camera-left={-4.5}
-            shadow-camera-right={4.5}
-            shadow-camera-top={4.5}
-            shadow-camera-bottom={-4.5}
+            shadow-camera-left={-SHADOW_EXTENT}
+            shadow-camera-right={SHADOW_EXTENT}
+            shadow-camera-top={SHADOW_EXTENT}
+            shadow-camera-bottom={-SHADOW_EXTENT}
             shadow-bias={-0.0004}
           />
         </group>

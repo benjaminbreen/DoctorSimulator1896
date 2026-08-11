@@ -16,21 +16,22 @@ test('the Drive is graded and the Plaza sits level at its height', () => {
 });
 
 test('the Pond is carved below water level and its banks stay dry', () => {
-  assert.ok(pondDepth(0, 60) < -0.4, 'inside the main body');
-  assert.ok(terrainHeight(0, 60) < WATER_LEVEL - 0.3, 'bottom sits under the surface');
-  assert.ok(terrainHeight(70, 38) > WATER_LEVEL, 'north bank near the gate stays dry');
+  assert.ok(pondDepth(0, 54) < -0.4, 'inside the main lobe');
+  assert.ok(terrainHeight(0, 54) < WATER_LEVEL - 0.3, 'lobe bottom sits under the surface');
+  assert.ok(pondDepth(22, 30) < -0.4, 'inside the north arm');
+  assert.ok(terrainHeight(70, 38) > WATER_LEVEL, 'east bank toward the gate stays dry');
 });
 
 test('Hallett knoll rises on the peninsula', () => {
-  assert.ok(rockiness(22, 50) > 0.6);
-  assert.ok(terrainHeight(22, 50) > 0.8);
+  assert.ok(rockiness(2, 28) > 0.6);
+  assert.ok(terrainHeight(2, 28) > 0.8);
 });
 
 test('park layout is deterministic and populated', () => {
   const trees = parkItems.filter((item) => item.kind === 'tree');
   assert.ok(trees.length > 50, `expected a real tree stock, got ${trees.length}`);
   for (const tree of trees) assert.ok(tree.tree?.trunkH > 0, `${tree.id} carries tree data`);
-  for (const id of ['gapstow-deck', 'arsenal', 'dairy-body', 'kinderberg-roof', 'wall-east', 'wall-south-west']) {
+  for (const id of ['gapstow-deck', 'arsenal', 'dairy-body', 'rail-east-0', 'rail-south-west-0']) {
     assert.ok(parkItems.some((item) => item.id === id), `missing ${id}`);
   }
   const ids = [...parkItems, ...streetItems].map((item) => item.id);

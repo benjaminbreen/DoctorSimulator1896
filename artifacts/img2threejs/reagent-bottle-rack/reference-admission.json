@@ -1,0 +1,15 @@
+{
+  "admitted": true,
+  "reasons": [],
+  "provenance": {
+    "viewpoint": "three-quarter-front",
+    "sourcePath": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/reagent-bottle-rack/reference/imagegen-concept.png",
+    "width": 1536,
+    "height": 1024,
+    "foregroundCoverage": 0.5073,
+    "largestComponentFraction": 0.9996,
+    "pHash": 12304044058382872828,
+    "duplicateOfHash": null
+  },
+  "limitation": "ImageGen concept admitted for form exploration only; it is not historical evidence."
+}

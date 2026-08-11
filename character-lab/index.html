@@ -14,20 +14,30 @@
           <h1>1896 Character Lab</h1>
         </div>
         <div class="header-actions">
+          <span class="renderer-badge">Renderer C</span>
           <span id="model-status" class="status">Loading model…</span>
           <button id="randomize" type="button" title="Reroll appearance controls while keeping the current patient record">Appearance variation</button>
           <button id="new-patient" type="button" title="Generate a new identity, history, clinical presentation, and appearance">New random patient</button>
-          <button id="regenerate" type="button">Regenerate model</button>
           <button id="reset" type="button">Reset</button>
           <button id="export" class="primary" type="button">Export preset</button>
         </div>
       </header>
+      <nav class="lab-task-tabs" role="tablist" aria-label="Character Lab task">
+        <button type="button" role="tab" data-lab-task="cast">Cast</button>
+        <button type="button" role="tab" data-lab-task="appearance">Appearance</button>
+        <button type="button" role="tab" data-lab-task="wardrobe">Wardrobe</button>
+        <button type="button" role="tab" data-lab-task="performance">Performance</button>
+        <button type="button" role="tab" data-lab-task="qa">QA</button>
+      </nav>
       <main class="workspace">
         <aside class="controls-panel">
           <div class="controls-intro">
             <label for="control-search">Parameters</label>
             <input id="control-search" type="search" placeholder="Search sliders…" />
-            <p><span class="live-key"></span> live preview <span class="bake-key"></span> Blender regenerate</p>
+            <div class="controls-options">
+              <p><span class="live-key"></span> live preview <span class="bake-key"></span> asset build</p>
+              <button id="advanced-toggle" type="button" aria-pressed="false">Show advanced</button>
+            </div>
           </div>
           <div id="controls"></div>
         </aside>
@@ -39,8 +49,6 @@
             <button data-view="portrait">Head</button>
             <button data-view="hands">Hands</button>
             <button data-view="exam">Examination</button>
-            <button id="render-toggle" type="button" title="Cycle A: MPFB, B: Meta MHR, C: GNM + MPFB">Renderer C · GNM + MPFB</button>
-            <button id="dress-study" type="button" title="Load the Renderer C production dress proof">Dress study</button>
             <button id="toggle-grid">Grid</button>
             <button id="toggle-motion" class="active">Idle motion</button>
             <select id="animation-select" aria-label="Animation clip"><option>Loading animation…</option></select>
@@ -74,10 +82,12 @@
           </div>
         </section>
         <aside class="inspector-panel">
-          <section id="renderer-c-lab" hidden>
-            <p class="eyebrow">Renderer C identity lab</p>
-            <h2>Generate eight faces</h2>
-            <p class="renderer-c-intro">Choose a narrow demographic cohort, then audition eight distinct GNM-derived identities. Select any face to tune it live with the anatomy sliders.</p>
+          <section id="renderer-c-lab" data-lab-panel="cast">
+            <p class="eyebrow">Casting</p>
+            <h2>Audition face anchors</h2>
+            <p class="renderer-c-intro">The patient record sets cohort, age, and ancestry. Generate a contact sheet to audition alternate face anchors without changing those facts.</p>
+            <p id="renderer-c-lock-status" class="renderer-c-lock-status"></p>
+            <button id="renderer-c-unlock" class="renderer-c-unlock" type="button" aria-pressed="false">Unlock casting controls</button>
             <div class="renderer-c-criteria">
               <label for="renderer-c-cohort">Sex presentation</label>
               <select id="renderer-c-cohort">
@@ -91,6 +101,8 @@
                 <option value="40s">40s</option>
                 <option value="50s">50s</option>
                 <option value="60s">60s</option>
+                <option value="70s">70s</option>
+                <option value="80s">80s+</option>
               </select>
               <label for="renderer-c-ancestry">Ancestry</label>
               <select id="renderer-c-ancestry">
@@ -103,24 +115,39 @@
               <label for="renderer-c-seed">Contact-sheet seed</label>
               <input id="renderer-c-seed" type="number" min="1" max="999999" value="1896" />
             </div>
-            <button id="renderer-c-generate" type="button">Generate eight</button>
+            <button id="renderer-c-generate" type="button">Generate eight face anchors</button>
             <p id="renderer-c-grid-status" class="renderer-c-grid-status">Preparing identity bank…</p>
             <div id="renderer-c-grid" class="renderer-c-grid" aria-live="polite"></div>
           </section>
-          <section>
+          <section id="renderer-c-wardrobe" data-lab-panel="wardrobe" hidden>
+            <p class="eyebrow">Renderer C wardrobe</p>
+            <h2>Dress the figure</h2>
+            <p class="wardrobe-intro">The patient record selects the figure. Unlock casting controls in Cast only when you need to test the other cohort.</p>
+            <div class="wardrobe-cohorts" role="group" aria-label="Wardrobe figure">
+              <button type="button" data-wardrobe-cohort="women">Women</button>
+              <button type="button" data-wardrobe-cohort="men">Men</button>
+            </div>
+            <div id="wardrobe-list" class="wardrobe-list" aria-live="polite"></div>
+            <details class="wardrobe-sources">
+              <summary>Downloaded fitted sources</summary>
+              <p>These MPFB garments are in the repo but are not offered as wearable until a checked master build embeds and skins them.</p>
+              <ul id="wardrobe-source-list"></ul>
+            </details>
+          </section>
+          <section data-lab-panel="all">
             <p class="eyebrow">Current subject</p>
             <h2 id="subject-name">Mrs. Ostrander</h2>
             <p id="subject-summary"></p>
           </section>
-          <section id="patient-record-section" hidden>
+          <section id="patient-record-section" data-lab-panel="cast" hidden>
             <h3>Patient record</h3>
             <div id="patient-record"></div>
           </section>
-          <section>
-            <h3>Pipeline state</h3>
+          <details class="inspector-details" data-lab-panel="qa" open>
+            <summary>Pipeline state</summary>
             <dl id="pipeline-state"></dl>
-          </section>
-          <section id="face-unit-debugger">
+          </details>
+          <section id="face-unit-debugger" data-lab-panel="performance qa">
             <h3>Atomic face-unit debug</h3>
             <p id="expression-driver">Waiting for character…</p>
             <label for="face-unit-select">Exported target</label>
@@ -131,22 +158,62 @@
             </div>
             <button id="face-unit-reset" type="button">Return to performance</button>
             <button id="face-unit-surprise" type="button">Surprise me</button>
+            <h4 class="face-qa-heading">Renderer C face review</h4>
+            <p id="face-qa-status">Patient resting face</p>
+            <div class="face-qa-grid" role="group" aria-label="Fixed facial review states">
+              <button type="button" data-face-qa="preset">Patient rest</button>
+              <button type="button" data-face-qa="neutral">Neutral</button>
+              <button type="button" data-face-qa="blink">Blink</button>
+              <button type="button" data-face-qa="jaw-025">Jaw 0.025</button>
+              <button type="button" data-face-qa="jaw-05">Jaw 0.05</button>
+              <button type="button" data-face-qa="guarded">Guarded</button>
+              <button type="button" data-face-qa="distressed">Distressed</button>
+            </div>
           </section>
-          <section>
-            <h3>Preset JSON</h3>
+          <details class="inspector-details" data-lab-panel="qa">
+            <summary>Preset JSON</summary>
             <textarea id="preset-json" spellcheck="false"></textarea>
             <div class="row">
               <button id="apply-json">Apply JSON</button>
               <button id="copy-json">Copy</button>
             </div>
-          </section>
-          <section class="command-card">
-            <h3>Regenerate command</h3>
+          </details>
+          <details class="inspector-details command-card" data-lab-panel="qa">
+            <summary>Legacy asset-build command</summary>
             <code id="generate-command"></code>
-          </section>
+          </details>
         </aside>
       </main>
     </div>
+    <section id="asset-examiner" class="asset-examiner" role="dialog" aria-labelledby="asset-examiner-title" hidden>
+      <header class="asset-examiner-header">
+        <div>
+          <p class="eyebrow">Character dressing inventory</p>
+          <h2 id="asset-examiner-title">Asset examination</h2>
+        </div>
+        <div class="asset-examiner-header-actions">
+          <span id="asset-examiner-count"></span>
+          <button id="asset-examiner-reset-view" type="button">Reset view</button>
+          <button id="asset-examiner-close" type="button">Close <kbd>Esc</kbd></button>
+        </div>
+      </header>
+      <aside class="asset-examiner-catalog">
+        <div class="asset-examiner-filters" role="group" aria-label="Filter dressing assets">
+          <button type="button" class="active" data-asset-filter="all">All</button>
+          <button type="button" data-asset-filter="women">Women</button>
+          <button type="button" data-asset-filter="men">Men</button>
+          <button type="button" data-asset-filter="source">Source only</button>
+        </div>
+        <div id="asset-examiner-list" class="asset-examiner-list"></div>
+        <section class="asset-examiner-details">
+          <p id="asset-examiner-kind" class="eyebrow">Choose an asset</p>
+          <h3 id="asset-examiner-name">Dressing inventory</h3>
+          <p id="asset-examiner-note">Wearable choices appear on the live figure. Source-only meshes are shown alone and are not yet rigged.</p>
+          <p id="asset-examiner-source"></p>
+        </section>
+      </aside>
+      <p class="asset-examiner-hint">Drag to orbit · wheel to zoom · select another asset at right · <kbd>Shift</kbd> + <kbd>2</kbd> toggles this view</p>
+    </section>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

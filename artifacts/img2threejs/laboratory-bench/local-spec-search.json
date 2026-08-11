@@ -1,0 +1,26 @@
+{
+  "query": "wooden laboratory workbench furniture PBR roughness grain bevel joinery collider",
+  "collection": "core_3d",
+  "matches": [
+    {
+      "record_id": "core.pbr-hand-painted-vs-pbr-texture",
+      "source": "docs/raw/img2threejs-skill-dataset.json",
+      "finding": "Use separate PBR channels so lighting response changes with the scene rather than remaining baked into albedo."
+    },
+    {
+      "record_id": "core.runtime-hierarchy",
+      "source": "grimoire/readiness/action_rigging.md#Hierarchy Pattern",
+      "finding": "Use named component pivots, visual meshes, sockets, collider metadata, and destruction groups."
+    },
+    {
+      "record_id": "core.coordinate-relative-units",
+      "source": "grimoire/glossary/3d_vocabulary.md#Geometry And Topology",
+      "finding": "Size bevel radii in object-relative units."
+    },
+    {
+      "record_id": "core.shader-mapping-meshphysicalmaterial-core-pbr-fields",
+      "source": "docs/raw/img2threejs-skill-dataset.json",
+      "finding": "MeshStandardMaterial or MeshPhysicalMaterial can consume the independent baked texture channel set."
+    }
+  ]
+}

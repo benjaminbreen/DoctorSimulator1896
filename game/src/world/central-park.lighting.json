@@ -1,7 +1,7 @@
 {
   "id": "CENTRAL_PARK_DAY",
   "ambient": { "color": "#9aa3b0", "intensity": 0.5 },
-  "hemisphere": { "skyColor": "#bcd0ee", "groundColor": "#55603f", "intensity": 0.7 },
+  "hemisphere": { "skyColor": "#bcd0ee", "groundColor": "#55603f", "intensity": 1.0 },
   "sun": { "color": "#fff2dd", "intensity": 3.2 },
   "fog": { "color": "#cdd6e4" },
   "exposureBase": 0.5,

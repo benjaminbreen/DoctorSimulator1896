@@ -3,6 +3,45 @@
 
 let pending = null;
 
+// Fast travel uses the same one-shot arrival contract as doors. Keeping the
+// destinations here makes the simulation path testable without mounting HUD.
+export const FAST_TRAVEL_DESTINATIONS = Object.freeze([
+  {
+    id: 'central-park',
+    label: 'Central Park — Southeast Corner',
+    detail: 'Fifth Avenue at 59th Street',
+    noticeLabel: 'Central Park’s southeast corner',
+    to: { zone: 'central-park', spawn: [82, 1.25, 68], facing: [-0.7, 0, -0.7] },
+  },
+  {
+    id: 'cattell-lab',
+    label: 'Cattell’s Psychology Lab',
+    detail: 'Columbia College',
+    noticeLabel: 'Cattell’s psychology laboratory',
+    to: { zone: 'cattell-lab', spawn: [1.2, 0, 4.4], facing: [0, 0, -1] },
+  },
+  {
+    id: 'waiting-room',
+    label: 'Your Waiting Room',
+    detail: 'The practice',
+    noticeLabel: 'your waiting room',
+    to: { zone: 'waiting-room', spawn: [0, 0, 4.6], facing: [0, 0, -1] },
+  },
+  {
+    id: 'consulting-office',
+    label: 'Your Consulting Room',
+    detail: 'The practice',
+    noticeLabel: 'your consulting room',
+    to: { zone: 'consulting-office', spawn: [1.2, 0, 1.2], facing: [0, 0, -1] },
+  },
+]);
+
+export function availableFastTravelDestinations(zoneId) {
+  return FAST_TRAVEL_DESTINATIONS.filter(
+    ({ id }) => id !== 'central-park' || zoneId !== 'central-park',
+  );
+}
+
 export function requestTravel(runtime, transition) {
   pending = {
     zone: transition.to.zone,
@@ -10,6 +49,13 @@ export function requestTravel(runtime, transition) {
     facing: transition.to.facing ?? null,
   };
   runtime.set('zone', transition.to.zone);
+}
+
+export function requestFastTravel(runtime, destinationId) {
+  const destination = FAST_TRAVEL_DESTINATIONS.find(({ id }) => id === destinationId);
+  if (!destination) return null;
+  requestTravel(runtime, destination);
+  return destination;
 }
 
 // Non-travel rebuilds (capsule size, antialias, ...) keep the player where

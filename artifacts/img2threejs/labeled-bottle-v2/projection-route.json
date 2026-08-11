@@ -1,0 +1,6 @@
+{
+  "route": "authored-texture",
+  "projectionApplicable": false,
+  "reason": "The screenshot contains placeholder shading rather than reusable source pixels.",
+  "surfacePlan": "Use ImageGen only for blank cork and paper albedo; derive independent data maps locally and use physical shaders for glass and liquid."
+}

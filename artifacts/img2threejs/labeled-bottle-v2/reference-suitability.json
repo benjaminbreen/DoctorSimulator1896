@@ -1,0 +1,8 @@
+{
+  "suitability": "conditional",
+  "objectIsolation": 0.55,
+  "silhouetteReadability": 0.78,
+  "depthInference": 0.62,
+  "materialEvidence": 0.2,
+  "decision": "Use for topology and material-defect diagnosis only; keep historicalStatus draft."
+}

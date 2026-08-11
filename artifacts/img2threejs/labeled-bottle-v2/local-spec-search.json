@@ -1,0 +1,9 @@
+{
+  "query": "procedural bottle continuous lathe shell transmission glass liquid meniscus curved cylinder-sector label",
+  "sources": [
+    "grimoire/build/geometry_patterns.md",
+    "grimoire/feedback/shading_realism.md",
+    "grimoire/intake/surface_topology.md"
+  ],
+  "decision": "Use a closed radial profile for topology and MeshPhysicalMaterial for dielectric surfaces."
+}

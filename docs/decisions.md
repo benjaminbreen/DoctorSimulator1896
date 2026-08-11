@@ -173,6 +173,127 @@ contagion graph, which the weekly Herald column and the society-strata
 reputation both read next tick.
 
 
+## 2026-08-08 — Metres, and why a correct size can still look wrong
+
+Props kept being judged "too small" after being built to real measurements.
+The measurements were right; the metre is simply not what the eye reads. What
+it reads is pixels, and those depend on the field of view, how far the camera
+sits behind the player, and how deep the room is. The player is the only thing
+at a fixed camera distance, so its apparent size never changes while everything
+else shrinks with the room. A 0.76m desk ten metres away rendered 41px against
+the player's 151px — a 3.7:1 ratio on screen for objects 2.2:1 apart in life.
+
+**Metres stay the ground truth.** Rapier, the terrain, the capsule, walk speed
+and every period claim in the research all depend on them, and no other unit
+fixes a projection problem — it only relabels the numbers.
+
+Three things carry the difference instead:
+
+- **`presence` in the pack manifest.** A model's `scale` comes from a real
+  measurement and stays put; `presence` (default 1) is the one place a piece is
+  allowed to be enlarged, and the manifest records both `size` (what ships) and
+  `measured` (the truth). A test fails if an enlarged piece does not record what
+  it really measures. The exaggeration is deliberate, in one field, with a
+  reason written beside it.
+- **`game/model-check.html?view=game`.** The game's own field of view and
+  shoulder rig, the player figure beside the prop, and each piece's rendered
+  height quoted at 2.5m and 8m. Judge a prop here before it ships; do not judge
+  it from a number.
+- **Field of view 66 -> 50.** One value, and it does more for how a room reads
+  than any per-prop tuning, because it flattens the distance falloff for
+  everything at once.
+
+## 2026-08-09 — Start date: 3 August 1896
+
+Settles the date left open on 2026-08-05. The game opens on **Monday
+3 August 1896** in New York.
+
+The great New York heat wave begins the following day and runs about ten
+days. The era reads its casualties through heat prostration and nervous
+exhaustion; what actually kills people is hyperthermia in airless top-floor
+tenement rooms. The reputation/record split is therefore live in the first
+week, and stratified by class, without anyone having to explain it. It also
+gives the opening a bounded arc — ten days of pressure, then the city cools
+and the year opens out: the Bryan/McKinley campaign to November, James's
+Lowell Lectures in the autumn, Mitchell's peyote paper in December.
+
+**Ben to verify before any of this becomes content**: heat-wave dates and
+death toll (Kohn, *Hot Time in the Old Town*), Roosevelt's role as police
+commissioner during it, and the Lowell Lecture dates.
+
+Consequences already in code:
+
+- `world/solar.js` computes a real solar position for 40.78 N on day 216.
+  Sunrise 05:00 ENE, apparent noon 12:02 due south at 66 degrees, sunset
+  19:06 WNW — matching an almanac for the date to a few minutes. No daylight
+  saving: the US does not adopt it until 1918, so the clock is Eastern
+  Standard and the sun peaks near noon, not near one.
+- The previous model had the sun rising north-northwest and crossing due east
+  at its highest, so every shadow pointed the wrong way.
+- `START_DAY_OF_YEAR` and `solarDeclination()` are exported, so a calendar can
+  drive the season later without touching the rest.
+
+Note: field of view is back to 66 after tuning, reversing the 66 -> 50 line
+in the 2026-08-08 entry.
+
+## 2026-08-09 — The Pond from OSM; Gapstow in placed stones
+
+The Pond outline is now the OpenStreetMap polygon (way 22726524), projected
+into the world frame: rotated to the Manhattan grid, scaled 0.4, anchored at
+the Fifth/CPS corner. **Ben's call: the modern outline stands in for 1896.**
+The real 1896 pond ran further northeast (Wollman Rink, 1950, covered that
+arm), so this is a knowing simplification, not an oversight.
+
+- Everything the pond displaced moved to match the real geography: drives,
+  shore walks, the Dairy, the Kinderberg, the Green, Hallett's knoll.
+- Gapstow Bridge is built in `world/gapstow.js` as ~250 placed stones
+  (arch ring, spandrel courses, curved parapet, coping, wing stones) from
+  the documented measures: 76 ft run, 44 ft over water, 12 ft rise, at 0.4
+  scale. Collision is a separate invisible staircase under the 0.32
+  autostep; `render: false` on an item now means collider-only.
+- Terrain carve gained a -0.55 depth floor so narrow water (the west hook,
+  the bridge neck) stays submerged; grid is 280x230.
+- Overhead camera got its own wheel zoom (to ~256 m) and fog fades out
+  above 45 m, so the map view can be checked against a real map.
+- The bridge is built at 0.58 of real size (`BRIDGE_SCALE` in
+  `world/gapstow.js`), not the map's 0.4: people are full size, and at map
+  scale the bridge read as a garden ornament next to them. The collider
+  staircase is generated from the walk profile, so it follows any rescale.
+
+## 2026-08-10 — Engine seams: scene/lib, zone features
+
+The reusable-engine direction is now written down in
+`docs/engine-architecture.md` (the "would it move to Shakespeare's London
+unchanged?" test). The first shared modules added the same day were
+`scene/lib/instances.js` (one InstancedMesh filler after the same culling bug
+had to be fixed in five copies), `scene/lib/StaticColliders.jsx`, and zone
+`features` lists resolved by `scene/ZoneFeatures.jsx`. GameCanvas therefore no
+longer needs a separate mount for each landmark. The world/ → engine +
+content/park1896 file split is deliberately deferred until the instrument work
+lands, to avoid colliding with it.
+
+## 2026-08-10 — M1 implementation order
+
+M1 is divided into three implementation phases. The full scope and acceptance
+criteria are in `docs/m1-work-plan.md`.
+
+1. Build the reusable character recipe, Renderer C resolver, game actor layer,
+   and validated asset publication path.
+2. Build the complete three-patient consultation with basic placeholder
+   controls. Deterministic code owns the record and outcomes; the LLM renders
+   dialogue, behavior, appraisal, and prose.
+3. Replace the placeholder controls with the settled patient-mode and
+   examination-mode UI.
+
+This order replaces the earlier implication that more open-ended Character Lab
+polish or the park file move should precede the consultation. Renderer C already
+has the face anchors, named face units, and body animations needed for the M1
+runtime. Phase 1 integrates that work; it does not restart character research.
+
+The proposed Tripo and Mixamo crowd trial is deferred until after M1. Crowd
+figures do not need facial morphs, but each generated model must pass polygon,
+material, rig, walk-cycle, and long-garment deformation checks before use.
+
 ## Still open
 
 - **Title**: does sharing the book's exact title help (promotion) or hurt

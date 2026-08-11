@@ -1,23 +1,26 @@
-import * as THREE from 'three';
+import {
+  RENDERER_C_LIVE_BODY_IDS,
+  RENDERER_C_LIVE_FACE_IDS,
+} from '../../shared/characters/rendererCRecipe.js';
+import { appearancePaletteForAncestry } from '../../shared/characters/appearancePalettes.js';
+import {
+  deriveAgeAppearance,
+  rendererCAgeValueToYears,
+  rendererCYearsToAgeValue,
+} from '../../shared/characters/ageAppearance.js';
 
-
-export const RENDERER_C_LIVE_FACE_IDS = Object.freeze([
-  'headWidth', 'faceHeight', 'headDepth',
-  'noseWidth', 'noseLength', 'noseDepth', 'noseBridge', 'noseCurve',
-  'noseTipAngle', 'nostrilWidth',
-  'jawWidth', 'chinHeight', 'chinProminence', 'chinPrognathism',
-  'eyeSize', 'eyeSpacing', 'eyeVerticalPosition', 'eyeDepth',
-  'eyeHeightInner', 'eyeHeightCenter', 'eyeHeightOuter',
-  'browHeight', 'browAngle',
-  'mouthWidth', 'mouthDepth', 'lipFullness',
-  'cheekVolume', 'cheekboneProminence', 'cheekHeight',
-]);
-
-export const RENDERER_C_LIVE_BODY_IDS = Object.freeze(['weight', 'muscle', 'proportions']);
+export { RENDERER_C_LIVE_BODY_IDS, RENDERER_C_LIVE_FACE_IDS };
+export { applyRendererCAppearance, createRendererCController } from '../../shared/characters/rendererCRuntime.js';
+export {
+  rendererCWomenPalette,
+  RENDERER_C_FABRICS,
+  RENDERER_C_WOMEN_WARDROBE_IDS,
+  setRendererCWomenWardrobeVisible,
+} from '../../shared/characters/rendererCWardrobeSurface.js';
 export const RENDERER_C_LIVE_IDS = new Set([
   ...RENDERER_C_LIVE_FACE_IDS,
   ...RENDERER_C_LIVE_BODY_IDS,
-  'rendererCAnchor', 'age', 'height', 'african', 'asian', 'caucasian',
+  'rendererCAnchor', 'age', 'ageGeometry', 'height', 'african', 'asian', 'caucasian',
 ]);
 
 export const RENDERER_C_COHORTS = Object.freeze({
@@ -26,11 +29,13 @@ export const RENDERER_C_COHORTS = Object.freeze({
 });
 
 export const RENDERER_C_AGE_BANDS = Object.freeze({
-  '20s': Object.freeze({ label: '20s', age: 0.515 }),
-  '30s': Object.freeze({ label: '30s', age: 0.555 }),
-  '40s': Object.freeze({ label: '40s', age: 0.64 }),
-  '50s': Object.freeze({ label: '50s', age: 0.72 }),
-  '60s': Object.freeze({ label: '60s', age: 0.80 }),
+  '20s': Object.freeze({ label: '20s', age: rendererCYearsToAgeValue(25), years: 25 }),
+  '30s': Object.freeze({ label: '30s', age: rendererCYearsToAgeValue(35), years: 35 }),
+  '40s': Object.freeze({ label: '40s', age: rendererCYearsToAgeValue(45), years: 45 }),
+  '50s': Object.freeze({ label: '50s', age: rendererCYearsToAgeValue(55), years: 55 }),
+  '60s': Object.freeze({ label: '60s', age: rendererCYearsToAgeValue(65), years: 65 }),
+  '70s': Object.freeze({ label: '70s', age: rendererCYearsToAgeValue(75), years: 75 }),
+  '80s': Object.freeze({ label: '80s+', age: rendererCYearsToAgeValue(85), years: 85 }),
 });
 
 export const RENDERER_C_ANCESTRIES = Object.freeze({
@@ -41,12 +46,17 @@ export const RENDERER_C_ANCESTRIES = Object.freeze({
   asian: Object.freeze({ label: 'Asian American', african: 0, asian: 1, caucasian: 0 }),
 });
 
-const EYE_COLORS = ['#496d89', '#65868a', '#758b63', '#735b3f', '#4b3a2d', '#8b734c'];
-const EUROPEAN_SKIN = ['#d9ad91', '#c89578', '#edc7ad', '#b97f66', '#e0b59e', '#ca987f'];
-const AFRICAN_SKIN = ['#6f4938', '#80533e', '#5f3d31', '#95664d', '#704737'];
-const ASIAN_SKIN = ['#d3a17f', '#c58e6d', '#e1b394', '#b87e62', '#ce9674'];
 const HAIR_COLORS = ['#241812', '#3c2418', '#65422e', '#8a684b', '#b08b62', '#171311'];
-const GARMENT_COLORS = ['#183326', '#202b25', '#28364a', '#3d2630', '#2d2b3f', '#37402d'];
+const GARMENT_PALETTES = Object.freeze([
+  Object.freeze({ dressColor: '#38202f', secondaryColor: '#817064', trimColor: '#b08a62' }),
+  Object.freeze({ dressColor: '#183326', secondaryColor: '#c2b79a', trimColor: '#74523c' }),
+  Object.freeze({ dressColor: '#202d43', secondaryColor: '#65313a', trimColor: '#b49b72' }),
+  Object.freeze({ dressColor: '#663526', secondaryColor: '#4f5638', trimColor: '#c0a16f' }),
+  Object.freeze({ dressColor: '#555765', secondaryColor: '#826274', trimColor: '#c2ae91' }),
+  Object.freeze({ dressColor: '#171719', secondaryColor: '#343137', trimColor: '#676069' }),
+]);
+const WOMEN_FABRICS = ['cotton', 'wool', 'wool', 'silk', 'velvet', 'brocade'];
+const DRESS_DETAIL_PATTERNS = ['plain', 'double-stitch', 'chevron', 'diamond', 'braid', 'vine'];
 
 function clamp(value, minimum = -1, maximum = 1) {
   return Math.max(minimum, Math.min(maximum, value));
@@ -84,14 +94,6 @@ function shuffledIndices(count, random) {
 
 function pick(values, random) {
   return values[Math.floor(random() * values.length) % values.length];
-}
-
-function mixedSkinPalette(ancestry) {
-  if (ancestry === 'african') return AFRICAN_SKIN;
-  if (ancestry === 'asian') return ASIAN_SKIN;
-  if (ancestry === 'european-african') return [...EUROPEAN_SKIN.slice(2), ...AFRICAN_SKIN.slice(1, 4)];
-  if (ancestry === 'european-asian') return [...EUROPEAN_SKIN.slice(1), ...ASIAN_SKIN.slice(1, 4)];
-  return EUROPEAN_SKIN;
 }
 
 function localTuning(random, cohort) {
@@ -139,16 +141,25 @@ export function generateRendererCCandidates({
   if (!anchors.length) return [];
   const random = randomSource(`renderer-c:${cohort}:${ageBand}:${ancestry}:${seed}`);
   const order = shuffledIndices(anchors.length, random);
-  const skinPalette = mixedSkinPalette(ancestry);
+  const appearancePalette = appearancePaletteForAncestry(ancestry);
+  const skinOrder = shuffledIndices(appearancePalette.skinTones.length, random);
+  const eyeOrder = shuffledIndices(appearancePalette.eyeColors.length, random);
   const candidates = [];
   for (let index = 0; index < count; index += 1) {
     const anchorIndex = order[index % order.length];
     const anchor = anchors[anchorIndex];
+    const candidateAge = clamp(ageDefinition.age + (random() * 2 - 1) * 0.012, 0.5, 0.86);
+    const ageAppearance = deriveAgeAppearance({
+      ageYears: rendererCAgeValueToYears(candidateAge),
+      seed: `${seed}:${index + 1}`,
+    });
+    const garmentPalette = pick(GARMENT_PALETTES, random);
     const values = {
       ...localTuning(random, cohort),
+      ...ageAppearance,
       rendererCAnchor: anchorIndex,
       gender: cohortDefinition.gender,
-      age: clamp(ageDefinition.age + (random() * 2 - 1) * 0.012, 0.5, 0.86),
+      age: candidateAge,
       african: ancestryDefinition.african,
       asian: ancestryDefinition.asian,
       caucasian: ancestryDefinition.caucasian,
@@ -156,11 +167,23 @@ export function generateRendererCCandidates({
       weight: clamp(0.48 + (random() * 2 - 1) * 0.15, 0.25, 0.76),
       muscle: clamp(cohortDefinition.muscleCenter + (random() * 2 - 1) * 0.10, 0.19, 0.68),
       proportions: clamp(0.5 + (random() * 2 - 1) * 0.12, 0.3, 0.7),
-      skinTone: pick(skinPalette, random),
-      eyeColor: index < anchors.length ? anchor.eyeColor : pick(EYE_COLORS, random),
+      skinTone: appearancePalette.skinTones[skinOrder[index % skinOrder.length]],
+      eyeColor: appearancePalette.eyeColors[eyeOrder[index % eyeOrder.length]],
       hairColor: pick(HAIR_COLORS, random),
       browColor: pick(HAIR_COLORS.slice(0, 4), random),
-      dressColor: pick(GARMENT_COLORS, random),
+      ...garmentPalette,
+      womenPalette: 'custom',
+      fabricType: pick(WOMEN_FABRICS, random),
+      fabricScale: clamp(0.82 + random() * 0.42, 0.45, 2.5),
+      fabricRelief: clamp(0.52 + random() * 0.48, 0, 1.5),
+      fabricSheen: clamp(0.38 + random() * 0.62, 0, 1.5),
+      dressDetailPattern: pick(DRESS_DETAIL_PATTERNS, random),
+      dressDetailAmount: clamp(0.48 + random() * 0.48, 0, 1.5),
+      dressDetailScale: clamp(0.72 + random() * 0.72, 0.5, 2.5),
+      necklineHeight: clamp(0.74 + random() * 0.20, 0, 1),
+      cuffWidth: clamp(0.42 + random() * 0.34, 0, 1),
+      trimWidth: clamp(0.24 + random() * 0.38, 0, 1),
+      placketWidth: clamp(0.22 + random() * 0.28, 0, 1),
     };
     candidates.push({
       id: `${seed}-${index + 1}`,
@@ -175,98 +198,6 @@ export function generateRendererCCandidates({
     });
   }
   return candidates;
-}
-
-function morphWeight(root, name, value) {
-  let changed = false;
-  root.traverse((object) => {
-    const index = object.morphTargetDictionary?.[name];
-    if (index === undefined) return;
-    if (Math.abs((object.morphTargetInfluences[index] || 0) - value) > 1e-5) changed = true;
-    object.morphTargetInfluences[index] = value;
-  });
-  return changed;
-}
-
-function signedMorph(root, parameterId, value) {
-  const normalized = clamp(Number(value) || 0);
-  const positive = Math.max(0, normalized);
-  const negative = Math.max(0, -normalized);
-  const positiveChanged = morphWeight(root, `rc_live_${parameterId}_pos`, positive);
-  const negativeChanged = morphWeight(root, `rc_live_${parameterId}_neg`, negative);
-  return positiveChanged || negativeChanged;
-}
-
-function bodySignedValue(parameterId, value, cohort) {
-  const centers = { weight: 0.48, muscle: RENDERER_C_COHORTS[cohort]?.muscleCenter ?? 0.32, proportions: 0.50 };
-  const ranges = {
-    weight: [0.24, 0.78],
-    muscle: [0.18, 0.72],
-    proportions: [0.28, 0.74],
-  };
-  const center = centers[parameterId];
-  const [low, high] = ranges[parameterId];
-  return value >= center ? (value - center) / (high - center) : (value - center) / (center - low);
-}
-
-function setVariants(variants, anchor) {
-  const slotProperties = { brows: 'browSlot', lashes: 'lashSlot', hair: 'hairSlot', eyes: 'eyeSlot', teeth: 'teethSlot' };
-  for (const [role, objects] of variants) {
-    const slot = anchor[slotProperties[role]] ?? anchor.browSlot;
-    for (const object of objects) object.visible = Number(object.userData.renderer_c_variant_slot) === slot;
-  }
-}
-
-export function createRendererCController(root, manifest, initialValues = {}) {
-  const anchors = manifest?.anchors || [];
-  const variants = new Map();
-  root.traverse((object) => {
-    const role = object.userData?.renderer_c_variant_role;
-    if (!['brows', 'lashes', 'hair', 'eyes', 'teeth'].includes(role)) return;
-    if (!variants.has(role)) variants.set(role, []);
-    variants.get(role).push(object);
-  });
-  let activeAnchor = -1;
-
-  function applyValues(values, { force = false } = {}) {
-    let changed = false;
-    const anchorIndex = THREE.MathUtils.clamp(Math.round(Number(values.rendererCAnchor) || 0), 0, Math.max(0, anchors.length - 1));
-    for (let index = 0; index < anchors.length; index += 1) {
-      changed = morphWeight(root, anchors[index].morph, index === anchorIndex ? 1 : 0) || changed;
-    }
-    if (force || anchorIndex !== activeAnchor) {
-      setVariants(variants, anchors[anchorIndex] || {});
-      activeAnchor = anchorIndex;
-      changed = true;
-    }
-
-    const age = Number(values.age ?? manifest.neutralAge ?? 0.555);
-    changed = morphWeight(root, manifest.demographicMorphs.ageYoung, clamp((0.555 - age) / 0.05, 0, 1)) || changed;
-    changed = morphWeight(root, manifest.demographicMorphs.ageOld, clamp((age - 0.555) / (0.84 - 0.555), 0, 1)) || changed;
-    changed = morphWeight(root, manifest.demographicMorphs.asian, clamp(Number(values.asian) || 0, 0, 1)) || changed;
-    changed = morphWeight(root, manifest.demographicMorphs.african, clamp(Number(values.african) || 0, 0, 1)) || changed;
-
-    for (const parameterId of RENDERER_C_LIVE_FACE_IDS) {
-      changed = signedMorph(root, parameterId, values[parameterId]) || changed;
-    }
-    for (const parameterId of RENDERER_C_LIVE_BODY_IDS) {
-      changed = signedMorph(root, parameterId, bodySignedValue(parameterId, Number(values[parameterId]), manifest.cohort)) || changed;
-    }
-    const heightCenter = manifest.cohort === 'men' ? 0.53 : 0.47;
-    const heightScale = 1 + ((Number(values.height) || heightCenter) - heightCenter) * 0.28;
-    root.scale.set(1, heightScale, 1);
-    root.updateMatrixWorld(true);
-    return changed;
-  }
-
-  applyValues(initialValues, { force: true });
-  return {
-    manifest,
-    anchors,
-    variants,
-    applyValues,
-    get activeAnchor() { return activeAnchor; },
-  };
 }
 
 export function applyRendererCCandidate(preset, candidate) {

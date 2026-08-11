@@ -1,14 +1,21 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { RigidBody, CapsuleCollider, useRapier } from '@react-three/rapier';
 import { movementStep, applySlide } from '../movement/movementStep.js';
 import { useCharacterController, handlesAlive } from '../physics/useCharacterController.js';
 import { requestTravel } from '../world/travel.js';
 import { gameDebug } from '../debug.js';
+import { findReachable, setReach, useInstrument, getInteraction } from '../world/interaction.js';
 
 const MAX_DT = 1 / 30;
 
-export default function PlayerRig({ room, runtime, keyboard, look, spawn, spawnYaw }) {
+export default function PlayerRig({ room, runtime, keyboard, look, spawn, spawnYaw, forcePlaceholder = false }) {
+  // Only the items that offer something. Filtered once per room, so the
+  // per-frame scan is over a handful rather than every board in the place.
+  const reachable = useMemo(
+    () => room.furnitureBoxes.filter((item) => item.affordance),
+    [room],
+  );
   const bodyRef = useRef(null);
   const colliderRef = useRef(null);
   const meshRef = useRef(null);
@@ -22,19 +29,36 @@ export default function PlayerRig({ room, runtime, keyboard, look, spawn, spawnY
   });
   // Prevent an E held through a door from firing again on arrival.
   const interactLatch = useRef(true);
+  // So `__game.use('colour-wheel')` can open an instrument view without the
+  // walk-and-aim, which is the slow part of checking one.
+  useEffect(() => {
+    gameDebug.enterInstrument = useInstrument;
+    return () => {
+      gameDebug.enterInstrument = null;
+    };
+  }, []);
   const controllerRef = useCharacterController(runtime);
   const { world } = useRapier();
 
   const radius = runtime.values.capsuleRadius;
   const halfHeight = runtime.values.capsuleHalfHeight;
   const centerY = halfHeight + radius;
-  const showAvatar = runtime.values.showAvatarGlb;
+  const showAvatar = runtime.values.showAvatarGlb && !forcePlaceholder;
 
   useEffect(() => {
     look.set(spawnYaw, look.look.pitch);
   }, [look, spawnYaw]);
 
   useFrame((_, delta) => {
+    // Using an instrument takes the controls; the body stays put. Clear the
+    // prompt on the way in, or the "E use the…" line hangs over the console.
+    if (getInteraction().using) {
+      if (gameDebug.prompt) {
+        gameDebug.prompt = null;
+        setReach(null);
+      }
+      return;
+    }
     const body = bodyRef.current;
     const collider = colliderRef.current;
     const controller = controllerRef.current;
@@ -42,6 +66,10 @@ export default function PlayerRig({ room, runtime, keyboard, look, spawn, spawnY
 
     const dt = Math.min(delta, MAX_DT);
     const state = stateRef.current;
+    if (gameDebug.pendingYaw !== null) {
+      state.yaw = gameDebug.pendingYaw;
+      gameDebug.pendingYaw = null;
+    }
     if (gameDebug.pendingTeleport) {
       const [x, y, z] = gameDebug.pendingTeleport;
       gameDebug.pendingTeleport = null;
@@ -97,6 +125,9 @@ export default function PlayerRig({ room, runtime, keyboard, look, spawn, spawnY
     gameDebug.player.position[0] = next.x;
     gameDebug.player.position[1] = next.y;
     gameDebug.player.position[2] = next.z;
+    gameDebug.player.velocity[0] = state.velocity[0];
+    gameDebug.player.velocity[1] = state.velocity[1];
+    gameDebug.player.velocity[2] = state.velocity[2];
     gameDebug.player.grounded = state.grounded;
     gameDebug.player.yaw = state.yaw;
 
@@ -110,11 +141,24 @@ export default function PlayerRig({ room, runtime, keyboard, look, spawn, spawnY
         break;
       }
     }
-    gameDebug.prompt = active ? active.label : null;
+
+    // A door beats a prop: standing in a doorway with a chair beside it
+    // should still offer the door.
+    const item = active ? null : findReachable(reachable, gameDebug.player.position, state.yaw);
+    setReach(item ? { id: item.id, item, affordance: item.affordance } : null);
+    gameDebug.prompt = active
+      ? active.label
+      : item
+        ? `${item.affordance.verb} ${item.affordance.name ?? ''}`.trim()
+        : null;
+
     if (!keyboard.state.interact) interactLatch.current = false;
-    else if (!interactLatch.current && active) {
+    else if (!interactLatch.current && (active || item)) {
       interactLatch.current = true;
-      requestTravel(runtime, active);
+      if (active) requestTravel(runtime, active);
+      else if (item.affordance.kind === 'instrument') {
+        useInstrument({ id: item.id, item, instrument: item.affordance.instrument });
+      }
     }
   });
 

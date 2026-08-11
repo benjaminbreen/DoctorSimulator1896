@@ -1,0 +1,23 @@
+{
+  "sourceImage": "/var/folders/6k/yjq5djpn7d74hcj8srdz24m40000gn/T/codex-clipboard-30c843fc-83a3-4858-8ad6-9d5c87a1d012.png",
+  "detailInventory": {
+    "scanMethod": "component-zones plus user requirements",
+    "targetMinDetails": 12,
+    "details": [
+      {"id":"raised-neckline","kind":"structural","description":"Adjustable chest coverage above the existing deep V","scale":"meso","affects":"silhouette and modesty","mapsTo":{"type":"component.localFeatures","ref":"bodice.raisedNeckline"},"evidenceRef":"user-request:neckline","confidence":1.0},
+      {"id":"neckline-binding","kind":"trim","description":"Continuous accent binding following the neckline edge","scale":"micro","affects":"edge definition","mapsTo":{"type":"component.localFeatures","ref":"bodice.necklineBinding"},"evidenceRef":"user-request:trim","confidence":1.0},
+      {"id":"standing-collar","kind":"structural","description":"Short optional collar integrated with the raised neckline","scale":"meso","affects":"neck silhouette","mapsTo":{"type":"component.localFeatures","ref":"bodice.collar"},"evidenceRef":"user-request:neckline","confidence":0.9},
+      {"id":"left-cuff","kind":"structural","description":"Surface-bound cuff inheriting the left sleeve skin weights","scale":"meso","affects":"wrist silhouette","mapsTo":{"type":"component.localFeatures","ref":"sleeves.leftCuff"},"evidenceRef":"user-request:cuffs","confidence":1.0},
+      {"id":"right-cuff","kind":"structural","description":"Surface-bound cuff inheriting the right sleeve skin weights","scale":"meso","affects":"wrist silhouette","mapsTo":{"type":"component.localFeatures","ref":"sleeves.rightCuff"},"evidenceRef":"user-request:cuffs","confidence":1.0},
+      {"id":"waist-band","kind":"trim","description":"Continuous secondary-color waist band on the garment shell","scale":"meso","affects":"bodice/skirt transition","mapsTo":{"type":"material.localOverrides","ref":"secondary.waistBand"},"evidenceRef":"user-request:secondary-color","confidence":1.0},
+      {"id":"front-placket","kind":"trim","description":"Narrow accent placket centered on the bodice","scale":"meso","affects":"front hierarchy","mapsTo":{"type":"material.localOverrides","ref":"accent.frontPlacket"},"evidenceRef":"user-request:detailing","confidence":0.95},
+      {"id":"buttons","kind":"repetition","description":"Repeated buttons attached along the placket","scale":"micro","affects":"period detail and scale","mapsTo":{"type":"repetitionSystem","ref":"bodiceButtons"},"evidenceRef":"user-request:detailing","confidence":0.9},
+      {"id":"primary-zone","kind":"color","description":"Main bodice, sleeve, and skirt color","scale":"macro","affects":"garment palette","mapsTo":{"type":"material.localOverrides","ref":"primary.mainShell"},"evidenceRef":"user-request:primary-color","confidence":1.0},
+      {"id":"secondary-zone","kind":"color","description":"Neck insert, cuffs, and waist band color","scale":"meso","affects":"garment palette","mapsTo":{"type":"material.localOverrides","ref":"secondary.details"},"evidenceRef":"user-request:secondary-color","confidence":1.0},
+      {"id":"accent-zone","kind":"color","description":"Piping, binding, and buttons color","scale":"micro","affects":"garment palette","mapsTo":{"type":"material.localOverrides","ref":"accent.details"},"evidenceRef":"user-request:accent-color","confidence":1.0},
+      {"id":"fabric-weave","kind":"material","description":"Scale-correct weave and independent roughness/normal response","scale":"micro","affects":"fabric identity","mapsTo":{"type":"material.localOverrides","ref":"fabric.weave"},"evidenceRef":"user-request:fabric-textures","confidence":1.0},
+      {"id":"fabric-sheen","kind":"material","description":"Fabric-specific highlight width and strength","scale":"micro","affects":"silk and velvet recognition","mapsTo":{"type":"material.localOverrides","ref":"fabric.sheen"},"evidenceRef":"user-request:fabric-textures","confidence":1.0},
+      {"id":"seated-clearance","kind":"deformation","description":"All additions remain attached without floating or clipping in the seated pose","scale":"macro","affects":"action readiness","mapsTo":{"type":"component.localFeatures","ref":"garment.poseValidation"},"evidenceRef":"user-warning:floating-panels","confidence":1.0}
+    ]
+  }
+}

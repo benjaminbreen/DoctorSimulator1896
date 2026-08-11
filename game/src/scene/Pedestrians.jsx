@@ -1,36 +1,72 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame, useLoader } from '@react-three/fiber';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
+import { RigidBody, CapsuleCollider, CylinderCollider, useRapier } from '@react-three/rapier';
+import { handlesAlive } from '../physics/useCharacterController.js';
 import { terrainHeight } from '../world/terrain.js';
+import { reportAgent, removeAgent } from '../world/agents.js';
+import { gameDebug } from '../debug.js';
 
-// Background pedestrians: one rigged figure from the character lab, cloned
-// and tinted. Standers play the standing idle; walkers layer a procedural
-// leg swing over it and follow sidewalk routes. Every figure shares one
-// identity — a stand-in until the patient pipeline supplies a cast.
+// Background pedestrians: the bowler-hat man (pedestrian-b.glb) and the
+// working-class woman (pedestrian-c.glb), cloned half and half. Walkers
+// follow sidewalk routes on real walk cycles; standers loiter, a couple of
+// men with briefcases; in the park a few sit or stretch out on the grass.
+// Clips retarget across the two figures — same Mixamo skeleton.
 const WALK_TOP = 1.29;
-const WALK_SPEED = 1.1;
+const WALK_SPEED = 1.35;
+// How close a figure has to be before it is worth casting a shadow.
+const SHADOW_DISTANCE = 18;
+// Animation throttle: skinning pays per mixer update, so near figures
+// animate every frame, mid-distance every third, and past freeze they
+// hold pose until approached again.
+const ANIM_NEAR = 25;
+const ANIM_FREEZE = 60;
+// The Mixamo rigs stand about 1.08 m; scale to street height.
+const NPC_SCALE = 1.62;
+const POSE_PADDING = 1.7;
 
-// [x, z, yaw, onTerrain]
+// Animation clips ship one per file (the Darwin pipeline: every FBX
+// converts alone, so character and clips share one convention). The ground
+// and seat clips are shared across both figures; walks and idles are per
+// figure so the gaits differ.
+const MAN_CLIP_FILES = [
+  '/models/ped-anim-walk.glb',
+  '/models/ped-anim-briefcase.glb',
+  '/models/ped-anim-sit-ground.glb',
+  '/models/ped-anim-lie.glb',
+  '/models/ped-anim-sit.glb',
+];
+const WOMAN_CLIP_FILES = ['/models/pedc-anim-walk.glb'];
+const SHARED_CLIPS = ['Sit Ground', 'Lie Down', 'Sit'];
+
+// Bumping into a figure: kinematic capsules make them solid, and standers
+// and walkers play a startle clip when the player presses in.
+const BUMP_DISTANCE = 0.85;
+const BUMP_COOLDOWN = 4;
+
+// A sparse cast, half women. [x, z, yaw, onTerrain, clip, who]
+// 'm' bowler-hat man, 'w' working-class woman, 'd' summer-dress woman.
 const STANDERS = [
-  [108.4, 20, -1.6, false],
-  [-8, 88.4, 3.0, false],
-  [-35, 141.9, 0.8, false],
-  [86, 74, -0.6, true],
-  [90, 66, 2.2, true],
-  [64, 50, -1.4, true],
+  [108.4, 20, -1.6, false, 'Briefcase Idle', 'm'],
+  [-8, 88.4, 3.0, false, 'Idle', 'w'],
+  [78, 64, -0.6, true, 'Idle', 'd'],
+];
+
+// Grass idlers, park only, men only, and only on actual lawn: one sitting
+// on the ground, one stretched out. The woman stays on her feet.
+const POSERS = [
+  [75, 57, -0.9, 'Sit Ground', 'm'],
+  [70, 56, 0.6, 'Lie Down', 'm'],
 ];
 
 // Routes are ping-ponged; onTerrain routes sample the park terrain.
 const ROUTES = [
-  { points: [[104, 60], [104.5, 20], [105, -20]], onTerrain: false },
-  { points: [[40, 97.6], [0, 97.6], [-44, 97.6]], onTerrain: false },
-  { points: [[84, 72], [60, 71], [34, 76], [8, 80]], onTerrain: true },
-  { points: [[-24, 80], [-48, 77], [-66, 72]], onTerrain: true },
-  { points: [[80, 52], [70, 50], [58, 52]], onTerrain: true },
-  { points: [[-38, 130], [-39, 108], [-40, 92]], onTerrain: false },
+  { points: [[104, 60], [104.5, 20], [105, -20]], onTerrain: false, who: 'd' },
+  { points: [[40, 97.6], [0, 97.6], [-44, 97.6]], onTerrain: false, who: 'm' },
+  { points: [[84, 72], [60, 71], [34, 76], [8, 80]], onTerrain: true, who: 'w' },
 ];
 
 function hash01(seed) {
@@ -38,34 +74,35 @@ function hash01(seed) {
   return value - Math.floor(value);
 }
 
-// The export carries both the full body and a low-poly proxy shell; both
-// rendered at once shows the inner shell through the face. Keep the full
-// body, drop the proxy, and force the skin opaque.
-function fixFigureMaterials(figure, index) {
+// Mixamo animations carry no props; the briefcase is ours, hung from the
+// carry hand. Dimensions are metres — the bone's world scale is divided out.
+function attachBriefcase(figure) {
+  let hand = null;
   figure.traverse((node) => {
-    if (!node.isMesh && !node.isSkinnedMesh) return;
-    if (node.name === 'low-poly' || /low-poly/i.test(node.material?.name ?? '')) {
-      node.visible = false;
-      return;
-    }
-    node.castShadow = true;
-    node.frustumCulled = false;
-    const material = node.material;
-    if (!material) return;
-    if (/eyelash|eyebrow/i.test(material.name)) {
-      material.alphaTest = 0.5;
-      material.transparent = false;
-      material.depthWrite = true;
-    } else {
-      material.transparent = false;
-      material.depthWrite = true;
-    }
-    if (/garment|suit/i.test(material.name)) {
-      // Darken only, tiny hue drift: 1896 suits live in black-brown-grey.
-      node.material = material.clone();
-      node.material.color.offsetHSL((hash01(index * 7.1) - 0.5) * 0.02, -0.15, -0.05 - hash01(index * 5.3) * 0.2);
-    }
+    if (!hand && node.isBone && /RightHand$/.test(node.name)) hand = node;
   });
+  if (!hand) return;
+  const leather = new THREE.MeshStandardMaterial({ color: '#3a2c1e', roughness: 0.7 });
+  const brass = new THREE.MeshStandardMaterial({ color: '#8a6f33', roughness: 0.4, metalness: 0.7 });
+  const case_ = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.3, 0.11), leather);
+  body.castShadow = true;
+  case_.add(body);
+  const handle = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.012, 6, 12, Math.PI), leather);
+  handle.position.y = 0.16;
+  case_.add(handle);
+  const clasp = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.03, 0.02), brass);
+  clasp.position.set(0, 0.13, 0.06);
+  case_.add(clasp);
+  hand.add(case_);
+  hand.updateWorldMatrix(true, false);
+  const worldScale = new THREE.Vector3();
+  hand.getWorldScale(worldScale);
+  const inverse = 1 / Math.max(worldScale.x, 1e-6);
+  // Hang below the grip, handle up. The bone's world scale already includes
+  // the figure scale, so dividing it out leaves the case in plain metres.
+  case_.scale.setScalar(inverse);
+  case_.position.set(0, 0.09 * inverse, 0.02 * inverse);
 }
 
 function routePoint(points, dist) {
@@ -94,69 +131,188 @@ function routeLength(points) {
 }
 
 export default function Pedestrians() {
-  // The character-lab exports are meshopt-compressed.
-  const gltf = useLoader(GLTFLoader, '/models/pedestrian-a.glb', (loader) =>
-    loader.setMeshoptDecoder(MeshoptDecoder),
-  );
+  // All pedestrian GLBs are meshopt-compressed.
+  const withMeshopt = (loader) => loader.setMeshoptDecoder(MeshoptDecoder);
+  const manGltf = useLoader(GLTFLoader, '/models/pedestrian-b.glb', withMeshopt);
+  const womanGltf = useLoader(GLTFLoader, '/models/pedestrian-c.glb', withMeshopt);
+  const dressGltf = useLoader(GLTFLoader, '/models/pedestrian-d.glb', withMeshopt);
+  const manClipGltfs = useLoader(GLTFLoader, MAN_CLIP_FILES, withMeshopt);
+  const womanClipGltfs = useLoader(GLTFLoader, WOMAN_CLIP_FILES, withMeshopt);
+  const reactGltf = useLoader(GLTFLoader, '/models/ped-anim-react.glb', withMeshopt);
+  const { world } = useRapier();
 
-  const { group, standers, walkers } = useMemo(() => {
-    const source = gltf.scene;
-    const bounds = new THREE.Box3().setFromObject(source);
-    const sourceHeight = Math.max(0.01, bounds.max.y - bounds.min.y);
-    // Both lab clips are seated clinic idles. Dropping the hip and leg
-    // tracks leaves the standing bind pose below the waist while the upper
-    // body keeps the living idle motion.
-    const seated = gltf.animations.find((clip) => clip.name === 'RestlessIdle') ?? gltf.animations[0];
-    const idle = new THREE.AnimationClip(
-      'StandingIdle',
-      seated.duration,
-      seated.tracks.filter((track) => !/hips|pelvis|thigh|calf|foot|ball|toe/i.test(track.name)),
-    );
+  const { group, walkers, figures } = useMemo(() => {
+    const reactClip = reactGltf.animations[0];
+    const manClips = [...manGltf.animations, ...manClipGltfs.flatMap((entry) => entry.animations), reactClip];
+    const sharedClips = manClips.filter((clip) => SHARED_CLIPS.includes(clip.name));
+    const womanWalk = womanClipGltfs.flatMap((entry) => entry.animations);
+    const cast = {
+      m: { source: manGltf.scene, clips: manClips },
+      w: {
+        source: womanGltf.scene,
+        clips: [...womanGltf.animations, ...womanWalk, ...sharedClips, reactClip],
+      },
+      // The summer-dress woman walks and stands only; she shares the
+      // working-class woman's gait.
+      d: { source: dressGltf.scene, clips: [...dressGltf.animations, ...womanWalk, reactClip] },
+    };
+    const findClip = (who, name) =>
+      cast[who].clips.find((clip) => clip.name === name) ?? cast[who].clips[0];
 
     const root = new THREE.Group();
-    const standing = [];
     const walking = [];
+    // Every clone shares the source geometry, so the padded bind-pose sphere
+    // is computed once per part rather than once per figure.
+    const spheres = new Map();
+    const all = [];
 
-    const spawn = (index) => {
-      const figure = cloneSkeleton(source);
-      const scale = (1.75 / sourceHeight) * (0.93 + hash01(index * 3.7) * 0.14);
-      figure.scale.setScalar(scale);
-      fixFigureMaterials(figure, index);
+    const spawn = (index, clipName, who) => {
+      const figure = cloneSkeleton(cast[who].source);
+      figure.scale.setScalar(NPC_SCALE * (0.95 + hash01(index * 3.7) * 0.1));
+      const meshes = [];
+      figure.traverse((node) => {
+        if (!node.isMesh && !node.isSkinnedMesh) return;
+        node.castShadow = true;
+        node.receiveShadow = true;
+        meshes.push(node);
+        if (node.isSkinnedMesh) {
+          let sphere = spheres.get(node.geometry.uuid);
+          if (!sphere) {
+            node.computeBoundingSphere();
+            sphere = node.boundingSphere.clone();
+            sphere.radius *= POSE_PADDING;
+            spheres.set(node.geometry.uuid, sphere);
+          }
+          node.boundingSphere = sphere;
+        }
+        // One suit reads as a uniform; drift the colour a little per figure.
+        // Kept small and symmetric: the figure has one material, so any
+        // lightness drop darkens the face along with the suit.
+        if (node.material) {
+          node.material = node.material.clone();
+          node.material.color.offsetHSL(
+            (hash01(index * 7.1) - 0.5) * 0.02,
+            -0.03,
+            (hash01(index * 5.3) - 0.5) * 0.06,
+          );
+        }
+      });
+      // A wrapper carries position/yaw so placement stays in world terms.
+      const wrapper = new THREE.Group();
+      wrapper.add(figure);
+      root.add(wrapper);
+      if (/Briefcase/.test(clipName)) attachBriefcase(figure);
+      const clip = findClip(who, clipName);
       const mixer = new THREE.AnimationMixer(figure);
-      mixer.clipAction(idle).play();
-      mixer.setTime(hash01(index * 11.3) * idle.duration);
-      root.add(figure);
-      // The rest pose's lowest point sits below the rig origin; lift by it
-      // so soles meet the pavement instead of sinking through.
-      return { figure, mixer, speed: 0.9 + hash01(index * 13.7) * 0.2, lift: -bounds.min.y * scale };
+      const base = mixer.clipAction(clip);
+      base.play();
+      mixer.setTime(hash01(index * 11.3) * clip.duration);
+      const react = mixer.clipAction(reactClip);
+      react.setLoop(THREE.LoopOnce, 1);
+      react.clampWhenFinished = true;
+      const entry = {
+        wrapper,
+        meshes,
+        mixer,
+        base,
+        react,
+        reacting: false,
+        reactEnd: 0,
+        cooldownUntil: 0,
+        refs: { body: null, collider: null },
+        poser: false,
+        speed: 0.92 + hash01(index * 13.7) * 0.16,
+        pending: 0,
+      };
+      all.push(entry);
+      return entry;
     };
 
-    STANDERS.forEach(([x, z, yaw, onTerrain], index) => {
-      const entry = spawn(index);
-      entry.figure.position.set(x, (onTerrain ? terrainHeight(x, z) : WALK_TOP) + entry.lift, z);
-      entry.figure.rotation.y = yaw;
-      standing.push(entry);
+    STANDERS.forEach(([x, z, yaw, onTerrain, clipName, who], index) => {
+      const entry = spawn(index, clipName, who);
+      entry.wrapper.position.set(x, onTerrain ? terrainHeight(x, z) : WALK_TOP, z);
+      entry.wrapper.rotation.y = yaw;
+    });
+
+    POSERS.forEach(([x, z, yaw, clipName, who], index) => {
+      const entry = spawn(index + 20, clipName, who);
+      entry.wrapper.position.set(x, terrainHeight(x, z), z);
+      entry.wrapper.rotation.y = yaw;
+      // Ground figures stay in repose when bumped; only their collider acts.
+      entry.poser = true;
     });
 
     ROUTES.forEach((route, index) => {
-      const entry = spawn(index + 40);
-      walking.push({
-        ...entry,
+      const entry = spawn(index + 40, 'Walk', route.who);
+      // Same object in both lists, so the bump state is shared.
+      walking.push(Object.assign(entry, {
         route,
         length: routeLength(route.points),
         dist: hash01(index * 5.9) * routeLength(route.points),
         dir: 1,
-      });
+      }));
     });
 
-    return { group: root, standers: standing, walkers: walking };
-  }, [gltf]);
+    return { group: root, walkers: walking, figures: all };
+  }, [manGltf, womanGltf, dressGltf, manClipGltfs, womanClipGltfs, reactGltf]);
 
-  useFrame((_, delta) => {
-    for (const { mixer, speed } of standers) mixer.update(delta * speed);
+  const frameCount = useRef(0);
+  useFrame((state, delta) => {
+    // Casting a shadow means a second full pass over the figure. Past a few
+    // metres the sun's shadow of a stranger is a smudge; only the ones near
+    // the camera pay for it.
+    const eye = state.camera.position;
+    frameCount.current += 1;
+    for (const [index, entry] of figures.entries()) {
+      const { x, z } = entry.wrapper.position;
+      const dist2 = (x - eye.x) ** 2 + (z - eye.z) ** 2;
+      const near = dist2 < SHADOW_DISTANCE * SHADOW_DISTANCE;
+      for (const mesh of entry.meshes) mesh.castShadow = near;
+      // Accumulate time so a throttled figure moves at true speed, just in
+      // coarser steps. The +index staggers mid-tier updates across frames.
+      entry.pending = Math.min(entry.pending + delta * entry.speed, 1);
+      const animate =
+        dist2 < ANIM_NEAR * ANIM_NEAR ||
+        (dist2 < ANIM_FREEZE * ANIM_FREEZE && (frameCount.current + index) % 3 === 0);
+      if (animate) {
+        entry.mixer.update(entry.pending);
+        entry.pending = 0;
+      }
+      // The carriages steer around whatever is reported here.
+      reportAgent(`pedestrian-${index}`, x, z);
+
+      // The collider tracks the figure; the player's controller resolves
+      // against it, so nobody can be walked through.
+      const { body, collider } = entry.refs;
+      if (body && handlesAlive(world, body, collider)) {
+        const p = entry.wrapper.position;
+        body.setNextKinematicTranslation({ x: p.x, y: p.y, z: p.z });
+      }
+
+      // A close player startles standers and walkers, once per approach.
+      if (!entry.poser) {
+        const player = gameDebug.player.position;
+        const t = state.clock.elapsedTime;
+        const bumped =
+          (x - player[0]) ** 2 + (z - player[2]) ** 2 < BUMP_DISTANCE * BUMP_DISTANCE;
+        if (!entry.reacting && bumped && t > entry.cooldownUntil) {
+          entry.reacting = true;
+          entry.reactEnd = t + entry.react.getClip().duration - 0.25;
+          entry.base.fadeOut(0.15);
+          entry.react.reset().fadeIn(0.12).play();
+        } else if (entry.reacting && t > entry.reactEnd) {
+          entry.reacting = false;
+          entry.cooldownUntil = t + BUMP_COOLDOWN;
+          entry.react.fadeOut(0.3);
+          entry.base.reset().fadeIn(0.3).play();
+        }
+      }
+    }
+
     for (const walker of walkers) {
-      walker.mixer.update(delta * walker.speed);
-      walker.dist += WALK_SPEED * delta * walker.dir;
+      // A startled walker stands their ground until the moment passes.
+      if (walker.reacting) continue;
+      walker.dist += WALK_SPEED * delta * walker.dir * walker.speed;
       if (walker.dist > walker.length) {
         walker.dist = walker.length;
         walker.dir = -1;
@@ -164,25 +320,49 @@ export default function Pedestrians() {
         walker.dist = 0;
         walker.dir = 1;
       }
-      // No leg animation: the rig's bone axes defeat a procedural gait, so
-      // movers glide in the standing pose. Rig a real walk cycle later.
       const [x, z, dx, dz] = routePoint(walker.route.points, walker.dist);
       const y = walker.route.onTerrain ? terrainHeight(x, z) : WALK_TOP;
-      walker.figure.position.set(x, y + walker.lift, z);
-      walker.figure.rotation.y = Math.atan2(dx * walker.dir, dz * walker.dir);
+      walker.wrapper.position.set(x, y, z);
+      walker.wrapper.rotation.y = Math.atan2(dx * walker.dir, dz * walker.dir);
     }
   });
 
   useEffect(
     () => () => {
-      group.traverse((node) => {
-        if ((node.isMesh || node.isSkinnedMesh) && /garment|suit/i.test(node.material?.name ?? '')) {
-          node.material.dispose();
-        }
-      });
+      figures.forEach((_, index) => removeAgent(`pedestrian-${index}`));
+      for (const entry of figures) {
+        for (const mesh of entry.meshes) mesh.material?.dispose?.();
+      }
     },
-    [group],
+    [figures],
   );
 
-  return <primitive object={group} />;
+  return (
+    <>
+      <primitive object={group} />
+      {figures.map((entry, index) => (
+        <RigidBody
+          key={index}
+          ref={(node) => (entry.refs.body = node)}
+          type="kinematicPosition"
+          colliders={false}
+          position={[0, -30 - index * 3, 0]}
+        >
+          {entry.poser ? (
+            <CylinderCollider
+              ref={(node) => (entry.refs.collider = node)}
+              args={[0.25, 0.45]}
+              position={[0, 0.3, 0]}
+            />
+          ) : (
+            <CapsuleCollider
+              ref={(node) => (entry.refs.collider = node)}
+              args={[0.55, 0.28]}
+              position={[0, 0.88, 0]}
+            />
+          )}
+        </RigidBody>
+      ))}
+    </>
+  );
 }

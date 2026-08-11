@@ -1,21 +1,15 @@
-// Curated slot catalog for the CGTrader Victorian pack. The interior
-// generator asks for a semantic slot ("seating", "hearth") at a wealth tier
-// and gets a model name; VictorianProps renders it.
+// Curated slot catalog for interiors. The generator asks for a semantic slot
+// ("seating", "hearth") at a wealth tier and gets a model name; PropModels
+// renders it. Most pieces come from the CGTrader Victorian pack, a few from
+// the converted props pack — modelPacks resolves which.
 //
 // Every entry below was checked upright in a rendered contact sheet — the
 // source pack mixes authoring orientations, so do not add a piece here
 // without looking at it first (scripts/interiors/convert_victorian.py).
 
-import manifest from '../../public/models/victorian/manifest.json' with { type: 'json' };
+export { hasModel, modelSize } from './modelPacks.js';
 
-export const MODEL_URL = (name) => `/models/victorian/${name}.glb`;
-
-// Real measured footprints, so colliders and spacing use true sizes. The
-// converter recentres every piece horizontally with its base at y=0, so a
-// placement position is simply the model's floor-contact point.
-export function modelSize(name) {
-  return manifest[name]?.size ?? [1, 1, 1];
-}
+import { hasModel, modelSize } from './modelPacks.js';
 
 // Where the burners actually sit inside each fixture, as fractions of the
 // model's own size. A twin-armed sconce has two flames out at its shades,
@@ -51,8 +45,70 @@ export function fixtureBurners(name) {
   return { flames: scalePoints(name, spec.flames), lights: scalePoints(name, spec.lights) };
 }
 
-export function hasModel(name) {
-  return Boolean(manifest[name]);
+
+// Pieces light enough to shove, with a rough mass in kg. These get their own
+// dynamic body; everything absent is anchored mass, because a wardrobe that
+// drifts when you brush past it reads as broken rather than as physics.
+// Lamps and fixtures stay anchored whatever they weigh: their flames and
+// lights are separate props placed at build time and cannot follow them.
+const LOOSE_MASS = {
+  stool: 4,
+  chair_small_01: 7,
+  ChairSmall2: 7,
+  chair_big_01: 13,
+  Armchair02: 24,
+  SmallTable02: 9,
+  Table_02: 20,
+};
+
+export function looseMass(name) {
+  return LOOSE_MASS[name] ?? null;
+}
+
+// Slab across the footprint on four legs inside the corners. `top` is where
+// the slab starts as a fraction of the model's height.
+function legged(top, leg = 0.12) {
+  const offset = 0.5 - leg;
+  const boxes = [{ c: [0, (top + 1) / 2, 0], s: [1, 1 - top, 1] }];
+  for (const x of [-offset, offset]) {
+    for (const z of [-offset, offset]) boxes.push({ c: [x, top / 2, z], s: [leg, top, leg] });
+  }
+  return boxes;
+}
+
+// Seat and back over the full footprint, a narrower block below for the legs.
+// `seat` is the seat height as a fraction of the model's height, which for a
+// chair measured to the top of its back is well under half.
+function seated(seat) {
+  return [
+    { c: [0, (seat + 1) / 2, 0], s: [1, 1 - seat, 1] },
+    { c: [0, seat / 2, 0], s: [0.62, seat, 0.62] },
+  ];
+}
+
+// Compound colliders, as fractions of the model's own size with y measured up
+// from its base. Only for pieces a single box gets badly wrong: you cannot
+// stand at a table whose collider is solid to the floor.
+const COMPOUND = {
+  Table_01: legged(0.82),
+  Table_02: legged(0.8),
+  SmallTable02: legged(0.78),
+  chair_small_01: seated(0.31),
+  ChairSmall2: seated(0.35),
+  chair_big_01: seated(0.33),
+  Armchair02: seated(0.3),
+};
+
+// Boxes in metres relative to the model's floor contact point. Null when one
+// box from the footprint will do.
+export function modelColliders(name, scale = 1) {
+  const spec = COMPOUND[name];
+  if (!spec) return null;
+  const [sx, sy, sz] = modelSize(name);
+  return spec.map((box) => ({
+    center: [box.c[0] * sx * scale, box.c[1] * sy * scale, box.c[2] * sz * scale],
+    half: [(box.s[0] * sx * scale) / 2, (box.s[1] * sy * scale) / 2, (box.s[2] * sz * scale) / 2],
+  }));
 }
 
 // Slots list candidates per wealth tier, richest pieces for grand rooms.
@@ -82,10 +138,12 @@ export const SLOTS = {
     middling: ['Fireplace'],
     grand: ['Fireplace'],
   },
+  // The carpet is listed twice so most rooms get it: it is a room-sized
+  // Persian at 4.2 x 2.7m, where Rug01 is a long narrow runner.
   rug: {
     humble: [],
-    middling: ['Rug01'],
-    grand: ['Rug01'],
+    middling: ['game_ready_carpet', 'Rug01', 'game_ready_carpet'],
+    grand: ['game_ready_carpet', 'Rug01', 'game_ready_carpet'],
   },
   storage: {
     humble: ['Bedside_Cabinet'],
@@ -162,6 +220,13 @@ export const SLOTS = {
     middling: ['Sewing Machine'],
     grand: [],
   },
+  // A floor globe on its stand: a study piece, so only the grand rooms get
+  // one, and not all of them (see the roll in the generator).
+  globe: {
+    humble: [],
+    middling: [],
+    grand: ['explorers_globe'],
+  },
 };
 
 // Deterministic pick from a slot; returns null when the tier leaves it empty.
@@ -174,18 +239,20 @@ export function pickModel(slot, wealth, roll) {
 // Wall and floor surfaces from the pack's seamless set. Each tier offers
 // several, picked per building, so a row of parlors is not one wallpaper.
 // Tints multiply the texture, which is what actually varies the papers.
+// Names are paths under public/textures/, so a surface can come from any
+// converted set, not just the purchased pack.
 const SURFACE_SETS = {
   humble: {
-    walls: ['Plaster01_Damaged', 'Plaster01', 'Plaster02'],
-    floors: ['WoodenFloor_02', 'WoodenFloor_01'],
+    walls: ['victorian/Plaster01_Damaged', 'victorian/Plaster01', 'victorian/Plaster02'],
+    floors: ['victorian/WoodenFloor_02', 'victorian/WoodenFloor_01'],
   },
   middling: {
-    walls: ['Plaster02', 'Plaster03', 'Plaster01'],
-    floors: ['WoodenFloor_01', 'WoodenFloor_02'],
+    walls: ['victorian/Plaster02', 'props/Wallpaper_Vintage', 'victorian/Plaster01'],
+    floors: ['victorian/WoodenFloor_01', 'victorian/WoodenFloor_02'],
   },
   grand: {
-    walls: ['Plaster03', 'Plaster02', 'Wooden_WallPanel'],
-    floors: ['WoodenFloor_01', 'WoodenFloor_02'],
+    walls: ['victorian/Plaster03', 'props/Wallpaper_Vintage', 'victorian/Wooden_WallPanel'],
+    floors: ['victorian/WoodenFloor_01', 'victorian/WoodenFloor_02'],
   },
 };
 
@@ -198,4 +265,4 @@ export function pickSurfaces(wealth, wallRoll, floorRoll) {
 }
 
 export const surfaceUrl = (name, kind = 'AlbedoTransparency') =>
-  `/textures/victorian/${name}_${kind}.jpg`;
+  `/textures/${name}_${kind}.jpg`;

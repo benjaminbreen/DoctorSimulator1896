@@ -2,3 +2,18 @@ CC0 assets, no attribution required.
 
 ambientCG.com: Grass004, Ground037, Rock030, Bark012, Bricks090, PavingStones070 (1K JPG)
 Poly Haven (polyhaven.com): kloofendal_48d_partly_cloudy_puresky 1k HDRI (sky.hdr)
+Poly Haven: "Cobblestone Pavement" by Charlotte Baglioni, CC0
+  polyhaven.com/a/cobblestone_pavement (street-setts_*; 2K source)
+Poly Haven: "Stone Pavers" by Amal Kumar, CC0
+  polyhaven.com/a/stone_pavers (sidewalk-flags_*; 2K source)
+
+OpenAI ImageGen, generated for this project on August 11, 2026
+  textures/street/carriage-setts_*
+  textures/street/intersection-setts_*
+  textures/street/sidewalk-flags_*
+  textures/street/gutter-stones_*
+  Source swatches and prompt summary: assets/source/street-materials/
+
+slate_col.jpg / slate_nrm.jpg — "Roof Slates 02", Poly Haven (polyhaven.com/a/roof_slates_02), CC0.
+planks_col.jpg / planks_nrm.jpg — "Old Planks 02", Poly Haven (polyhaven.com/a/old_planks_02), CC0.
+shingle_col.jpg / shingle_nrm.jpg — "Wood Siding 010", ambientCG (ambientcg.com), CC0.

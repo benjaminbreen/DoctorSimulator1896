@@ -1,0 +1,2320 @@
+{
+  "targetName": "Laboratory Bench",
+  "targetId": "laboratory-bench",
+  "schemaVersion": "2.1",
+  "terminologyProfile": {
+    "domain": "real-time procedural Three.js asset",
+    "geometryTerms": [
+      "silhouette",
+      "topology",
+      "primitive",
+      "bevel",
+      "chamfer",
+      "taper",
+      "bend",
+      "boolean cut",
+      "edge loop",
+      "surface normal",
+      "displacement"
+    ],
+    "materialTerms": [
+      "albedo",
+      "baseColor",
+      "roughness",
+      "metalness",
+      "normal map",
+      "bump map",
+      "ambient occlusion",
+      "cavity dirt",
+      "edge wear",
+      "clearcoat"
+    ],
+    "lightingTerms": [
+      "key light",
+      "fill light",
+      "rim light",
+      "HDRI/environment reflection",
+      "contact shadow"
+    ],
+    "descriptionRule": "Use measurable 3D graphics terms. Avoid vague words unless they are paired with concrete geometry/material/shader parameters."
+  },
+  "sourceImage": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/laboratory-bench/reference-isolated.png",
+  "referenceCamera": {
+    "solved": false,
+    "fovDegrees": 40.0,
+    "aspect": 1.0,
+    "orientation": {
+      "yaw": 0.0,
+      "pitch": 0.0,
+      "roll": 0.0
+    },
+    "positionHint": [
+      0.0,
+      0.0,
+      3.0
+    ],
+    "note": "For likeness work, solve the reference camera (forge/stage1_intake/solve_camera_pose.py) so the review render aligns with the photo and the reference can be projected. Confirm by overlay review."
+  },
+  "suitability": "conditional",
+  "scores": {
+    "object_isolation": 0,
+    "silhouette_readability": 0,
+    "depth_inference": 0,
+    "primitive_decomposition": 0,
+    "material_procedurality": 0,
+    "occlusion_risk": 0,
+    "interaction_fit": 0
+  },
+  "preSpecAssessment": {
+    "objectClass": {
+      "primaryType": "laboratory work bench",
+      "primaryDomain": "object",
+      "formLanguage": [
+        "hard-surface",
+        "geometric",
+        "furniture"
+      ],
+      "structureKind": [
+        "compound object",
+        "assembled solid",
+        "repeated modules"
+      ],
+      "motionPotential": [
+        "static prop",
+        "detachable",
+        "destructible"
+      ],
+      "materialFamilies": [
+        "wood",
+        "iron fasteners"
+      ],
+      "notes": "Observed as a cuboid timber assembly. Surface finish, joinery, hidden rear structure, and fasteners are inference because the source is a flat-shaded workbench screenshot."
+    },
+    "complexity": {
+      "tier": "moderate",
+      "scores": {
+        "silhouetteComplexity": 1,
+        "componentCount": 2,
+        "hierarchyDepth": 1,
+        "repetitionDensity": 1,
+        "materialLayerCount": 2,
+        "localDetailDensity": 1,
+        "occlusionRisk": 2,
+        "actionReadinessNeed": 2
+      },
+      "estimatedCounts": {
+        "macroComponents": 3,
+        "mesoComponents": 5,
+        "microFeatureGroups": 6,
+        "materialLayers": 4,
+        "repetitionSystems": 3
+      },
+      "reasoning": [
+        "The outer form is simple, but the editable construction, four-leg repetition, shelf support, independent PBR channels, local wear, named parts, and collider/destruction metadata require a moderate contract.",
+        "The 2.4 by 0.9 by 0.72 metre dimensions are explicit source evidence; hidden joinery and all authentic material detail remain provisional."
+      ]
+    },
+    "specDepthDecision": {
+      "requiredDepth": "moderate",
+      "minimumComponentLevels": [
+        "macro",
+        "meso"
+      ],
+      "needsRepetitionSystems": true,
+      "needsMaterialLocalOverrides": true,
+      "needsMultipleReviewViews": true,
+      "needsActionReadyHierarchy": true,
+      "rationale": "Top, frame, legs, shelf, and relief need separate named parts. Repeated legs, fasteners, and plank seams need deterministic distribution rules."
+    },
+    "unknownsToResolveBeforeImplementation": [],
+    "detailInventory": {
+      "scanMethod": "component-zones",
+      "targetMinDetails": 6,
+      "note": "Enumerate every identity-defining small detail before authoring the spec. Each detail must map to a component.localFeatures entry or material.localOverrides entry, never prose only. Use forge/stage1_intake/build_detail_inventory.py to scan zones.",
+      "details": [
+        {
+          "id": "top-edge-highlight",
+          "kind": "bevel",
+          "description": "Real worktop edge chamfer for the observed narrow highlight.",
+          "region": {
+            "x": 0.1,
+            "y": 0.17,
+            "width": 0.8,
+            "height": 0.22,
+            "units": "normalized"
+          },
+          "scale": "0.006-0.018 m",
+          "affects": "worktop silhouette",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "worktop/edge-bevel"
+          },
+          "evidenceRef": "detail-inventory/zone-r0c1.png",
+          "confidence": 0.82,
+          "realization": "unreported"
+        },
+        {
+          "id": "worktop-apron-seam",
+          "kind": "seam",
+          "description": "Distinct front apron attached beneath the worktop.",
+          "region": {
+            "x": 0.16,
+            "y": 0.3,
+            "width": 0.7,
+            "height": 0.12,
+            "units": "normalized"
+          },
+          "scale": "2-5 mm",
+          "affects": "top/frame separation",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "front-apron/top-seam"
+          },
+          "evidenceRef": "detail-inventory/zone-r1c1.png",
+          "confidence": 0.76,
+          "realization": "unreported"
+        },
+        {
+          "id": "leg-apron-contact-left",
+          "kind": "seam",
+          "description": "Left legs overlap the apron and underside.",
+          "region": {
+            "x": 0.12,
+            "y": 0.3,
+            "width": 0.25,
+            "height": 0.48,
+            "units": "normalized"
+          },
+          "scale": "10-20 mm overlap",
+          "affects": "leg attachment",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "leg-system/apron-overlap"
+          },
+          "evidenceRef": "detail-inventory/zone-r1c0.png",
+          "confidence": 0.9,
+          "realization": "unreported"
+        },
+        {
+          "id": "leg-apron-contact-right",
+          "kind": "seam",
+          "description": "Right legs overlap the apron and underside.",
+          "region": {
+            "x": 0.68,
+            "y": 0.3,
+            "width": 0.23,
+            "height": 0.55,
+            "units": "normalized"
+          },
+          "scale": "10-20 mm overlap",
+          "affects": "leg attachment",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "leg-system/apron-overlap"
+          },
+          "evidenceRef": "detail-inventory/zone-r1c2.png",
+          "confidence": 0.9,
+          "realization": "unreported"
+        },
+        {
+          "id": "shelf-front-edge",
+          "kind": "bevel",
+          "description": "Lower shelf front edge carries a narrow real chamfer.",
+          "region": {
+            "x": 0.15,
+            "y": 0.57,
+            "width": 0.72,
+            "height": 0.22,
+            "units": "normalized"
+          },
+          "scale": "0.004-0.012 m",
+          "affects": "shelf silhouette",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "lower-shelf/edge-bevel"
+          },
+          "evidenceRef": "detail-inventory/zone-r2c1.png",
+          "confidence": 0.79,
+          "realization": "unreported"
+        },
+        {
+          "id": "shelf-leg-contact",
+          "kind": "seam",
+          "description": "Shelf overlaps the inner leg rectangle at both ends.",
+          "region": {
+            "x": 0.12,
+            "y": 0.56,
+            "width": 0.76,
+            "height": 0.27,
+            "units": "normalized"
+          },
+          "scale": "8-15 mm overlap",
+          "affects": "shelf attachment",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "lower-shelf/leg-overlap"
+          },
+          "evidenceRef": "detail-inventory/zone-r2c2.png",
+          "confidence": 0.86,
+          "realization": "unreported"
+        },
+        {
+          "id": "worktop-overhang",
+          "kind": "contour",
+          "description": "Worktop overhangs the frame on every visible side.",
+          "region": {
+            "x": 0.09,
+            "y": 0.18,
+            "width": 0.82,
+            "height": 0.24,
+            "units": "normalized"
+          },
+          "scale": "60-100 mm",
+          "affects": "overall silhouette",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "worktop/perimeter-overhang"
+          },
+          "evidenceRef": "detail-inventory/zone-r0c2.png",
+          "confidence": 0.88,
+          "realization": "unreported"
+        },
+        {
+          "id": "flat-placeholder-surface",
+          "kind": "stain",
+          "description": "Generated timber grain and wear are provisional because the source material is flat.",
+          "region": {
+            "x": 0.1,
+            "y": 0.17,
+            "width": 0.8,
+            "height": 0.67,
+            "units": "normalized"
+          },
+          "scale": "macro/meso/micro bands",
+          "affects": "inferred timber material",
+          "mapsTo": {
+            "type": "material.localOverrides",
+            "ref": "pale-softwood/provisional-wear"
+          },
+          "evidenceRef": "detail-inventory/zone-r1c1.png",
+          "confidence": 0.35,
+          "realization": "unreported"
+        }
+      ]
+    },
+    "anatomy": {
+      "applies": false,
+      "styleHeads": 0.0,
+      "proportions": {
+        "headUnit": 0.0,
+        "torso": 0.0,
+        "legs": 0.0,
+        "shoulderWidth": 0.0,
+        "hipWidth": 0.0
+      },
+      "pose": {
+        "type": "unassessed",
+        "jointAngles": {}
+      },
+      "faceLandmarks": {
+        "eyeLine": 0.0,
+        "eyeSpacing": 0.0,
+        "noseBase": 0.0,
+        "mouthLine": 0.0,
+        "hairline": 0.0
+      },
+      "features": [],
+      "confidence": 0.0,
+      "note": "Only meaningful when objectClass.primaryDomain is character or hybrid. Set applies=true and fill from forge/stage1_intake/extract_landmarks.py. See grimoire/character/reconstruction.md and grimoire/character/likeness_maximization.md."
+    },
+    "sourceImage": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/laboratory-bench/reference-isolated.png"
+  },
+  "qualityContract": {
+    "qualityBar": "moderate",
+    "definitionOfDone": [
+      "The rendered bench preserves the source dimensions and open silhouette; legs, aprons, shelf, and top remain separately named and attached; construction dimensions are editable without floating parts; and locally bundled 2048px albedo, roughness, and normal maps produce believable pale worn timber under neutral and grazing light without baked shadows."
+    ],
+    "minimumSpecDepth": {
+      "macroComponents": 2,
+      "mesoComponents": 3,
+      "microFeatureGroups": 2,
+      "materialLayers": 2,
+      "repetitionSystems": 3,
+      "reviewViewpoints": 4
+    },
+    "featureGroups": [
+      {
+        "id": "overall-silhouette",
+        "name": "Overall silhouette and proportions",
+        "required": true,
+        "qualityCriteria": [
+          "Bounding shape, dominant curves, negative spaces, and scale relationships are explicitly described."
+        ],
+        "evidenceRefs": [
+          "full-object"
+        ],
+        "failureModes": [
+          "model reads as a generic placeholder instead of the reference object",
+          "major proportions are guessed without evidence"
+        ]
+      },
+      {
+        "id": "primary-structure",
+        "name": "Primary structure and hierarchy",
+        "required": true,
+        "qualityCriteria": [
+          "Major parts, joints, seams, contact points, and parent-child relationships are named before code generation."
+        ],
+        "evidenceRefs": [
+          "full-object"
+        ],
+        "failureModes": [
+          "large visible parts are merged into one mesh",
+          "component hierarchy is too shallow for the observed complexity"
+        ]
+      },
+      {
+        "id": "attachment-joint-correctness",
+        "name": "Attachment and joint correctness",
+        "required": true,
+        "qualityCriteria": [
+          "Every visible child appendage, branch, limb, handle, connector, tube, cable, horn, wing, leg, or hinged part has an attachment contract with parent socket, localStart/localEnd, contact type, embed/overlap, and gap tolerance."
+        ],
+        "evidenceRefs": [
+          "full-object"
+        ],
+        "failureModes": [
+          "child part root floats away from the parent",
+          "branch/limb/tube is centered in space instead of pivoting from its root",
+          "parent-child transform mixes world and local coordinates"
+        ]
+      },
+      {
+        "id": "surface-material-response",
+        "name": "Surface material response",
+        "required": true,
+        "qualityCriteria": [
+          "Albedo zones, roughness, normal/bump/displacement intent, cavity dirt, edge wear, and local overrides are specified where visible.",
+          "Important materials define independent albedo, roughness, height/normal, and AO responses instead of reusing one texture for unrelated PBR channels.",
+          "Surface response is decomposed into macro, meso, and micro frequency bands with scale and amplitude tied to object scale."
+        ],
+        "evidenceRefs": [
+          "full-object"
+        ],
+        "failureModes": [
+          "surface looks like flat plastic",
+          "local material variation is missing or not tied to image evidence"
+        ]
+      },
+      {
+        "id": "reference-lookdev",
+        "name": "Reference color, material, and lighting response",
+        "required": true,
+        "qualityCriteria": [
+          "Material-pass names the reference-derived albedo palette, roughness variation, tactile normal/bump/displacement response, and local masks.",
+          "When a source image is available, run reference PBR extraction and require confidence >= 0.7 before treating maps as implementation-ready.",
+          "Lighting-pass names key/fill/rim or environment light, exposure, tone mapping, background, and contact shadow behavior.",
+          "Neutral, grazing-angle, and reference-matched renders prove that surface relief survives relighting and is not painted into albedo."
+        ],
+        "evidenceRefs": [
+          "full-object"
+        ],
+        "failureModes": [
+          "model has acceptable shape but reads as flat shaded or plastic",
+          "colors are a generic average instead of reference-observed local color zones",
+          "lighting is evenly ambient and cannot reproduce the source value range"
+        ]
+      }
+    ],
+    "visualDeltaChecks": [
+      "silhouette and negative-space delta",
+      "component hierarchy depth delta",
+      "repetition density and distribution delta",
+      "material albedo/roughness/normal response delta",
+      "local feature placement and scale delta"
+    ],
+    "antiShallowSpecRules": [
+      "Do not proceed to code if qualityContract.qualityBar is unassessed.",
+      "Do not proceed to code if the spec only contains a root component for a moderate or complex object.",
+      "Do not proceed to code if required featureGroups are not represented by componentTree, materials, or repetitionSystems.",
+      "Do not proceed to code if visible local features are described only in prose and not attached to components/materials/evidenceRefs.",
+      "Do not proceed past structural-pass if attached child parts lack attachment.parentSocket, localStart, localEnd, embedDepth/overlap, and gapTolerance.",
+      "Do not pass material look-dev when albedo is reused as roughness, height, normal, or AO.",
+      "Do not pass material look-dev without macro, meso, and micro surface frequency bands for close-up materials.",
+      "Do not pass reference-fidelity material look-dev from a source image without usable referencePbr maps or an explicit documented limitation.",
+      "Do not patch a spec with extracted PBR maps when extraction confidence is below the target threshold unless the user explicitly accepts lower fidelity.",
+      "Do not place adjacent separate-geometry parts below 0.02 world-unit seam overlap (source: grimoire/build/geometry_patterns.md).",
+      "Do not satisfy raised or recessed relief, fasteners, or grip structure with a map alone when the feature affects form; use geometry or displacement (source: grimoire/build/geometry_patterns.md).",
+      "Adjacent components must overlap by at least 0.02 world units at shared seams (source: grimoire/build/geometry_patterns.md).",
+      "Raised or recessed relief and fasteners must be geometry, instanced micro-parts, or displacement; a map alone is an approximation (source: grimoire/build/geometry_patterns.md)."
+    ],
+    "mustNotDo": [
+      "Do not proceed to code if qualityContract.qualityBar is unassessed.",
+      "Do not proceed to code if the spec only contains a root component for a moderate or complex object.",
+      "Do not proceed to code if required featureGroups are not represented by componentTree, materials, or repetitionSystems.",
+      "Do not proceed to code if visible local features are described only in prose and not attached to components/materials/evidenceRefs.",
+      "Do not proceed past structural-pass if attached child parts lack attachment.parentSocket, localStart, localEnd, embedDepth/overlap, and gapTolerance.",
+      "Do not pass material look-dev when albedo is reused as roughness, height, normal, or AO.",
+      "Do not pass material look-dev without macro, meso, and micro surface frequency bands for close-up materials.",
+      "Do not pass reference-fidelity material look-dev from a source image without usable referencePbr maps or an explicit documented limitation.",
+      "Do not patch a spec with extracted PBR maps when extraction confidence is below the target threshold unless the user explicitly accepts lower fidelity.",
+      "Do not place adjacent separate-geometry parts below 0.02 world-unit seam overlap (source: grimoire/build/geometry_patterns.md).",
+      "Do not satisfy raised or recessed relief, fasteners, or grip structure with a map alone when the feature affects form; use geometry or displacement (source: grimoire/build/geometry_patterns.md).",
+      "Adjacent components must overlap by at least 0.02 world units at shared seams (source: grimoire/build/geometry_patterns.md).",
+      "Raised or recessed relief and fasteners must be geometry, instanced micro-parts, or displacement; a map alone is an approximation (source: grimoire/build/geometry_patterns.md)."
+    ]
+  },
+  "qualityTargets": {
+    "targetFidelity": 0.7,
+    "mustMatch": [
+      "macro silhouette and proportions",
+      "primary material albedo/roughness response",
+      "reference-derived PBR material response at or above 0.7 confidence when source pixels are usable",
+      "most recognizable local features"
+    ],
+    "niceToHave": [
+      "micro scratches, stains, chips, and dirt masks",
+      "secondary lighting match"
+    ],
+    "fpsTarget": 60,
+    "reviewViewpoints": [
+      "front",
+      "three-quarter",
+      "side",
+      "thickness-axis",
+      "long-axis"
+    ]
+  },
+  "selfCorrectLoop": {
+    "enabled": true,
+    "visualAcceptance": {
+      "reviewer": "ai-vision",
+      "threshold": 0.7,
+      "comparisonArtifactRequired": true,
+      "layerScoresRequired": true,
+      "codePixelDiffIsAcceptanceAuthority": false,
+      "scoringRule": "AI vision must inspect a side-by-side reference/render sheet and score the current pass from 0 to 1. Pixel-diff code may assist diagnostics but cannot approve a pass.",
+      "requiredLayerScores": [
+        "silhouetteProportion",
+        "componentStructure",
+        "formDetail",
+        "materialSurface",
+        "lightingCamera"
+      ],
+      "featureReviewPolicy": {
+        "enabled": true,
+        "reviewUnit": "semantic-subsystem",
+        "maxCriticalFeaturesPerPass": 5,
+        "maxImportantFeaturesPerPass": 3,
+        "criticalDefaultThreshold": 0.8,
+        "importantAverageThreshold": 0.65,
+        "adaptiveEscalation": true,
+        "singleImagePairOnly": true,
+        "selectionRule": "Choose only the most visually salient, identity-defining, user-prioritized, or high-risk semantic systems. Group repeated parts instead of reviewing every mesh. AI vision scores every selected feature from the same full reference/render pair."
+      }
+    },
+    "reviewAfterPasses": [
+      "blockout",
+      "structural-pass",
+      "form-refinement",
+      "material-pass",
+      "surface-pass",
+      "lighting-pass",
+      "interaction-pass",
+      "optimization-pass"
+    ],
+    "allowedActions": [
+      "continue",
+      "refine-spec",
+      "refine-code",
+      "request-input",
+      "stop"
+    ],
+    "specRefineTriggers": [
+      "missing component",
+      "wrong primitive family",
+      "wrong proportions",
+      "material layer under-specified",
+      "local feature not traceable to viewEvidence",
+      "reference ambiguity discovered during implementation"
+    ],
+    "codeRefineTriggers": [
+      "spec is adequate but generated geometry/material does not match",
+      "browser render differs from reference",
+      "performance budget exceeded",
+      "lighting hides geometry or material response"
+    ],
+    "stopCriteria": [
+      "target fidelity reached or user accepts current approximation",
+      "remaining gaps require new reference images or manual art"
+    ],
+    "screenshotPolicy": {
+      "requiredForPasses": [
+        "blockout",
+        "structural-pass",
+        "form-refinement",
+        "material-pass",
+        "surface-pass",
+        "lighting-pass",
+        "interaction-pass"
+      ],
+      "preferredCapture": "in-app-browser-screenshot",
+      "fallbackCapture": "user-supplied-screenshot-path",
+      "minimumEvidence": "Each visual pass needs a reference image, rendered screenshot, side-by-side comparison sheet, AI vision score, layer scores, and critique before choosing continue.",
+      "reviewPairRule": "Compare the same camera/viewpoint whenever possible; do not judge a front reference against a random render angle.",
+      "acceptanceAuthority": "AI vision review of the comparison sheet. Code-generated pixel similarity is not sufficient evidence."
+    }
+  },
+  "featureReviewTargets": [
+    {
+      "id": "bench-silhouette",
+      "name": "Worktop, four-leg stance, and lower-shelf silhouette",
+      "tier": "critical",
+      "passIds": [
+        "blockout"
+      ],
+      "minimumScore": 0.8,
+      "mustPass": true,
+      "componentRefs": [
+        "worktop",
+        "leg-system",
+        "lower-shelf"
+      ],
+      "evidenceRefs": [
+        "full-object"
+      ]
+    },
+    {
+      "id": "frame-attachments",
+      "name": "Apron-to-leg and shelf-to-leg attachment system",
+      "tier": "critical",
+      "passIds": [
+        "structural-pass",
+        "form-refinement"
+      ],
+      "minimumScore": 0.8,
+      "mustPass": true,
+      "componentRefs": [
+        "frame",
+        "front-apron",
+        "leg-system",
+        "lower-shelf"
+      ],
+      "evidenceRefs": [
+        "full-object"
+      ]
+    },
+    {
+      "id": "timber-pbr",
+      "name": "Pale timber grain, scrub wear, and roughness response",
+      "tier": "critical",
+      "passIds": [
+        "material-pass",
+        "surface-pass"
+      ],
+      "minimumScore": 0.75,
+      "mustPass": true,
+      "componentRefs": [
+        "worktop",
+        "lower-shelf",
+        "leg-system"
+      ],
+      "evidenceRefs": [
+        "full-object"
+      ]
+    }
+  ],
+  "sculptPipeline": {
+    "passGateMode": "locked-sequential",
+    "passOrder": [
+      "blockout",
+      "structural-pass",
+      "form-refinement",
+      "material-pass",
+      "surface-pass",
+      "lighting-pass",
+      "interaction-pass",
+      "optimization-pass"
+    ],
+    "currentPass": "blockout",
+    "completedPasses": [],
+    "lastCompletedPass": "",
+    "blockedReason": "blockout requires a browser screenshot and self-correction review before structural-pass unlocks",
+    "nextRequiredEvidence": [
+      "blockout browser render screenshot from your agent's browser/screenshot tool",
+      "side-by-side reference/render comparison sheet",
+      "AI vision score >= 0.7 with layer scores and mismatch critique",
+      "critical semantic feature scores from the same image pair meeting their individual thresholds",
+      "reviewHistory entry for blockout with action=continue"
+    ]
+  },
+  "lookDevTargets": {
+    "qualityPriority": "reference-fidelity",
+    "materialPass": {
+      "albedoPaletteRequired": true,
+      "roughnessVariationRequired": true,
+      "normalOrBumpRequired": true,
+      "localOverridesRequired": true,
+      "minimumTextureResolution": 1024,
+      "preferredTextureResolution": 2048,
+      "independentMapChannels": [
+        "albedo",
+        "roughness",
+        "height",
+        "normal",
+        "ambient-occlusion"
+      ],
+      "requiredSurfaceFrequencyBands": [
+        "macro",
+        "meso",
+        "micro"
+      ],
+      "geometryReliefRequiredWhenSilhouetteAffected": true,
+      "referencePbrExtraction": {
+        "requiredWhenSourceImagePresent": true,
+        "targetThreshold": 0.7,
+        "stopOnLowConfidence": true,
+        "script": "forge/stage1_intake/extract_pbr_evidence.py",
+        "acceptedLimitation": "single-image extraction is reference-derived inference, not exact photogrammetry"
+      },
+      "mustAvoid": [
+        "single flat albedo per material",
+        "uniform roughness",
+        "albedo texture reused as roughness/height/normal/AO",
+        "single-frequency random noise",
+        "plastic-looking smooth bark, stone, cloth, foliage, or aged material",
+        "local color/detail described only in prose without material masks",
+        "claiming exact PBR recovery when confidence is below the target threshold"
+      ]
+    },
+    "lightingPass": {
+      "requiredTerms": [
+        "key light",
+        "fill light",
+        "rim or environment light",
+        "exposure",
+        "tone mapping",
+        "background",
+        "contact shadow"
+      ],
+      "mustAvoid": [
+        "ambient-only lighting",
+        "flat value range",
+        "missing contact shadow",
+        "reference lighting copied without separating material readability"
+      ]
+    },
+    "screenshotReview": [
+      "Compare albedo palette and local color zones.",
+      "Compare roughness/normal/bump response under light.",
+      "Compare cavity dirt, edge wear, stains, moss, scratches, or other local masks.",
+      "Compare key/fill/rim structure, exposure, tone mapping, background, and contact shadows.",
+      "Capture a neutral-light render to verify material readability without reference lighting.",
+      "Capture a grazing-light close-up to expose flat normals, uniform roughness, tiling, and plastic highlights.",
+      "Capture a reference-matched render from the same camera framing as the source."
+    ]
+  },
+  "actionReadiness": {
+    "contract": "Every macro/meso component should be generated as a stable named Object3D pivot node with a mesh child, action metadata, optional sockets, collider proxy, and destruction metadata.",
+    "defaultRigType": "action-ready-static-rig",
+    "rootMotionNode": "root",
+    "requiredComponentFields": [
+      "id",
+      "parent",
+      "transform",
+      "attachment for child appendages, connectors, limbs, tubes, handles, legs, horns, wings, branches, or cables",
+      "actionProfile.animationRole",
+      "actionProfile.pivot",
+      "actionProfile.collider",
+      "actionProfile.destruction"
+    ],
+    "transformChannels": [
+      "translate",
+      "rotate",
+      "scale",
+      "bend",
+      "twist",
+      "detach",
+      "visibility",
+      "material-state"
+    ],
+    "authoringRules": [
+      "Do not collapse independently movable parts into one mesh.",
+      "Put transforms on component pivot groups, not only on raw meshes.",
+      "For attached child parts, put the pivot at the semantic root/socket and build visible geometry from localStart to localEnd.",
+      "Represent hinge, socket, detachable, and breakable intent even when no animation is implemented yet.",
+      "Use simplified collider proxies for runtime physics instead of visual mesh colliders by default."
+    ],
+    "destructionPolicy": {
+      "defaultBreakable": false,
+      "fractureGroupNaming": "Use stable semantic names such as body-shell, left-hinge, glass-panel, branch-segment.",
+      "debrisStrategy": "Prefer detachable component groups and a small number of procedural fragments over random mesh explosion."
+    }
+  },
+  "assumptions": [
+    "The rear apron, stretcher, iron bolts, joined planks, and underside blocks are provisional inferred options and remain editor-controlled.",
+    "Pale deal softwood is an art-direction choice, not a historical claim established by the screenshot.",
+    "The supplied 2.400 by 0.900 by 0.720 metre dimensions control the default procedural recipe.",
+    "The ImageGen albedo and locally derived data maps are a production test and should be replaced if verified photographic material evidence becomes available."
+  ],
+  "coordinateFrame": {
+    "front": "camera-facing side in the reference image",
+    "up": "image up direction",
+    "scaleReference": "unit scale; adjust after first browser render"
+  },
+  "silhouette": {
+    "boundingShape": "",
+    "aspectRatios": [],
+    "symmetry": "",
+    "dominantCurves": [],
+    "negativeSpaces": [],
+    "landmarks": []
+  },
+  "viewEvidence": [
+    {
+      "id": "full-object",
+      "view": "primary",
+      "imageRegion": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1.0,
+        "height": 1.0,
+        "units": "normalized"
+      },
+      "observations": [],
+      "confidence": 0.5
+    }
+  ],
+  "componentTree": [
+    {
+      "id": "root",
+      "name": "Laboratory Bench",
+      "level": "macro",
+      "role": "body",
+      "importance": 1.0,
+      "confidence": 0.5,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "The root is the rigid assembled bounding volume and runtime container for separately named timber members.",
+      "geometryDescriptor": {
+        "topologyIntent": "non-rendered runtime container with compound box collider intent",
+        "edgeTreatment": {
+          "type": "none",
+          "bevelRadius": 0.0,
+          "segments": 1
+        },
+        "deformationStack": [],
+        "uvStrategy": "generated procedural coordinates",
+        "normalStrategy": "vertex normals from generated geometry"
+      },
+      "parent": null,
+      "attachment": null,
+      "dimensions": {
+        "width": 2.4,
+        "height": 0.9,
+        "depth": 0.72,
+        "units": "metres",
+        "confidence": 1.0
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "actionProfile": {
+        "animationRole": "root",
+        "pivot": {
+          "mode": "center",
+          "localPosition": [
+            0,
+            0,
+            0
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "confidence": 1.0
+        },
+        "transformChannels": {
+          "translate": true,
+          "rotate": true,
+          "scale": true,
+          "bend": false,
+          "twist": false,
+          "detach": false,
+          "visibility": true,
+          "materialState": true
+        },
+        "sockets": [],
+        "collider": {
+          "type": "box",
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "isTrigger": false,
+          "notes": "Runtime uses a compound top, apron, shelf, and four-leg collider rather than the visual meshes."
+        },
+        "constraints": [],
+        "destruction": {
+          "breakable": false,
+          "fractureGroup": "root",
+          "seamRefs": [],
+          "detachableFragments": [],
+          "breakImpulse": 0.0,
+          "debrisMaterial": "pale-softwood"
+        }
+      },
+      "material": "pale-softwood",
+      "materialLayers": [
+        "pale-softwood"
+      ],
+      "colorMaterialRecipe": {
+        "dominantAlbedo": "rgba(211, 183, 126, 1)",
+        "secondaryAlbedo": "rgba(150, 117, 72, 1)",
+        "materialClass": "wood",
+        "materialClassConfidence": 0.55
+      },
+      "deformations": [],
+      "joints": [],
+      "seams": [],
+      "localFeatures": [],
+      "surfaceDetail": {
+        "macroRoughness": 0.0,
+        "microRoughness": 0.0,
+        "bumpAmplitude": 0.0,
+        "normalPattern": "",
+        "displacementPattern": "",
+        "occlusionPattern": "",
+        "edgeWearPattern": "",
+        "notes": ""
+      },
+      "evidenceRefs": [
+        "full-object"
+      ],
+      "details": [],
+      "fidelityTier": "blockout"
+    },
+    {
+      "id": "worktop",
+      "name": "Worktop",
+      "level": "macro",
+      "role": "body",
+      "importance": 1.0,
+      "confidence": 0.98,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "A rigid rectangular timber slab with flat faces and a small edge chamfer.",
+      "geometryDescriptor": {
+        "topologyIntent": "bevelled cuboid, optionally divided into longitudinal plank faces",
+        "edgeTreatment": {
+          "type": "chamfer",
+          "bevelRadius": 0.012,
+          "segments": 2
+        },
+        "uvStrategy": "world-scale box projection, grain along local x",
+        "normalStrategy": "vertex normals plus tangent-space normal map"
+      },
+      "parent": "root",
+      "dimensions": {
+        "width": 2.4,
+        "height": 0.085,
+        "depth": 0.72,
+        "units": "metres",
+        "confidence": 1.0
+      },
+      "transform": {
+        "position": [
+          0,
+          0.8575,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "material": "pale-softwood",
+      "materialLayers": [
+        "pale-softwood",
+        "edge-wear"
+      ],
+      "colorMaterialRecipe": {
+        "dominantAlbedo": "rgba(222, 194, 136, 1)",
+        "secondaryAlbedo": "rgba(164, 129, 77, 1)",
+        "materialClass": "wood",
+        "materialClassConfidence": 0.55
+      },
+      "localFeatures": [
+        {
+          "id": "edge-bevel",
+          "type": "bevel",
+          "bevelRadius": 0.012,
+          "segments": 2,
+          "evidenceRefs": [
+            "full-object"
+          ]
+        },
+        {
+          "id": "perimeter-overhang",
+          "type": "contour",
+          "size": [
+            0.08,
+            0.06
+          ],
+          "evidenceRefs": [
+            "full-object"
+          ]
+        },
+        {
+          "id": "plank-seams",
+          "type": "seam",
+          "count": 3,
+          "depth": 0.0015,
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "actionProfile": {
+        "animationRole": "static-part",
+        "pivot": {
+          "mode": "center",
+          "localPosition": [
+            0,
+            0,
+            0
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "confidence": 1.0
+        },
+        "collider": {
+          "type": "box",
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            2.4,
+            0.085,
+            0.72
+          ],
+          "isTrigger": false
+        },
+        "destruction": {
+          "breakable": true,
+          "fractureGroup": "worktop",
+          "seamRefs": [
+            "plank-seams"
+          ],
+          "detachableFragments": [
+            "worktop"
+          ],
+          "breakImpulse": 14,
+          "debrisMaterial": "pale-softwood"
+        }
+      },
+      "evidenceRefs": [
+        "full-object"
+      ]
+    },
+    {
+      "id": "frame",
+      "name": "Apron frame",
+      "level": "macro",
+      "role": "body",
+      "importance": 0.9,
+      "confidence": 0.72,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Four discrete rectangular apron rails form a rigid frame beneath the worktop.",
+      "geometryDescriptor": {
+        "topologyIntent": "four separately named bevelled rails",
+        "edgeTreatment": {
+          "type": "chamfer",
+          "bevelRadius": 0.006,
+          "segments": 1
+        },
+        "uvStrategy": "world-scale box projection",
+        "normalStrategy": "vertex normals plus tangent normal map"
+      },
+      "parent": "root",
+      "dimensions": {
+        "width": 2.24,
+        "height": 0.13,
+        "depth": 0.56,
+        "units": "metres",
+        "confidence": 0.72
+      },
+      "transform": {
+        "position": [
+          0,
+          0.75,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "material": "pale-softwood",
+      "materialLayers": [
+        "pale-softwood"
+      ],
+      "colorMaterialRecipe": {
+        "dominantAlbedo": "rgba(199, 169, 112, 1)",
+        "secondaryAlbedo": "rgba(139, 106, 66, 1)",
+        "materialClass": "wood",
+        "materialClassConfidence": 0.55
+      },
+      "localFeatures": [],
+      "actionProfile": {
+        "animationRole": "static-part",
+        "pivot": {
+          "mode": "center",
+          "localPosition": [
+            0,
+            0,
+            0
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "confidence": 0.8
+        },
+        "collider": {
+          "type": "compound-box",
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            2.24,
+            0.13,
+            0.56
+          ],
+          "isTrigger": false
+        },
+        "destruction": {
+          "breakable": true,
+          "fractureGroup": "frame",
+          "seamRefs": [
+            "top-seam"
+          ],
+          "detachableFragments": [
+            "front-apron",
+            "rear-apron"
+          ],
+          "breakImpulse": 10,
+          "debrisMaterial": "pale-softwood"
+        }
+      },
+      "evidenceRefs": [
+        "full-object"
+      ]
+    },
+    {
+      "id": "front-apron",
+      "name": "Front apron rail",
+      "level": "meso",
+      "role": "frame-member",
+      "importance": 0.8,
+      "confidence": 0.76,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "A discrete long rectangular rail visibly attached beneath the worktop front edge.",
+      "geometryDescriptor": {
+        "topologyIntent": "bevelled rail",
+        "edgeTreatment": {
+          "type": "chamfer",
+          "bevelRadius": 0.006,
+          "segments": 1
+        },
+        "uvStrategy": "grain along local x",
+        "normalStrategy": "vertex normals plus tangent normal map"
+      },
+      "parent": "frame",
+      "dimensions": {
+        "width": 2.24,
+        "height": 0.13,
+        "depth": 0.045,
+        "units": "metres",
+        "confidence": 0.9
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          0.2575
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "material": "pale-softwood",
+      "materialLayers": [
+        "pale-softwood"
+      ],
+      "colorMaterialRecipe": {
+        "dominantAlbedo": "rgba(199, 169, 112, 1)",
+        "secondaryAlbedo": "rgba(139, 106, 66, 1)",
+        "materialClass": "wood",
+        "materialClassConfidence": 0.55
+      },
+      "localFeatures": [
+        {
+          "id": "top-seam",
+          "type": "seam",
+          "depth": 0.002,
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "actionProfile": { "animationRole": "frame-member", "pivot": { "mode": "center", "localPosition": [0, 0, 0], "axis": [0, 1, 0], "confidence": 0.9 }, "collider": { "type": "box", "offset": [0, 0, 0], "scale": [2.24, 0.13, 0.05], "isTrigger": false }, "destruction": { "breakable": true, "fractureGroup": "frame", "seamRefs": ["top-seam"], "detachableFragments": ["front-apron"], "breakImpulse": 10, "debrisMaterial": "pale-softwood" } },
+      "evidenceRefs": [
+        "full-object"
+      ]
+    },
+    {
+      "id": "rear-apron",
+      "name": "Rear apron rail",
+      "level": "meso",
+      "role": "frame-member",
+      "importance": 0.55,
+      "confidence": 0.45,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Inferred discrete rear rail mirrors the visible front rail and can be disabled in the editor.",
+      "geometryDescriptor": {
+        "topologyIntent": "optional bevelled rail",
+        "edgeTreatment": {
+          "type": "chamfer",
+          "bevelRadius": 0.006,
+          "segments": 1
+        },
+        "uvStrategy": "grain along local x",
+        "normalStrategy": "vertex normals plus tangent normal map"
+      },
+      "parent": "frame",
+      "dimensions": {
+        "width": 2.24,
+        "height": 0.13,
+        "depth": 0.045,
+        "units": "metres",
+        "confidence": 0.45
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          -0.2575
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "material": "pale-softwood",
+      "materialLayers": [
+        "pale-softwood"
+      ],
+      "colorMaterialRecipe": {
+        "dominantAlbedo": "rgba(191, 159, 104, 1)",
+        "secondaryAlbedo": "rgba(132, 99, 61, 1)",
+        "materialClass": "wood",
+      "materialClassConfidence": 0.45
+      },
+      "localFeatures": [],
+      "actionProfile": { "animationRole": "optional-frame-member", "pivot": { "mode": "center", "localPosition": [0, 0, 0], "axis": [0, 1, 0], "confidence": 0.45 }, "collider": { "type": "box", "offset": [0, 0, 0], "scale": [2.24, 0.13, 0.05], "isTrigger": false }, "destruction": { "breakable": true, "fractureGroup": "frame", "seamRefs": [], "detachableFragments": ["rear-apron"], "breakImpulse": 10, "debrisMaterial": "pale-softwood" } },
+      "evidenceRefs": [
+        "full-object"
+      ]
+    },
+    {
+      "id": "leg-system",
+      "name": "Leg system",
+      "level": "meso",
+      "role": "leg",
+      "importance": 1.0,
+      "confidence": 0.96,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Four repeated square-section solid legs define the open silhouette.",
+      "geometryDescriptor": {
+        "topologyIntent": "four bevelled cuboids with optional taper",
+        "edgeTreatment": {
+          "type": "chamfer",
+          "bevelRadius": 0.007,
+          "segments": 1
+        },
+        "uvStrategy": "grain along local y",
+        "normalStrategy": "vertex normals plus tangent normal map"
+      },
+      "parent": "frame",
+      "attachment": {
+        "parentId": "frame",
+        "parentSocket": "frame-corners",
+        "localStart": [
+          -1.06,
+          -0.02,
+          -0.26
+        ],
+        "localEnd": [
+          -1.06,
+          -0.77,
+          -0.26
+        ],
+        "contactType": "overlap",
+        "overlap": 0.02,
+        "gapTolerance": 0.003,
+        "evidenceRefs": [
+          "full-object"
+        ]
+      },
+      "dimensions": {
+        "width": 0.105,
+        "height": 0.815,
+        "depth": 0.105,
+        "units": "metres",
+        "confidence": 0.88
+      },
+      "transform": {
+        "position": [
+          0,
+          0.4075,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "material": "pale-softwood",
+      "materialLayers": [
+        "pale-softwood",
+        "edge-wear"
+      ],
+      "colorMaterialRecipe": {
+        "dominantAlbedo": "rgba(190, 158, 104, 1)",
+        "secondaryAlbedo": "rgba(127, 94, 58, 1)",
+        "materialClass": "wood",
+        "materialClassConfidence": 0.55
+      },
+      "localFeatures": [
+        {
+          "id": "apron-overlap",
+          "type": "seam",
+          "overlap": 0.02,
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "actionProfile": {
+        "animationRole": "leg",
+        "pivot": {
+          "mode": "base",
+          "localPosition": [
+            0,
+            -0.4075,
+            0
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "confidence": 0.95
+        },
+        "collider": {
+          "type": "box",
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            0.105,
+            0.815,
+            0.105
+          ],
+          "isTrigger": false
+        },
+        "destruction": {
+          "breakable": true,
+          "fractureGroup": "legs",
+          "seamRefs": [
+            "apron-overlap"
+          ],
+          "detachableFragments": [
+            "leg-system"
+          ],
+          "breakImpulse": 9,
+          "debrisMaterial": "pale-softwood"
+        }
+      },
+      "evidenceRefs": [
+        "full-object"
+      ]
+    },
+    {
+      "id": "lower-shelf",
+      "name": "Lower storage shelf",
+      "level": "macro",
+      "role": "body",
+      "importance": 0.9,
+      "confidence": 0.92,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "A long, thin rectangular shelf is visibly attached inside the leg rectangle.",
+      "geometryDescriptor": {
+        "topologyIntent": "bevelled slab with optional plank divisions",
+        "edgeTreatment": {
+          "type": "chamfer",
+          "bevelRadius": 0.008,
+          "segments": 1
+        },
+        "uvStrategy": "grain along local x",
+        "normalStrategy": "vertex normals plus tangent normal map"
+      },
+      "parent": "root",
+      "dimensions": {
+        "width": 2.12,
+        "height": 0.055,
+        "depth": 0.48,
+        "units": "metres",
+        "confidence": 0.88
+      },
+      "transform": {
+        "position": [
+          0,
+          0.245,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "material": "pale-softwood",
+      "materialLayers": [
+        "pale-softwood",
+        "edge-wear"
+      ],
+      "colorMaterialRecipe": {
+        "dominantAlbedo": "rgba(204, 174, 116, 1)",
+        "secondaryAlbedo": "rgba(142, 107, 65, 1)",
+        "materialClass": "wood",
+        "materialClassConfidence": 0.55
+      },
+      "localFeatures": [
+        {
+          "id": "edge-bevel",
+          "type": "bevel",
+          "bevelRadius": 0.008,
+          "segments": 1,
+          "evidenceRefs": [
+            "full-object"
+          ]
+        },
+        {
+          "id": "leg-overlap",
+          "type": "seam",
+          "overlap": 0.012,
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "actionProfile": {
+        "animationRole": "static-part",
+        "pivot": {
+          "mode": "center",
+          "localPosition": [
+            0,
+            0,
+            0
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "confidence": 0.9
+        },
+        "collider": {
+          "type": "box",
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            2.12,
+            0.055,
+            0.48
+          ],
+          "isTrigger": false
+        },
+        "destruction": {
+          "breakable": true,
+          "fractureGroup": "shelf",
+          "seamRefs": [
+            "leg-overlap"
+          ],
+          "detachableFragments": [
+            "lower-shelf"
+          ],
+          "breakImpulse": 8,
+          "debrisMaterial": "pale-softwood"
+        }
+      },
+      "evidenceRefs": [
+        "full-object"
+      ]
+    },
+    {
+      "id": "bolt-system",
+      "name": "Inferred frame bolt system",
+      "level": "micro",
+      "role": "detail",
+      "importance": 0.35,
+      "confidence": 0.25,
+      "primitive": "cylinder",
+      "topologyClass": "surface-relief",
+      "topologyRationale": "Optional shallow iron bolt heads are repeated relief on the frame rather than silhouette-defining structure.",
+      "geometryDescriptor": {
+        "topologyIntent": "instanced shallow cylinders",
+        "edgeTreatment": {
+          "type": "chamfer",
+          "bevelRadius": 0.001,
+          "segments": 1
+        },
+        "uvStrategy": "cylindrical",
+        "normalStrategy": "vertex normals"
+      },
+      "parent": "frame",
+      "attachment": {
+        "parentId": "frame",
+        "parentSocket": "apron-faces",
+        "localStart": [
+          -1.05,
+          0,
+          0.282
+        ],
+        "localEnd": [
+          -1.05,
+          0,
+          0.286
+        ],
+        "contactType": "embedded",
+        "embedDepth": 0.002,
+        "gapTolerance": 0.001,
+        "baseRadius": 0.018,
+        "endRadius": 0.018,
+        "evidenceRefs": [
+          "full-object"
+        ]
+      },
+      "dimensions": {
+        "width": 0.036,
+        "height": 0.004,
+        "depth": 0.036,
+        "units": "metres",
+        "confidence": 0.25
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          1.5708,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "material": "iron-fastener",
+      "materialLayers": [
+        "iron-fastener"
+      ],
+      "colorMaterialRecipe": {
+        "dominantAlbedo": "rgba(54, 52, 47, 1)",
+        "secondaryAlbedo": "rgba(101, 94, 78, 1)",
+        "materialClass": "metal",
+        "materialClassConfidence": 0.35
+      },
+      "localFeatures": [],
+      "actionProfile": { "animationRole": "optional-fastener", "pivot": { "mode": "center", "localPosition": [0, 0, 0], "axis": [0, 0, 1], "confidence": 0.25 }, "collider": { "type": "none", "offset": [0, 0, 0], "scale": [0.036, 0.004, 0.036], "isTrigger": false }, "destruction": { "breakable": false, "fractureGroup": "fasteners", "seamRefs": [], "detachableFragments": ["bolt-system"], "breakImpulse": 0, "debrisMaterial": "iron-fastener" } },
+      "evidenceRefs": [
+        "full-object"
+      ]
+    }
+  ],
+  "materials": [
+    {
+      "id": "pale-softwood",
+      "name": "ImageGen pale deal softwood proof",
+      "type": "standard",
+      "shaderModel": "MeshStandardMaterial / PBR approximation",
+      "baseColor": "#d6b979",
+      "color": "#d6b979",
+      "albedo": {
+        "dominant": "#E5CC91",
+        "secondary": [
+          "#EBD39A",
+          "#DDC288",
+          "#F1DBA5"
+        ],
+        "samplingNotes": "Reference-derived from foreground pixels; de-lit to reduce baked shadows/highlights.",
+        "map": {
+          "path": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/laboratory-bench/material-evidence/pale-softwood_albedo.png",
+          "url": "/textures/props/laboratory-bench/pale-softwood_albedo.png",
+          "channel": "albedo",
+          "source": "reference-pixel-extraction"
+        }
+      },
+      "colorVariation": {
+        "palette": [
+          "#E5CC91",
+          "#EBD39A",
+          "#DDC288",
+          "#F1DBA5",
+          "#CEB37C"
+        ],
+        "pattern": "reference-derived pixel palette",
+        "amplitude": 0.08,
+        "heightCorrelation": 0.42
+      },
+      "textureResolution": 1024,
+      "textureProjection": {
+        "mode": "uv",
+        "repeat": [
+          2.0,
+          2.0
+        ],
+        "anisotropy": 8,
+        "texelDensityIntent": "Preserve stable world/object-scale detail; do not stretch micro detail with component scale."
+      },
+      "surfaceFrequencyBands": [
+        {
+          "id": "macro",
+          "frequency": 2.0,
+          "amplitude": 0.331,
+          "role": "reference-derived broad albedo and height breakup"
+        },
+        {
+          "id": "meso",
+          "frequency": 14.0,
+          "amplitude": 0.35,
+          "role": "reference-derived cracks, ridges, pores, grain, or leaf clusters"
+        },
+        {
+          "id": "micro",
+          "frequency": 72.0,
+          "amplitude": 0.14,
+          "role": "reference-derived micro highlight breakup under grazing light"
+        }
+      ],
+      "roughness": {
+        "base": 0.8,
+        "variation": 0.162,
+        "map": {
+          "path": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/laboratory-bench/material-evidence/pale-softwood_roughness.png",
+          "url": "/textures/props/laboratory-bench/pale-softwood_roughness.png",
+          "channel": "roughness",
+          "source": "reference-pixel-extraction"
+        },
+        "localResponse": "reference-derived roughness estimate; cavities and textured zones trend rougher, bright highlights trend smoother"
+      },
+      "metalness": {
+        "base": 0.0,
+        "variation": 0.0
+      },
+      "normal": {
+        "pattern": "reference-derived height-gradient normal map",
+        "strength": 0.275,
+        "map": {
+          "path": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/laboratory-bench/material-evidence/pale-softwood_normal.png",
+          "url": "/textures/props/laboratory-bench/pale-softwood_normal.png",
+          "channel": "normal",
+          "source": "reference-pixel-extraction"
+        },
+        "heightSource": {
+          "path": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/laboratory-bench/material-evidence/pale-softwood_height.png",
+          "url": "/textures/props/laboratory-bench/pale-softwood_height.png",
+          "channel": "height",
+          "source": "reference-pixel-extraction"
+        },
+        "space": "tangent"
+      },
+      "bump": {
+        "pattern": "reference-derived height field",
+        "amplitude": 0.046,
+        "map": {
+          "path": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/laboratory-bench/material-evidence/pale-softwood_height.png",
+          "url": "/textures/props/laboratory-bench/pale-softwood_height.png",
+          "channel": "height",
+          "source": "reference-pixel-extraction"
+        }
+      },
+      "displacement": {
+        "pattern": "none",
+        "amplitude": 0.0,
+        "scale": 1.0,
+        "silhouetteAffects": false
+      },
+      "ambientOcclusion": {
+        "cavityStrength": 0.38,
+        "contactShadowBias": 0.35,
+        "map": {
+          "path": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/laboratory-bench/material-evidence/pale-softwood_ao.png",
+          "url": "/textures/props/laboratory-bench/pale-softwood_ao.png",
+          "channel": "ao",
+          "source": "reference-pixel-extraction"
+        },
+        "notes": "Reference-derived cavity estimate from local height minima; verify against grazing-light screenshot."
+      },
+      "wear": {
+        "edgeWear": 0.0,
+        "scratches": [],
+        "chips": []
+      },
+      "dirt": {
+        "amount": 0.0,
+        "cavityBias": 0.0,
+        "color": "#2F2A22"
+      },
+      "localOverrides": [
+        {
+          "id": "provisional-wear",
+          "region": "worktop and shelf high-contact surfaces",
+          "dirtAmount": 0.12,
+          "cavityBias": 0.65,
+          "streak": false,
+          "roughness": 0.82,
+          "evidenceRefs": [
+            "full-object"
+          ],
+          "confidence": 0.35,
+          "note": "Generated inference; disable or replace when a real bench reference is supplied."
+        },
+        {
+          "id": "reference-pbr-pixel-evidence",
+          "type": "material-map-evidence",
+          "evidenceRefs": [
+            "full-object"
+          ],
+          "channels": [
+            "albedo",
+            "roughness",
+            "height",
+            "normal",
+            "ambient-occlusion"
+          ],
+          "notes": "Use generated maps as material evidence, then refine after browser screenshot comparison."
+        }
+      ],
+      "shaderNotes": [
+        "Prefer MeshPhysicalMaterial when clearcoat, sheen, transmission, or thin-surface response is observed; otherwise use MeshStandardMaterial-compatible PBR channels.",
+        "Generate albedo, roughness, height/normal, and AO independently; never alias albedo into roughness.",
+        "Use normal/bump/displacement only when they map to observed surface relief.",
+        "Use displacement geometry when the observed relief changes the close-up silhouette; texture-only relief is insufficient there.",
+        "Reference-derived maps are estimates from image pixels; verify with neutral, grazing, and reference-matched renders.",
+        "Do not treat baked image shadows as final albedo; rerun extraction with a tighter material crop if highlights/shadows pollute the maps."
+      ],
+      "notes": "Albedo is ImageGen-authored; roughness, height, normal, and AO are independent locally derived maps with recorded provenance.",
+      "referencePbr": {
+        "version": "1.0",
+        "sourceImage": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/laboratory-bench/imagegen-albedo-source.png",
+        "extractor": "stage1_intake/extract_pbr_evidence.py",
+        "method": "single-image pixel evidence with de-lighting estimate; not photogrammetry",
+        "usable": true,
+        "verdict": "pass",
+        "confidence": 0.842,
+        "estimatedFidelity": 0.842,
+        "targetThreshold": 0.7,
+        "hardLimit": "A single image cannot uniquely recover true albedo/roughness/normal/AO; maps are reference-derived estimates.",
+        "maps": {
+          "albedo": {
+            "path": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/laboratory-bench/material-evidence/pale-softwood_albedo.png",
+            "url": "/textures/props/laboratory-bench/pale-softwood_albedo.png",
+            "channel": "albedo",
+            "source": "reference-pixel-extraction"
+          },
+          "roughness": {
+            "path": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/laboratory-bench/material-evidence/pale-softwood_roughness.png",
+            "url": "/textures/props/laboratory-bench/pale-softwood_roughness.png",
+            "channel": "roughness",
+            "source": "reference-pixel-extraction"
+          },
+          "height": {
+            "path": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/laboratory-bench/material-evidence/pale-softwood_height.png",
+            "url": "/textures/props/laboratory-bench/pale-softwood_height.png",
+            "channel": "height",
+            "source": "reference-pixel-extraction"
+          },
+          "normal": {
+            "path": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/laboratory-bench/material-evidence/pale-softwood_normal.png",
+            "url": "/textures/props/laboratory-bench/pale-softwood_normal.png",
+            "channel": "normal",
+            "source": "reference-pixel-extraction"
+          },
+          "ao": {
+            "path": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/laboratory-bench/material-evidence/pale-softwood_ao.png",
+            "url": "/textures/props/laboratory-bench/pale-softwood_ao.png",
+            "channel": "ao",
+            "source": "reference-pixel-extraction"
+          }
+        },
+        "runtimeMaps": {
+          "albedo": "/textures/props/laboratory-bench/pale-deal-albedo.webp",
+          "roughness": "/textures/props/laboratory-bench/pale-deal-roughness.webp",
+          "normal": "/textures/props/laboratory-bench/pale-deal-normal.webp",
+          "height": "/textures/props/laboratory-bench/pale-deal-height.webp",
+          "ambientOcclusion": "/textures/props/laboratory-bench/pale-deal-ao.webp"
+        },
+        "diagnostics": {
+          "sourceWidth": 1254,
+          "sourceHeight": 1254,
+          "mapSize": 1024,
+          "cropBBoxPixels": {
+            "x": 0,
+            "y": 0,
+            "width": 1254,
+            "height": 1254
+          },
+          "mask": {
+            "backgroundColor": "#EAD39D",
+            "backgroundNoise": 19.339,
+            "transparentPixelFraction": 0.0,
+            "foregroundCoverage": 1.0
+          },
+          "mapStats": {
+            "valueRange": 0.1471,
+            "heightP90Gradient": 0.10116,
+            "roughnessBase": 0.8,
+            "roughnessVariation": 0.162,
+            "normalStrength": 0.275,
+            "blurRadius": 21
+          },
+          "palette": [
+            "#E5CC91",
+            "#EBD39A",
+            "#DDC288",
+            "#F1DBA5",
+            "#CEB37C"
+          ]
+        },
+        "warnings": [
+          "image is not clearly isolated from background; using most pixels as material evidence",
+          "object/background separation is weak",
+          "single-image inverse rendering cannot prove true physical PBR; confidence is capped",
+          "low value range weakens height/roughness inference"
+        ]
+      }
+    },
+    {
+      "id": "edge-wear",
+      "name": "Scrubbed timber edge response",
+      "qualityTier": "utility",
+      "type": "standard",
+      "shaderModel": "MeshStandardMaterial local response",
+      "baseColor": "#e4cb91",
+      "color": "#e4cb91",
+      "textureResolution": 2048,
+      "roughness": {
+        "base": 0.68,
+        "variation": 0.12,
+        "map": "pale-deal-roughness.webp",
+        "localResponse": "handled chamfers are slightly smoother than broad faces"
+      },
+      "metalness": {
+        "base": 0.0,
+        "variation": 0.0
+      },
+      "normal": {
+        "pattern": "pale-deal-normal.webp",
+        "strength": 0.24,
+        "scale": 18,
+        "space": "tangent"
+      },
+      "ambientOcclusion": {
+        "cavityStrength": 0.18,
+        "contactShadowBias": 0.3
+      },
+      "localOverrides": [
+        {
+          "id": "handled-edge-polish",
+          "region": "worktop and shelf chamfers",
+          "roughness": 0.62,
+          "confidence": 0.3,
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "notes": "Optional inferred high-contact response."
+    },
+    {
+      "id": "iron-fastener",
+      "name": "Optional dark iron fasteners",
+      "qualityTier": "utility",
+      "type": "standard",
+      "shaderModel": "MeshStandardMaterial",
+      "baseColor": "#36342f",
+      "color": "#36342f",
+      "textureResolution": 1024,
+      "roughness": {
+        "base": 0.58,
+        "variation": 0.12,
+        "map": "independent-procedural-field",
+        "localResponse": "raised crowns slightly smoother than recesses"
+      },
+      "metalness": {
+        "base": 0.72,
+        "variation": 0.08
+      },
+      "normal": {
+        "pattern": "fine-forge-pitting",
+        "strength": 0.12,
+        "scale": 42,
+        "space": "tangent"
+      },
+      "ambientOcclusion": {
+        "cavityStrength": 0.35,
+        "contactShadowBias": 0.5
+      },
+      "localOverrides": [
+        {
+          "id": "fastener-patina",
+          "region": "bolt recess edges",
+          "roughness": 0.7,
+          "patinaColor": "#544936",
+          "confidence": 0.22,
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "notes": "Optional inferred detail; disabled by default until approved."
+    }
+  ],
+  "repetitionSystems": [
+    {
+      "id": "leg-array",
+      "componentRef": "leg-system",
+      "count": 4,
+      "distribution": "rectangle corners inset by worktop overhang",
+      "instances": [
+        [
+          -1.06,
+          0,
+          -0.26
+        ],
+        [
+          -1.06,
+          0,
+          0.26
+        ],
+        [
+          1.06,
+          0,
+          -0.26
+        ],
+        [
+          1.06,
+          0,
+          0.26
+        ]
+      ],
+      "buildsGeometry": true,
+      "evidenceRefs": [
+        "full-object"
+      ]
+    },
+    {
+      "id": "frame-bolt-array",
+      "componentRef": "bolt-system",
+      "count": 8,
+      "distribution": "two optional bolt heads near each leg/apron contact",
+      "geometry": {
+        "primitive": "cylinder",
+        "radius": 0.018,
+        "depth": 0.004
+      },
+      "buildsGeometry": true,
+      "evidenceRefs": [
+        "full-object"
+      ],
+      "confidence": 0.25
+    },
+    {
+      "id": "plank-seam-array",
+      "componentRef": "worktop",
+      "count": 3,
+      "distribution": "longitudinal seams across the worktop depth",
+      "realization": "map-only",
+      "buildsGeometry": false,
+      "evidenceRefs": [
+        "full-object"
+      ],
+      "confidence": 0.25
+    }
+  ],
+  "buildPasses": [
+    {
+      "id": "blockout",
+      "goal": "Match macro silhouette and proportions.",
+      "componentRefs": [
+        "root"
+      ],
+      "acceptance": [
+        "Silhouette reads correctly without materials.",
+        "Quality contract has named all required macro feature groups before code generation.",
+        "AI vision comparison score meets selfCorrectLoop.visualAcceptance.threshold."
+      ]
+    },
+    {
+      "id": "structural-pass",
+      "goal": "Build the component hierarchy implied by the pre-spec complexity assessment.",
+      "componentRefs": [
+        "root"
+      ],
+      "acceptance": [
+        "Macro, meso, and repeated structures meet qualityContract.minimumSpecDepth.",
+        "Parent-child relations, joints, seams, sockets, and contact points are explicit.",
+        "Every attached child appendage/connector has parentSocket, localStart/localEnd, contactType, embedDepth or overlap, and gapTolerance.",
+        "AI vision comparison score meets selfCorrectLoop.visualAcceptance.threshold."
+      ]
+    },
+    {
+      "id": "form-refinement",
+      "goal": "Refine shape, deformation, bevels, tapers, curves, asymmetry, and visible local geometry.",
+      "componentRefs": [
+        "root"
+      ],
+      "acceptance": [
+        "Important visible forms are represented in component geometryDescriptor, deformations, localFeatures, or repetitionSystems.",
+        "Endpoint-based child parts are rooted at their attachment sockets and do not visibly float away from parents.",
+        "AI vision comparison score meets selfCorrectLoop.visualAcceptance.threshold."
+      ]
+    },
+    {
+      "id": "material-pass",
+      "goal": "Match material color, roughness, bump, and local variation.",
+      "componentRefs": [
+        "root"
+      ],
+      "acceptance": [
+        "Reference-derived albedo palette records dominant, secondary, and accent colors per visible material.",
+        "Each important material defines roughness variation and at least one normal/bump/displacement response.",
+        "Local material overrides, dirt/wear/stains/moss/chips/scratches or equivalent masks are tied to evidenceRefs.",
+        "Thin, transparent, reflective, wet, or fibrous materials document alpha/transmission/clearcoat/metalness/fiber response when relevant.",
+        "Generated preview uses procedural albedo/roughness/bump texture or vertex color variation instead of one flat color.",
+        "Generated preview uses independent PBR maps at 1024px or higher for the quality-first tier.",
+        "If source pixels are available, referencePbr extraction passed at confidence >= 0.7 or the pass is stopped/requesting better references.",
+        "Macro, meso, and micro surface frequency bands are visible at the intended review distance without obvious tiling.",
+        "AI vision comparison score meets selfCorrectLoop.visualAcceptance.threshold."
+      ]
+    },
+    {
+      "id": "surface-pass",
+      "goal": "Add procedural surface locality such as normal/bump/displacement, AO, dirt, stains, chips, grain, moss, scratches, and wear.",
+      "componentRefs": [
+        "root"
+      ],
+      "acceptance": [
+        "Every required material feature group has local overrides or surfaceDetail tied to evidenceRefs.",
+        "A grazing-angle close-up proves that normal/height detail breaks highlights naturally and does not read as smooth plastic.",
+        "AI vision comparison score meets selfCorrectLoop.visualAcceptance.threshold."
+      ]
+    },
+    {
+      "id": "lighting-pass",
+      "goal": "Make material and form readable under neutral turntable lighting plus optional reference lighting.",
+      "componentRefs": [
+        "root"
+      ],
+      "acceptance": [
+        "lightingFromPhoto identifies key light direction/color/intensity, fill light, rim or environment light, and ambient color.",
+        "Exposure, tone mapping, background color/gradient, shadow softness, and contact shadow behavior are specified.",
+        "Lighting does not hide geometry/material gaps and screenshots can be compared fairly to the reference.",
+        "Neutral, grazing, and reference-matched lighting checks distinguish material errors from lighting errors.",
+        "AI vision comparison score meets selfCorrectLoop.visualAcceptance.threshold."
+      ]
+    },
+    {
+      "id": "interaction-pass",
+      "goal": "Make the model ready for future animation, transformation, physics, or destruction.",
+      "componentRefs": [
+        "root"
+      ],
+      "acceptance": [
+        "Macro and movable meso components have stable pivot nodes.",
+        "Sockets, collider proxies, and destruction metadata are present for future runtime actions.",
+        "AI vision comparison score meets selfCorrectLoop.visualAcceptance.threshold."
+      ]
+    },
+    {
+      "id": "optimization-pass",
+      "goal": "Protect runtime performance after visual fidelity is accepted.",
+      "componentRefs": [
+        "root"
+      ],
+      "acceptance": [
+        "Triangle count, draw calls, instancing, LOD strategy, and FPS target are documented or verified.",
+        "Repeated detail is instanced or simplified where possible without breaking silhouette/material believability."
+      ]
+    }
+  ],
+  "visualEvidence": [],
+  "reviewHistory": [],
+  "lodPlan": [
+    {
+      "tier": "near",
+      "distance": 0,
+      "strategy": "full component tree and material layers"
+    },
+    {
+      "tier": "far",
+      "distance": 30,
+      "strategy": "merge static components and reduce local feature geometry"
+    }
+  ],
+  "performanceBudget": {
+    "qualityPriority": "reference-fidelity",
+    "targetTriangles": 250000,
+    "maxDrawCalls": 160,
+    "textureSize": 2048,
+    "fpsTarget": 30,
+    "optimizationPolicy": "Reach accepted visual fidelity first, then optimize without removing reference-critical geometry or surface layers."
+  },
+  "lightingFromPhoto": [
+    "Neutral review key light: large soft area light above and front-left at 3.0 intensity, approximately 4200 K, casting broad readable highlights across the worktop grain.",
+    "Fill and environment: cool low-intensity hemisphere fill from the front-right at 0.65 plus a neutral studio environment at 0.35 so the lower shelf and rear apron remain legible.",
+    "Rim and grazing check: narrow warm rim from rear-right at 1.1, then a separate low grazing key across the worktop to expose normal-map and roughness variation.",
+    "Exposure and tone mapping: ACES filmic tone mapping, exposure 1.0, neutral dark charcoal background without a gradient or vignette.",
+    "Contact shadow: soft ground contact shadow beneath all four feet and a weaker occlusion/contact response where the shelf meets the legs; shadow-map radius sized to avoid hard game-like edges."
+  ],
+  "proceduralStrategy": [
+    "Block out macro silhouette first.",
+    "Add component hierarchy and joints.",
+    "Create stable pivot groups, sockets, collider proxies, and destruction metadata before visual polish.",
+    "Refine forms with bevels, tapers, bends, and procedural noise.",
+    "Run reference PBR extraction for important source-image materials and stop when confidence is below the target threshold.",
+    "Add material variation before adding expensive micro-geometry."
+  ],
+  "animationAnchors": [
+    "root pivot node supports whole-object translation, rotation, scale, and visibility changes",
+    "component pivot groups support later local transforms without rebuilding geometry"
+  ],
+  "destructionAnchors": [
+    "actionProfile.destruction.fractureGroup marks detachable or breakable component sets",
+    "component seams and sockets define plausible break points instead of random explosions"
+  ],
+  "risks": [],
+  "localSpecSearch": {
+    "collection": "core_3d",
+    "query": "Laboratory Bench wood grain independent albedo roughness normal map furniture bevel joinery leg apron shelf attachment action ready furniture collider destruction groups",
+    "index": {
+      "status": "hit",
+      "reason": "current",
+      "fingerprint": "6857e5ab528b42ac12f4f411f862610a0bffce8e47aee3610a7603c318072fe8"
+    },
+    "matches": [
+      {
+        "record_id": "core.pbr-color-space-srgb-vs-linearnocolorspace",
+        "file_path": "docs/raw/img2threejs-skill-dataset.json",
+        "heading": null,
+        "key_path": "categories.material_pbr[11]",
+        "score": 10.994536069882,
+        "snippets": [
+          "... (cần gamma/sRGB) và các bản đồ dữ liệu toán học (phải giữ tuyến tính/không hiệu chỉnh). Recognition cues: Base color/albedo and emissive textures are the only ones that should look like natural photographic color; Normal, roughness, ..."
+        ],
+        "source_refs": [
+          {
+            "path": "docs/raw/img2threejs-skill-dataset.json",
+            "heading": null,
+            "key_path": "categories.material_pbr[11]"
+          }
+        ],
+        "evidence_refs": [
+          {
+            "kind": "source",
+            "ref": "docs/raw/img2threejs-skill-dataset.json",
+            "note": "img2threejs NotebookLM research distillation"
+          }
+        ]
+      },
+      {
+        "record_id": "core.runtime-hierarchy",
+        "file_path": "grimoire/readiness/action_rigging.md",
+        "heading": "Hierarchy Pattern",
+        "key_path": null,
+        "score": 10.844620538585,
+        "snippets": [
+          "An action-ready model uses a root, component pivot groups, visual meshes, sockets, collider metadata or proxies, and destruction-group metadata."
+        ],
+        "source_refs": [
+          {
+            "path": "grimoire/readiness/action_rigging.md",
+            "heading": "Hierarchy Pattern",
+            "key_path": null
+          }
+        ],
+        "evidence_refs": [
+          {
+            "kind": "source",
+            "ref": "grimoire/readiness/action_rigging.md"
+          },
+          {
+            "kind": "notebooklm-research",
+            "ref": "notebooklm:4b03c2f9-8393-411f-b5b4-039ab9532843",
+            "note": "Validated generic schema vocabulary; numeric claims remain backed by local source_refs."
+          }
+        ]
+      },
+      {
+        "record_id": "core.component-hierarchy",
+        "file_path": "grimoire/intake/image_analysis.md",
+        "heading": "Layer 3 — Macro → meso → micro decomposition",
+        "key_path": null,
+        "score": 8.671530796664,
+        "snippets": [
+          "Decompose an object into macro independent major parts, meso sub-assemblies, and micro feature groups in a parent-child hierarchy."
+        ],
+        "source_refs": [
+          {
+            "path": "grimoire/intake/image_analysis.md",
+            "heading": "Layer 3 — Macro → meso → micro decomposition",
+            "key_path": null
+          }
+        ],
+        "evidence_refs": [
+          {
+            "kind": "source",
+            "ref": "grimoire/intake/image_analysis.md"
+          },
+          {
+            "kind": "notebooklm-research",
+            "ref": "notebooklm:4b03c2f9-8393-411f-b5b4-039ab9532843",
+            "note": "Validated generic schema vocabulary; numeric claims remain backed by local source_refs."
+          }
+        ]
+      }
+    ]
+  },
+  "pbrExtractionHistory": [
+    {
+      "materialId": "pale-softwood",
+      "confidence": 0.842,
+      "verdict": "pass",
+      "usable": true,
+      "maps": {
+        "albedo": {
+          "path": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/laboratory-bench/material-evidence/pale-softwood_albedo.png",
+          "url": "/textures/props/laboratory-bench/pale-softwood_albedo.png",
+          "channel": "albedo",
+          "source": "reference-pixel-extraction"
+        },
+        "roughness": {
+          "path": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/laboratory-bench/material-evidence/pale-softwood_roughness.png",
+          "url": "/textures/props/laboratory-bench/pale-softwood_roughness.png",
+          "channel": "roughness",
+          "source": "reference-pixel-extraction"
+        },
+        "height": {
+          "path": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/laboratory-bench/material-evidence/pale-softwood_height.png",
+          "url": "/textures/props/laboratory-bench/pale-softwood_height.png",
+          "channel": "height",
+          "source": "reference-pixel-extraction"
+        },
+        "normal": {
+          "path": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/laboratory-bench/material-evidence/pale-softwood_normal.png",
+          "url": "/textures/props/laboratory-bench/pale-softwood_normal.png",
+          "channel": "normal",
+          "source": "reference-pixel-extraction"
+        },
+        "ao": {
+          "path": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/laboratory-bench/material-evidence/pale-softwood_ao.png",
+          "url": "/textures/props/laboratory-bench/pale-softwood_ao.png",
+          "channel": "ao",
+          "source": "reference-pixel-extraction"
+        }
+      }
+    }
+  ]
+}

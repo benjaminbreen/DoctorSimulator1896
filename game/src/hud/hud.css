@@ -1,0 +1,2027 @@
+/* Working chrome for Doctor Simulator: 1896.
+   The reference is printed ephemera of the period — a theatre programme or
+   patent-medicine label: cream stock, deep green plate borders, brass rule.
+   Two bosses (monogram, clock) sit proud of the band; everything else keeps
+   to a strict letterpress grid. */
+
+.ghud {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  font-family: 'Cormorant', Georgia, serif;
+  /* The ladder below measures this element, not the window: with the dev
+     rail open the canvas is narrower than the viewport. */
+  container-type: inline-size;
+
+  --g-ink: #33271a;
+  --g-ink-soft: #5c4a2a;
+  --g-olive: #6e5a28;
+  --g-green: #163027;
+  --g-green-deep: #0f211a;
+  --g-gold: #c39a48;
+  --g-gold-bright: #e3c37c;
+  --g-gold-dim: #8a6a26;
+  --g-parchment-hi: #f6efdf;
+  --g-parchment: #efe4c6;
+  --g-parchment-lo: #ddcca2;
+}
+
+/* Development panels sit above normal chrome, but never above a dialog. */
+.ghud--overlay-open {
+  z-index: 60;
+}
+
+/* ---------------- top bar ---------------- */
+
+/* Flush to the screen top, as in the mockup: ornament that rises past the
+   band reads as tucked behind the screen edge rather than clipped. */
+.ghud-bar {
+  position: absolute;
+  top: env(safe-area-inset-top, 0px);
+  left: env(safe-area-inset-left, 0px);
+  right: env(safe-area-inset-right, 0px);
+  height: 68px;
+  display: flex;
+  align-items: stretch;
+  border-radius: 0 0 14px 14px;
+  border: 1px solid rgba(10, 18, 14, 0.85);
+  background:
+    linear-gradient(180deg, var(--g-parchment-hi) 0%, var(--g-parchment) 52%, var(--g-parchment-lo) 100%);
+  /* edging, outside in: green mat, then a brass pinstripe */
+  box-shadow:
+    0 8px 28px rgba(6, 10, 8, 0.55),
+    inset 0 0 0 4px var(--g-green-deep),
+    inset 0 0 0 5px rgba(195, 154, 72, 0.7),
+    inset 0 -10px 18px -12px rgba(110, 80, 30, 0.55);
+  padding: 5px 8px;
+}
+
+/* paper grain, one tiling noise texture over the parchment */
+.ghud-bar::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border-radius: 0 0 10px 10px;
+  pointer-events: none;
+  opacity: 0.08;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
+}
+
+/* ---------------- bosses ---------------- */
+
+.ghud-mono-wrap {
+  position: relative;
+  flex: 0 0 88px;
+}
+
+.ghud-monogram-img {
+  position: absolute;
+  top: -6px;
+  left: 12px;
+  height: 88px;
+  width: auto;
+  filter: drop-shadow(0 4px 6px rgba(8, 12, 9, 0.45));
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.ghud-clock-wrap {
+  position: relative;
+  flex: 0 0 118px;
+}
+
+/* painted chrome with the live hands laid over it; top offset puts the
+   dial centre on the band's centre line (pivot sits at 49.6% of height) */
+/* Raised so the dial sits near the band's centre line, lowered just enough
+   that only the crest's tip passes the screen edge. */
+.ghud-clock-painted {
+  position: absolute;
+  top: -13px;
+  left: 1px;
+  width: 116px;
+  height: 112px;
+  filter: drop-shadow(0 5px 7px rgba(6, 10, 8, 0.5));
+}
+
+.ghud-clock-painted img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.ghud-clock-hands {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 3px 2px rgba(6, 10, 6, 0.45));
+}
+
+/* hands rotate about the dial centre (view-box units) and sweep, not snap */
+.ghud-hand {
+  transform-box: view-box;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ---------------- plates ---------------- */
+
+.ghud-plate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 18px;
+  min-width: 0;
+}
+
+.ghud-rule {
+  align-self: center;
+  height: 62%;
+  width: 5px;
+  flex: 0 0 5px;
+  background:
+    linear-gradient(180deg, transparent 0%, rgba(158, 124, 52, 0.75) 14%, rgba(158, 124, 52, 0.75) 86%, transparent 100%) left / 1px 100% no-repeat,
+    linear-gradient(180deg, transparent 0%, rgba(158, 124, 52, 0.55) 22%, rgba(158, 124, 52, 0.55) 78%, transparent 100%) right / 1px 100% no-repeat;
+}
+
+.ghud-name {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--g-ink);
+  text-shadow: 0 1px 0 rgba(255, 252, 240, 0.6);
+  white-space: nowrap;
+}
+
+.ghud-label {
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--g-olive);
+  white-space: nowrap;
+}
+
+.ghud-plate--loc {
+  flex-shrink: 1;
+}
+
+.ghud-loc-line {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--g-ink);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ghud-loc-line svg {
+  color: var(--g-olive);
+  flex: 0 0 auto;
+}
+
+.ghud-loc-text {
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ghud-date-weekday {
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  color: var(--g-ink-soft);
+  white-space: nowrap;
+}
+
+.ghud-date-full {
+  font-size: 16.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--g-ink);
+  white-space: nowrap;
+}
+
+.ghud-time-big {
+  font-size: 25px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: var(--g-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ghud-time-period {
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--g-olive);
+  white-space: nowrap;
+}
+
+/* compact date shown only when the date plate is dropped */
+.ghud-time-date {
+  display: none;
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--g-ink-soft);
+  white-space: nowrap;
+}
+
+/* ---------------- queue and letters ---------------- */
+
+.ghud-queue-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ghud-cameo {
+  display: block;
+  filter: drop-shadow(0 1px 1px rgba(90, 60, 20, 0.35));
+}
+
+/* Already seen: muted, not erased — the bust should stay readable. */
+.ghud-cameo--seen {
+  opacity: 0.58;
+  filter: grayscale(0.5) saturate(0.7);
+}
+
+.ghud-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 23px;
+  height: 23px;
+  margin-left: 5px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 30%, #2a4d3f, var(--g-green-deep));
+  border: 1px solid var(--g-gold-dim);
+  box-shadow: inset 0 0 0 1px rgba(227, 195, 124, 0.35);
+  color: #ecdcae;
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.ghud-count-word {
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--g-olive);
+  margin-left: 2px;
+}
+
+.ghud-letters-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--g-olive);
+}
+
+.ghud-letters-count {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--g-ink);
+  line-height: 1;
+}
+
+.ghud-envelope-img {
+  height: 24px;
+  width: auto;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.ghud-action-img {
+  height: 40px;
+  width: auto;
+  filter: drop-shadow(0 2px 3px rgba(6, 10, 8, 0.5));
+  transition: filter 0.15s ease;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.ghud-action:hover .ghud-action-img {
+  filter: drop-shadow(0 2px 3px rgba(6, 10, 8, 0.5)) brightness(1.12);
+}
+
+/* The letters plate is a real control: it opens the writing desk. */
+button.ghud-plate--letters {
+  pointer-events: auto;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+button.ghud-plate--letters:hover {
+  filter: brightness(1.12);
+}
+
+button.ghud-plate--letters:focus-visible {
+  outline: 2px solid var(--g-gold-dim);
+  outline-offset: -4px;
+  border-radius: 8px;
+}
+
+/* ---------------- letters modal ---------------- */
+
+.ghud-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(3vh, 14px) max(3vw, 12px);
+  background: rgba(8, 14, 11, 0.55);
+  backdrop-filter: blur(3px);
+  pointer-events: auto;
+}
+
+.ghud-letters {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(1080px, 94cqw);
+  max-height: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(10, 18, 14, 0.9);
+  /* flatter, creamier stock than the bar: the desk is read up close */
+  background: linear-gradient(180deg, #f5efdf 0%, #f0e8d3 60%, #eae0c6 100%);
+  box-shadow:
+    0 24px 70px rgba(4, 8, 6, 0.65),
+    inset 0 0 0 4px var(--g-green-deep),
+    inset 0 0 0 5px rgba(195, 154, 72, 0.7);
+  padding: 5px;
+  animation: ghud-rise 0.18s ease-out;
+}
+
+@keyframes ghud-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.ghud-letters-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 60px;
+  border-radius: 6px 6px 0 0;
+  background:
+    radial-gradient(130% 160% at 50% 0%, #234639 0%, var(--g-green) 55%, var(--g-green-deep) 100%);
+  box-shadow: inset 0 0 0 1px rgba(195, 154, 72, 0.45);
+  color: var(--g-gold);
+}
+
+.ghud-letters-title {
+  margin: 0;
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: #ecdcae;
+}
+
+.ghud-letters-close {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--g-gold-dim);
+  background: radial-gradient(circle at 38% 30%, #22423595, var(--g-green-deep));
+  color: #dcc07a;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow:
+    inset 0 0 0 1.5px rgba(227, 195, 124, 0.35),
+    0 2px 6px rgba(6, 10, 8, 0.5);
+}
+
+.ghud-letters-close:hover {
+  filter: brightness(1.08);
+}
+
+.ghud-letters-close:focus-visible {
+  outline: 2px solid var(--g-gold-bright);
+  outline-offset: 2px;
+}
+
+.ghud-letters-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 316px 18px minmax(0, 1fr);
+  gap: 6px;
+  padding: 14px 16px 16px;
+}
+
+/* left page: eyebrow, cards, and the possession line at the foot */
+.ghud-letters-page {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-height: 0;
+  padding: 2px 2px 0;
+}
+
+.ghud-eyebrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding-top: 4px;
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.26em;
+  color: var(--g-olive);
+}
+
+.ghud-eyebrow svg {
+  opacity: 0.8;
+}
+
+/* one quiet hairline under the eyebrow; the cards carry the rest */
+.ghud-eyebrow {
+  margin: 0 8px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid rgba(158, 124, 52, 0.4);
+}
+
+.ghud-letters-list {
+  margin: 0;
+  padding: 4px 2px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* each letter is its own card, double-framed like a calling card */
+.ghud-letter-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 9px;
+  background: rgba(255, 250, 236, 0.55);
+  box-shadow:
+    inset 0 0 0 1px rgba(158, 124, 52, 0.55),
+    inset 0 0 0 3px rgba(255, 250, 236, 0.55),
+    inset 0 0 0 4px rgba(158, 124, 52, 0.28);
+  font-family: 'Cormorant', serif;
+  color: var(--g-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ghud-letter-item > svg {
+  flex: 0 0 auto;
+  color: var(--g-olive);
+}
+
+.ghud-letter-item:hover {
+  background: rgba(236, 220, 174, 0.75);
+}
+
+.ghud-letter-item:focus-visible {
+  outline: 2px solid var(--g-gold-dim);
+  outline-offset: 2px;
+}
+
+.ghud-letter-item--open,
+.ghud-letter-item--open:hover {
+  background:
+    radial-gradient(130% 160% at 50% 0%, #234639 0%, var(--g-green) 55%, var(--g-green-deep) 100%);
+  box-shadow:
+    0 3px 10px rgba(6, 10, 8, 0.35),
+    inset 0 0 0 1px rgba(214, 178, 94, 0.75),
+    inset 0 0 0 3px rgba(20, 36, 28, 0.9),
+    inset 0 0 0 4px rgba(214, 178, 94, 0.4);
+  color: #f0e6c8;
+}
+
+.ghud-letter-item--open > svg {
+  color: var(--g-gold);
+}
+
+/* a wax-bead stud on the open card's fore-edge, marking the place */
+.ghud-letter-item--open::after {
+  content: '';
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--g-gold-bright), var(--g-gold) 55%, var(--g-gold-dim));
+  border: 1px solid #5f4a18;
+  box-shadow: 0 1px 3px rgba(6, 10, 8, 0.5);
+}
+
+.ghud-letter-item--archived {
+  opacity: 0.62;
+}
+
+.ghud-letter-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.ghud-letter-sender {
+  font-size: 18px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* An unbroken seal reads heavier, like an unread line in any post. */
+.ghud-letter-item--unread .ghud-letter-sender {
+  font-weight: 700;
+}
+
+.ghud-letter-meta {
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--g-ink-soft);
+}
+
+.ghud-letter-item--open .ghud-letter-meta {
+  color: rgba(240, 230, 200, 0.75);
+}
+
+.ghud-letter-subject {
+  font-size: 14.5px;
+  font-style: italic;
+  color: var(--g-ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ghud-letter-item--open .ghud-letter-subject {
+  color: rgba(240, 230, 200, 0.85);
+}
+
+.ghud-letter-dot {
+  flex: 0 0 auto;
+  margin-left: auto;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #d9a833;
+  border: 1px solid #8a6a26;
+}
+
+.ghud-letter-tag {
+  flex: 0 0 auto;
+  margin-left: auto;
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--g-olive);
+}
+
+.ghud-letter-item--open .ghud-letter-tag {
+  color: rgba(240, 230, 200, 0.7);
+}
+
+/* The list page signs off, so an ending never looks like an accident. */
+.ghud-letters-foot {
+  margin: auto 8px 0;
+  padding: 10px 6px 6px;
+  border-top: 1px solid rgba(158, 124, 52, 0.4);
+  color: var(--g-ink-soft);
+  font-size: 13.5px;
+  font-style: italic;
+  text-align: center;
+}
+
+/* hairline between the pages, studded at its middle */
+.ghud-col-rule {
+  position: relative;
+  align-self: stretch;
+  background:
+    linear-gradient(180deg, transparent 1%, rgba(158, 124, 52, 0.5) 10%, rgba(158, 124, 52, 0.5) 90%, transparent 99%)
+    center / 1px 100% no-repeat;
+}
+
+.ghud-col-rule::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: linear-gradient(135deg, var(--g-gold-bright), var(--g-gold-dim));
+  border: 1px solid #5f4a18;
+  box-shadow: 0 0 0 3px rgba(239, 228, 198, 1);
+}
+
+.ghud-letter-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  min-width: 0;
+  /* clearance for the verb plaques riding the bottom band */
+  padding-bottom: 42px;
+}
+
+/* the letter rests on a framed mat, lace at its corners */
+.ghud-letter-frame {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  padding: 17px;
+  border-radius: 7px;
+  background: rgba(255, 250, 236, 0.38);
+  box-shadow:
+    inset 0 0 0 1px rgba(158, 124, 52, 0.5),
+    inset 0 0 0 3px rgba(255, 250, 236, 0.45),
+    inset 0 0 0 4px rgba(158, 124, 52, 0.24);
+}
+
+
+/* the sheet itself: brighter stock, edges deckled by a displacement mask */
+.ghud-letter-sheet {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 30px 42px 34px;
+  animation: ghud-sheet-in 0.14s ease-out;
+  background:
+    radial-gradient(140% 120% at 50% 0%, #fcf7e8 0%, #f7efd9 70%, #efe3c2 100%);
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600'><filter id='d' x='-5%25' y='-5%25' width='110%25' height='110%25'><feTurbulence type='fractalNoise' baseFrequency='0.02 0.03' numOctaves='2' seed='11'/><feDisplacementMap in='SourceGraphic' scale='15'/></filter><rect x='9' y='9' width='582' height='582' fill='white' filter='url(%23d)'/></svg>");
+  mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600'><filter id='d' x='-5%25' y='-5%25' width='110%25' height='110%25'><feTurbulence type='fractalNoise' baseFrequency='0.02 0.03' numOctaves='2' seed='11'/><feDisplacementMap in='SourceGraphic' scale='15'/></filter><rect x='9' y='9' width='582' height='582' fill='white' filter='url(%23d)'/></svg>");
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
+@keyframes ghud-sheet-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* On a wide sheet the text keeps a letter's measure, not a poster's. */
+.ghud-letter-sheet > * {
+  max-width: 680px;
+}
+
+.ghud-letter-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  margin: 0 auto 16px;
+  text-align: center;
+}
+
+.ghud-letter-head h3 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--g-ink);
+}
+
+.ghud-letter-place,
+.ghud-letter-date {
+  font-size: 15px;
+  color: var(--g-ink-soft);
+}
+
+.ghud-flourish {
+  margin-top: 10px;
+  max-width: 100%;
+  opacity: 0.9;
+}
+
+.ghud-letter-para {
+  margin: 0 auto 12px;
+  font-size: 16.5px;
+  line-height: 1.5;
+  color: #3a2d1c;
+}
+
+.ghud-letter-valediction {
+  margin: 18px auto 0;
+  font-size: 16.5px;
+  font-style: italic;
+  color: #3a2d1c;
+}
+
+.ghud-letter-signature {
+  margin: 2px auto 0;
+  font-family: 'Tangerine', 'Cormorant', cursive;
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: right;
+  color: #2f2313;
+}
+
+.ghud-letter-sigtitle {
+  margin: 0 auto;
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-align: right;
+  color: var(--g-ink-soft);
+}
+
+/* The verbs ride the modal's bottom margin, inset on the frame band. */
+.ghud-letter-verbs {
+  position: absolute;
+  right: 16px;
+  bottom: 7px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  z-index: 2;
+}
+
+/* Notched plaque cut from the ornament sheet; edges stretch, corners keep. */
+.ghud-letter-verb {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 9px;
+  border: 12px solid transparent;
+  border-image: url('/ui/plaque-verb.png') 48 fill / 12px stretch;
+  border-radius: 0;
+  background: none;
+  box-shadow: 0 3px 10px rgba(6, 10, 8, 0.45);
+  color: var(--g-gold);
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+  transition: color 0.15s ease, transform 0.15s ease, filter 0.15s ease;
+}
+
+.ghud-letter-verb:hover {
+  filter: brightness(1.1);
+}
+
+.ghud-letter-verb:hover {
+  color: var(--g-gold-bright);
+  transform: translateY(-1px);
+}
+
+.ghud-letter-verb {
+  box-shadow:
+    0 0 0 1px rgba(195, 154, 72, 0.35),
+    inset 0 0 0 1px rgba(195, 154, 72, 0.45),
+    0 3px 10px rgba(6, 10, 8, 0.4);
+}
+
+.ghud-letter-verb:active {
+  transform: translateY(0.5px);
+}
+
+.ghud-letter-verb:focus-visible {
+  outline: 2px solid var(--g-gold-bright);
+  outline-offset: 2px;
+}
+
+/* ---------------- casebook: patient records ----------------
+   Shares the desk shell and card styles; below is the record sheet. */
+
+.ghud-pt-card {
+  align-items: center;
+  gap: 12px;
+  padding: 11px 13px;
+}
+
+.ghud-pt-card .ghud-letter-sender { font-size: 17.5px; }
+.ghud-pt-card .ghud-letter-meta { font-size: 10.5px; }
+.ghud-pt-card .ghud-letter-subject { font-size: 13.5px; }
+
+/* the open case sits on the notched plaque, stud on its fore-edge */
+.ghud-pt-card.ghud-letter-item--open,
+.ghud-pt-card.ghud-letter-item--open:hover {
+  border: 13px solid transparent;
+  border-image: url('/ui/plaque-verb.png') 48 fill / 13px stretch;
+  border-radius: 0;
+  background: none;
+  box-shadow: 0 4px 12px rgba(6, 10, 8, 0.4);
+  padding: 4px 6px;
+}
+
+.ghud-pt-card-portrait {
+  flex: 0 0 auto;
+  display: inline-flex;
+}
+
+.ghud-pt-sheet {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  border-radius: 6px;
+  animation: ghud-sheet-in 0.14s ease-out;
+  background: rgba(253, 249, 240, 0.5);
+  box-shadow:
+    inset 0 0 0 1px rgba(158, 124, 52, 0.5),
+    inset 0 0 0 3px rgba(253, 249, 240, 0.45),
+    inset 0 0 0 4px rgba(158, 124, 52, 0.24);
+}
+
+.ghud-pt-scroll {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 16px 22px 18px;
+}
+
+/* fine-line corners on the record frame, from the ornament sheet */
+.ghud-pt-corner {
+  position: absolute;
+  width: 42px;
+  height: auto;
+  opacity: 0.9;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.ghud-pt-corner--tl { top: 6px; left: 6px; }
+.ghud-pt-corner--tr { top: 6px; right: 6px; transform: scaleX(-1); }
+.ghud-pt-corner--bl { bottom: 6px; left: 6px; transform: scaleY(-1); }
+.ghud-pt-corner--br { bottom: 6px; right: 6px; transform: scale(-1, -1); }
+
+.ghud-pt-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding-bottom: 11px;
+  margin-bottom: 9px;
+  border-bottom: 1px solid rgba(158, 124, 52, 0.45);
+}
+
+/* portrait in its turned ring; the cameo tucks under the mat */
+.ghud-pt-ring {
+  position: relative;
+  flex: 0 0 auto;
+  width: 116px;
+  height: 116px;
+  margin-top: 2px;
+}
+
+.ghud-pt-ring > svg {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.ghud-pt-ring > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.ghud-pt-head-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.ghud-pt-name {
+  margin: 0 0 4px;
+  text-align: center;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--g-ink);
+}
+
+.ghud-pt-name-rule {
+  display: block;
+  width: 170px;
+  height: auto;
+  margin: 0 auto 10px;
+  opacity: 0.85;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.ghud-pt-fields {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 0 28px;
+}
+
+.ghud-pt-field-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ghud-pt-field {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.ghud-pt-field-label {
+  flex: 0 0 auto;
+  min-width: 86px;
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--g-ink-soft);
+}
+
+.ghud-pt-field-value {
+  font-size: 14.5px;
+  color: var(--g-ink);
+  white-space: pre-line;
+  min-width: 0;
+}
+
+.ghud-pt-body {
+  display: grid;
+  grid-template-columns: 1fr 1.08fr;
+  gap: 0 20px;
+}
+
+.ghud-pt-sections {
+  min-width: 0;
+}
+
+.ghud-pt-section {
+  padding: 8px 0 10px;
+  border-bottom: 1px solid rgba(158, 124, 52, 0.3);
+}
+
+.ghud-pt-section:last-child {
+  border-bottom: none;
+}
+
+.ghud-pt-section-title {
+  margin: 0 0 5px;
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--g-olive);
+}
+
+.ghud-pt-section-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.42;
+  color: #3a2d1c;
+}
+
+.ghud-pt-chips {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.ghud-pt-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255, 250, 236, 0.6);
+  box-shadow:
+    inset 0 0 0 1px rgba(158, 124, 52, 0.55),
+    inset 0 0 0 3px rgba(255, 250, 236, 0.5),
+    inset 0 0 0 4px rgba(158, 124, 52, 0.25);
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--g-ink-soft);
+  cursor: pointer;
+}
+
+.ghud-pt-chip svg {
+  color: var(--g-olive);
+}
+
+.ghud-pt-chip:hover {
+  color: var(--g-ink);
+  background: rgba(255, 250, 236, 0.85);
+}
+
+.ghud-pt-chip:focus-visible {
+  outline: 2px solid var(--g-gold-dim);
+  outline-offset: 1px;
+}
+
+/* visit history: a ruled table with a dot for each call */
+.ghud-pt-visits {
+  min-width: 0;
+  padding-left: 20px;
+  border-left: 1px solid rgba(158, 124, 52, 0.35);
+}
+
+.ghud-pt-visits-eyebrow {
+  margin: 0 0 9px;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.ghud-pt-table {
+  border: 1px solid rgba(158, 124, 52, 0.4);
+  border-radius: 2px;
+  background: transparent;
+}
+
+.ghud-pt-tr {
+  display: grid;
+  grid-template-columns: 15px 58px 80px minmax(0, 1fr);
+  gap: 0 8px;
+  align-items: start;
+  padding: 8px 9px 9px 5px;
+  border-top: 1px solid rgba(158, 124, 52, 0.3);
+}
+
+.ghud-pt-tr--head {
+  border-top: none;
+  padding: 7px 10px 6px 6px;
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--g-olive);
+}
+
+.ghud-pt-td-date,
+.ghud-pt-tr--head span:nth-child(2) {
+  border-right: 1px solid rgba(158, 124, 52, 0.25);
+  padding-right: 10px;
+}
+
+.ghud-pt-td-kind,
+.ghud-pt-tr--head span:nth-child(3) {
+  border-right: 1px solid rgba(158, 124, 52, 0.25);
+  padding-right: 10px;
+}
+
+.ghud-pt-dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  justify-self: center;
+  border-radius: 50%;
+  background: var(--g-green);
+  border: 1.5px solid var(--g-gold-dim);
+}
+
+.ghud-pt-td-date {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--g-ink);
+}
+
+.ghud-pt-td-kind {
+  font-size: 13.5px;
+  color: var(--g-ink);
+}
+
+.ghud-pt-td-notes {
+  font-size: 13px;
+  line-height: 1.42;
+  color: #3a2d1c;
+}
+
+.ghud-letter-verb:disabled {
+  opacity: 0.45;
+  cursor: default;
+  transform: none;
+}
+
+/* ---------------- day panel, dropped from the clock ---------------- */
+
+.ghud-clock-hit {
+  position: absolute;
+  top: -13px;
+  left: 1px;
+  width: 116px;
+  height: 112px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.ghud-clock-wrap:hover .ghud-clock-painted {
+  filter: drop-shadow(0 5px 7px rgba(6, 10, 8, 0.5)) brightness(1.07);
+}
+
+.ghud-clock-hit:focus-visible {
+  outline: 2px solid var(--g-gold-bright);
+  outline-offset: -8px;
+}
+
+/* the scene stays visible: a whisper of a scrim, panel hung below the bar */
+.ghud-scrim--clear {
+  background: rgba(8, 14, 11, 0.22);
+  backdrop-filter: none;
+  align-items: flex-start;
+  padding-top: 86px;
+}
+
+.ghud-day {
+  position: relative;
+  width: min(980px, 94cqw);
+  max-height: calc(100% - 10px);
+  display: flex;
+  border-radius: 10px;
+  border: 1px solid rgba(10, 18, 14, 0.9);
+  background: linear-gradient(180deg, #f5efdf 0%, #f0e8d3 60%, #eae0c6 100%);
+  box-shadow:
+    0 22px 60px rgba(4, 8, 6, 0.6),
+    inset 0 0 0 4px var(--g-green-deep),
+    inset 0 0 0 5px rgba(195, 154, 72, 0.7);
+  padding: 12px;
+  animation: ghud-drop 0.2s ease-out;
+}
+
+@keyframes ghud-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+}
+
+.ghud-day-grid {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-areas:
+    'paper main'
+    'travel rest';
+  gap: 14px 18px;
+  padding: 8px;
+}
+
+.ghud-day-paper {
+  grid-area: paper;
+  padding: 8px;
+  border-radius: 4px;
+  background: rgba(253, 249, 240, 0.6);
+  box-shadow:
+    inset 0 0 0 1px rgba(158, 124, 52, 0.5),
+    inset 0 0 18px rgba(120, 85, 30, 0.08);
+}
+
+.ghud-day-paper img {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.ghud-day-paper-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  aspect-ratio: 3 / 4;
+  padding: 14px 12px;
+  background: #f9f4e6;
+}
+
+.ghud-day-paper-masthead {
+  font-size: 21px;
+  font-weight: 700;
+  color: #2c2214;
+  white-space: nowrap;
+  border-top: 2px solid rgba(60, 45, 25, 0.7);
+  border-bottom: 1px solid rgba(60, 45, 25, 0.5);
+  padding: 3px 6px 4px;
+}
+
+.ghud-day-paper-dateline {
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: rgba(60, 45, 25, 0.7);
+}
+
+/* faint column of type until the real scan arrives */
+.ghud-day-paper-columns {
+  flex: 1;
+  width: 100%;
+  background: repeating-linear-gradient(180deg, rgba(60, 45, 25, 0.16) 0 1.5px, transparent 1.5px 6px);
+  mask-image: linear-gradient(90deg, #000 31%, transparent 31% 34.5%, #000 34.5% 65.5%, transparent 65.5% 69%, #000 69%);
+  -webkit-mask-image: linear-gradient(90deg, #000 31%, transparent 31% 34.5%, #000 34.5% 65.5%, transparent 65.5% 69%, #000 69%);
+}
+
+.ghud-day-main {
+  grid-area: main;
+  min-width: 0;
+  padding-top: 4px;
+}
+
+.ghud-day-date {
+  margin: 0 0 2px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--g-ink);
+}
+
+.ghud-day-main .ghud-pt-name-rule {
+  width: 100%;
+  margin: 2px 0 12px;
+  opacity: 0.75;
+}
+
+.ghud-day-news {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 11px 24px;
+}
+
+.ghud-day-news li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14.5px;
+  line-height: 1.4;
+  color: #3a2d1c;
+}
+
+.ghud-day-news svg {
+  flex: 0 0 auto;
+  margin-top: 4px;
+}
+
+.ghud-day-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 14px 12px;
+  border-radius: 6px;
+  background: rgba(255, 250, 236, 0.45);
+  box-shadow:
+    inset 0 0 0 1px rgba(158, 124, 52, 0.5),
+    inset 0 0 0 3px rgba(255, 250, 236, 0.45),
+    inset 0 0 0 4px rgba(158, 124, 52, 0.22);
+}
+
+.ghud-day-box--travel { grid-area: travel; }
+.ghud-day-box--rest { grid-area: rest; }
+
+.ghud-day-eyebrow {
+  border-bottom: none;
+  margin: 0;
+  padding-bottom: 0;
+}
+
+.ghud-day-select {
+  width: 100%;
+  max-width: 300px;
+  appearance: none;
+  padding: 8px 34px 8px 13px;
+  border: 1px solid rgba(158, 124, 52, 0.6);
+  border-radius: 6px;
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1.5 L6 6.5 L11 1.5' fill='none' stroke='%238a6a26' stroke-width='1.6' stroke-linecap='round'/></svg>") right 12px center no-repeat,
+    rgba(255, 250, 236, 0.75);
+  font-family: 'Cormorant', serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--g-ink);
+  cursor: pointer;
+}
+
+.ghud-day-select:focus-visible {
+  outline: 2px solid var(--g-gold-dim);
+  outline-offset: 1px;
+}
+
+.ghud-day-durations {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.ghud-day-duration {
+  padding: 6px 12px;
+  border: 1px solid rgba(158, 124, 52, 0.55);
+  border-radius: 5px;
+  background: rgba(255, 250, 236, 0.55);
+  color: var(--g-ink-soft);
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+
+.ghud-day-duration:hover { color: var(--g-ink); }
+
+.ghud-day-duration--on {
+  background: var(--g-green);
+  border-color: rgba(16, 28, 22, 0.9);
+  box-shadow: inset 0 0 0 1px rgba(195, 154, 72, 0.5);
+  color: #ecdcae;
+}
+
+.ghud-day-duration:focus-visible {
+  outline: 2px solid var(--g-gold-dim);
+  outline-offset: 1px;
+}
+
+.ghud-day-pass {
+  min-width: 250px;
+  justify-content: center;
+  font-size: 13.5px;
+}
+
+.ghud-day-caption {
+  margin: 0;
+  font-size: 12.5px;
+  font-style: italic;
+  color: var(--g-ink-soft);
+}
+
+/* Learn leads: it is the letter's purpose in an educational game. */
+.ghud-letter-verb--learn {
+  color: #ecd9a0;
+}
+
+/* Room to spare: the desk spreads and the hand grows with it. */
+@container (min-width: 1200px) {
+  .ghud-letters { width: min(1180px, 94cqw); }
+
+  .ghud-letters-body {
+    gap: 8px;
+    padding: 18px 20px 20px;
+    grid-template-columns: 344px 20px minmax(0, 1fr);
+  }
+
+  .ghud-pt-body { grid-template-columns: 1fr 1.34fr; }
+
+  .ghud-letter-sheet { padding: 34px 46px 38px; }
+  .ghud-letter-head h3 { font-size: 27px; }
+  .ghud-letter-para,
+  .ghud-letter-valediction { font-size: 17.5px; line-height: 1.55; }
+  .ghud-letter-signature { font-size: 40px; }
+  .ghud-letter-sender { font-size: 19px; }
+  .ghud-letters-title { font-size: 28px; }
+}
+
+/* ---------------- gauges ---------------- */
+
+.ghud-gauges {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 20px 0 14px;
+  margin-left: auto;
+}
+
+.ghud-gauge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+  cursor: help;
+  border-radius: 6px;
+  outline: none;
+}
+
+.ghud-gauge:focus-visible {
+  box-shadow: 0 0 0 2px var(--g-gold-dim);
+}
+
+.ghud-gauge-icon {
+  display: inline-flex;
+  width: 17px;
+  justify-content: center;
+}
+
+.ghud-gauge-icon--body { color: #a4462c; }
+.ghud-gauge-icon--mind { color: #6d5fa8; }
+
+.ghud-track {
+  position: relative;
+  width: 112px;
+  height: 9px;
+  border-radius: 5px;
+  border: 1px solid rgba(138, 106, 38, 0.9);
+  box-shadow: inset 0 1px 2px rgba(40, 25, 5, 0.45);
+}
+
+.ghud-track--body {
+  background: linear-gradient(90deg, #8f3020 0%, #b06b22 30%, #a99b3a 55%, #55833f 100%);
+}
+
+.ghud-track--mind {
+  background: linear-gradient(90deg, #2f2a4d 0%, #544a86 55%, #8377c2 100%);
+}
+
+.ghud-marker {
+  position: absolute;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  background: #e8cd8a;
+  border: 1px solid #6e5620;
+  transform: translate(-50%, -50%) rotate(45deg);
+  box-shadow: 0 0 3px rgba(20, 12, 2, 0.6);
+}
+
+.ghud-gauge:hover .ghud-track,
+.ghud-gauge:focus-visible .ghud-track {
+  box-shadow:
+    inset 0 1px 2px rgba(40, 25, 5, 0.45),
+    0 0 0 2px rgba(195, 154, 72, 0.2),
+    0 0 9px rgba(195, 154, 72, 0.28);
+}
+
+.ghud-meter-tooltip {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  z-index: 12;
+  width: 330px;
+  max-width: calc(100cqw - 20px);
+  padding: 13px 15px 14px;
+  border: 1px solid rgba(195, 154, 72, 0.72);
+  border-radius: 7px;
+  background:
+    linear-gradient(180deg, rgba(30, 52, 42, 0.98), rgba(13, 31, 24, 0.98));
+  box-shadow:
+    inset 0 0 0 3px rgba(227, 195, 124, 0.08),
+    0 12px 30px rgba(4, 9, 7, 0.52);
+  color: #eee3c3;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-5px);
+  transition: opacity 120ms ease, transform 120ms ease, visibility 120ms;
+  pointer-events: none;
+  text-align: left;
+}
+
+.ghud-meter-tooltip::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  right: 49px;
+  width: 10px;
+  height: 10px;
+  border-top: 1px solid rgba(195, 154, 72, 0.72);
+  border-left: 1px solid rgba(195, 154, 72, 0.72);
+  background: #1d3329;
+  transform: rotate(45deg);
+}
+
+.ghud-gauge:hover .ghud-meter-tooltip,
+.ghud-gauge:focus-visible .ghud-meter-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.ghud-meter-tooltip-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(195, 154, 72, 0.3);
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--g-gold-bright);
+}
+
+.ghud-meter-tooltip-head strong {
+  flex: 0 0 auto;
+  font-family: 'Cormorant', Georgia, serif;
+  font-size: 22px;
+  line-height: 1;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  color: #f6ecd2;
+}
+
+.ghud-meter-tooltip-head small {
+  font-size: 12px;
+  font-weight: 600;
+  color: #b9aa83;
+}
+
+.ghud-meter-condition {
+  margin: 9px 0 2px;
+  font-size: 14px;
+  color: #d8c99f;
+}
+
+.ghud-meter-condition strong {
+  color: #f2e8cc;
+  font-weight: 600;
+}
+
+.ghud-meter-explanation {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.35;
+  color: #bfb391;
+}
+
+.ghud-meter-history {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(195, 154, 72, 0.22);
+}
+
+.ghud-meter-history-title {
+  display: block;
+  margin-bottom: 5px;
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #bba467;
+}
+
+.ghud-meter-history ol {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ghud-meter-history li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.25;
+  color: #e4d8b8;
+}
+
+.ghud-meter-history li strong {
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ghud-meter-history .is-helpful { color: #a9cb91; }
+.ghud-meter-history .is-harmful { color: #e39779; }
+
+.ghud-meter-empty {
+  margin: 0;
+  font-size: 12.5px;
+  font-style: italic;
+  color: #9f967e;
+}
+
+/* ---------------- foot: note and verb plinth ---------------- */
+
+.ghud-note {
+  position: absolute;
+  left: calc(14px + env(safe-area-inset-left, 0px));
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 16px 7px 12px;
+  border-radius: 999px;
+  background: rgba(13, 24, 19, 0.72);
+  border: 1px solid rgba(195, 154, 72, 0.35);
+  backdrop-filter: blur(3px);
+  color: #e9ddba;
+  font-style: italic;
+  font-weight: 500;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+}
+
+.ghud-note svg {
+  color: var(--g-gold);
+  flex: 0 0 auto;
+}
+
+.ghud-actions {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  padding: 8px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(10, 18, 14, 0.9);
+  background:
+    radial-gradient(120% 140% at 50% 0%, #234639 0%, var(--g-green) 55%, var(--g-green-deep) 100%);
+  box-shadow:
+    0 8px 24px rgba(6, 10, 8, 0.6),
+    inset 0 0 0 1px rgba(195, 154, 72, 0.45),
+    inset 0 1px 0 rgba(227, 195, 124, 0.25);
+  pointer-events: auto;
+}
+
+.ghud-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-width: 88px;
+  padding: 5px 12px 3px;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--g-gold);
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.ghud-action:hover {
+  color: var(--g-gold-bright);
+  transform: translateY(-1px);
+}
+
+.ghud-action:active {
+  transform: translateY(0.5px);
+}
+
+.ghud-action:focus-visible {
+  outline: 2px solid var(--g-gold-bright);
+  outline-offset: 2px;
+}
+
+.ghud-action-caption {
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  white-space: nowrap;
+}
+
+.ghud-action-rule {
+  align-self: center;
+  height: 60%;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(195, 154, 72, 0.5) 25%, rgba(195, 154, 72, 0.5) 75%, transparent);
+}
+
+/* ---------------- fast travel ---------------- */
+
+.ghud-travel-scrim {
+  align-items: flex-end;
+  padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px));
+  background: rgba(8, 14, 11, 0.32);
+  backdrop-filter: blur(1px);
+}
+
+.ghud-travel-menu {
+  position: relative;
+  width: min(780px, 92cqw);
+  padding: 20px 22px 22px;
+  border: 1px solid rgba(10, 18, 14, 0.9);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f5efdf 0%, #f0e8d3 60%, #eae0c6 100%);
+  box-shadow:
+    0 22px 60px rgba(4, 8, 6, 0.6),
+    inset 0 0 0 4px var(--g-green-deep),
+    inset 0 0 0 5px rgba(195, 154, 72, 0.7);
+  animation: ghud-rise 0.18s ease-out;
+}
+
+.ghud-travel-menu .ghud-letters-close {
+  top: 12px;
+  right: 12px;
+  transform: none;
+}
+
+.ghud-travel-eyebrow {
+  margin: 0 42px;
+  color: var(--g-olive);
+}
+
+.ghud-travel-intro {
+  margin: 11px 0 14px;
+  text-align: center;
+  font-size: 16px;
+  font-style: italic;
+  color: var(--g-ink-soft);
+}
+
+.ghud-travel-destinations {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.ghud-travel-destination {
+  display: flex;
+  min-height: 82px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 12px 10px;
+  border: 1px solid rgba(158, 124, 52, 0.6);
+  border-radius: 7px;
+  background: rgba(255, 250, 236, 0.58);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 250, 236, 0.55),
+    inset 0 0 0 3px rgba(158, 124, 52, 0.2);
+  color: var(--g-ink);
+  font-family: 'Cormorant', serif;
+  cursor: pointer;
+}
+
+.ghud-travel-destination:hover:not(:disabled) {
+  background: rgba(236, 220, 174, 0.82);
+  transform: translateY(-1px);
+}
+
+.ghud-travel-destination:focus-visible {
+  outline: 2px solid var(--g-gold-dim);
+  outline-offset: 2px;
+}
+
+.ghud-travel-destination:disabled {
+  cursor: default;
+  opacity: 0.58;
+}
+
+.ghud-travel-name {
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+.ghud-travel-detail {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--g-ink-soft);
+}
+
+/* ---------------- responsive ladder ----------------
+   Panels drop in order of how easily their information is recovered
+   elsewhere: nameplate (the monogram carries it), then the date plate
+   (a short date line joins the time plate), then cameos and labels. */
+
+@container (max-width: 1560px) {
+  .ghud-plate--name { display: none; }
+}
+
+@container (max-width: 1310px) {
+  .ghud-plate--date { display: none; }
+  .ghud-time-date { display: block; }
+  .ghud-plate { padding: 0 14px; }
+}
+
+@container (max-width: 1170px) {
+  .ghud-queue-row .ghud-cameo:nth-of-type(n + 4) { display: none; }
+  .ghud-plate--letters .ghud-label { display: none; }
+  .ghud-track { width: 88px; }
+}
+
+@container (max-width: 1010px) {
+  .ghud-queue-row .ghud-cameo { display: none; }
+  .ghud-count-badge { margin-left: 0; }
+  .ghud-loc-text { font-size: 13px; }
+  .ghud-plate--queue .ghud-label { display: none; }
+  .ghud-plate--queue { flex-direction: row; gap: 7px; }
+}
+
+/* phones: the band reflows to two rows, bosses come back into the band */
+@container (max-width: 780px) {
+  .ghud-bar {
+    height: auto;
+    display: grid;
+    grid-template-columns: auto auto auto minmax(0, 1fr);
+    grid-template-areas:
+      'mono clock time loc'
+      'mono queue letters gauges';
+    row-gap: 2px;
+    padding: 7px 10px;
+    border-radius: 0 0 12px 12px;
+  }
+
+  .ghud-rule { display: none; }
+
+  .ghud-mono-wrap {
+    grid-area: mono;
+    flex: none;
+    align-self: center;
+    width: 48px;
+    height: 52px;
+  }
+
+  .ghud-monogram-img {
+    position: static;
+    height: 52px;
+    filter: none;
+  }
+
+  .ghud-action-img { height: 30px; }
+
+  .ghud-clock-wrap {
+    grid-area: clock;
+    flex: none;
+    align-self: center;
+    width: auto;
+    padding: 0 4px;
+  }
+
+  .ghud-clock-painted {
+    position: static;
+    width: 56px;
+    height: 54px;
+    filter: none;
+  }
+
+  .ghud-plate,
+  .ghud-gauges { padding: 0 8px; }
+
+  .ghud-plate--time { grid-area: time; align-items: flex-start; }
+  .ghud-plate--loc { grid-area: loc; align-items: flex-start; justify-content: center; }
+  .ghud-plate--queue { grid-area: queue; flex-direction: row; gap: 7px; }
+  .ghud-plate--letters { grid-area: letters; flex-direction: row; gap: 7px; }
+  .ghud-gauges { grid-area: gauges; justify-self: end; gap: 5px; }
+
+  .ghud-plate--queue .ghud-label,
+  .ghud-plate--time .ghud-time-date { display: none; }
+
+  .ghud-time-big { font-size: 21px; }
+  .ghud-loc-text { letter-spacing: 0.08em; }
+  .ghud-track { width: 70px; height: 8px; }
+
+  .ghud-actions { gap: 2px; padding: 7px 10px; border-radius: 13px; }
+  .ghud-action { min-width: 52px; padding: 6px 8px; }
+  .ghud-action svg { width: 28px; height: 28px; }
+  .ghud-action-caption { display: none; }
+}
+
+@container (max-width: 640px) {
+  .ghud-note { display: none; }
+
+  .ghud-travel-destinations { grid-template-columns: minmax(0, 1fr); }
+
+  .ghud-travel-menu {
+    max-height: calc(100% - 10px);
+    overflow-y: auto;
+  }
+}
+
+/* letters modal: on a narrow screen the list becomes a shelf above the page */
+@container (max-width: 720px) {
+  .ghud-scrim { padding: 8px; }
+
+  .ghud-letters-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .ghud-col-rule { display: none; }
+
+  .ghud-letters-list {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 4px 2px 8px;
+  }
+
+  .ghud-letters-list li { flex: 0 0 auto; }
+
+  .ghud-letter-item { width: 232px; }
+
+  .ghud-letter-item--open::after { display: none; }
+
+  .ghud-letters-foot { display: none; }
+
+  .ghud-letter-frame { padding: 12px; }
+
+  .ghud-letter-sheet { padding: 18px 20px 22px; }
+
+  .ghud-pt-body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px 0;
+  }
+
+  .ghud-pt-visits {
+    border-left: none;
+    padding-left: 0;
+  }
+
+  .ghud-pt-fields { grid-template-columns: 1fr; }
+
+  .ghud-pt-head { gap: 14px; }
+
+  .ghud-pt-scroll { padding: 12px 14px 14px; }
+
+  .ghud-pt-ring { width: 84px; height: 84px; }
+
+  .ghud-pt-ring > svg { width: 66px; height: 66px; }
+
+  .ghud-scrim--clear { padding-top: 116px; }
+
+  .ghud-day-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'main' 'paper' 'travel' 'rest';
+    gap: 12px;
+  }
+
+  .ghud-day-news { grid-template-columns: 1fr; }
+
+  .ghud-letter-verbs {
+    left: 10px;
+    right: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .ghud-letters-title { font-size: 21px; }
+  .ghud-letters-head { padding: 11px 52px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ghud-hand,
+  .ghud-action,
+  .ghud-letter-verb {
+    transition: none;
+  }
+
+  .ghud-letters,
+  .ghud-letter-sheet,
+  .ghud-pt-sheet,
+  .ghud-day {
+    animation: none;
+  }
+}

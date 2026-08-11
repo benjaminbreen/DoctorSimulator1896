@@ -1,0 +1,84 @@
+{
+  "id": "CATTELL_LAB_DAY",
+  "ambient": {
+    "color": "#7c7d78",
+    "intensity": 0.42
+  },
+  "hemisphere": {
+    "skyColor": "#9aa6bd",
+    "groundColor": "#6d685f",
+    "intensity": 0.6
+  },
+  "windowSky": "#c3ccdd",
+  "windowPortals": [
+    {
+      "windowId": "window-lab-0",
+      "color": "#b7c4dc",
+      "intensity": 2.6,
+      "elevationDeg": 34,
+      "azimuthDeg": 26,
+      "castShadow": false
+    },
+    {
+      "windowId": "window-lab-1",
+      "color": "#b7c4dc",
+      "intensity": 2.6,
+      "elevationDeg": 34,
+      "azimuthDeg": 9,
+      "castShadow": true
+    },
+    {
+      "windowId": "window-lab-2",
+      "color": "#b7c4dc",
+      "intensity": 2.6,
+      "elevationDeg": 34,
+      "azimuthDeg": -9,
+      "castShadow": false
+    },
+    {
+      "windowId": "window-lab-3",
+      "color": "#b7c4dc",
+      "intensity": 2.6,
+      "elevationDeg": 34,
+      "azimuthDeg": -26,
+      "castShadow": false
+    }
+  ],
+  "gaslights": [
+    {
+      "propId": "lamp-north",
+      "color": "#ffe6c2",
+      "intensity": 5.0,
+      "distance": 8.0,
+      "decay": 2,
+      "flicker": 0.02,
+      "castShadow": true
+    },
+    {
+      "propId": "lamp-centre",
+      "color": "#ffe6c2",
+      "intensity": 5.0,
+      "distance": 8.0,
+      "decay": 2,
+      "flicker": 0.02,
+      "castShadow": false
+    },
+    {
+      "propId": "lamp-south",
+      "color": "#ffe6c2",
+      "intensity": 4.4,
+      "distance": 8.0,
+      "decay": 2,
+      "flicker": 0.02,
+      "castShadow": false
+    }
+  ],
+  "exposureBase": 1.0,
+  "materials": {
+    "wall": "#9d968a",
+    "floor": "#7a6a52",
+    "ceiling": "#eceee9",
+    "trim": "#4a4038",
+    "floorTexture": "victorian/WoodenFloor_02"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "route": "authored-texture",
+  "referenceFidelity": "not-applicable",
+  "notes": [
+    "The failed screenshot is not a material reference and will not be projected.",
+    "The first deformation review uses neutral matte cloth.",
+    "Existing generated fabric maps are retained as optional look-development inputs after geometry passes. They are not historical evidence."
+  ],
+  "materials": [
+    {
+      "id": "cloth-base",
+      "family": "woven wool",
+      "finish": "matte cloth",
+      "metalness": 0.0,
+      "roughness": 0.82,
+      "albedo": "character-lab/public/textures/renderer-c/fabrics/wool-albedo.png",
+      "normal": "character-lab/public/textures/renderer-c/fabrics/wool-normal.png",
+      "roughnessMap": "character-lab/public/textures/renderer-c/fabrics/wool-roughness.png",
+      "colorSpace": {
+        "albedo": "sRGB",
+        "normal": "linear",
+        "roughness": "linear"
+      },
+      "confidence": 0.72
+    },
+    {
+      "id": "cloth-secondary",
+      "family": "woven cloth",
+      "finish": "matte cloth",
+      "metalness": 0.0,
+      "roughness": 0.78,
+      "source": "same authored UV and independent map system as cloth-base",
+      "confidence": 0.7
+    },
+    {
+      "id": "dress-accent",
+      "family": "thread and covered button",
+      "finish": "satin-matte",
+      "metalness": 0.0,
+      "roughness": 0.62,
+      "source": "solid restrained accent color; no projected construction lines",
+      "confidence": 0.75
+    }
+  ]
+}

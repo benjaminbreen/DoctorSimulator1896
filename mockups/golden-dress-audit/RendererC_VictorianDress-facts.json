@@ -1,0 +1,57 @@
+{
+  "model": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/character-lab/.generated/renderer-c/renderer-c-women.source.glb",
+  "garmentPrefixes": [
+    "RendererC_VictorianDress"
+  ],
+  "pose": null,
+  "meshes": [
+    {
+      "name": "RendererC_VictorianDress",
+      "vertices": 1344,
+      "polygons": 2432,
+      "uvLayers": [],
+      "materials": [
+        "GarmentReview"
+      ],
+      "shapeKeys": [
+        "Basis",
+        "rc_age_young",
+        "rc_age_old",
+        "rc_heritage_asian",
+        "rc_heritage_african",
+        "rc_live_weight_neg",
+        "rc_live_weight_pos",
+        "rc_live_muscle_neg",
+        "rc_live_muscle_pos",
+        "rc_live_proportions_neg",
+        "rc_live_proportions_pos"
+      ],
+      "skinned": true
+    },
+    {
+      "name": "RendererC_VictorianDressFitSource",
+      "vertices": 3544,
+      "polygons": 6432,
+      "uvLayers": [
+        "UVMap"
+      ],
+      "materials": [
+        "GarmentReview"
+      ],
+      "shapeKeys": [
+        "Basis",
+        "rc_age_young",
+        "rc_age_old",
+        "rc_heritage_asian",
+        "rc_heritage_african",
+        "rc_live_weight_neg",
+        "rc_live_weight_pos",
+        "rc_live_muscle_neg",
+        "rc_live_muscle_pos",
+        "rc_live_proportions_neg",
+        "rc_live_proportions_pos"
+      ],
+      "skinned": true
+    }
+  ]
+}

@@ -1,0 +1,235 @@
+{
+  "schemaVersion": 1,
+  "status": "complete",
+  "profile": "generic",
+  "currentStep": "complete",
+  "currentPass": "review",
+  "checklist": [
+    {
+      "id": "image-analysis",
+      "scope": "setup",
+      "status": "done",
+      "evidence": [
+        ".img2threejs/golden-dress-material-analysis.md"
+      ],
+      "reason": "",
+      "command": "Read grimoire/intake/image_analysis.md and analyze {reference}"
+    },
+    {
+      "id": "reference-suitability",
+      "scope": "setup",
+      "status": "done",
+      "evidence": [
+        ".img2threejs/golden-dress-material-analysis.md"
+      ],
+      "reason": "",
+      "command": "Read grimoire/intake/validation_rubric.md and record a pass, conditional, or reject verdict for {reference}"
+    },
+    {
+      "id": "reference-admission",
+      "scope": "setup",
+      "status": "done",
+      "evidence": [
+        "/var/folders/6k/yjq5djpn7d74hcj8srdz24m40000gn/T/codex-clipboard-68dc30a6-a2ab-4f10-a0fc-9027365bb695.png"
+      ],
+      "reason": "",
+      "command": "python3 forge/stage1_intake/check_reference_admission.py {reference}"
+    },
+    {
+      "id": "local-spec-search",
+      "scope": "setup",
+      "status": "done",
+      "evidence": [
+        ".img2threejs/golden-dress-material-search.json"
+      ],
+      "reason": "",
+      "command": "Run the local evidence search before authoring the assessment"
+    },
+    {
+      "id": "pre-spec-assessment",
+      "scope": "setup",
+      "status": "skipped",
+      "evidence": [],
+      "reason": "This is a bounded material correction to the already assessed and strict-validated golden dress; the existing assessment and spec remain authoritative.",
+      "command": "python3 forge/stage2_spec/new_pre_spec_assessment.py \"<name>\" --image {reference} --out assessment.json"
+    },
+    {
+      "id": "detail-inventory",
+      "scope": "setup",
+      "status": "skipped",
+      "evidence": [],
+      "reason": "No geometry or identity details are being added. The defect is a global cloth PBR response documented in the correction analysis.",
+      "command": "python3 forge/stage1_intake/build_detail_inventory.py {reference} --mode grid-3x3 --out-dir detail-inventory --out di.json"
+    },
+    {
+      "id": "projection-route",
+      "scope": "setup",
+      "status": "skipped",
+      "evidence": [],
+      "reason": "The screenshot is a negative rendering example rather than a desired textile reference, so projecting its pixels would preserve the plastic highlights.",
+      "command": "Record whether projection is required; if required run solve_camera_pose.py, delight_albedo.py, and bake_projected_texture.py, otherwise skip with a reason"
+    },
+    {
+      "id": "spec-authoring",
+      "scope": "setup",
+      "status": "done",
+      "evidence": [
+        ".img2threejs/golden-dress-spec.json"
+      ],
+      "reason": "",
+      "command": "python3 forge/stage2_spec/new_sculpt_spec.py \"<name>\" --image {reference} --assessment assessment.json --out object-sculpt-spec.json"
+    },
+    {
+      "id": "material-evidence",
+      "scope": "setup",
+      "status": "done",
+      "evidence": [
+        ".img2threejs/golden-dress-material-analysis.md",
+        "scripts/materials/build_renderer_c_fabrics.py"
+      ],
+      "reason": "",
+      "command": "python3 forge/stage1_intake/material_region_analysis.py --manifest material-regions.json --out-dir material-evidence --out material-analysis.json (single-crop route: analyze_texture.py + extract_pbr_evidence.py per verified crop; otherwise skip with a reason)"
+    },
+    {
+      "id": "material-spec-wiring",
+      "scope": "setup",
+      "status": "done",
+      "evidence": [
+        "shared/characters/rendererCWardrobeSurface.js"
+      ],
+      "reason": "",
+      "command": "python3 forge/stage2_spec/apply_material_analysis.py {spec} material-analysis.json --in-place"
+    },
+    {
+      "id": "strict-validation",
+      "scope": "setup",
+      "status": "done",
+      "evidence": [
+        ".img2threejs/golden-dress-spec.json"
+      ],
+      "reason": "",
+      "command": "python3 forge/stage2_spec/validate_sculpt_spec.py {spec} --strict-quality"
+    },
+    {
+      "id": "build-current-pass",
+      "scope": "pass",
+      "status": "done",
+      "evidence": [
+        "scripts/characters/generate_renderer_c_master.py",
+        "shared/characters/rendererCWardrobeSurface.js",
+        "character-lab/public/models/renderer-c-women.glb"
+      ],
+      "reason": "",
+      "command": "python3 forge/stage3_build/generate_threejs_factory.py {spec} --out src/createObjectModel.ts --pass-id {pass_id}"
+    },
+    {
+      "id": "render-capture",
+      "scope": "pass",
+      "status": "done",
+      "evidence": [
+        "mockups/golden-dress-audit/golden-solid-thickness-default.png",
+        "mockups/golden-dress-audit/golden-solid-thickness-default-hands.png",
+        "mockups/golden-dress-audit/golden-solid-thickness-max-head.png",
+        "mockups/golden-dress-audit/golden-solid-thickness-max-hands.png",
+        "mockups/golden-dress-audit/golden-solid-details-three-quarter.png"
+      ],
+      "reason": "",
+      "command": "Render {pass_id} and capture the fixed review view plus meaningful orbit views"
+    },
+    {
+      "id": "review-contract-read",
+      "scope": "pass",
+      "status": "done",
+      "evidence": [
+        "/Users/benjaminbreen/.codex/skills/img2threejs/grimoire/review/gates_reference.md",
+        "/Users/benjaminbreen/.codex/skills/img2threejs/grimoire/review/self_correction.md"
+      ],
+      "reason": "",
+      "command": "Read grimoire/review/gates_reference.md and grimoire/review/self_correction.md completely"
+    },
+    {
+      "id": "tier1-diagnostics",
+      "scope": "pass",
+      "status": "skipped",
+      "evidence": [],
+      "reason": "The supplied screenshots document known failures rather than a target projection. Pixel alignment against them would reward the defects being removed.",
+      "command": "python3 forge/stage4_review/diagnose_render.py --reference {reference} --render <shot> --spec {spec} --pass-id {pass_id} --in-place"
+    },
+    {
+      "id": "multi-angle-review",
+      "scope": "pass",
+      "status": "done",
+      "evidence": [
+        "mockups/golden-dress-audit/golden-solid-thickness-default.png",
+        "mockups/golden-dress-audit/golden-solid-thickness-default-hands.png",
+        "mockups/golden-dress-audit/golden-solid-details-side-close.png"
+      ],
+      "reason": "",
+      "command": "python3 forge/stage4_review/diagnose_render_multi_angle.py --reference <fixed-shot> --orbit <orbit-shot> --orbit <orbit-shot>"
+    },
+    {
+      "id": "pass-gate-check",
+      "scope": "pass",
+      "status": "skipped",
+      "evidence": [],
+      "reason": "This correction updates the repository's existing Blender-generated skinned asset, not a factory generated by the pass orchestrator.",
+      "command": "python3 forge/stage3_build/orchestrate_passes.py check {spec} --pass-id {pass_id}"
+    },
+    {
+      "id": "ai-review-recorded",
+      "scope": "pass",
+      "status": "done",
+      "evidence": [
+        ".img2threejs/golden-dress-material-analysis.md",
+        "mockups/golden-dress-audit/golden-solid-coverage-min.png",
+        "mockups/golden-dress-audit/golden-solid-coverage-max.png"
+      ],
+      "reason": "",
+      "command": "Create the comparison sheet, inspect it with agent vision, and append exactly one review action"
+    },
+    {
+      "id": "pipeline-sync",
+      "scope": "pass",
+      "status": "skipped",
+      "evidence": [],
+      "reason": "The authoritative build remains scripts/characters/generate_renderer_c_master.py and was regenerated, compressed, validated, and published through the existing Renderer C pipeline.",
+      "command": "python3 forge/stage3_build/orchestrate_passes.py sync {spec} --in-place"
+    },
+    {
+      "id": "part-coverage",
+      "scope": "final",
+      "status": "skipped",
+      "evidence": [
+        "tests/renderer-variants.test.mjs"
+      ],
+      "reason": "The generic explode-and-pick manifest does not apply to a wearable skinned mesh. The repository test instead verifies each named dress part, skeleton, solid-detail topology, and required morph.",
+      "command": "python3 forge/stage4_review/check_part_coverage.py --spec {spec} --manifest parts.json"
+    },
+    {
+      "id": "action-ready",
+      "scope": "final",
+      "status": "done",
+      "evidence": [
+        "shared/characters/rendererCWardrobeSurface.js",
+        "tests/renderer-variants.test.mjs",
+        "game/public/models/characters/renderer-c-women.glb"
+      ],
+      "reason": "",
+      "command": "Verify explodable/clickable hierarchy, pivots, sockets, and root.userData.sculptRuntime"
+    }
+  ],
+  "loops": {
+    "perPass": {},
+    "total": 0,
+    "maxPerPass": 3,
+    "maxTotal": 6
+  },
+  "artifacts": {
+    "reference": "/var/folders/6k/yjq5djpn7d74hcj8srdz24m40000gn/T/codex-clipboard-68dc30a6-a2ab-4f10-a0fc-9027365bb695.png",
+    "spec": ".img2threejs/golden-dress-spec.json"
+  },
+  "passHistory": [],
+  "reviewCursor": 1,
+  "iterationAction": "stop",
+  "stopReason": "Solid dress details, live thickness and fit morphs, multi-angle visual checks, focused tests, and both production builds are complete."
+}

@@ -1,0 +1,20 @@
+{
+  "zone": "central-park",
+  "camera": {
+    "position": [83, 13, 70],
+    "yaw": -2.45,
+    "pitch": -0.4,
+    "fov": 66
+  },
+  "figure": {
+    "position": [93.78, 80.66],
+    "yaw": -2.5
+  },
+  "tuning": {
+    "timeOfDay": 9.1,
+    "exposure": 1.05,
+    "fogDensity": 0.004,
+    "bloomIntensity": 0.9,
+    "aoIntensity": 4.9
+  }
+}

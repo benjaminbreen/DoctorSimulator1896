@@ -1,0 +1,68 @@
+{
+  "arms": {
+    "left": [
+      {
+        "bone": "mixamorig:LeftArm",
+        "direction": [
+          1.0,
+          -0.0,
+          0.0
+        ],
+        "horizontalErrorDegrees": 0.0
+      },
+      {
+        "bone": "mixamorig:LeftForeArm",
+        "direction": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "horizontalErrorDegrees": 0.0
+      },
+      {
+        "bone": "mixamorig:LeftHand",
+        "direction": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "horizontalErrorDegrees": 0.0
+      }
+    ],
+    "right": [
+      {
+        "bone": "mixamorig:RightArm",
+        "direction": [
+          -1.0,
+          -0.0,
+          0.0
+        ],
+        "horizontalErrorDegrees": 0.0
+      },
+      {
+        "bone": "mixamorig:RightForeArm",
+        "direction": [
+          -1.0,
+          0.0,
+          0.0
+        ],
+        "horizontalErrorDegrees": 0.0
+      },
+      {
+        "bone": "mixamorig:RightHand",
+        "direction": [
+          -1.0,
+          0.0,
+          0.0
+        ],
+        "horizontalErrorDegrees": 0.0
+      }
+    ]
+  },
+  "bytes": 992460,
+  "output": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/marvelous/renderer-c-male-proof/renderer-c-male-md-fitting-avatar.fbx",
+  "pipeline": "renderer-c-md-fitting-avatar-v1",
+  "purpose": "Marvelous Designer pattern fitting only; not a runtime character",
+  "sha256": "5f3e6aa84d58643e75fad170dff23fe5d88ec4a24a10f8f786798ab7291c49f4",
+  "source": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/character-lab/assets/mixamo/renderer-c-male-doll/renderer-c-male-mixamo-doll.fbx"
+}

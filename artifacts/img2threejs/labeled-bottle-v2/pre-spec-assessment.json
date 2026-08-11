@@ -1,0 +1,14 @@
+{
+  "targetName": "Editable labeled bottle workflow proof",
+  "complexity": "moderate",
+  "requiredDepth": "macro-meso",
+  "componentCount": 5,
+  "materialFamilies": ["glass", "liquid", "cork", "paper", "ink"],
+  "needsMultipleReviewViews": true,
+  "needsActionReadyHierarchy": true,
+  "unknowns": [
+    "Historically correct body and lip profile",
+    "Glass composition and colour",
+    "Contents, label wording, and paper stock"
+  ]
+}

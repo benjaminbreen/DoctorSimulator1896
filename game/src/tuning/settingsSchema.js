@@ -1,6 +1,9 @@
 // Tuning parameter schema. The panel, runtime store, and tests all read this.
 // mode: 'live' params are read every frame; 'rebuild' params remount the canvas.
-// Defaults are Ben's tuned values (2026-08-07).
+// Defaults are Ben's tuned values (2026-08-09).
+
+export const STARTING_ZONE = 'central-park';
+export const STARTING_TIME = 9.5;
 
 export const settingsSchema = {
   version: 1,
@@ -16,14 +19,20 @@ export const settingsSchema = {
           options: [
             'consulting-office',
             'waiting-room',
+            'foyer',
+            'cattell-lab',
             'central-park',
             'interior:fifth-east-a-0',
             'interior:fifth-east-a-2',
             'interior:navarro-flats-b',
           ],
-          default: 'central-park',
+          default: STARTING_ZONE,
           mode: 'rebuild',
         },
+        // Lawn tuft scatter in the park. Amount multiplies the planting
+        // chance, size the clump scale; both rebuild the zone.
+        { id: 'tuftAmount', label: 'Grass amount ×', type: 'range', min: 0, max: 2.5, step: 0.1, default: 1, mode: 'rebuild' },
+        { id: 'tuftSize', label: 'Grass size ×', type: 'range', min: 0.5, max: 2, step: 0.05, default: 1, mode: 'rebuild' },
       ],
     },
     {
@@ -36,15 +45,15 @@ export const settingsSchema = {
         { id: 'interiorScaleXL', label: 'Atrium scale ×', type: 'range', min: 0.6, max: 1.8, step: 0.05, default: 1, mode: 'rebuild' },
         { id: 'interiorDensity', label: 'Prop density', type: 'range', min: 0.4, max: 1.6, step: 0.05, default: 1, mode: 'rebuild' },
         { id: 'aoEnabled', label: 'Ambient occlusion', type: 'toggle', default: true, mode: 'rebuild' },
-        { id: 'aoIntensity', label: 'AO strength', type: 'range', min: 0, max: 6, step: 0.1, default: 2.6 },
-        { id: 'aoRadius', label: 'AO radius', type: 'range', min: 0.1, max: 3, step: 0.05, default: 0.9 },
+        { id: 'aoIntensity', label: 'AO strength', type: 'range', min: 0, max: 6, step: 0.1, default: 3.7 },
+        { id: 'aoRadius', label: 'AO radius', type: 'range', min: 0.1, max: 3, step: 0.05, default: 1.75 },
       ],
     },
     {
       id: 'movement',
       label: 'Movement',
       parameters: [
-        { id: 'walkSpeed', label: 'Walk speed', type: 'range', min: 0.5, max: 14, step: 0.05, default: 8.85 },
+        { id: 'walkSpeed', label: 'Walk speed', type: 'range', min: 0.5, max: 14, step: 0.05, default: 4.1 },
         { id: 'runSpeed', label: 'Run speed', type: 'range', min: 1, max: 20, step: 0.05, default: 12.9 },
         { id: 'gravity', label: 'Gravity', type: 'range', min: 4, max: 30, step: 0.1, default: 11.9 },
         { id: 'groundAcceleration', label: 'Acceleration', type: 'range', min: 4, max: 60, step: 0.5, default: 47 },
@@ -61,6 +70,11 @@ export const settingsSchema = {
         { id: 'snapToGround', label: 'Ground snap', type: 'range', min: 0, max: 1, step: 0.01, default: 0.46, mode: 'rebuild' },
         { id: 'maxSlopeClimbDeg', label: 'Max climb slope', type: 'range', min: 20, max: 70, step: 1, default: 42, mode: 'rebuild' },
         { id: 'minSlopeSlideDeg', label: 'Min slide slope', type: 'range', min: 25, max: 80, step: 1, default: 50, mode: 'rebuild' },
+        { id: 'pushProps', label: 'Push loose furniture', type: 'toggle', default: true, mode: 'rebuild' },
+        // Sets how hard a walk into loose furniture shoves it. A real 80kg at
+        // walking speed throws a chair across the room; this is a shove knob,
+        // not a weight.
+        { id: 'characterMass', label: 'Push strength (kg)', type: 'range', min: 2, max: 120, step: 1, default: 2, mode: 'rebuild' },
       ],
     },
     {
@@ -70,7 +84,9 @@ export const settingsSchema = {
         { id: 'cameraMode', label: 'Camera mode (M cycles)', type: 'select', options: ['shoulder', 'first', 'overhead', 'hero'], default: 'shoulder' },
         { id: 'shoulderSide', label: 'Shoulder side', type: 'range', min: -2, max: 2, step: 0.05, default: 1.05 },
         { id: 'shoulderUp', label: 'Shoulder up', type: 'range', min: 0.5, max: 4, step: 0.05, default: 2.55 },
-        { id: 'shoulderBack', label: 'Shoulder back', type: 'range', min: 1, max: 8, step: 0.05, default: 4.8 },
+        { id: 'shoulderBack', label: 'Shoulder back', type: 'range', min: 1, max: 8, step: 0.05, default: 4 },
+        // Scales the whole boom. The mouse wheel writes this same value.
+        { id: 'cameraZoom', label: 'Camera zoom', type: 'range', min: 0.35, max: 2.5, step: 0.01, default: 0.69 },
         { id: 'pitchMin', label: 'Pitch min', type: 'range', min: -1.4, max: 0, step: 0.01, default: -0.48 },
         { id: 'pitchMax', label: 'Pitch max', type: 'range', min: 0, max: 1.55, step: 0.01, default: 1.45 },
         { id: 'positionDamping', label: 'Position damping', type: 'range', min: 1, max: 20, step: 0.1, default: 10.2 },
@@ -83,40 +99,124 @@ export const settingsSchema = {
         { id: 'collisionPadding', label: 'Collision padding', type: 'range', min: 0.05, max: 0.8, step: 0.01, default: 0.33 },
         { id: 'fov', label: 'Field of view', type: 'range', min: 30, max: 90, step: 1, default: 66 },
         { id: 'overheadHeight', label: 'Overhead height', type: 'range', min: 8, max: 45, step: 0.5, default: 16 },
-        { id: 'heroFollowRate', label: 'Hero follow rate', type: 'range', min: 0.5, max: 8, step: 0.1, default: 2.5 },
+        // Overhead gets its own wheel range: 16 x 16 = 256m, enough to frame
+        // the whole park for map cross-reference.
+        { id: 'overheadZoom', label: 'Overhead zoom', type: 'range', min: 0.5, max: 16, step: 0.05, default: 2.5 },
+        // Hero is a distinct follow-camera profile. It must not inherit a
+        // shoulder framing change made for a cramped interior.
+        { id: 'heroSide', label: 'Hero side', type: 'range', min: -1, max: 1, step: 0.05, default: 0.25 },
+        { id: 'heroUp', label: 'Hero height', type: 'range', min: 1.2, max: 3.5, step: 0.05, default: 2.05 },
+        { id: 'heroBack', label: 'Hero distance', type: 'range', min: 2, max: 7, step: 0.05, default: 4.2 },
+        { id: 'heroZoom', label: 'Hero zoom', type: 'range', min: 0.65, max: 1.6, step: 0.01, default: 1 },
+        { id: 'heroDefaultPitch', label: 'Hero starting pitch', type: 'range', min: -0.3, max: 0.6, step: 0.01, default: 0 },
+        { id: 'heroFov', label: 'Hero field of view', type: 'range', min: 45, max: 75, step: 1, default: 60 },
+        { id: 'heroRunFovBoost', label: 'Hero running FOV +', type: 'range', min: 0, max: 10, step: 0.5, default: 4 },
+        { id: 'heroFollowRate', label: 'Hero follow rate', type: 'range', min: 0.5, max: 8, step: 0.1, default: 3.5 },
+        { id: 'heroRecenterDelay', label: 'Hero recenter delay', type: 'range', min: 0, max: 3, step: 0.05, default: 0.9 },
+        { id: 'heroLookAhead', label: 'Hero look-ahead', type: 'range', min: 0, max: 2, step: 0.05, default: 0.65 },
+        { id: 'heroPositionDamping', label: 'Hero follow damping', type: 'range', min: 1, max: 20, step: 0.1, default: 9 },
+        { id: 'heroYDamping', label: 'Hero vertical damping', type: 'range', min: 0.5, max: 15, step: 0.1, default: 5 },
+        { id: 'heroOcclusionReturn', label: 'Hero obstruction return', type: 'range', min: 0.5, max: 10, step: 0.1, default: 4 },
+        { id: 'heroCollisionRadius', label: 'Hero camera radius', type: 'range', min: 0, max: 0.6, step: 0.01, default: 0.22 },
       ],
     },
     {
       id: 'lighting',
       label: 'Lighting',
       parameters: [
-        { id: 'ambientIntensity', label: 'Ambient', type: 'range', min: 0, max: 2, step: 0.01, default: 0.57 },
-        { id: 'hemisphereIntensity', label: 'Hemisphere', type: 'range', min: 0, max: 2, step: 0.01, default: 0.49 },
-        { id: 'windowIntensity', label: 'Window light', type: 'range', min: 0, max: 4, step: 0.05, default: 0.95 },
+        { id: 'ambientIntensity', label: 'Ambient', type: 'range', min: 0, max: 2, step: 0.01, default: 0.37 },
+        { id: 'hemisphereIntensity', label: 'Hemisphere', type: 'range', min: 0, max: 2, step: 0.01, default: 0.21 },
+        { id: 'windowIntensity', label: 'Window light', type: 'range', min: 0, max: 4, step: 0.05, default: 1 },
         { id: 'windowElevationDeg', label: 'Window sun elevation', type: 'range', min: 5, max: 80, step: 1, default: 57 },
         { id: 'windowColor', label: 'Window color', type: 'color', default: '#a7b8d8' },
         { id: 'gaslightIntensity', label: 'Gaslight', type: 'range', min: 0, max: 3, step: 0.05, default: 2.25 },
-        { id: 'gaslightFlicker', label: 'Gaslight flicker ×', type: 'range', min: 0, max: 3, step: 0.05, default: 1.15 },
+        { id: 'gaslightFlicker', label: 'Gaslight flicker ×', type: 'range', min: 0, max: 3, step: 0.05, default: 1.2 },
         { id: 'gaslightColor', label: 'Gaslight color', type: 'color', default: '#ffb45e' },
+        { id: 'interiorEnvIntensity', label: 'Interior reflections', type: 'range', min: 0, max: 2, step: 0.05, default: 0.5 },
+        { id: 'glassSheen', label: 'Window glass sheen', type: 'range', min: 0, max: 2, step: 0.05, default: 0.7 },
+        { id: 'glassGrime', label: 'Window glass dirt', type: 'range', min: 0, max: 1, step: 0.05, default: 1 },
         { id: 'shadowsEnabled', label: 'Shadows', type: 'toggle', default: true },
-        { id: 'shadowRadius', label: 'Shadow softness', type: 'range', min: 0, max: 10, step: 0.5, default: 9 },
+        { id: 'shadowRadius', label: 'Shadow softness', type: 'range', min: 0, max: 10, step: 0.5, default: 6 },
+        // Multipliers on the beam and its dust, so the two can be pushed
+        // apart. Both default to 1: the room looks the same until moved.
+        { id: 'shaftIntensity', label: 'Light shaft ×', type: 'range', min: 0, max: 3, step: 0.05, default: 2.55 },
+        { id: 'moteDensity', label: 'Dust motes ×', type: 'range', min: 0, max: 3, step: 0.05, default: 1.7 },
+      ],
+    },
+    {
+      // The procedural view through an interior window: sky graded to the
+      // hour, and three ranks of brownstones beyond it. Everything here is
+      // live except the sample count, which changes the shader.
+      id: 'windowSky',
+      label: 'Window view',
+      parameters: [
+        { id: 'skyBlur', label: 'Defocus', type: 'range', min: 0, max: 0.03, step: 0.0005, default: 0.0025 },
+        { id: 'skyBlurTaps', label: 'Defocus samples', type: 'select', options: ['1', '4', '8'], default: '4', mode: 'rebuild' },
+        // Where the street is relative to the floor: the knob that decides
+        // how high up the window the roofline crosses.
+        { id: 'skyGroundDrop', label: 'Street below floor (m)', type: 'range', min: 0, max: 60, step: 0.5, default: 7 },
+        { id: 'skyHeight', label: 'Building height ×', type: 'range', min: 0.2, max: 3, step: 0.05, default: 0.55 },
+        { id: 'skyFrontage', label: 'Frontage width ×', type: 'range', min: 0.3, max: 3, step: 0.05, default: 1.1 },
+        { id: 'skyDistance', label: 'Block distance ×', type: 'range', min: 0.3, max: 3, step: 0.05, default: 0.7 },
+        { id: 'skyHaze', label: 'Smoke haze ×', type: 'range', min: 0, max: 2, step: 0.05, default: 0.4 },
+        { id: 'skyGradient', label: 'Sky gradient span', type: 'range', min: 0.15, max: 1.5, step: 0.05, default: 0.2 },
+        { id: 'skyBrightness', label: 'Sky brightness ×', type: 'range', min: 0.2, max: 2.5, step: 0.05, default: 0.75 },
+        { id: 'skyLitWindows', label: 'Lit windows ×', type: 'range', min: 0, max: 2, step: 0.05, default: 0.5 },
       ],
     },
     {
       id: 'environment',
       label: 'Environment (outdoor)',
       parameters: [
-        { id: 'timeOfDay', label: 'Time of day', type: 'range', min: 5, max: 21, step: 0.1, default: 15.5 },
-        { id: 'sunIntensity', label: 'Sun intensity', type: 'range', min: 0, max: 3, step: 0.05, default: 0.95 },
-        { id: 'skyTurbidity', label: 'Sky turbidity', type: 'range', min: 0.1, max: 10, step: 0.05, default: 6.65 },
-        { id: 'skyRayleigh', label: 'Sky rayleigh', type: 'range', min: 0.3, max: 4, step: 0.05, default: 0.4 },
-        { id: 'skyMie', label: 'Sky haze (mie)', type: 'range', min: 0, max: 0.01, step: 0.0001, default: 0.009 },
-        { id: 'cloudCover', label: 'Cloud cover', type: 'range', min: 0, max: 1, step: 0.02, default: 0.86 },
-        { id: 'cloudCumulus', label: 'Cloud puffiness', type: 'range', min: 0, max: 1, step: 0.02, default: 0.78 },
-        { id: 'cloudScale', label: 'Cloud scale', type: 'range', min: 0.4, max: 2.5, step: 0.05, default: 1.8 },
+        { id: 'timeOfDay', label: 'Time of day', type: 'range', min: 5, max: 21, step: 0.1, default: STARTING_TIME },
+        { id: 'sunIntensity', label: 'Sun intensity', type: 'range', min: 0, max: 3, step: 0.05, default: 0.75 },
+        { id: 'sunDiscSize', label: 'Sun disc size', type: 'range', min: 0, max: 3, step: 0.05, default: 0.95 },
+        { id: 'sunGlow', label: 'Sun glow', type: 'range', min: 0, max: 3, step: 0.05, default: 2.6 },
+        { id: 'skyTurbidity', label: 'Sky turbidity', type: 'range', min: 0.1, max: 10, step: 0.05, default: 4.85 },
+        { id: 'skyRayleigh', label: 'Sky rayleigh', type: 'range', min: 0.1, max: 6, step: 0.05, default: 1.7 },
+        { id: 'skyMie', label: 'Sky haze (mie)', type: 'range', min: 0, max: 0.01, step: 0.0001, default: 0.0012 },
+        { id: 'skyGain', label: 'Sky brightness', type: 'range', min: 0.1, max: 3, step: 0.05, default: 1.45 },
+        { id: 'skySaturation', label: 'Sky saturation', type: 'range', min: 0, max: 2.5, step: 0.05, default: 1.15 },
+        { id: 'cloudCover', label: 'Cloud cover', type: 'range', min: 0, max: 1, step: 0.02, default: 0.56 },
+        { id: 'cloudCumulus', label: 'Cloud puffiness', type: 'range', min: 0, max: 1, step: 0.02, default: 0.68 },
+        { id: 'cloudScale', label: 'Cloud scale', type: 'range', min: 0.4, max: 2.5, step: 0.05, default: 1 },
         { id: 'cloudSpeed', label: 'Cloud drift', type: 'range', min: 0, max: 5, step: 0.1, default: 1.6 },
+        { id: 'windStrength', label: 'Wind strength', type: 'range', min: 0, max: 3, step: 0.05, default: 0.75 },
+        { id: 'windSpeed', label: 'Wind speed', type: 'range', min: 0, max: 4, step: 0.05, default: 1.1 },
+        // Separate from the interior slider: the sun's shadow map covers ~50m,
+        // so the same texel radius blurs a metre wide outdoors and a few cm in.
+        { id: 'sunShadowRadius', label: 'Sun shadow softness', type: 'range', min: 0, max: 6, step: 0.25, default: 1 },
         { id: 'fogDensity', label: 'Fog density', type: 'range', min: 0, max: 0.05, step: 0.001, default: 0.004 },
-        { id: 'envIntensity', label: 'Environment light', type: 'range', min: 0, max: 2, step: 0.05, default: 0.45 },
+        { id: 'envIntensity', label: 'Environment light', type: 'range', min: 0, max: 3, step: 0.05, default: 0.45 },
+        // Outdoor fill: multipliers on the zone's hemisphere light. skyFill
+        // lifts everything the sun misses; groundBounce is the sunlit-lawn
+        // component, so it fades with daylight and warms faces from below.
+        { id: 'skyFill', label: 'Sky fill ×', type: 'range', min: 0, max: 3, step: 0.05, default: 1.5 },
+        { id: 'groundBounce', label: 'Ground bounce ×', type: 'range', min: 0, max: 3, step: 0.05, default: 1.4 },
+      ],
+    },
+    {
+      id: 'water',
+      label: 'Water',
+      parameters: [
+        { id: 'waterReflectivity', label: 'Reflectivity', type: 'range', min: 0, max: 2, step: 0.02, default: 0.76 },
+        { id: 'waterMirrorStrength', label: 'Scene reflection', type: 'range', min: 0, max: 1, step: 0.02, default: 0.84 },
+        { id: 'waterReflectionBlur', label: 'Reflection blur', type: 'range', min: 0, max: 0.02, step: 0.0005, default: 0.0065 },
+        { id: 'waterReflectionDistortion', label: 'Reflection distortion', type: 'range', min: 0, max: 1.5, step: 0.02, default: 0.42 },
+        { id: 'waterRefraction', label: 'Refraction / transmission', type: 'range', min: 0, max: 1, step: 0.02, default: 0.42 },
+        { id: 'waterAbsorption', label: 'Depth absorption', type: 'range', min: 0.1, max: 3, step: 0.05, default: 3 },
+        { id: 'waterRippleOctaves', label: 'Ripple octaves', type: 'range', min: 1, max: 4, step: 1, default: 3 },
+        { id: 'waterRippleScale', label: 'Ripple scale', type: 'range', min: 0.25, max: 2.5, step: 0.05, default: 0.35 },
+        { id: 'waterRippleStrength', label: 'Ripple strength', type: 'range', min: 0, max: 2, step: 0.02, default: 1.48 },
+        { id: 'waterRippleSpeed', label: 'Ripple drift', type: 'range', min: 0, max: 3, step: 0.05, default: 2.55 },
+        { id: 'waterRippleFarStrength', label: 'Distant ripples', type: 'range', min: 0, max: 1, step: 0.02, default: 0.16 },
+        { id: 'waterShoreWidth', label: 'Shallow margin width', type: 'range', min: 0.03, max: 0.8, step: 0.01, default: 0.64 },
+        { id: 'waterShoreTint', label: 'Shallow margin tint', type: 'range', min: 0, max: 1, step: 0.02, default: 0.94 },
+        { id: 'waterShoreFoam', label: 'Waterline breakup', type: 'range', min: 0, max: 2, step: 0.02, default: 0.76 },
+        { id: 'waterShoreColor', label: 'Shallow margin colour', type: 'color', default: '#2a2414' },
+        { id: 'waterInteractionStrength', label: 'Movement response', type: 'range', min: 0, max: 3, step: 0.05, default: 2.35 },
+        { id: 'waterWaveSpeed', label: 'Movement wave speed', type: 'range', min: 0.2, max: 3, step: 0.05, default: 1.2 },
+        { id: 'waterWaveDamping', label: 'Movement wave damping', type: 'range', min: 0.2, max: 4, step: 0.05, default: 0.95 },
       ],
     },
     {
@@ -128,11 +228,12 @@ export const settingsSchema = {
         { id: 'bloomIntensity', label: 'Bloom intensity', type: 'range', min: 0, max: 2, step: 0.05, default: 0.9 },
         { id: 'bloomThreshold', label: 'Bloom threshold', type: 'range', min: 0.2, max: 1, step: 0.02, default: 0.98 },
         { id: 'toneMapping', label: 'Tone mapping', type: 'select', options: ['ACESFilmic', 'AgX', 'Neutral', 'Linear'], default: 'AgX', mode: 'rebuild' },
+        // The one shadow-casting window portal doubles this; see LightingRig.
         { id: 'shadowMapSize', label: 'Shadow map size', type: 'select', options: ['512', '1024', '2048'], default: '2048', mode: 'rebuild' },
         { id: 'pixelRatioCap', label: 'Pixel ratio cap', type: 'range', min: 0.5, max: 2, step: 0.25, default: 2 },
         { id: 'antialias', label: 'Antialias', type: 'toggle', default: true, mode: 'rebuild' },
         { id: 'showColliders', label: 'Show colliders', type: 'toggle', default: false },
-        { id: 'showAvatarGlb', label: 'Show avatar GLB', type: 'toggle', default: false, mode: 'rebuild' },
+        { id: 'showAvatarGlb', label: 'Rigged player figure', type: 'toggle', default: true, mode: 'rebuild' },
       ],
     },
   ],

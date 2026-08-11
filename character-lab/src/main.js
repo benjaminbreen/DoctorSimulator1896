@@ -1,21 +1,38 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { MeshoptDecoder } from 'meshoptimizer';
 import { findBones, createCostume } from './costume.js';
 import { createIdle } from './idle.js';
 import { createExpressions, createMhrExpressions } from './expressions.js';
+import { FACE_QA_STATES } from '../../shared/characters/facePerformance.js';
 import { createMhrFacialDetails } from './facial-details.js';
 import {
   createMhrController, createMhrEyeDetails, MHR_IDENTITY_IDS, MHR_LIVE_IDENTITY_IDS, MHR_RIG_IDS,
 } from './mhr.js';
 import {
-  applyRendererCCandidate, createRendererCController, generateRendererCCandidates,
+  applyRendererCAppearance, applyRendererCCandidate, createRendererCController, generateRendererCCandidates,
   RENDERER_C_AGE_BANDS, RENDERER_C_ANCESTRIES, RENDERER_C_COHORTS, RENDERER_C_LIVE_IDS,
+  rendererCWomenPalette, RENDERER_C_WOMEN_WARDROBE_IDS, setRendererCWomenWardrobeVisible,
 } from './renderer-c.js';
+import {
+  rendererCAgeBandForPatient,
+  rendererCAncestryForValues,
+  rendererCCohortForPatient,
+} from '../../shared/characters/rendererCRecipe.js';
+import { closestEyeColor, closestSkinTone } from '../../shared/characters/appearancePalettes.js';
+import {
+  AGE_APPEARANCE_VALUE_IDS,
+  deriveAgeAppearance,
+  rendererCAgeValueToYears,
+} from '../../shared/characters/ageAppearance.js';
 import {
   createRendererCMenswear, RENDERER_C_MENSWEAR_GEOMETRY_IDS, RENDERER_C_MENSWEAR_MATERIAL_IDS,
 } from './renderer-c-menswear.js';
+import {
+  activeWardrobeId, RENDERER_C_SOURCE_GARMENTS, wardrobeFor, wardrobePatch,
+} from './wardrobe.js';
 import {
   faceIdentityDistance, generatePatient, generateRestingFaceSignature, nextSeed,
   patientToCharacterPreset, randomSeed,
@@ -30,7 +47,16 @@ const [schema, initialPreset, rendererCManifest] = await Promise.all([
 ]);
 let preset = structuredClone(initialPreset);
 const definitions = schema.groups.flatMap((group) => group.parameters.map((parameter) => ({ ...parameter, mode: parameter.mode || group.mode, group: group.id })));
+const missingAgeAppearanceIds = new Set(
+  [...AGE_APPEARANCE_VALUE_IDS, 'greyPattern'].filter((id) => preset.values[id] == null),
+);
 for (const definition of definitions) if (preset.values[definition.id] == null) preset.values[definition.id] = structuredClone(definition.default);
+const initialAgeAppearance = deriveAgeAppearance({
+  ageYears: preset.patient?.identity?.age ?? rendererCAgeValueToYears(preset.values.age),
+  seed: preset.patient?.appearance?.seed ?? preset.values.seed,
+});
+for (const id of missingAgeAppearanceIds) preset.values[id] = initialAgeAppearance[id];
+normalizeAppearancePaletteValues(preset.values);
 if (preset.values.rendererCAnchor == null) preset.values.rendererCAnchor = 0;
 const ui = {
   canvas: document.querySelector('#stage'), controls: document.querySelector('#controls'), status: document.querySelector('#model-status'),
@@ -39,15 +65,24 @@ const ui = {
   command: document.querySelector('#generate-command'), fallback: document.querySelector('#fallback'), search: document.querySelector('#control-search'),
   regenerate: document.querySelector('#regenerate'), randomize: document.querySelector('#randomize'), newPatient: document.querySelector('#new-patient'),
   renderToggle: document.querySelector('#render-toggle'),
-  dressStudy: document.querySelector('#dress-study'),
+  advancedToggle: document.querySelector('#advanced-toggle'), taskTabs: [...document.querySelectorAll('[data-lab-task]')],
   poseToggle: document.querySelector('#pose-toggle'),
   expressionDriver: document.querySelector('#expression-driver'), faceUnitSelect: document.querySelector('#face-unit-select'),
   faceUnitValue: document.querySelector('#face-unit-value'), faceUnitOutput: document.querySelector('#face-unit-output'), faceUnitReset: document.querySelector('#face-unit-reset'),
   faceUnitSurprise: document.querySelector('#face-unit-surprise'),
+  faceQaStatus: document.querySelector('#face-qa-status'),
   rendererCPanel: document.querySelector('#renderer-c-lab'), rendererCCohort: document.querySelector('#renderer-c-cohort'),
   rendererCAge: document.querySelector('#renderer-c-age'), rendererCAncestry: document.querySelector('#renderer-c-ancestry'),
   rendererCSeed: document.querySelector('#renderer-c-seed'), rendererCGenerate: document.querySelector('#renderer-c-generate'),
+  rendererCUnlock: document.querySelector('#renderer-c-unlock'), rendererCLockStatus: document.querySelector('#renderer-c-lock-status'),
   rendererCGrid: document.querySelector('#renderer-c-grid'), rendererCGridStatus: document.querySelector('#renderer-c-grid-status'),
+  wardrobePanel: document.querySelector('#renderer-c-wardrobe'), wardrobeList: document.querySelector('#wardrobe-list'),
+  wardrobeSourceList: document.querySelector('#wardrobe-source-list'),
+  assetExaminer: document.querySelector('#asset-examiner'), assetExaminerList: document.querySelector('#asset-examiner-list'),
+  assetExaminerCount: document.querySelector('#asset-examiner-count'), assetExaminerKind: document.querySelector('#asset-examiner-kind'),
+  assetExaminerName: document.querySelector('#asset-examiner-name'), assetExaminerNote: document.querySelector('#asset-examiner-note'),
+  assetExaminerSource: document.querySelector('#asset-examiner-source'), assetExaminerClose: document.querySelector('#asset-examiner-close'),
+  assetExaminerResetView: document.querySelector('#asset-examiner-reset-view'),
 };
 
 /* ids that require rebuilding costume geometry (vs material-only or animation values) */
@@ -61,11 +96,17 @@ const SKIN_APPEARANCE_IDS = new Set([
   ...definitions.filter((definition) => definition.group === 'stylized' && definition.id !== 'stylizedLightSoftness')
     .map((definition) => definition.id),
 ]);
+const RENDERER_C_SURFACE_IDS = new Set([
+  'skinTone', 'skinRoughness', 'eyeColor', 'greyPattern',
+  ...AGE_APPEARANCE_VALUE_IDS,
+]);
 const COMPARISON_MATERIAL_IDS = new Set(['skinTone', 'skinRoughness']);
 const COSTUME_MATERIAL_IDS = new Set([
-  'dressColor', 'trimColor', 'fabricRoughness', 'hairShade', 'hairColor', 'strandContrast', 'greyAmount',
+  'dressColor', 'secondaryColor', 'trimColor', 'fabricType', 'fabricScale', 'fabricRelief', 'fabricSheen',
+  'fabricRoughness', 'necklineHeight', 'cuffWidth', 'trimWidth', 'placketWidth', 'womenPalette',
+  'dressDetailPattern', 'dressDetailAmount', 'dressDetailScale', 'collarThickness', 'cuffThickness',
+  'hairShade', 'hairColor', 'strandContrast', 'greyAmount',
 ]);
-const RENDERER_C_WOMEN_WARDROBE_IDS = new Set(['womenGarmentMode']);
 const MHR_FACE_DETAIL_GEOMETRY_IDS = new Set([
   'browDensity', 'browThickness', 'browArch', 'browAsymmetry',
   'lashDensity', 'lashLength', 'lashCurl',
@@ -76,6 +117,28 @@ const MHR_EYE_DETAIL_IDS = new Set([
   'mhrScleraColor', 'mhrScleraBrightness', 'mhrIrisScale', 'mhrPupilScale', 'mhrCorneaGloss',
 ]);
 const LIGHTING_IDS = new Set(['keyIntensity', 'fillIntensity', 'warmth', 'exposure', 'cameraFov', 'stylizedLightSoftness']);
+const LAB_TASK_GROUPS = Object.freeze({
+  cast: new Set(['identity', 'rendererCIdentity', 'heritage']),
+  appearance: new Set(['face', 'hair', 'heritage', 'rendererCSurface']),
+  wardrobe: new Set(['dress', 'rendererCMenswear']),
+  performance: new Set(['pose', 'performance']),
+  qa: new Set(['render']),
+});
+const BASIC_CONTROL_IDS = new Set([
+  'seed', 'gender', 'age', 'height', 'weight', 'muscle', 'proportions', 'rendererCAnchor',
+  'african', 'asian', 'caucasian', 'skinTone', 'skinRoughness', 'eyeColor',
+  'ageGeometry', 'wrinkleAmount', 'skinTexture', 'pigmentVariation', 'freckleAmount',
+  'ageSpotAmount', 'underEyeDarkness',
+  'headWidth', 'faceHeight', 'noseWidth', 'noseLength', 'jawWidth', 'eyeSize', 'eyeSpacing',
+  'mouthWidth', 'lipFullness', 'cheekVolume', 'hairStyle', 'hairColor', 'greyAmount', 'greyPattern',
+  'womenGarmentMode', 'outfitStyle', 'womenPalette', 'fabricType', 'dressColor', 'secondaryColor',
+  'trimColor', 'fabricScale', 'fabricRelief', 'fabricSheen', 'fabricRoughness', 'necklineHeight',
+  'cuffWidth', 'trimWidth', 'placketWidth', 'dressDetailPattern', 'dressDetailAmount', 'dressDetailScale',
+  'collarThickness', 'cuffThickness',
+  'menswearPalette', 'fabricPattern', 'seated', 'posture', 'headTilt', 'headTurn',
+  'idleMode', 'breathing', 'fidget', 'tremor', 'smile', 'sadness', 'fatigueExpression',
+  'keyIntensity', 'fillIntensity', 'exposure', 'cameraFov',
+]);
 const MHR_POSE_IDS = new Set([
   'seated', 'kneesTogether', 'posture', 'headTilt', 'headTurn',
   'armOpenness', 'elbowBend', 'armAsymmetry', 'wristAngle', 'seatedHandPose', 'handTension',
@@ -127,6 +190,12 @@ scene.add(world);
 const characterRoot = new THREE.Group();
 characterRoot.name = 'CharacterRoot';
 world.add(characterRoot);
+const assetPreviewRoot = new THREE.Group();
+assetPreviewRoot.name = 'WardrobeAssetPreview';
+assetPreviewRoot.visible = false;
+world.add(assetPreviewRoot);
+const objLoader = new OBJLoader();
+const sourceGltfLoader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 let model = null;
 let grid = null;
 let motionEnabled = true;
@@ -138,13 +207,26 @@ let bones = null;
 let costume = null;
 let idle = null;
 let expressions = null;
+let faceQaPerformanceValues = null;
 let mhrController = null;
 let mhrEyeDetails = null;
 let mhrFacialDetails = null;
 let rendererCController = null;
-let rendererCCohort = preset.rendererC?.cohort || (preset.values.gender >= 0.5 ? 'men' : 'women');
+let rendererCCohort = rendererCCohortForPatient(preset.patient);
 let rendererCCandidates = [];
+let rendererCDemographicsLocked = true;
+let activeLabTask = localStorage.getItem('characterLabTask') || 'cast';
+let advancedControlsVisible = localStorage.getItem('characterLabAdvanced') === 'true';
 let rendererCGridBusy = false;
+let wardrobeSwitchBusy = false;
+let assetExaminerOpen = false;
+let assetExaminerBusy = false;
+let assetExaminerFilter = 'all';
+let assetExaminerSelected = null;
+let assetExaminerLoadTicket = 0;
+let assetExaminerSavedView = null;
+let assetExaminerSavedMotion = true;
+let assetPreviewObject = null;
 let isFallback = false;
 let costumeDirty = false;
 let lastCostumeBuild = 0;
@@ -158,13 +240,10 @@ let pendingControlFrame = null;
 let pendingControlId = null;
 let pendingControlAppliesLive = false;
 const RENDERER_MODES = Object.freeze({
-  current: Object.freeze({ label: 'A · MPFB', path: '/models/mrs-ostrander-1896.glb', kind: 'mpfb' }),
-  mhr: Object.freeze({ label: 'B · Meta MHR', path: '/models/comparison-mhr-lod1.glb', kind: 'mhr' }),
-  rendererC: Object.freeze({ label: 'C · GNM + MPFB', kind: 'rendererC' }),
+  rendererC: Object.freeze({ label: 'Renderer C', kind: 'rendererC' }),
 });
 const RENDERER_ORDER = Object.keys(RENDERER_MODES);
-const storedRenderer = sessionStorage.getItem('characterLabRenderStyle');
-let renderStyle = RENDERER_MODES[storedRenderer] ? storedRenderer : 'rendererC';
+let renderStyle = 'rendererC';
 const named = new Map();
 const materials = {};
 
@@ -200,18 +279,17 @@ function makeClinic() {
     const bar = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, .05), windowFrame); bar.position.set(x, y, -1.23); world.add(bar);
   }
   grid = new THREE.GridHelper(5, 20, '#645335', '#33291d'); grid.visible = false; grid.position.y = 0.003; world.add(grid);
-  const hemi = new THREE.HemisphereLight('#a9bfd5', '#2b1a10', 0.9); hemi.name = 'FillLight'; scene.add(hemi);
-  const key = new THREE.SpotLight('#ffd8a0', 65, 9, Math.PI * 0.36, 0.92, 1.15);
-  key.name = 'KeyLight'; key.position.set(-1.5, 3.2, 2.2); key.target.position.set(0, 1.1, 0); key.castShadow = true;
-  // Zero-bias, heavily blurred spotlight shadows produced contour-map bands
-  // on the MHR proof. A modest normal offset and tighter blur preserve contact
-  // shadows without self-shadow acne.
-  key.shadow.bias = -0.00012; key.shadow.normalBias = 0.018; key.shadow.radius = 3;
+  const hemi = new THREE.HemisphereLight('#c6d2de', '#6a4933', 1.1); hemi.name = 'FillLight'; scene.add(hemi);
+  const key = new THREE.SpotLight('#f4d7b0', 22, 9, Math.PI * 0.44, 0.985, 1.15);
+  key.name = 'KeyLight'; key.position.set(-1.65, 2.75, 2.45); key.target.position.set(0, 1.32, 0); key.castShadow = true;
+  // A broad key and normal offset preserve facial planes without turning eye
+  // sockets and wrinkles into hard black shapes.
+  key.shadow.bias = -0.00008; key.shadow.normalBias = 0.022; key.shadow.radius = 5;
   key.shadow.mapSize.set(2048, 2048); key.shadow.camera.near = 0.35; key.shadow.camera.far = 8;
   scene.add(key, key.target);
-  const faceFill = new THREE.SpotLight('#d8c3aa', 3, 7, Math.PI * 0.48, 0.98, 1.2);
-  faceFill.name = 'ComparisonFaceFill'; faceFill.position.set(1.25, 2.35, 3.1); faceFill.target.position.set(0, 1.48, 0); faceFill.visible = false; scene.add(faceFill, faceFill.target);
-  const rim = new THREE.DirectionalLight('#8fa1b2', 0.3);
+  const faceFill = new THREE.SpotLight('#dce6ee', 9, 7, Math.PI * 0.49, 0.995, 1.2);
+  faceFill.name = 'ComparisonFaceFill'; faceFill.position.set(1.15, 1.95, 3.15); faceFill.target.position.set(0, 1.38, 0); faceFill.visible = false; scene.add(faceFill, faceFill.target);
+  const rim = new THREE.DirectionalLight('#9fb3c5', 0.55);
   rim.name = 'ComparisonRimLight'; rim.position.set(2.2, 2.5, -1.8); rim.visible = false; scene.add(rim);
 }
 
@@ -343,6 +421,9 @@ function refreshFaceUnitDebugger() {
   }
   ui.faceUnitValue.value = 0;
   ui.faceUnitOutput.textContent = '0.00';
+  document.querySelectorAll('[data-face-qa]').forEach((button) => {
+    button.disabled = expressions?.mode !== 'mpfb-faceunits';
+  });
 }
 
 function applyFaceUnitDebug() {
@@ -360,7 +441,30 @@ function clearFaceUnitDebug() {
 }
 
 function applyPresetRestingFace() {
+  faceQaPerformanceValues = null;
   expressions?.setRestingFace?.(preset.patient?.appearance?.restingFace || {});
+  if (ui.faceQaStatus) ui.faceQaStatus.textContent = 'Patient resting face';
+}
+
+function applyFaceQaState(id) {
+  if (expressions?.mode !== 'mpfb-faceunits') return;
+  if (id === 'preset') {
+    clearFaceUnitDebug();
+    applyPresetRestingFace();
+    return;
+  }
+  const state = FACE_QA_STATES.find((candidate) => candidate.id === id);
+  if (!state) return;
+  clearFaceUnitDebug();
+  faceQaPerformanceValues = {
+    ...preset.values,
+    smile: 0,
+    sadness: 0,
+    fatigueExpression: 0,
+  };
+  expressions.setRestingFace(state.weights);
+  setView('portrait');
+  if (ui.faceQaStatus) ui.faceQaStatus.textContent = `${state.label} · fixed close-up review state`;
 }
 
 function surpriseFace() {
@@ -381,9 +485,9 @@ function surpriseFace() {
 
 function updateRenderToggle() {
   if (!ui.renderToggle) return;
-  ui.renderToggle.textContent = `Renderer ${RENDERER_MODES[renderStyle].label}`;
-  ui.renderToggle.classList.toggle('active', renderStyle !== 'current');
-  ui.renderToggle.disabled = renderSwitchBusy;
+  ui.renderToggle.textContent = 'Renderer C';
+  ui.renderToggle.classList.add('active');
+  ui.renderToggle.disabled = true;
 }
 
 function rendererCControlAppliesLive(definition) {
@@ -393,7 +497,7 @@ function rendererCControlAppliesLive(definition) {
   if (rendererCCohort === 'women'
     && (COSTUME_GEOMETRY_IDS.has(definition.id) || COSTUME_MATERIAL_IDS.has(definition.id)
       || RENDERER_C_WOMEN_WARDROBE_IDS.has(definition.id))) return true;
-  if (SKIN_APPEARANCE_IDS.has(definition.id) || LIGHTING_IDS.has(definition.id)) return true;
+  if (RENDERER_C_SURFACE_IDS.has(definition.id) || LIGHTING_IDS.has(definition.id)) return true;
   if (['performance', 'pose'].includes(definition.group) && definition.id !== 'seated') return true;
   return ['hairColor', 'browColor', 'lashColor', 'dressColor', 'trimColor', 'fabricRoughness'].includes(definition.id);
 }
@@ -422,9 +526,6 @@ function updatePoseToggle() {
 }
 
 function updateControlModes() {
-  document.querySelectorAll('.control-group[data-renderer]').forEach((group) => {
-    group.hidden = group.dataset.renderer !== renderStyle;
-  });
   for (const definition of definitions) {
     const row = document.querySelector(`.control[data-id="${definition.id}"]`);
     if (!row) continue;
@@ -434,17 +535,445 @@ function updateControlModes() {
     row.classList.toggle('live', live);
     row.classList.toggle('bake', !live);
     row.title = (mhrLive || rendererCLive) && definition.mode === 'bake'
-      ? `Live in Renderer ${renderStyle === 'rendererC' ? 'C' : 'B'}; Renderer A still requires regeneration`
+      ? 'Live in Renderer C'
       : renderStyle === 'rendererC' && definition.mode === 'live' && !rendererCLive
         ? 'Renderer C needs an asset swap or Blender rebuild for this control'
         : '';
   }
-  if (ui.rendererCPanel) ui.rendererCPanel.hidden = renderStyle !== 'rendererC';
-  if (ui.dressStudy) ui.dressStudy.hidden = renderStyle !== 'rendererC' || rendererCCohort !== 'women';
+  updateLabWorkspaceVisibility();
+  renderWardrobePanel();
   updateRendererCMotionButtons();
 }
 
+function savedGroupState() {
+  try { return JSON.parse(localStorage.getItem('characterLabGroups') || '{}'); }
+  catch { return {}; }
+}
+
+function updateLabWorkspaceVisibility() {
+  const term = (ui.search?.value || '').trim().toLowerCase();
+  const allowedGroups = LAB_TASK_GROUPS[activeLabTask] || LAB_TASK_GROUPS.cast;
+  document.querySelectorAll('.control').forEach((row) => {
+    const advancedHidden = !advancedControlsVisible && row.classList.contains('advanced-control');
+    const searchHidden = term && !row.dataset.search.includes(term);
+    row.hidden = Boolean(searchHidden || (!term && advancedHidden));
+  });
+  document.querySelectorAll('.control-group').forEach((group) => {
+    const rendererMismatch = group.dataset.renderer && group.dataset.renderer !== renderStyle;
+    const taskMismatch = !allowedGroups.has(group.dataset.group);
+    const hasVisibleControl = [...group.querySelectorAll('.control')].some((row) => !row.hidden);
+    group.hidden = rendererMismatch || taskMismatch || !hasVisibleControl;
+  });
+  document.querySelectorAll('[data-lab-panel]').forEach((panel) => {
+    const tasks = panel.dataset.labPanel.split(/\s+/);
+    panel.hidden = !tasks.includes('all') && !tasks.includes(activeLabTask);
+  });
+  ui.taskTabs.forEach((button) => {
+    const selected = button.dataset.labTask === activeLabTask;
+    button.classList.toggle('active', selected);
+    button.setAttribute('aria-selected', String(selected));
+    button.tabIndex = selected ? 0 : -1;
+  });
+  if (ui.advancedToggle) {
+    ui.advancedToggle.textContent = advancedControlsVisible ? 'Hide advanced' : 'Show advanced';
+    ui.advancedToggle.setAttribute('aria-pressed', String(advancedControlsVisible));
+  }
+  const performanceBar = document.querySelector('.stage-perform');
+  if (performanceBar) performanceBar.hidden = !['performance', 'qa'].includes(activeLabTask);
+  document.body.dataset.labTask = activeLabTask;
+}
+
+function setLabTask(task) {
+  if (!LAB_TASK_GROUPS[task]) return;
+  activeLabTask = task;
+  localStorage.setItem('characterLabTask', task);
+  ui.search.value = '';
+  updateLabWorkspaceVisibility();
+  renderWardrobePanel();
+}
+
+function setAdvancedControls(visible) {
+  advancedControlsVisible = Boolean(visible);
+  localStorage.setItem('characterLabAdvanced', String(advancedControlsVisible));
+  updateLabWorkspaceVisibility();
+}
+
+function updateWardrobeSelection() {
+  const active = activeWardrobeId(rendererCCohort, preset.values);
+  document.querySelectorAll('[data-wardrobe-id]').forEach((button) => {
+    const selected = button.dataset.wardrobeId === active;
+    button.classList.toggle('selected', selected);
+    button.setAttribute('aria-pressed', String(selected));
+  });
+}
+
+function renderWardrobePanel() {
+  if (!ui.wardrobePanel || !ui.wardrobeList) return;
+  if (activeLabTask !== 'wardrobe') return;
+
+  document.querySelectorAll('[data-wardrobe-cohort]').forEach((button) => {
+    const selected = button.dataset.wardrobeCohort === rendererCCohort;
+    button.classList.toggle('active', selected);
+    button.setAttribute('aria-pressed', String(selected));
+    button.disabled = rendererCDemographicsLocked || wardrobeSwitchBusy || rendererCGridBusy;
+  });
+
+  ui.wardrobeList.replaceChildren();
+  for (const item of wardrobeFor(rendererCCohort)) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'wardrobe-card';
+    button.dataset.wardrobeId = item.id;
+    button.disabled = wardrobeSwitchBusy;
+    const heading = document.createElement('span');
+    heading.className = 'wardrobe-card-heading';
+    heading.textContent = item.label;
+    const kind = document.createElement('span');
+    kind.className = 'wardrobe-card-kind';
+    kind.textContent = item.kind;
+    const note = document.createElement('span');
+    note.className = 'wardrobe-card-note';
+    note.textContent = item.note;
+    button.append(heading, kind, note);
+    button.onclick = () => wearWardrobe(item.id);
+    ui.wardrobeList.append(button);
+  }
+
+  if (ui.wardrobeSourceList) {
+    ui.wardrobeSourceList.replaceChildren(...RENDERER_C_SOURCE_GARMENTS
+      .filter((item) => item.cohort === rendererCCohort || item.cohort === 'all')
+      .map((item) => {
+        const row = document.createElement('li');
+        row.textContent = `${item.label} · ${item.source}`;
+        return row;
+      }));
+  }
+  updateWardrobeSelection();
+}
+
+function normalizeRendererCWardrobe() {
+  if (renderStyle !== 'rendererC') return;
+  const wardrobe = wardrobeFor(rendererCCohort);
+  const currentStyle = preset.values.outfitStyle;
+  if (!wardrobe.some((item) => item.values.outfitStyle === currentStyle)) {
+    Object.assign(preset.values, wardrobe[0].values);
+  }
+  preset.values.gender = RENDERER_C_COHORTS[rendererCCohort].gender;
+  preset.rendererC = { ...(preset.rendererC || {}), cohort: rendererCCohort };
+}
+
+function assetExaminerAssets() {
+  const wearable = ['women', 'men'].flatMap((cohort) => wardrobeFor(cohort).map((item) => ({
+    ...item,
+    key: `wearable:${cohort}:${item.id}`,
+    cohort,
+    type: 'wearable',
+    source: 'Renderer C cohort master',
+  })));
+  const sources = RENDERER_C_SOURCE_GARMENTS.map((item) => ({
+    ...item,
+    key: `source:${item.id}`,
+    type: 'source',
+    kind: 'Source-only mesh',
+    note: 'Movable geometry preview. This asset is not yet embedded, rigged or offered as wearable.',
+  }));
+  return [...wearable, ...sources];
+}
+
+function assetMatchesExaminerFilter(asset) {
+  if (assetExaminerFilter === 'all') return true;
+  if (assetExaminerFilter === 'source') return asset.type === 'source';
+  return asset.cohort === assetExaminerFilter || asset.cohort === 'all';
+}
+
+function setAssetExaminerDetails(asset, overrideNote = null) {
+  if (!asset) return;
+  ui.assetExaminerKind.textContent = asset.type === 'wearable'
+    ? `${asset.cohort} · wearable now`
+    : `${asset.cohort === 'all' ? 'unisex' : asset.cohort} · source only`;
+  ui.assetExaminerName.textContent = asset.label;
+  ui.assetExaminerNote.textContent = overrideNote || asset.note;
+  ui.assetExaminerSource.textContent = asset.type === 'source'
+    ? `${asset.source} · ${asset.license}`
+    : `${asset.kind} · Renderer C`;
+}
+
+function renderAssetExaminerList() {
+  if (!ui.assetExaminerList) return;
+  const all = assetExaminerAssets();
+  const visible = all.filter(assetMatchesExaminerFilter);
+  ui.assetExaminerCount.textContent = `${visible.length} of ${all.length} assets`;
+  ui.assetExaminerList.replaceChildren();
+  let previousGroup = '';
+  for (const asset of visible) {
+    const group = asset.type === 'source'
+      ? 'Source-only meshes'
+      : `${asset.cohort === 'women' ? 'Women' : 'Men'} · wearable now`;
+    if (group !== previousGroup) {
+      const heading = document.createElement('p');
+      heading.className = 'asset-examiner-group';
+      heading.textContent = group;
+      ui.assetExaminerList.append(heading);
+      previousGroup = group;
+    }
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'asset-examiner-card';
+    button.classList.toggle('selected', asset.key === assetExaminerSelected);
+    button.disabled = assetExaminerBusy;
+    const name = document.createElement('span');
+    name.className = 'asset-examiner-card-name';
+    name.textContent = asset.label;
+    const badge = document.createElement('span');
+    badge.className = 'asset-examiner-card-badge';
+    badge.textContent = asset.type === 'wearable' ? asset.kind : 'source only';
+    const source = document.createElement('span');
+    source.className = 'asset-examiner-card-source';
+    source.textContent = asset.type === 'wearable' ? asset.cohort : `${asset.source} · ${asset.license}`;
+    button.append(name, badge, source);
+    button.onclick = () => selectAssetExaminerAsset(asset);
+    ui.assetExaminerList.append(button);
+  }
+}
+
+function clearAssetPreview() {
+  assetExaminerLoadTicket += 1;
+  if (!assetPreviewObject) return;
+  assetPreviewRoot.remove(assetPreviewObject);
+  assetPreviewObject.traverse((object) => {
+    object.geometry?.dispose?.();
+    const materialList = Array.isArray(object.material) ? object.material : [object.material];
+    for (const item of materialList) item?.dispose?.();
+  });
+  assetPreviewObject = null;
+}
+
+function setSourceAssetView() {
+  if (!assetPreviewObject) return;
+  const box = new THREE.Box3().setFromObject(assetPreviewObject);
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  const sphere = box.getBoundingSphere(new THREE.Sphere());
+  const verticalFov = THREE.MathUtils.degToRad(34);
+  // Leave generous room because the catalog occupies the right third of the
+  // canvas and some MHCLO sources are offset far from their local origin.
+  const distance = Math.max(2.2, sphere.radius / Math.sin(verticalFov / 2) * 3);
+  const viewDirection = new THREE.Vector3(0.72, 0.26, 1).normalize();
+  const target = center.clone().add(new THREE.Vector3(0, -size.y * 0.28, 0));
+  orbit.target.copy(target);
+  camera.position.copy(target).addScaledVector(viewDirection, distance);
+  camera.fov = 34;
+  camera.updateProjectionMatrix();
+  orbit.update();
+}
+
+async function showSourceAsset(asset) {
+  const ticket = assetExaminerLoadTicket + 1;
+  clearAssetPreview();
+  assetExaminerLoadTicket = ticket;
+  characterRoot.visible = false;
+  assetPreviewRoot.visible = true;
+  const chair = world.getObjectByName('ClinicChair');
+  if (chair) chair.visible = false;
+  setAssetExaminerDetails(asset, 'Loading standalone mesh…');
+  try {
+    const object = asset.preview.endsWith('.glb')
+      ? (await sourceGltfLoader.loadAsync(asset.preview)).scene
+      : await objLoader.loadAsync(asset.preview);
+    if (!assetExaminerOpen || ticket !== assetExaminerLoadTicket) {
+      object.traverse((child) => child.geometry?.dispose?.());
+      return;
+    }
+    const previewColor = asset.cohort === 'women' ? '#57435b' : asset.cohort === 'men' ? '#394956' : '#65563d';
+    object.traverse((child) => {
+      if (!child.isMesh) return;
+      const sourceMaterials = Array.isArray(child.material) ? child.material : [child.material];
+      for (const sourceMaterial of sourceMaterials) {
+        if (!sourceMaterial) continue;
+        for (const value of Object.values(sourceMaterial)) if (value?.isTexture) value.dispose();
+        sourceMaterial.dispose();
+      }
+      child.material = new THREE.MeshStandardMaterial({
+        color: previewColor, roughness: 0.68, metalness: 0.03, side: THREE.DoubleSide,
+      });
+      child.castShadow = true;
+      child.receiveShadow = true;
+      if (!child.geometry.getAttribute('normal')) child.geometry.computeVertexNormals();
+    });
+    const originalBox = new THREE.Box3().setFromObject(object);
+    const originalSize = originalBox.getSize(new THREE.Vector3());
+    const longest = Math.max(originalSize.x, originalSize.y, originalSize.z);
+    if (!Number.isFinite(longest) || longest <= 0) throw new Error('mesh has no measurable geometry');
+    object.scale.setScalar(1.65 / longest);
+    object.updateMatrixWorld(true);
+    const scaledBox = new THREE.Box3().setFromObject(object);
+    const center = scaledBox.getCenter(new THREE.Vector3());
+    object.position.set(-center.x, 0.05 - scaledBox.min.y, -center.z);
+    assetPreviewRoot.add(object);
+    assetPreviewObject = object;
+    setSourceAssetView();
+    setAssetExaminerDetails(asset);
+  } catch (error) {
+    setAssetExaminerDetails(asset, `Preview failed: ${error.message}`);
+  }
+}
+
+async function enterRendererCForAssetExaminer() {
+  if (renderStyle === 'rendererC') return;
+  renderSwitchBusy = true;
+  renderStyle = 'rendererC';
+  sessionStorage.setItem('characterLabRenderStyle', renderStyle);
+  updateRenderToggle();
+  ui.status.textContent = 'Loading Renderer C dressing inventory…';
+  ui.status.className = 'status';
+  try {
+    await loadCharacter();
+    updateControlModes();
+  } finally {
+    renderSwitchBusy = false;
+    updateRenderToggle();
+  }
+}
+
+async function selectAssetExaminerAsset(asset) {
+  if (!assetExaminerOpen || assetExaminerBusy) return;
+  assetExaminerBusy = true;
+  assetExaminerSelected = asset.key;
+  renderAssetExaminerList();
+  setAssetExaminerDetails(asset, asset.type === 'wearable' ? 'Applying to the live figure…' : 'Loading standalone mesh…');
+  try {
+    if (asset.type === 'source') {
+      await showSourceAsset(asset);
+      return;
+    }
+    if (rendererCGridBusy) {
+      setAssetExaminerDetails(asset, 'The identity contact sheet is still rendering. Try this outfit again in a moment.');
+      return;
+    }
+    clearAssetPreview();
+    assetPreviewRoot.visible = false;
+    characterRoot.visible = true;
+    const chair = world.getObjectByName('ClinicChair');
+    if (chair) chair.visible = true;
+    await enterRendererCForAssetExaminer();
+    if (rendererCCohort !== asset.cohort) await switchWardrobeCohort(asset.cohort);
+    wearWardrobe(asset.id);
+    setAssetExaminerDetails(asset);
+  } finally {
+    assetExaminerBusy = false;
+    renderAssetExaminerList();
+  }
+}
+
+async function openAssetExaminer() {
+  if (assetExaminerOpen) return;
+  assetExaminerOpen = true;
+  assetExaminerSavedMotion = motionEnabled;
+  assetExaminerSavedView = {
+    position: camera.position.clone(), target: orbit.target.clone(), fov: camera.fov,
+  };
+  motionEnabled = false;
+  rendererCMoveKeys.clear();
+  document.body.classList.add('asset-examiner-open');
+  ui.assetExaminer.hidden = false;
+  await enterRendererCForAssetExaminer();
+  const currentId = activeWardrobeId(rendererCCohort, preset.values) || wardrobeFor(rendererCCohort)[0].id;
+  const current = assetExaminerAssets().find((asset) => asset.type === 'wearable'
+    && asset.cohort === rendererCCohort && asset.id === currentId);
+  assetExaminerSelected = current?.key || null;
+  characterRoot.visible = true;
+  assetPreviewRoot.visible = false;
+  renderAssetExaminerList();
+  if (current) setAssetExaminerDetails(current);
+  setView('full');
+  ui.assetExaminerClose.focus();
+}
+
+function closeAssetExaminer() {
+  if (!assetExaminerOpen) return;
+  assetExaminerOpen = false;
+  clearAssetPreview();
+  assetPreviewRoot.visible = false;
+  characterRoot.visible = true;
+  const chair = world.getObjectByName('ClinicChair');
+  if (chair) chair.visible = true;
+  document.body.classList.remove('asset-examiner-open');
+  ui.assetExaminer.hidden = true;
+  motionEnabled = assetExaminerSavedMotion;
+  if (assetExaminerSavedView) {
+    camera.position.copy(assetExaminerSavedView.position);
+    orbit.target.copy(assetExaminerSavedView.target);
+    camera.fov = assetExaminerSavedView.fov;
+    camera.updateProjectionMatrix();
+    orbit.update();
+  }
+  assetExaminerSavedView = null;
+  ui.canvas.focus();
+}
+
+function resetAssetExaminerView() {
+  if (assetPreviewObject) setSourceAssetView();
+  else setView('full');
+}
+
+function wearWardrobe(id) {
+  if (renderStyle !== 'rendererC' || wardrobeSwitchBusy || rendererCGridBusy) return;
+  const patch = wardrobePatch(rendererCCohort, id);
+  if (!patch) return;
+  Object.assign(preset.values, patch);
+  refreshControls(false);
+  if (costume && rendererCCohort === 'men') costume.rebuild(preset.values);
+  else if (costume && rendererCCohort === 'women') rebuildCostumeNow({ preserveCurrentPose: true });
+  updateRendererCAppearance(preset.values);
+  setView('full');
+  renderWardrobePanel();
+  const selected = wardrobeFor(rendererCCohort).find((item) => item.id === id);
+  ui.status.textContent = `${selected?.label || 'Outfit'} applied live · no Blender rebuild`;
+  ui.status.className = 'status ok';
+  updateText();
+}
+
+async function switchWardrobeCohort(cohort) {
+  if (renderStyle !== 'rendererC' || wardrobeSwitchBusy || rendererCGridBusy) return;
+  if (rendererCDemographicsLocked) {
+    ui.status.textContent = 'Unlock casting controls before changing the patient cohort';
+    ui.status.className = 'status warn';
+    return;
+  }
+  if (!['women', 'men'].includes(cohort) || cohort === rendererCCohort) return;
+  wardrobeSwitchBusy = true;
+  renderWardrobePanel();
+  try {
+    rendererCCohort = cohort;
+    preset.rendererC = { ...(preset.rendererC || {}), cohort };
+    preset.values.gender = RENDERER_C_COHORTS[cohort].gender;
+    preset.values.rendererCAnchor = 0;
+    Object.assign(preset.values, wardrobeFor(cohort)[0].values);
+    ui.rendererCCohort.value = cohort;
+    rendererCCandidates = [];
+    ui.rendererCGrid.replaceChildren();
+    ui.rendererCGridStatus.textContent = 'Figure switched · generate eight when you want a new identity slate';
+    ui.status.textContent = `Loading Renderer C ${cohort} wardrobe…`;
+    ui.status.className = 'status';
+    await loadCharacter();
+    updateControlModes();
+    refreshControls(false);
+    setView('full');
+    ui.status.textContent = `Renderer C ${cohort} figure ready · choose an outfit`;
+    ui.status.className = 'status ok';
+  } catch (error) {
+    ui.status.textContent = `Could not switch figure · ${error.message}`;
+    ui.status.className = 'status warn';
+  } finally {
+    wardrobeSwitchBusy = false;
+    renderWardrobePanel();
+    updateText();
+  }
+}
+
 async function loadCharacter() {
+  faceQaPerformanceValues = null;
+  normalizeRendererCWardrobe();
   disposeLoadedCharacter();
   isFallback = false;
   ui.fallback.hidden = true;
@@ -888,55 +1417,57 @@ function updateRendererCWomenWardrobe(values) {
   const production = model?.getObjectByName?.('RendererC_VictorianDress');
   const details = model?.getObjectByName?.('RendererC_VictorianDetails');
   const fitSource = model?.getObjectByName?.('RendererC_VictorianDressFitSource');
+  const goldenBodice = model?.getObjectByName?.('RendererC_GoldenDressBodice');
+  const goldenSkirt = model?.getObjectByName?.('RendererC_GoldenDressSkirt');
+  const goldenSeatedSkirt = model?.getObjectByName?.('RendererC_GoldenDressSeatedSkirt');
+  const goldenDetails = model?.getObjectByName?.('RendererC_GoldenDressDetails');
   const carrier = model?.getObjectByName?.('RendererC_BaseGarment');
   const shoes = model?.getObjectByName?.('RendererC_Shoes');
+  const useGoldenDress = mode === 'golden-dress';
   if (production) production.visible = mode === 'production-dress' && !useFittedSource;
   if (details) {
-    details.visible = mode === 'production-dress' && !useFittedSource;
-    details.traverse?.((object) => {
-      if (!object.isMesh) return;
-      const materials = (Array.isArray(object.material) ? object.material : [object.material]).filter(Boolean);
-      object.visible = mode === 'production-dress' && !useFittedSource
-        && materials.some((material) => material.name.includes('Trim'));
-    });
+    details.visible = false;
   }
   if (fitSource) fitSource.visible = useFittedSource;
-  if (shoes) shoes.visible = mode !== 'production-dress';
+  if (goldenBodice) goldenBodice.visible = useGoldenDress;
+  if (goldenDetails) goldenDetails.visible = useGoldenDress;
+  if (goldenSeatedSkirt) goldenSeatedSkirt.visible = useGoldenDress && fittedSeated;
+  if (goldenSkirt) {
+    goldenSkirt.visible = useGoldenDress && !fittedSeated;
+    const index = goldenSkirt.morphTargetDictionary?.rc_seated_lap;
+    if (index !== undefined) goldenSkirt.morphTargetInfluences[index] = fittedSeated ? 1 : 0;
+  }
+  if (shoes) shoes.visible = mode !== 'production-dress' && !useGoldenDress;
   // The fitted carrier supplies long sleeves beneath the period overdress and
   // remains available as the isolated carrier comparison.
-  if (carrier) carrier.visible = true;
+  if (carrier) carrier.visible = !useGoldenDress;
+  setRendererCWomenWardrobeVisible(model, mode === 'production-dress');
   for (const { mesh } of costume?.pieces?.() || []) {
     mesh.visible = mode === 'concept-shell';
   }
 }
 
 function updateRendererCAppearance(values) {
-  const skinTint = new THREE.Color('#ffffff').lerp(new THREE.Color(values.skinTone), 0.22);
-  const body = named.get('Human_Body');
-  if (body?.isMesh) {
-    const bodyMaterials = Array.isArray(body.material) ? body.material : [body.material];
-    for (const mat of bodyMaterials) {
-      mat.color?.copy(skinTint);
-      setSurfaceFinish(mat, values.skinRoughness, 0.9);
-      mat.needsUpdate = true;
-    }
-  }
-  setEyeColor(values.eyeColor);
-  setMaterialLike('RendererC_Eyes', '#d9cec3', 0.42);
-  setMaterialLike('RendererC_Hair', values.hairColor, 0.88);
-  setMaterialLike('RendererC_Brows', values.browColor || values.hairColor, 0.9);
-  setMaterialLike('RendererC_Lashes', values.lashColor || '#17100c', 0.92);
+  applyRendererCAppearance(model, {
+    cohort: rendererCCohort,
+    appearanceSeed: preset.patient?.appearance?.seed ?? values.seed,
+    values,
+    presentation: { dressColor: values.dressColor, trimColor: values.trimColor },
+  });
   if (costume && rendererCCohort === 'men') costume.updateMaterials?.(values);
   else if (costume && rendererCCohort === 'women') {
     costume.materials.dress.color.set(values.dressColor);
     setSurfaceFinish(costume.materials.dress, values.fabricRoughness, 1);
     costume.materials.trim.color.set(values.trimColor);
     costume.updateHair(values);
-    setMaterialLike('RendererC_BaseGarment', values.dressColor, values.fabricRoughness, 1);
     const productionRoots = [
       model?.getObjectByName?.('RendererC_VictorianDress'),
       model?.getObjectByName?.('RendererC_VictorianDetails'),
       model?.getObjectByName?.('RendererC_VictorianDressFitSource'),
+      model?.getObjectByName?.('RendererC_GoldenDressBodice'),
+      model?.getObjectByName?.('RendererC_GoldenDressSkirt'),
+      model?.getObjectByName?.('RendererC_GoldenDressSeatedSkirt'),
+      model?.getObjectByName?.('RendererC_GoldenDressDetails'),
     ].filter(Boolean);
     const productionMaterials = [];
     for (const root of productionRoots) {
@@ -947,15 +1478,12 @@ function updateRendererCAppearance(values) {
     }
     for (const material of productionMaterials) {
       const trim = material.name.includes('Trim');
-      material.color?.set(trim ? values.trimColor : values.dressColor);
       material.side = THREE.DoubleSide;
       setSurfaceFinish(material, trim ? Math.max(0.45, values.fabricRoughness * 0.84) : values.fabricRoughness, 1);
       material.needsUpdate = true;
     }
     updateRendererCWomenWardrobe(values);
   }
-  else setMaterialLike('RendererC_BaseGarment', values.dressColor, values.fabricRoughness, 1);
-  setMaterialLike('RendererC_Shoes', '#211713', 0.82);
 }
 
 function applyAll(changedId = null, { final = true } = {}) {
@@ -1016,7 +1544,7 @@ function applyAll(changedId = null, { final = true } = {}) {
       const identityChanged = identityControl
         ? (rendererCController?.applyValues(v, { force: initial || changedId === 'rendererCAnchor' }) || false)
         : false;
-      if (initial || identityControl || SKIN_APPEARANCE_IDS.has(changedId)
+      if (initial || identityControl || RENDERER_C_SURFACE_IDS.has(changedId)
         || ['hairColor', 'browColor', 'lashColor'].includes(changedId)
         || (rendererCCohort === 'men' && RENDERER_C_MENSWEAR_MATERIAL_IDS.has(changedId))
         || (rendererCCohort === 'women' && (COSTUME_MATERIAL_IDS.has(changedId)
@@ -1038,19 +1566,19 @@ function applyAll(changedId = null, { final = true } = {}) {
     const comparison = renderStyle !== 'current';
     const softness = THREE.MathUtils.clamp(v.stylizedLightSoftness ?? 0.78, 0, 1);
     if (key) {
-      key.intensity = (comparison ? THREE.MathUtils.lerp(39, 29, softness) : 48) * v.keyIntensity;
-      key.color.setHSL(0.105, comparison ? .42 : .58, (comparison ? .67 : .62) + (1 - v.warmth) * .1);
-      key.penumbra = comparison ? THREE.MathUtils.lerp(.9, .995, softness) : .92;
-      key.shadow.radius = comparison ? THREE.MathUtils.lerp(2, 4, softness) : 3;
-      key.shadow.normalBias = comparison ? 0.018 : 0.012;
+      key.intensity = (comparison ? THREE.MathUtils.lerp(18, 14, softness) : 24) * v.keyIntensity;
+      key.color.setHSL(0.105, comparison ? .3 : .5, (comparison ? .73 : .65) + (1 - v.warmth) * .08);
+      key.penumbra = comparison ? THREE.MathUtils.lerp(.965, .998, softness) : .95;
+      key.shadow.radius = comparison ? THREE.MathUtils.lerp(4, 6, softness) : 4;
+      key.shadow.normalBias = comparison ? 0.022 : 0.014;
     }
-    if (fill) fill.intensity = comparison ? 0.38 + v.fillIntensity * 0.55 : 0.62 + v.fillIntensity * 0.9;
+    if (fill) fill.intensity = comparison ? 0.75 + v.fillIntensity * 0.5 : 0.72 + v.fillIntensity * 0.8;
     if (faceFill) {
       faceFill.visible = comparison;
-      faceFill.intensity = (0.65 + softness * 1.75) * (0.65 + v.fillIntensity * 0.45);
+      faceFill.intensity = (4 + softness * 4) * (0.65 + v.fillIntensity * 0.45);
     }
-    if (rim) { rim.visible = comparison; rim.intensity = 0.14 + softness * 0.14; }
-    renderer.toneMappingExposure = 2 ** (v.exposure + (comparison ? -0.08 : 0));
+    if (rim) { rim.visible = comparison; rim.intensity = comparison ? 0.35 + softness * 0.35 : 0.3; }
+    renderer.toneMappingExposure = 2 ** (v.exposure + (comparison ? 0.12 : 0));
     camera.fov = v.cameraFov; camera.updateProjectionMatrix();
   }
   if (changedId === 'idleMode') syncIdleMode();
@@ -1060,11 +1588,23 @@ function applyAll(changedId = null, { final = true } = {}) {
 
 function buildControls() {
   ui.controls.replaceChildren();
+  const collapsed = savedGroupState();
   for (const group of schema.groups) {
     const section = document.createElement('section'); section.className = 'control-group'; section.dataset.group = group.id;
     if (group.renderer) section.dataset.renderer = group.renderer;
-    const heading = document.createElement('button'); heading.className = 'group-heading'; heading.textContent = group.label; heading.onclick = () => section.classList.toggle('closed');
-    const body = document.createElement('div'); body.className = 'group-body';
+    const body = document.createElement('div'); body.className = 'group-body'; body.id = `control-group-${group.id}`;
+    const closed = collapsed[group.id] ?? !['identity', 'face', 'dress', 'pose', 'render'].includes(group.id);
+    section.classList.toggle('closed', closed);
+    const heading = document.createElement('button');
+    heading.type = 'button'; heading.className = 'group-heading'; heading.textContent = group.label;
+    heading.setAttribute('aria-controls', body.id); heading.setAttribute('aria-expanded', String(!closed));
+    heading.onclick = () => {
+      section.classList.toggle('closed');
+      heading.setAttribute('aria-expanded', String(!section.classList.contains('closed')));
+      const state = savedGroupState();
+      state[group.id] = section.classList.contains('closed');
+      localStorage.setItem('characterLabGroups', JSON.stringify(state));
+    };
     for (const parameter of group.parameters) body.append(makeControl({ ...parameter, mode: parameter.mode || group.mode }));
     section.append(heading, body); ui.controls.append(section);
   }
@@ -1093,28 +1633,59 @@ function scheduleControlUpdate(changedId, appliesLive) {
 function makeControl(definition) {
   const row = document.createElement('div'); row.className = `control ${definition.mode === 'bake' ? 'bake' : 'live'}`; row.dataset.search = `${definition.label} ${definition.id}`.toLowerCase();
   row.dataset.id = definition.id;
+  row.classList.toggle('advanced-control', !BASIC_CONTROL_IDS.has(definition.id));
   const label = document.createElement('label'); label.textContent = definition.label; label.htmlFor = `control-${definition.id}`;
   const output = document.createElement('output'); const input = document.createElement(definition.type === 'select' ? 'select' : 'input'); input.id = `control-${definition.id}`;
-  if (definition.type === 'select') for (const value of definition.options) { const option = document.createElement('option'); option.value = value; option.textContent = value.replaceAll('-', ' '); input.append(option); }
+  if (definition.type === 'select') definition.options.forEach((value, index) => {
+    const option = document.createElement('option'); option.value = value;
+    option.textContent = definition.optionLabels?.[index] || value.replaceAll('-', ' ');
+    input.append(option);
+  });
   else { input.type = definition.type; if (definition.type === 'range') for (const key of ['min', 'max', 'step']) input[key] = definition[key]; }
-  input.value = preset.values[definition.id]; output.textContent = formatValue(definition, input.value);
+  input.value = preset.values[definition.id]; updateControlOutput(definition, input.value, output);
   const applyInput = (final = false) => {
     preset.values[definition.id] = definition.type === 'range' ? Number(input.value) : input.value;
+    if (renderStyle === 'rendererC' && definition.id === 'age') {
+      const ageAppearance = deriveAgeAppearance({
+        ageYears: rendererCAgeValueToYears(preset.values.age),
+        seed: preset.patient?.appearance?.seed ?? preset.values.seed,
+      });
+      Object.assign(preset.values, ageAppearance);
+      for (const id of [...AGE_APPEARANCE_VALUE_IDS, 'greyPattern']) syncControlValue(id, preset.values[id]);
+    }
     if (renderStyle === 'rendererC' && rendererCCohort === 'men' && ['dressColor', 'trimColor'].includes(definition.id)) {
       preset.values.menswearPalette = 'custom';
       syncControlValue('menswearPalette', 'custom');
     }
+    if (renderStyle === 'rendererC' && rendererCCohort === 'women'
+      && ['dressColor', 'secondaryColor', 'trimColor'].includes(definition.id)) {
+      preset.values.womenPalette = 'custom';
+      syncControlValue('womenPalette', 'custom');
+    }
+    if (renderStyle === 'rendererC' && rendererCCohort === 'women' && definition.id === 'womenPalette') {
+      const palette = rendererCWomenPalette(preset.values.womenPalette);
+      if (palette) {
+        preset.values.dressColor = palette.primary;
+        preset.values.secondaryColor = palette.secondary;
+        preset.values.trimColor = palette.accent;
+        syncControlValue('dressColor', palette.primary);
+        syncControlValue('secondaryColor', palette.secondary);
+        syncControlValue('trimColor', palette.accent);
+      }
+    }
     if (renderStyle === 'rendererC' && rendererCCohort === 'men' && definition.id === 'outfitStyle') {
       const palette = {
         'mens-working-clothes': 'work-earth', 'mens-sack-suit': 'trade-charcoal',
-        'mens-formal-suit': 'formal-black-grey', 'mens-mourning-suit': 'mourning',
+        'mens-formal-suit': 'elite-charcoal-dove', 'mens-mourning-suit': 'mourning',
+        'mens-victorian-sample': 'trade-charcoal',
+        'mens-authored-victorian-set': 'formal-black-grey',
       }[preset.values.outfitStyle];
       if (palette) {
         preset.values.menswearPalette = palette;
         syncControlValue('menswearPalette', palette);
       }
     }
-    output.textContent = formatValue(definition, input.value);
+    updateControlOutput(definition, input.value, output);
     if (HERITAGE_IDS.includes(definition.id)) normalizeHeritageWeights(definition.id);
     const appliesLive = controlAppliesLive(definition);
     if (!appliesLive) markRegenerationNeeded();
@@ -1134,6 +1705,21 @@ function makeControl(definition) {
 }
 
 function formatValue(definition, value) { return definition.type === 'range' ? Number(value).toFixed(definition.step < .01 ? 3 : definition.step < 1 ? 2 : 0) : ''; }
+function updateControlOutput(definition, value, output) {
+  if (!definition || !output) return;
+  output.textContent = formatValue(definition, value);
+  const paletteControl = ['skinTone', 'eyeColor'].includes(definition.id);
+  output.classList.toggle('palette-swatch', paletteControl);
+  if (!paletteControl) return;
+  output.style.backgroundColor = value;
+  const index = definition.options?.indexOf(value) ?? -1;
+  output.title = definition.optionLabels?.[index] || value;
+}
+function normalizeAppearancePaletteValues(values) {
+  values.skinTone = closestSkinTone(values.skinTone);
+  values.eyeColor = closestEyeColor(values.eyeColor);
+  return values;
+}
 function normalizeHeritageWeights(changedId) {
   const chosen = THREE.MathUtils.clamp(Number(preset.values[changedId]) || 0, 0, 1);
   const others = HERITAGE_IDS.filter((id) => id !== changedId);
@@ -1149,7 +1735,7 @@ function normalizeHeritageWeights(changedId) {
     heritageInput.value = preset.values[id];
     const heritageDefinition = definitions.find((definition) => definition.id === id);
     const heritageOutput = heritageInput.parentElement?.querySelector('output');
-    if (heritageOutput) heritageOutput.textContent = formatValue(heritageDefinition, preset.values[id]);
+    updateControlOutput(heritageDefinition, preset.values[id], heritageOutput);
   }
 }
 function refreshControls(apply = true) {
@@ -1160,7 +1746,7 @@ function refreshControls(apply = true) {
     if (!input) continue;
     input.value = preset.values[definition.id];
     const output = input.parentElement?.querySelector('output');
-    if (output) output.textContent = formatValue(definition, input.value);
+    updateControlOutput(definition, input.value, output);
   }
   if (apply) applyAll();
   else updateText();
@@ -1183,7 +1769,7 @@ function addRecordField(list, label, value) {
   list.append(term, description);
 }
 function renderPatientRecord(patient) {
-  ui.patientSection.hidden = !patient;
+  ui.patientSection.hidden = !patient || activeLabTask !== 'cast';
   ui.patientRecord.replaceChildren();
   if (!patient) return;
   const wrapper = document.createElement('div'); wrapper.className = 'patient-record';
@@ -1214,6 +1800,7 @@ function updateText() {
     ? `<dt>Identity anchor</dt><dd>${rendererCController?.anchors[rendererCController.activeAnchor]?.label || 'neutral'}</dd><dt>Cohort master</dt><dd>${rendererCCohort}</dd>`
     : '';
   ui.pipeline.innerHTML = `<dt>Tunable values</dt><dd>${definitions.length}</dd><dt>Live controls</dt><dd>${live}</dd><dt>Blender controls</dt><dd>${baked}</dd><dt>Renderer</dt><dd>${RENDERER_MODES[renderStyle].label}</dd>${rendererCState}<dt>Facial driver</dt><dd>${expressionMode}</dd><dt>Regeneration</dt><dd>${regenerationNeeded ? 'needed' : 'current'}</dd><dt>Patient seed</dt><dd>${preset.patient?.seed ?? 'legacy'}</dd><dt>Appearance seed</dt><dd>${preset.values.seed}</dd><dt>Face signature</dt><dd>${preset.patient?.appearance?.faceSignatureSeed ?? 'neutral'}</dd><dt>Target runtime</dt><dd>Three.js / GLB</dd>`;
+  updateWardrobeSelection();
 }
 
 function populateRendererCCriteria() {
@@ -1223,10 +1810,57 @@ function populateRendererCCriteria() {
   fill(ui.rendererCCohort, RENDERER_C_COHORTS);
   fill(ui.rendererCAge, RENDERER_C_AGE_BANDS);
   fill(ui.rendererCAncestry, RENDERER_C_ANCESTRIES);
-  ui.rendererCCohort.value = rendererCCohort;
-  ui.rendererCAge.value = preset.rendererC?.ageBand || '30s';
-  ui.rendererCAncestry.value = preset.rendererC?.ancestry || 'european';
   ui.rendererCSeed.value = preset.rendererC?.gridSeed || preset.values.seed || 1896;
+  syncRendererCCriteriaFromPatient();
+}
+
+function syncRendererCCriteriaFromPatient() {
+  const cohort = rendererCCohortForPatient(preset.patient);
+  const ageBand = rendererCAgeBandForPatient(preset.patient);
+  const ancestry = rendererCAncestryForValues(preset.values);
+  if (rendererCDemographicsLocked) {
+    rendererCCohort = cohort;
+    preset.values.gender = RENDERER_C_COHORTS[cohort].gender;
+    preset.rendererC = { ...(preset.rendererC || {}), cohort, ageBand, ancestry };
+    if (ui.rendererCSeed) ui.rendererCSeed.value = preset.values.seed || preset.patient?.seed || 1896;
+  }
+  ui.rendererCCohort.value = rendererCDemographicsLocked ? cohort : rendererCCohort;
+  ui.rendererCAge.value = rendererCDemographicsLocked ? ageBand : (preset.rendererC?.ageBand || ageBand);
+  ui.rendererCAncestry.value = rendererCDemographicsLocked ? ancestry : (preset.rendererC?.ancestry || ancestry);
+  for (const control of [ui.rendererCCohort, ui.rendererCAge, ui.rendererCAncestry]) {
+    if (control) control.disabled = rendererCDemographicsLocked;
+  }
+  for (const id of ['gender', 'age', 'african', 'asian', 'caucasian']) {
+    const control = document.querySelector(`#control-${id}`);
+    if (!control) continue;
+    control.disabled = rendererCDemographicsLocked;
+    control.closest('.control')?.classList.toggle('derived-control', rendererCDemographicsLocked);
+  }
+  if (ui.rendererCUnlock) {
+    ui.rendererCUnlock.textContent = rendererCDemographicsLocked ? 'Unlock casting controls' : 'Use patient record';
+    ui.rendererCUnlock.setAttribute('aria-pressed', String(!rendererCDemographicsLocked));
+  }
+  if (ui.rendererCLockStatus) {
+    ui.rendererCLockStatus.textContent = rendererCDemographicsLocked
+      ? `Derived from ${preset.patient?.identity?.displayName || 'the patient'}: ${RENDERER_C_COHORTS[cohort].label.toLowerCase()}, ${RENDERER_C_AGE_BANDS[ageBand].label}, ${RENDERER_C_ANCESTRIES[ancestry].label}.`
+      : 'Casting controls are unlocked. This can intentionally diverge from the patient record.';
+  }
+  return cohort;
+}
+
+function candidateForCurrentPatient(candidate) {
+  if (!rendererCDemographicsLocked) return candidate;
+  return {
+    ...candidate,
+    values: {
+      ...candidate.values,
+      gender: preset.values.gender,
+      age: preset.values.age,
+      african: preset.values.african,
+      asian: preset.values.asian,
+      caucasian: preset.values.caucasian,
+    },
+  };
 }
 
 function createRendererCGridCards(candidates) {
@@ -1310,7 +1944,7 @@ async function captureRendererCCandidates(cards, candidates) {
 
 function selectRendererCCandidate(candidate, button) {
   if (renderStyle !== 'rendererC' || rendererCGridBusy) return;
-  applyRendererCCandidate(preset, candidate);
+  applyRendererCCandidate(preset, candidateForCurrentPatient(candidate));
   preset.rendererC.gridSeed = Number(ui.rendererCSeed.value) || 1896;
   rendererCCohort = candidate.cohort;
   document.querySelectorAll('.renderer-c-card').forEach((card) => card.classList.toggle('selected', card === button));
@@ -1325,6 +1959,7 @@ async function generateRendererCGrid() {
   if (rendererCGridBusy) return;
   rendererCGridBusy = true;
   ui.rendererCGenerate.disabled = true;
+  renderWardrobePanel();
   ui.rendererCGridStatus.textContent = 'Preparing eight identities…';
   try {
     const requestedCohort = ui.rendererCCohort.value;
@@ -1334,6 +1969,7 @@ async function generateRendererCGrid() {
       preset.values.rendererCAnchor = 0;
       const mensStyle = String(preset.values.outfitStyle || '').startsWith('mens-');
       if (rendererCCohort === 'women' && mensStyle) preset.values.outfitStyle = 'conservative-day';
+      if (rendererCCohort === 'men' && !mensStyle) preset.values.outfitStyle = 'mens-sack-suit';
       await loadCharacter();
       updateControlModes();
     }
@@ -1349,7 +1985,7 @@ async function generateRendererCGrid() {
     const cards = createRendererCGridCards(rendererCCandidates);
     await captureRendererCCandidates(cards, rendererCCandidates);
     if (rendererCCandidates[0]) {
-      applyRendererCCandidate(preset, rendererCCandidates[0]);
+      applyRendererCCandidate(preset, candidateForCurrentPatient(rendererCCandidates[0]));
       preset.rendererC.gridSeed = Number(ui.rendererCSeed.value) || 1896;
       cards[0].button.classList.add('selected');
       refreshControls(true);
@@ -1360,23 +1996,8 @@ async function generateRendererCGrid() {
   } finally {
     rendererCGridBusy = false;
     ui.rendererCGenerate.disabled = false;
+    renderWardrobePanel();
   }
-}
-
-async function openRendererCDressStudy() {
-  if (renderStyle !== 'rendererC' || rendererCCohort !== 'women' || rendererCGridBusy) return;
-  Object.assign(preset.values, {
-    outfitStyle: 'fashionable-1896',
-    womenGarmentMode: 'production-dress',
-    dressColor: '#4b263b',
-    trimColor: '#c2a56f',
-    skirtFullness: 1.12,
-    sleeveVolume: 1.04,
-  });
-  refreshControls(true);
-  setView('full');
-  ui.status.textContent = 'Renderer C · production 1896 dress proof';
-  ui.status.className = 'status ok';
 }
 
 function syncControlValue(id, value) {
@@ -1385,7 +2006,7 @@ function syncControlValue(id, value) {
   input.value = value;
   const definition = definitions.find((item) => item.id === id);
   const output = input.parentElement?.querySelector('output');
-  if (definition && output) output.textContent = formatValue(definition, value);
+  updateControlOutput(definition, value, output);
 }
 
 function toggleMhrPose() {
@@ -1411,6 +2032,16 @@ function appearanceVariation() {
   preset = patientToCharacterPreset(patient, preset, definitions, { appearanceSeed });
   refreshControls(false);
   applyPresetRestingFace();
+  if (renderStyle === 'rendererC') {
+    syncRendererCCriteriaFromPatient();
+    rendererCCandidates = [];
+    ui.rendererCGrid.replaceChildren();
+    ui.rendererCGridStatus.textContent = 'Patient appearance updated. Generate eight to audition alternate face anchors.';
+    applyAll();
+    ui.status.textContent = `Appearance variation ${appearanceSeed} applied to ${preset.name}`;
+    ui.status.className = 'status ok';
+    return;
+  }
   if (renderStyle === 'mhr') {
     applyAll();
     ui.status.textContent = `Appearance variation ${appearanceSeed} applied live to Meta MHR · renderer A rebuild pending`;
@@ -1442,9 +2073,22 @@ async function newRandomPatient() {
     if (!best || score > best.score) best = { candidate, score, anatomyDistance };
   }
 
+  const previousCohort = rendererCCohort;
   preset = best.candidate;
   refreshControls(false);
   applyPresetRestingFace();
+  if (renderStyle === 'rendererC') {
+    syncRendererCCriteriaFromPatient();
+    rendererCCandidates = [];
+    ui.rendererCGrid.replaceChildren();
+    ui.rendererCGridStatus.textContent = 'The new patient record selected this figure. Generate eight to audition alternates within the same cohort.';
+    if (rendererCCohort !== previousCohort) await loadCharacter();
+    else applyAll();
+    setView('portrait');
+    ui.status.textContent = `${preset.name} cast from the patient record · anatomy distance ${best.anatomyDistance.toFixed(2)}`;
+    ui.status.className = 'status ok';
+    return;
+  }
   ui.status.textContent = `Casting a distinct patient · anatomy distance ${best.anatomyDistance.toFixed(2)}…`;
   ui.status.className = 'status warn';
   if (renderStyle === 'mhr') {
@@ -1502,7 +2146,7 @@ function setView(name) {
   if (name === 'portrait' && bones?.head) {
     const target = bones.head.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0.025, 0));
     orbit.target.copy(target);
-    camera.position.copy(target).add(new THREE.Vector3(0.38, 0.09, 0.72));
+    camera.position.copy(target).add(new THREE.Vector3(0.25, 0.055, 0.52));
   } else if (name === 'hands' && bones?.handL && bones?.handR) {
     const left = bones.handL.getWorldPosition(new THREE.Vector3());
     const right = bones.handR.getWorldPosition(new THREE.Vector3());
@@ -1550,20 +2194,52 @@ async function toggleRenderStyle() {
 }
 
 populateRendererCCriteria();
-makeClinic(); buildControls(); updateRenderToggle(); await loadCharacter(); updateText();
-setView(renderStyle === 'rendererC' ? 'portrait' : 'clinic');
-if (renderStyle === 'rendererC') await generateRendererCGrid();
+makeClinic(); buildControls(); syncRendererCCriteriaFromPatient(); updateRenderToggle(); await loadCharacter(); updateText();
+setLabTask(LAB_TASK_GROUPS[activeLabTask] ? activeLabTask : 'cast');
+setView('portrait');
+ui.rendererCGridStatus.textContent = 'Current patient loaded. Generate eight to audition alternate face anchors.';
 ui.randomize.onclick = appearanceVariation;
 ui.newPatient.onclick = newRandomPatient;
-ui.regenerate.onclick = regenerateCharacter;
-document.querySelector('#reset').onclick = () => { preset = structuredClone(initialPreset); refreshControls(); applyPresetRestingFace(); setView('clinic'); };
+if (ui.regenerate) ui.regenerate.onclick = regenerateCharacter;
+document.querySelector('#reset').onclick = async () => {
+  const previousCohort = rendererCCohort;
+  preset = structuredClone(initialPreset);
+  normalizeAppearancePaletteValues(preset.values);
+  syncRendererCCriteriaFromPatient();
+  refreshControls(false);
+  applyPresetRestingFace();
+  if (rendererCCohort !== previousCohort) await loadCharacter();
+  else applyAll();
+  setView('portrait');
+};
 document.querySelector('#export').onclick = () => { const link = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([JSON.stringify(preset, null, 2)], { type: 'application/json' })), download: `${preset.id}.json` }); link.click(); URL.revokeObjectURL(link.href); };
-document.querySelector('#apply-json').onclick = () => { try { preset = JSON.parse(ui.json.value); refreshControls(); applyPresetRestingFace(); } catch { ui.json.setCustomValidity('Invalid JSON'); ui.json.reportValidity(); } };
+document.querySelector('#apply-json').onclick = async () => {
+  try {
+    const previousCohort = rendererCCohort;
+    preset = JSON.parse(ui.json.value);
+    normalizeAppearancePaletteValues(preset.values);
+    syncRendererCCriteriaFromPatient();
+    refreshControls(false);
+    applyPresetRestingFace();
+    if (rendererCCohort !== previousCohort) await loadCharacter();
+    else applyAll();
+  } catch { ui.json.setCustomValidity('Invalid JSON'); ui.json.reportValidity(); }
+};
 document.querySelector('#copy-json').onclick = () => navigator.clipboard.writeText(ui.json.value);
 document.querySelector('#toggle-grid').onclick = (event) => { grid.visible = !grid.visible; event.currentTarget.classList.toggle('active', grid.visible); };
 document.querySelector('#toggle-motion').onclick = (event) => { motionEnabled = !motionEnabled; syncIdleMode(); event.currentTarget.classList.toggle('active', motionEnabled); };
-ui.renderToggle.onclick = toggleRenderStyle;
+if (ui.renderToggle) ui.renderToggle.onclick = toggleRenderStyle;
 ui.poseToggle.onclick = toggleMhrPose;
+ui.taskTabs.forEach((button) => { button.onclick = () => setLabTask(button.dataset.labTask); });
+ui.advancedToggle.onclick = () => setAdvancedControls(!advancedControlsVisible);
+ui.rendererCUnlock.onclick = async () => {
+  const previousCohort = rendererCCohort;
+  rendererCDemographicsLocked = !rendererCDemographicsLocked;
+  syncRendererCCriteriaFromPatient();
+  renderWardrobePanel();
+  if (rendererCDemographicsLocked && rendererCCohort !== previousCohort) await loadCharacter();
+  else updateText();
+};
 document.querySelectorAll('[data-view]').forEach((button) => button.onclick = () => setView(button.dataset.view));
 document.querySelectorAll('[data-renderer-c-motion]').forEach((button) => {
   button.onclick = () => playRendererCMotion(button.dataset.rendererCMotion);
@@ -1574,13 +2250,38 @@ ui.faceUnitSelect.onchange = applyFaceUnitDebug;
 ui.faceUnitValue.oninput = applyFaceUnitDebug;
 ui.faceUnitReset.onclick = clearFaceUnitDebug;
 ui.faceUnitSurprise.onclick = surpriseFace;
+document.querySelectorAll('[data-face-qa]').forEach((button) => {
+  button.onclick = () => applyFaceQaState(button.dataset.faceQa);
+});
 ui.rendererCGenerate.onclick = generateRendererCGrid;
-ui.dressStudy.onclick = openRendererCDressStudy;
-ui.canvas.ondblclick = () => setView('clinic');
-ui.search.oninput = () => { const term = ui.search.value.toLowerCase(); document.querySelectorAll('.control').forEach((row) => row.hidden = !row.dataset.search.includes(term)); document.querySelectorAll('.control-group').forEach((group) => { const rendererMismatch = group.dataset.renderer && group.dataset.renderer !== renderStyle; group.hidden = rendererMismatch || ![...group.querySelectorAll('.control')].some((row) => !row.hidden); }); };
+document.querySelectorAll('[data-wardrobe-cohort]').forEach((button) => {
+  button.onclick = () => switchWardrobeCohort(button.dataset.wardrobeCohort);
+});
+document.querySelectorAll('[data-asset-filter]').forEach((button) => {
+  button.onclick = () => {
+    assetExaminerFilter = button.dataset.assetFilter;
+    document.querySelectorAll('[data-asset-filter]').forEach((item) => item.classList.toggle('active', item === button));
+    renderAssetExaminerList();
+  };
+});
+ui.assetExaminerClose.onclick = closeAssetExaminer;
+ui.assetExaminerResetView.onclick = resetAssetExaminerView;
+ui.canvas.ondblclick = () => assetExaminerOpen ? resetAssetExaminerView() : setView('clinic');
+ui.search.oninput = updateLabWorkspaceVisibility;
+window.addEventListener('keydown', (event) => {
+  if (event.code === 'Escape' && assetExaminerOpen) {
+    event.preventDefault();
+    closeAssetExaminer();
+    return;
+  }
+  if (event.code !== 'Digit2' || !event.shiftKey || event.repeat || isEditableTarget(event.target)) return;
+  event.preventDefault();
+  if (assetExaminerOpen) closeAssetExaminer();
+  else openAssetExaminer();
+});
 window.addEventListener('keydown', (event) => {
   if (!RENDERER_C_MOVEMENT_KEYS.has(event.code) && !['ShiftLeft', 'ShiftRight'].includes(event.code)) return;
-  if (isEditableTarget(event.target) || renderStyle !== 'rendererC') return;
+  if (isEditableTarget(event.target) || renderStyle !== 'rendererC' || assetExaminerOpen) return;
   rendererCMoveKeys.add(event.code);
   if (RENDERER_C_MOVEMENT_KEYS.has(event.code) && rendererCStandingForMovement()) event.preventDefault();
 });
@@ -1608,7 +2309,10 @@ window.__lab = {
   get rendererCMoveKeys() { return new Set(rendererCMoveKeys); },
   get characterRoot() { return characterRoot; },
   get renderStyle() { return renderStyle; },
+  get assetExaminerOpen() { return assetExaminerOpen; },
+  get assetExaminerSelected() { return assetExaminerSelected; },
   THREE, applyAll, rebuildCostumeNow, generateRendererCGrid, toggleRenderStyle,
+  openAssetExaminer, closeAssetExaminer,
 };
 
 const clock = new THREE.Clock();
@@ -1652,7 +2356,7 @@ function frame() {
       idle.update(delta, elapsed, preset.values, mode);
     }
   }
-  if (expressions && !isFallback) expressions.update(delta, elapsed, preset.values);
+  if (expressions && !isFallback) expressions.update(delta, elapsed, faceQaPerformanceValues || preset.values);
   if (mhrFacialDetails && renderStyle === 'mhr') mhrFacialDetails.update(preset.values);
   orbit.update(); renderer.render(scene, camera); requestAnimationFrame(frame);
 }

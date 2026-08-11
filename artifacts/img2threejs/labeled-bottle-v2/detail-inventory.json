@@ -1,0 +1,12 @@
+{
+  "details": [
+    {"id":"base-heel","realization":"glass-shell radial profile"},
+    {"id":"rounded-shoulder","realization":"seven-sample editable shoulder curve"},
+    {"id":"open-mouth-and-lip","realization":"outer-to-inner rim in closed profile"},
+    {"id":"wall-and-base-thickness","realization":"separate outer and inner profile radii"},
+    {"id":"concave-meniscus","realization":"liquid top profile plus contact torus"},
+    {"id":"curved-label","realization":"open-ended cylinder sector"},
+    {"id":"inserted-cork","realization":"tapered closed lathe profile"},
+    {"id":"paper-fibres","realization":"ImageGen albedo plus normal and roughness maps"}
+  ]
+}

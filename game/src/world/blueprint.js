@@ -191,6 +191,8 @@ export function validateBlueprint(blueprint) {
 
   for (const item of furniture ?? []) {
     if (item.size.some((value) => value <= 0)) errors.push(`${item.id}: size must be positive`);
+    if (item.dynamic && !(item.mass > 0)) errors.push(`${item.id}: dynamic furniture needs a positive mass`);
+    if (item.dynamic && item.collider === false) errors.push(`${item.id}: decor cannot be dynamic`);
   }
 
   const spawn = navigation?.defaultSpawn;

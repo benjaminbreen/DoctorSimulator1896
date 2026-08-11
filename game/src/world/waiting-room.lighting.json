@@ -1,28 +1,84 @@
 {
   "id": "WAITING_ROOM_DUSK",
-  "ambient": { "color": "#736a5e", "intensity": 0.4 },
-  "hemisphere": { "skyColor": "#939cb5", "groundColor": "#4f4030", "intensity": 0.6 },
-  "windowSky": "#bcc8e0",
+  "ambient": {
+    "color": "#6f675c",
+    "intensity": 0.35
+  },
+  "hemisphere": {
+    "skyColor": "#939cb5",
+    "groundColor": "#6f6860",
+    "intensity": 0.55
+  },
+  "windowSky": "#b8c4de",
   "windowPortals": [
-    { "windowId": "window-wait-n1", "color": "#aebcd8", "intensity": 1.8, "elevationDeg": 32, "azimuthDeg": 14 },
-    { "windowId": "window-wait-n2", "color": "#aebcd8", "intensity": 1.9, "elevationDeg": 32, "azimuthDeg": 5 },
-    { "windowId": "window-wait-n3", "color": "#aebcd8", "intensity": 1.9, "elevationDeg": 32, "azimuthDeg": -5 },
-    { "windowId": "window-wait-n4", "color": "#aebcd8", "intensity": 1.8, "elevationDeg": 32, "azimuthDeg": -14 },
-    { "windowId": "window-wait-w1", "color": "#aebcd8", "intensity": 1.3, "elevationDeg": 32, "azimuthDeg": 70 },
-    { "windowId": "window-wait-e2", "color": "#aebcd8", "intensity": 1.2, "elevationDeg": 32, "azimuthDeg": -70 }
+    {
+      "windowId": "window-street-w",
+      "color": "#a7b8d8",
+      "intensity": 2.2,
+      "elevationDeg": 32,
+      "azimuthDeg": 22,
+      "castShadow": true
+    },
+    {
+      "windowId": "window-street-c",
+      "color": "#a7b8d8",
+      "intensity": 2.3,
+      "elevationDeg": 32,
+      "azimuthDeg": 0
+    },
+    {
+      "windowId": "window-street-e",
+      "color": "#a7b8d8",
+      "intensity": 2.2,
+      "elevationDeg": 32,
+      "azimuthDeg": -22
+    }
   ],
   "gaslights": [
-    { "propId": "gaslight-desk", "color": "#ffc57a", "intensity": 4.5, "distance": 8.0, "decay": 2, "flicker": 0.08, "castShadow": true },
-    { "propId": "gaslight-west", "color": "#ffb45e", "intensity": 5.5, "distance": 9.5, "decay": 2, "flicker": 0.1, "castShadow": false },
-    { "propId": "gaslight-east", "color": "#ffb45e", "intensity": 5.5, "distance": 9.5, "decay": 2, "flicker": 0.1, "castShadow": false },
-    { "propId": "gaslight-south", "color": "#ffb45e", "intensity": 5.0, "distance": 8.5, "decay": 2, "flicker": 0.1, "castShadow": false },
-    { "propId": "gaslight-center", "color": "#ffcf8a", "intensity": 6.0, "distance": 11.0, "decay": 2, "flicker": 0.06, "castShadow": false }
+    {
+      "propId": "gaslight-gasolier",
+      "color": "#ffb45e",
+      "intensity": 6.5,
+      "distance": 10.0,
+      "decay": 2,
+      "flicker": 0.1,
+      "castShadow": true
+    },
+    {
+      "propId": "gaslight-mantel-n",
+      "color": "#ffb45e",
+      "intensity": 3.0,
+      "distance": 6.0,
+      "decay": 2,
+      "flicker": 0.12,
+      "castShadow": false
+    },
+    {
+      "propId": "gaslight-mantel-s",
+      "color": "#ffb45e",
+      "intensity": 3.0,
+      "distance": 6.0,
+      "decay": 2,
+      "flicker": 0.12,
+      "castShadow": false
+    },
+    {
+      "propId": "gaslight-desk",
+      "color": "#ffc57a",
+      "intensity": 2.6,
+      "distance": 5.0,
+      "decay": 2,
+      "flicker": 0.08,
+      "castShadow": false
+    }
   ],
   "exposureBase": 1.0,
   "materials": {
     "wall": "#94836a",
     "floor": "#6e5238",
-    "ceiling": "#a59a84",
-    "trim": "#40311f"
+    "ceiling": "#f2f3f0",
+    "trim": "#40311f",
+    "wallTexture": "props/Wallpaper_Vintage",
+    "floorTexture": "victorian/WoodenFloor_01"
   }
 }

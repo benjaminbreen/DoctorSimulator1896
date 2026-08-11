@@ -1,0 +1,231 @@
+{
+  "sourceImage": "/private/var/folders/6k/yjq5djpn7d74hcj8srdz24m40000gn/T/codex-clipboard-2b9a086f-7aba-4949-a23f-8dcde82af8f1.png",
+  "zonesDir": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/.img2threejs/golden-dress-zones",
+  "detailInventory": {
+    "scanMethod": "grid-3x3",
+    "targetMinDetails": 10,
+    "details": [
+      {
+        "id": "raised-neckline",
+        "kind": "conforming-shell",
+        "description": "A modest raised neckline closes the deep V and follows the upper chest and neck base.",
+        "region": {
+          "x": 0.0,
+          "y": 0.0,
+          "width": 0.3333,
+          "height": 0.3333,
+          "units": "normalized"
+        },
+        "scale": "meso",
+        "affects": "silhouette and period read",
+        "mapsTo": {
+          "type": "component.localFeatures",
+          "ref": "neckline-collar.raised-profile"
+        },
+        "evidenceRef": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/.img2threejs/golden-dress-zones/zone-r0c0.png",
+        "confidence": 0.72
+      },
+      {
+        "id": "fitted-bodice",
+        "kind": "conforming-shell",
+        "description": "The bodice follows the torso without exposed skin gaps and narrows into a defined waist.",
+        "region": {
+          "x": 0.3333,
+          "y": 0.0,
+          "width": 0.3333,
+          "height": 0.3333,
+          "units": "normalized"
+        },
+        "scale": "macro",
+        "affects": "primary silhouette and skin coverage",
+        "mapsTo": {
+          "type": "component.localFeatures",
+          "ref": "dress-shell.fitted-bodice"
+        },
+        "evidenceRef": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/.img2threejs/golden-dress-zones/zone-r0c1.png",
+        "confidence": 0.95
+      },
+      {
+        "id": "long-sleeve-continuity",
+        "kind": "conforming-shell",
+        "description": "Each long sleeve remains continuous from shoulder to wrist and deforms across shoulder and elbow.",
+        "region": {
+          "x": 0.6667,
+          "y": 0.0,
+          "width": 0.3333,
+          "height": 0.3333,
+          "units": "normalized"
+        },
+        "scale": "macro",
+        "affects": "arm coverage and deformation",
+        "mapsTo": {
+          "type": "component.localFeatures",
+          "ref": "dress-shell.long-sleeves"
+        },
+        "evidenceRef": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/.img2threejs/golden-dress-zones/zone-r0c2.png",
+        "confidence": 0.95
+      },
+      {
+        "id": "real-cuffs",
+        "kind": "single-bone-detail",
+        "description": "Narrow cuffs wrap fully around the lower sleeves and remain attached without flat front-facing panels.",
+        "region": {
+          "x": 0.0,
+          "y": 0.3333,
+          "width": 0.3333,
+          "height": 0.3333,
+          "units": "normalized"
+        },
+        "scale": "meso",
+        "affects": "sleeve termination and accent region",
+        "mapsTo": {
+          "type": "component.localFeatures",
+          "ref": "cuffs.wrapped-bands"
+        },
+        "evidenceRef": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/.img2threejs/golden-dress-zones/zone-r1c0.png",
+        "confidence": 0.9
+      },
+      {
+        "id": "waist-transition",
+        "kind": "conforming-shell",
+        "description": "A narrow waist band bridges bodice and skirt with overlap so the dress never separates at the waist.",
+        "region": {
+          "x": 0.3333,
+          "y": 0.3333,
+          "width": 0.3333,
+          "height": 0.3333,
+          "units": "normalized"
+        },
+        "scale": "meso",
+        "affects": "bodice-to-skirt attachment",
+        "mapsTo": {
+          "type": "component.localFeatures",
+          "ref": "waistband.continuous-overlap"
+        },
+        "evidenceRef": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/.img2threejs/golden-dress-zones/zone-r1c1.png",
+        "confidence": 0.92
+      },
+      {
+        "id": "front-button-row",
+        "kind": "repeated-solid-detail",
+        "description": "A restrained vertical row of small buttons follows the center-front bodice above the waist.",
+        "region": {
+          "x": 0.6667,
+          "y": 0.3333,
+          "width": 0.3333,
+          "height": 0.3333,
+          "units": "normalized"
+        },
+        "scale": "micro",
+        "affects": "closure read and repetition",
+        "mapsTo": {
+          "type": "component.localFeatures",
+          "ref": "front-closure.button-row"
+        },
+        "evidenceRef": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/.img2threejs/golden-dress-zones/zone-r1c2.png",
+        "confidence": 0.82
+      },
+      {
+        "id": "full-skirt-volume",
+        "kind": "conforming-shell",
+        "description": "The skirt expands from the fitted waist into a continuous full ankle-length volume with no detached overskirt slabs.",
+        "region": {
+          "x": 0.0,
+          "y": 0.6667,
+          "width": 0.3333,
+          "height": 0.3333,
+          "units": "normalized"
+        },
+        "scale": "macro",
+        "affects": "primary lower-body silhouette",
+        "mapsTo": {
+          "type": "component.localFeatures",
+          "ref": "dress-shell.full-skirt"
+        },
+        "evidenceRef": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/.img2threejs/golden-dress-zones/zone-r2c0.png",
+        "confidence": 0.9
+      },
+      {
+        "id": "seated-lap-corrective",
+        "kind": "deformation-corrective",
+        "description": "A named seated corrective lifts and spreads the front skirt over the thighs while preserving side and rear continuity.",
+        "region": {
+          "x": 0.3333,
+          "y": 0.6667,
+          "width": 0.3333,
+          "height": 0.3333,
+          "units": "normalized"
+        },
+        "scale": "macro",
+        "affects": "seated deformation and chair clearance",
+        "mapsTo": {
+          "type": "component.localFeatures",
+          "ref": "dress-shell.seated-corrective"
+        },
+        "evidenceRef": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/.img2threejs/golden-dress-zones/zone-r2c1.png",
+        "confidence": 0.85
+      },
+      {
+        "id": "hem-facing",
+        "kind": "surface-relief",
+        "description": "A narrow hem facing follows the skirt edge as conforming relief rather than a floating card.",
+        "region": {
+          "x": 0.6667,
+          "y": 0.6667,
+          "width": 0.3333,
+          "height": 0.3333,
+          "units": "normalized"
+        },
+        "scale": "meso",
+        "affects": "lower silhouette and accent region",
+        "mapsTo": {
+          "type": "component.localFeatures",
+          "ref": "hem-facing.continuous-band"
+        },
+        "evidenceRef": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/.img2threejs/golden-dress-zones/zone-r2c2.png",
+        "confidence": 0.7
+      },
+      {
+        "id": "authored-cloth-uvs",
+        "kind": "material-system",
+        "description": "Authored UV islands keep weave scale and direction stable across the bodice, sleeves, and skirt.",
+        "region": {
+          "x": 0.0,
+          "y": 0.0,
+          "width": 1.0,
+          "height": 1.0,
+          "units": "normalized"
+        },
+        "scale": "micro",
+        "affects": "cloth material continuity",
+        "mapsTo": {
+          "type": "material.localOverrides",
+          "ref": "cloth-base.authored-uv-scale"
+        },
+        "evidenceRef": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/.img2threejs/golden-dress-analysis.md",
+        "confidence": 1.0
+      },
+      {
+        "id": "independent-cloth-pbr",
+        "kind": "material-system",
+        "description": "Albedo, roughness, and normal maps remain independent; weave relief is not painted into the color channel.",
+        "region": {
+          "x": 0.0,
+          "y": 0.0,
+          "width": 1.0,
+          "height": 1.0,
+          "units": "normalized"
+        },
+        "scale": "micro",
+        "affects": "material response under neutral and grazing light",
+        "mapsTo": {
+          "type": "material.localOverrides",
+          "ref": "cloth-base.independent-pbr-channels"
+        },
+        "evidenceRef": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/.img2threejs/golden-dress-analysis.md",
+        "confidence": 1.0
+      }
+    ]
+  },
+  "authoringInstruction": "Open each zone crop under zonesDir and replace every detail stub's kind, description, scale, affects, mapsTo, and confidence with what is actually observed. Add more detail entries per zone if a single zone contains multiple distinct marks; do not leave stubs unfilled or unlinked (mapsTo must reference a real component.localFeatures or material.localOverrides entry)."
+}

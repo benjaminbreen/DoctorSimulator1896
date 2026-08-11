@@ -2,26 +2,36 @@ import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { useLoader } from '@react-three/fiber';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { modelUrl } from '../world/modelPacks.js';
+import { applyWind } from './foliageWind.js';
 
-// Instanced trees from the Quaternius Ultimate Nature Pack (CC0). Each tree
-// item picks one of five model variants per archetype; every variant part
-// (bark, leaves) is one InstancedMesh, so a few hundred trees stay cheap.
-const VARIANTS = 5;
-const ARCHETYPE_MODELS = ['BirchTree', 'CommonTree', 'Willow'];
+// How far a canopy top travels, as a fraction of the tree's height. A big elm
+// moving a quarter of a metre is a breeze; much more and it reads as a storm.
+const TREE_SWAY = 0.03;
+
+// Instanced trees from the Shapespark exterior plants kit, split into pieces
+// by the model converter. Three species in four variants each; a tree item
+// picks one variant of its archetype, and every variant part (trunk, leaf
+// cards) is one InstancedMesh, so a few hundred trees stay cheap.
+const VARIANTS = 4;
+const ARCHETYPE_MODELS = ['Tree-01', 'Tree-02', 'Tree-03'];
 // Model height relative to trunkH + canopyR, tuned per archetype: elms tall,
 // oaks broad, pond willows low.
 const HEIGHT_SCALE = [2.05, 1.85, 1.5];
 
-const MODEL_URLS = ARCHETYPE_MODELS.flatMap((name) =>
-  Array.from({ length: VARIANTS }, (_, i) => `/models/trees/${name}_${i + 1}.glb`),
+// The converter names a split piece `<source>__<group>`, and the kit's groups
+// carry their index: Tree-01-1_0 … Tree-03-4_11.
+const MODEL_NAMES = ARCHETYPE_MODELS.flatMap((name, archetype) =>
+  Array.from(
+    { length: VARIANTS },
+    (_, i) => `shapespark_plants__${name}-${i + 1}_${archetype * VARIANTS + i}`,
+  ),
 );
+const MODEL_URLS = MODEL_NAMES.map(modelUrl);
 
-// Leaf parts take per-instance canopy colors; bark parts get shared period
-// tones (the birch's white bark reads wrong for an elm and is recolored).
-const BARK_COLORS = { Wood: '#6a563f', White: '#8b8072', Black: '#3f3831' };
-
+// Leaf cards take per-instance canopy colors; the trunk keeps its own bark.
 function isLeafMaterial(name) {
-  return /green/i.test(name ?? '');
+  return /branch|leaf/i.test(name ?? '');
 }
 
 function hash01(seed) {
@@ -38,7 +48,7 @@ function extractParts(gltf) {
     if (!node.isMesh) return;
     const geometry = node.geometry.clone();
     geometry.applyMatrix4(node.matrixWorld);
-    parts.push({ geometry, materialName: node.material?.name ?? '' });
+    parts.push({ geometry, material: node.material, materialName: node.material?.name ?? '' });
   });
   const box = new THREE.Box3();
   for (const part of parts) {
@@ -82,11 +92,21 @@ export default function TreeField({ items }) {
       const model = modelFor(archetype, key % VARIANTS);
       for (const part of model.parts) {
         const leaf = isLeafMaterial(part.materialName);
-        const material = new THREE.MeshStandardMaterial({
-          color: leaf ? '#ffffff' : (BARK_COLORS[part.materialName] ?? '#6a563f'),
-          roughness: 0.92,
-        });
+        // The kit's own materials carry the bark and leaf textures, and the
+        // leaves are an alpha cutout that has to keep both faces. Instance
+        // colour multiplies the map, so the base has to stay white.
+        const material = part.material.clone();
+        material.color.set('#ffffff');
+        if (material.alphaTest > 0) material.depthWrite = true;
         const mesh = new THREE.InstancedMesh(part.geometry, material, trees.length);
+        // Leaves take the wind; the trunk holds still, which is what the
+        // height ramp inside the shader would nearly do anyway.
+        if (leaf) {
+          mesh.customDepthMaterial = applyWind(material, {
+            reference: model.height,
+            amplitude: TREE_SWAY,
+          });
+        }
         trees.forEach((item, index) => {
           const { trunkH, canopyR } = item.tree;
           const groundY = item.position[1] - item.size[1] / 2;

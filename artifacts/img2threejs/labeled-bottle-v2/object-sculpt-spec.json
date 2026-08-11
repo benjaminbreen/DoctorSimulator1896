@@ -1,0 +1,279 @@
+{
+  "schemaVersion": "2.1",
+  "targetName": "Editable labeled bottle workflow proof",
+  "targetId": "labeled-bottle-proof-v2",
+  "sourceImage": "artifacts/img2threejs/labeled-bottle-v2/reference/current-editor.png",
+  "suitability": "conditional",
+  "historicalStatus": "draft — reference required",
+  "terminologyProfile": {
+    "domain": "real-time procedural Three.js asset",
+    "geometryTerms": ["silhouette", "topology", "lathe", "wall thickness", "cylinder sector", "surface normal"],
+    "materialTerms": ["albedo", "roughness", "normal map", "transmission", "IOR", "attenuation"],
+    "lightingTerms": ["key light", "fill light", "environment reflection", "contact shadow"],
+    "descriptionRule": "Use measurable geometry and material terms."
+  },
+  "scores": {
+    "object_isolation": 2,
+    "silhouette_readability": 2,
+    "depth_inference": 2,
+    "primitive_decomposition": 3,
+    "material_procedurality": 3,
+    "occlusion_risk": 2,
+    "interaction_fit": 3
+  },
+  "preSpecAssessment": {
+    "objectClass": {
+      "primaryType": "cork-stoppered cylindrical bottle",
+      "primaryDomain": "object",
+      "formLanguage": ["rotational", "hard-surface", "thin-shell"],
+      "structureKind": ["continuous shell", "nested dielectric volumes", "conforming label"],
+      "motionPotential": ["static prop", "detachable stopper"],
+      "materialFamilies": ["glass", "liquid", "cork", "paper"],
+      "notes": "The source is a defect baseline and not historical evidence."
+    },
+    "complexity": {
+      "tier": "moderate",
+      "scores": {"silhouetteComplexity":2,"componentCount":2,"hierarchyDepth":1,"repetitionDensity":0,"materialLayerCount":3,"localDetailDensity":2,"occlusionRisk":2,"actionReadinessNeed":1},
+      "estimatedCounts": {"macroComponents":2,"mesoComponents":3,"microFeatureGroups":2,"materialLayers":4,"repetitionSystems":0},
+      "reasoning": ["The silhouette is rotationally simple, but nested transmissive shells, a curved dynamic label, and attached material parts require a moderate contract."]
+    },
+    "specDepthDecision": {
+      "requiredDepth": "moderate",
+      "minimumComponentLevels": ["macro", "meso", "micro"],
+      "needsRepetitionSystems": false,
+      "needsMaterialLocalOverrides": true,
+      "needsMultipleReviewViews": true,
+      "needsActionReadyHierarchy": true,
+      "rationale": "Glass, contents, closure, and label require stable separate parts."
+    },
+    "unknownsToResolveBeforeImplementation": [],
+    "detailInventory": {"scanMethod":"semantic-components","targetMinDetails":7,"details":[
+      {"id":"base-heel","kind":"contour","description":"Rounded base heel","region":{"x":0.18,"y":0.76,"width":0.36,"height":0.18,"units":"normalized"},"scale":"3-6 mm","affects":"silhouette","mapsTo":{"type":"component.localFeatures","ref":"glass-shell/base-heel"},"evidenceRef":"full-object","confidence":0.7},
+      {"id":"shoulder","kind":"contour","description":"Continuous rounded shoulder","region":{"x":0.2,"y":0.25,"width":0.35,"height":0.25,"units":"normalized"},"scale":"20-40 mm","affects":"silhouette","mapsTo":{"type":"component.localFeatures","ref":"glass-shell/shoulder"},"evidenceRef":"full-object","confidence":0.8},
+      {"id":"lip","kind":"contour","description":"Open flared mouth lip","region":{"x":0.31,"y":0.08,"width":0.16,"height":0.12,"units":"normalized"},"scale":"2-5 mm","affects":"mouth silhouette","mapsTo":{"type":"component.localFeatures","ref":"glass-shell/lip"},"evidenceRef":"full-object","confidence":0.55},
+      {"id":"inner-wall","kind":"seam","description":"Continuous inner wall and base cavity","region":{"x":0.2,"y":0.18,"width":0.35,"height":0.7,"units":"normalized"},"scale":"1-4 mm","affects":"glass optical depth","mapsTo":{"type":"component.localFeatures","ref":"glass-shell/inner-wall"},"evidenceRef":"full-object","confidence":0.8},
+      {"id":"meniscus","kind":"contour","description":"Concave liquid surface and contact ring","region":{"x":0.23,"y":0.63,"width":0.3,"height":0.08,"units":"normalized"},"scale":"0-3.5 mm","affects":"liquid depth cue","mapsTo":{"type":"component.localFeatures","ref":"liquid-meniscus"},"evidenceRef":"full-object","confidence":0.7},
+      {"id":"curved-label","kind":"contour","description":"Paper conforms to body radius","region":{"x":0.12,"y":0.53,"width":0.45,"height":0.34,"units":"normalized"},"scale":"1.6-4.5 radians","affects":"label attachment","mapsTo":{"type":"component.localFeatures","ref":"curved-paper-label/curved-label"},"evidenceRef":"full-object","confidence":0.9},
+      {"id":"cork","kind":"contour","description":"Tapered stopper inserted into neck","region":{"x":0.31,"y":0,"width":0.16,"height":0.2,"units":"normalized"},"scale":"34 percent insertion","affects":"closure attachment","mapsTo":{"type":"component.localFeatures","ref":"cork-stopper/cork"},"evidenceRef":"full-object","confidence":0.65}
+    ]},
+    "anatomy": {"applies":false}
+  },
+  "qualityContract": {
+    "qualityBar": "moderate",
+    "definitionOfDone": [
+      "A continuous shell removes primitive caps and exposes wall, rim, cavity, and base thickness.",
+      "The curved label, liquid volume, meniscus, and cork remain attached across every editor range.",
+      "Glass and liquid respond as transmissive dielectrics; cork and paper use independent albedo, roughness, and normal data."
+    ],
+    "reviewViewpoints": ["front-three-quarter", "rear-three-quarter", "side", "grazing-close-up"],
+    "visualDeltaChecks": [
+      "no internal cylinder caps",
+      "label follows the bottle radius",
+      "liquid follows the inner shoulder at high fill",
+      "rim and base catch distinct highlights",
+      "cork pores and paper fibres survive relighting"
+    ],
+    "minimumSpecDepth": {"macroComponents":2,"mesoComponents":3,"microFeatureGroups":0,"materialLayers":4,"repetitionSystems":0,"reviewViewpoints":4},
+    "featureGroups": [
+      {"id":"overall-silhouette","name":"Bottle silhouette","required":true,"qualityCriteria":["Body, shoulder, neck, lip, and heel are one continuous profile."],"evidenceRefs":["full-object"],"failureModes":["stacked primitive joints"]},
+      {"id":"primary-structure","name":"Nested structure","required":true,"qualityCriteria":["Glass wall, liquid, cork, and label have named geometry."],"evidenceRefs":["full-object"],"failureModes":["floating or capped parts"]},
+      {"id":"surface-material-response","name":"Dielectric and fibrous response","required":true,"qualityCriteria":["Glass and liquid transmit light; cork and paper have independent PBR channels."],"evidenceRefs":["material-proof"],"failureModes":["alpha plastic or opaque liquid"]}
+    ]
+  },
+  "qualityTargets": {"targetFidelity":0.72,"mustMatch":["continuous profile","curved label","nested liquid","physical material response"],"niceToHave":["micro bubbles"],"fpsTarget":60,"reviewViewpoints":["front","three-quarter","side","grazing-close-up"]},
+  "selfCorrectLoop": {"enabled":true,"visualAcceptance":{"reviewer":"ai-vision","threshold":0.7,"comparisonArtifactRequired":true,"layerScoresRequired":true,"codePixelDiffIsAcceptanceAuthority":false,"featureReviewPolicy":{"enabled":true,"reviewUnit":"semantic-subsystem","maxCriticalFeaturesPerPass":3,"maxImportantFeaturesPerPass":2,"criticalDefaultThreshold":0.8,"importantAverageThreshold":0.65,"adaptiveEscalation":true,"singleImagePairOnly":true}},"reviewAfterPasses":["structural-pass","material-pass","lighting-pass"],"allowedActions":["continue","refine-spec","refine-code","request-input","stop"],"stopCriteria":["visual target accepted","new historical reference required"],"screenshotPolicy":{"requiredForPasses":["structural-pass","material-pass","lighting-pass"],"preferredCapture":"in-app-browser-screenshot","fallbackCapture":"user-supplied-screenshot-path"}},
+  "featureReviewTargets": [
+    {"id":"overall-silhouette","name":"Continuous silhouette","tier":"critical","passIds":["structural-pass"],"minimumScore":0.8,"mustPass":true,"componentRefs":["glass-shell"],"evidenceRefs":["full-object"]},
+    {"id":"material-system","name":"Optical and fibrous materials","tier":"critical","passIds":["material-pass","lighting-pass"],"minimumScore":0.75,"mustPass":true,"componentRefs":["glass-shell","liquid-volume","cork-stopper","curved-paper-label"],"evidenceRefs":["material-proof"]}
+  ],
+  "sculptPipeline": {"passGateMode":"locked-sequential","passOrder":["blockout","structural-pass","material-pass","lighting-pass","interaction-pass"],"currentPass":"structural-pass","completedPasses":[],"lastCompletedPass":"","blockedReason":"browser capture unavailable","nextRequiredEvidence":["in-app render screenshot","multi-angle review"]},
+  "lookDevTargets": {
+    "qualityPriority": "plausible physical response",
+    "materialPass": {
+      "albedoPaletteRequired": true,
+      "albedoPalette": ["clear blue-green glass", "warm brown liquid", "tan cork", "cream paper", "dark ink"],
+      "roughnessVariationRequired": true,
+      "normalOrBumpRequired": true,
+      "localOverridesRequired": true,
+      "minimumTextureResolution": 1024,
+      "independentMapChannels": ["albedo", "roughness", "normal"],
+      "requiredSurfaceFrequencyBands": ["macro", "meso", "micro"],
+      "geometryReliefRequiredWhenSilhouetteAffected": true,
+      "referencePbrExtraction": {"requiredWhenSourceImagePresent":false,"targetThreshold":0.7,"stopOnLowConfidence":false,"acceptedLimitation":"The screenshot has no reusable material pixels; authored blank surfaces are explicitly provisional."},
+      "localOverrides": ["paper foxing", "cork pores", "glass attenuation", "liquid meniscus"]
+    },
+    "lightingPass": {"requiredTerms":["key light","fill light","environment reflection","exposure","tone mapping","background","contact shadow"],"environment":"RoomEnvironment","keyLight":"soft upper-left area light","fillLight":"low neutral ambient fill","exposure":1,"toneMapping":"ACES","background":"dark neutral","contactShadow":"soft floor contact"},
+    "screenshotReview": ["neutral three-quarter","grazing close-up","side view"]
+  },
+  "coordinateFrame": {"front":"+z label centre","up":"+y","scaleReference":"metres"},
+  "silhouette": {"boundingShape":"cylindrical body with rounded shoulder and narrow neck","aspectRatios":["height:diameter about 2.25"],"symmetry":"rotational except label","dominantCurves":["heel","shoulder","lip"],"negativeSpaces":["open inner neck around cork"],"landmarks":["base","body top","shoulder top","mouth"]},
+  "viewEvidence": [
+    {"id":"full-object","view":"primary screenshot","imageRegion":{"x":0,"y":0,"width":0.74,"height":1,"units":"normalized"},"observations":["stacked bottle body","flat front label","opaque liquid"],"confidence":0.78},
+    {"id":"material-proof","view":"authored runtime maps","imageRegion":{"x":0,"y":0,"width":1,"height":1,"units":"normalized"},"observations":["cork pores","paper fibre"],"confidence":0.72}
+  ],
+  "componentTree": [
+    {
+      "id": "bottle-root",
+      "level": "macro",
+      "primitive": "cylinder",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Runtime root and cylindrical collider contain five stable render parts.",
+      "parent": null,
+      "transform": {"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]},
+      "actionProfile": {"animationRole":"root","pivot":{"mode":"center","localPosition":[0,0,0],"axis":[0,1,0]},"collider":{"type":"cylinder"},"destruction":{"breakable":false}},
+      "colorMaterialRecipe": {"dominantAlbedo":"rgba(0, 0, 0, 0)","secondaryAlbedo":"rgba(0, 0, 0, 0)","materialClass":"unknown","materialClassConfidence":1},
+      "children": ["glass-shell", "liquid-volume", "liquid-meniscus", "cork-stopper", "curved-paper-label"]
+    },
+    {
+      "id": "glass-shell",
+      "level": "macro",
+      "primitive": "lathe",
+      "topologyClass": "continuous-sculpt",
+      "topologyRationale": "One closed radial loop makes outer wall, rim, inner wall, and base without primitive caps.",
+      "parent": "bottle-root",
+      "transform": {"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]},
+      "actionProfile": {"animationRole":"static-shell","pivot":{"mode":"center","localPosition":[0,0,0],"axis":[0,1,0]},"collider":{"type":"root-proxy"},"destruction":{"breakable":false}},
+      "colorMaterialRecipe": {"dominantAlbedo":"rgba(169, 199, 189, 0.18)","secondaryAlbedo":"rgba(220, 240, 234, 0.08)","materialClass":"glass","materialClassConfidence":0.95},
+      "localFeatures": [
+        {"id":"base-heel","type":"contour","evidenceRefs":["full-object"]},
+        {"id":"shoulder","type":"contour","evidenceRefs":["full-object"]},
+        {"id":"lip","type":"contour","evidenceRefs":["full-object"]},
+        {"id":"inner-wall","type":"seam","evidenceRefs":["full-object"]}
+      ],
+      "geometry": "closed LatheGeometry profile: base centre, heel, body, rounded shoulder, neck, lip, inner wall, inner base",
+      "material": "bottleGlass"
+    },
+    {
+      "id": "liquid-volume",
+      "level": "meso",
+      "primitive": "lathe",
+      "topologyClass": "continuous-sculpt",
+      "topologyRationale": "The closed liquid volume is generated from the glass inner-radius function.",
+      "parent": "bottle-root",
+      "transform": {"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]},
+      "actionProfile": {"animationRole":"material-state","pivot":{"mode":"centre-of-fill","localPosition":[0,0,0],"axis":[0,1,0]},"collider":{"type":"none"},"destruction":{"breakable":false}},
+      "colorMaterialRecipe": {"dominantAlbedo":"rgba(111, 75, 37, 0.72)","secondaryAlbedo":"rgba(255, 248, 237, 0.18)","materialClass":"unknown","materialClassConfidence":0.8},
+      "geometry": "closed LatheGeometry derived from glass inner-radius function and fill height",
+      "material": "bottleLiquid"
+    },
+    {
+      "id": "liquid-meniscus",
+      "level": "micro",
+      "primitive": "torus",
+      "topologyClass": "surface-relief",
+      "topologyRationale": "A narrow torus reinforces the wall-contact highlight around the profiled concave top.",
+      "parent": "liquid-volume",
+      "transform": {"position":[0,0,0],"rotation":[1.5708,0,0],"scale":[1,1,1]},
+      "actionProfile": {"animationRole":"fill-level-child","pivot":{"mode":"fill-height","localPosition":[0,0,0],"axis":[0,1,0]},"collider":{"type":"none"},"destruction":{"breakable":false}},
+      "colorMaterialRecipe": {"dominantAlbedo":"rgba(111, 75, 37, 0.72)","secondaryAlbedo":"rgba(255, 248, 237, 0.24)","materialClass":"unknown","materialClassConfidence":0.8},
+      "localFeatures": [{"id":"meniscus","type":"contour","evidenceRefs":["full-object"]}],
+      "geometry": "concave top points plus narrow contact torus",
+      "material": "bottleLiquid"
+    },
+    {
+      "id": "cork-stopper",
+      "level": "meso",
+      "primitive": "lathe",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "A closed tapered radial profile provides chamfered ends and a slight press-fit taper.",
+      "parent": "bottle-root",
+      "transform": {"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]},
+      "actionProfile": {"animationRole":"detachable-stopper","pivot":{"mode":"lower-centre","localPosition":[0,0,0],"axis":[0,1,0]},"collider":{"type":"none"},"destruction":{"breakable":false,"detachableFragments":["cork-stopper"]}},
+      "colorMaterialRecipe": {"dominantAlbedo":"rgba(178, 127, 75, 1)","secondaryAlbedo":"rgba(91, 62, 37, 1)","materialClass":"wood","materialClassConfidence":0.82},
+      "localFeatures": [{"id":"cork","type":"contour","evidenceRefs":["full-object"]}],
+      "geometry": "tapered closed LatheGeometry inserted 34 percent of its height into the mouth",
+      "material": "bottleCork"
+    },
+    {
+      "id": "curved-paper-label",
+      "level": "meso",
+      "primitive": "cylinder",
+      "topologyClass": "conforming-shell",
+      "topologyRationale": "An open cylinder sector shares the body radius and exposes a stable UV strip for dynamic typography.",
+      "parent": "bottle-root",
+      "attachment": {"parentSocket":"glass-body-front","localStart":[0,0,0.04035],"localEnd":[0,0,0.04035],"contactType":"conforming-shell","overlap":0.003,"gapTolerance":0.0005},
+      "transform": {"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]},
+      "actionProfile": {"animationRole":"static-label","pivot":{"mode":"bottle-centre","localPosition":[0,0,0],"axis":[0,1,0]},"collider":{"type":"none"},"destruction":{"breakable":false,"detachableFragments":["curved-paper-label"]}},
+      "colorMaterialRecipe": {"dominantAlbedo":"rgba(222, 208, 170, 1)","secondaryAlbedo":"rgba(45, 33, 24, 1)","materialClass":"unknown","materialClassConfidence":0.9},
+      "localFeatures": [{"id":"curved-label","type":"contour","evidenceRefs":["full-object"]}],
+      "geometry": "open cylinder sector offset 0.35 mm beyond the body",
+      "material": "agedPaperLabel"
+    }
+  ],
+  "materials": [
+    {
+      "id": "bottleGlass",
+      "model": "MeshPhysicalMaterial",
+      "properties": {"ior": 1.5, "transmission": 0.96, "roughness": 0.07, "metalness": 0},
+      "albedo": {"dominant":"editable blue-green tint","secondary":["near-clear rim","thicker tinted base"]},
+      "roughness": {"base":0.07,"variation":0.05},
+      "normal": {"pattern":"geometric wall normals","strength":1},
+      "localOverrides": ["thicker optical base", "open lip highlight"]
+    },
+    {
+      "id": "bottleLiquid",
+      "model": "MeshPhysicalMaterial",
+      "properties": {"ior": 1.333, "transmission": 0.72, "roughness": 0.11, "metalness": 0},
+      "albedo": {"dominant":"editable attenuation tint","secondary":["near-white meniscus highlight"]},
+      "roughness": {"base":0.11,"variation":0.03},
+      "normal": {"pattern":"concave geometric meniscus","strength":1},
+      "localOverrides": ["concave meniscus", "wall contact ring"]
+    },
+    {
+      "id": "bottleCork",
+      "channels": ["albedo", "roughness", "normal"],
+      "frequencyBands": ["cell clusters", "pores", "fine relief"],
+      "albedo": {"dominant":"warm tan","secondary":["dark pores","light cork cells"]},
+      "roughness": {"base":0.9,"variation":0.08,"map":"cork-roughness.webp"},
+      "normal": {"pattern":"cork-normal.webp","strength":0.55},
+      "localOverrides": ["dark pores", "slight stopper taper"]
+    },
+    {
+      "id": "agedPaperLabel",
+      "channels": ["dynamic albedo and ink", "roughness", "normal"],
+      "frequencyBands": ["warm drift", "foxing", "paper fibres"],
+      "albedo": {"dominant":"editable cream paper","secondary":["dark ink","restrained foxing"]},
+      "roughness": {"base":0.92,"variation":0.06,"map":"paper-roughness.webp"},
+      "normal": {"pattern":"paper-normal.webp","strength":0.18},
+      "localOverrides": ["dynamic ink", "paper-age controlled foxing"]
+    }
+  ],
+  "editableParameters": [
+    "height", "radius", "shoulderRoundness", "neckRatio", "wallThickness", "baseThickness",
+    "liquidLevel", "meniscusDepth", "labelText", "labelFont", "labelWrap", "labelHeight",
+    "labelPosition", "paperAge", "glassRoughness", "glassClarity", "liquidDepth"
+  ],
+  "actionReadiness": {
+    "root": "bottle-root",
+    "namedParts": true,
+    "singleDynamicBody": true,
+    "collider": "bounded cylinder on the root",
+    "detachableCandidates": ["cork-stopper", "curved-paper-label"]
+  },
+  "buildPasses": [
+    {"id":"blockout","goal":"Match the existing bottle scale while removing the visible stacked silhouette.","componentRefs":["bottle-root","glass-shell"],"acceptance":["Overall height, body radius, shoulder, and neck remain readable."]},
+    {"id":"structural-pass","goal":"Replace stacked primitives with the named topology.","componentRefs":["glass-shell","liquid-volume","cork-stopper","curved-paper-label"],"acceptance":["No internal primitive caps and no floating parts."]},
+    {"id":"material-pass","goal":"Wire independent PBR channels and physical optics.","componentRefs":["glass-shell","liquid-volume","cork-stopper","curved-paper-label"],"acceptance":["Transmission, attenuation, roughness, and mapped relief are present."]},
+    {"id":"lighting-pass","goal":"Prove optical depth and surface relief under a neutral environment.","componentRefs":["glass-shell","liquid-volume","cork-stopper","curved-paper-label"],"acceptance":["Highlights, refraction cues, and contact shadow are readable."]},
+    {"id":"interaction-pass","goal":"Keep deterministic editor controls and named parts.","componentRefs":["bottle-root"],"acceptance":["Recipe tests and performance budgets pass."]}
+  ],
+  "lightingFromPhoto": [
+    {"type":"key light","direction":"upper-left-front","color":"neutral warm","intensity":"soft"},
+    {"type":"fill light","direction":"environment","color":"neutral","intensity":"low"},
+    {"type":"environment reflection","source":"RoomEnvironment","intensity":"material dependent"},
+    {"type":"contact shadow","source":"floor receiver","softness":"high"},
+    {"type":"exposure","value":1},
+    {"type":"tone mapping","value":"ACES Filmic"}
+  ],
+  "proceduralStrategy": [
+    "Generate glass from one closed radial profile.",
+    "Derive liquid radius from the same inner profile at the requested fill height.",
+    "Generate a cylinder-sector label and compose editable typography over authored blank paper.",
+    "Keep glass, liquid, cork, label, and meniscus as stable named render parts."
+  ],
+  "unknowns": [
+    "Final historically correct silhouette and lip finish",
+    "Whether a chosen specimen used cork, glass stopper, or another closure",
+    "Contents, label wording, typography, paper, and glass tint"
+  ]
+}

@@ -5,10 +5,14 @@
 // (1893), Savoy (1892), first Plaza Hotel (1890), Metropolitan Club (1894),
 // Cornelius Vanderbilt II mansion, Navarro Flats.
 
+import { gasLamp } from './parkCatalog.js';
+import { buildStreetSurfaceLayout } from './streetSurfaceLayout.js';
+
 export const WORLD_BOUNDS = { minX: -100, maxX: 230, minZ: -85, maxZ: 186 };
 export const STREET_LEVEL = 1.05;
-const ROAD_TOP = 1.16;
-const WALK_TOP = 1.29;
+export const ROAD_TOP = 1.16;
+export const WALK_TOP = 1.29;
+export const SIDEWALK_WIDTH = 3.2;
 
 // Roads as [axis, lo, hi, from, to]: axis 'z' = east-west street band.
 export const ROADS = [
@@ -19,6 +23,12 @@ export const ROADS = [
   { id: 'madison-ave', axis: 'x', lo: 163, hi: 171, from: 84, to: 186 },
   { id: 'sixth-ave', axis: 'x', lo: -44, hi: -36, from: 84, to: 186 },
 ];
+
+export const STREET_SURFACES = buildStreetSurfaceLayout(ROADS, {
+  sidewalkWidth: SIDEWALK_WIDTH,
+  gutterWidth: 0.42,
+  curbWidth: 0.18,
+});
 
 function hash01(seed) {
   const value = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
@@ -39,12 +49,25 @@ function building(id, x, z, sx, sy, sz, options = {}) {
   };
 }
 
-function lamp(id, x, z) {
-  return [
-    { id: `${id}-post`, kind: 'furniture', shape: 'cylinder', position: [x, WALK_TOP + 1.5, z], size: [0.14, 3, 0.14], yaw: 0, color: '#2e3438', metal: true, absoluteY: true },
-    { id: `${id}-globe`, kind: 'furniture', shape: 'sphere', position: [x, WALK_TOP + 3.15, z], size: [0.42, 0.42, 0.42], yaw: 0, color: '#ffdca0', collider: false, emissive: '#ffc57a', absoluteY: true },
-  ];
+// Sidewalk gas lamp, same fitting as the park walks. `yaw` turns the lantern
+// arm out over the roadway.
+function lamp(id, x, z, yaw = 0) {
+  return gasLamp(id, x, z, yaw, { y: WALK_TOP, absoluteY: true });
 }
+
+// Set back from curb returns, gates, hydrants, and hitching-post runs. These
+// are authored curb lines, not a blind interval loop: the Plaza opening stays
+// open and each block face keeps a legible lamp rhythm.
+export const STREET_LAMP_SITES = [
+  // Two lamps frame the park entrance without blocking its diagonal carriage
+  // mouth. Their asymmetry follows the paving outline rather than a grid.
+  { id: 'plaza-south', x: 79.0, z: 80.5, yaw: Math.PI / 2 },
+  { id: 'plaza-east', x: 95.0, z: 76.0, yaw: Math.PI },
+  ...[-68, -42, -16, 10, 36, 50].map((z, index) => ({ id: `fifth-park-${index}`, x: 98.0, z, yaw: Math.PI })),
+  ...[-70, -44, -20, 4, 28, 52, 72, 110, 120, 154, 170].map((z, index) => ({ id: `fifth-built-${index}`, x: 108.0, z, yaw: 0 })),
+  ...[-90, -62, -6, 22, 50].map((x, index) => ({ id: `cps-park-${index}`, x, z: 85.0, yaw: Math.PI / 2 })),
+  ...[-92, -66, -14, 12, 38, 64, 82, 124, 150, 176, 202].map((x, index) => ({ id: `cps-built-${index}`, x, z: 97.0, yaw: -Math.PI / 2 })),
+];
 
 // Row of party-wall brownstones along one block face. Windows get geometry
 // only on the street face; laundry rows hang lines there too (provisional —
@@ -97,37 +120,6 @@ function hydrant(id, x, z) {
     { id: `${id}-nozzle-a`, kind: 'furniture', shape: 'cylinder', position: [x + 0.2, WALK_TOP + 0.45, z], size: [0.12, 0.16, 0.12], yaw: 0, rotation: [0, 0, Math.PI / 2], color: '#2b362a', metal: true, collider: false, absoluteY: true },
     { id: `${id}-nozzle-b`, kind: 'furniture', shape: 'cylinder', position: [x - 0.2, WALK_TOP + 0.45, z], size: [0.12, 0.16, 0.12], yaw: 0, rotation: [0, 0, Math.PI / 2], color: '#2b362a', metal: true, collider: false, absoluteY: true },
   ];
-}
-
-// Parked brougham at the curb: body, driver's box, four wheels on rotated
-// cylinders, shafts resting on the ground. No horse — it is waiting.
-function carriage(id, x, z, yaw) {
-  const cos = Math.cos(yaw);
-  const sin = Math.sin(yaw);
-  // Local offsets: +x is the carriage's forward axis before yaw.
-  const at = (fwd, side, y) => [x + fwd * cos + side * sin, y, z - fwd * sin + side * cos];
-  const items = [
-    { id: `${id}-body`, kind: 'furniture', position: at(-0.25, 0, WALK_TOP + 1.25), size: [1.75, 1.3, 1.2], yaw, color: '#242a26', absoluteY: true },
-    { id: `${id}-seat`, kind: 'furniture', position: at(0.95, 0, WALK_TOP + 1.62), size: [0.6, 0.45, 1.0], yaw, color: '#1e2320', collider: false, absoluteY: true },
-    { id: `${id}-rail`, kind: 'furniture', position: at(0.95, 0, WALK_TOP + 1.92), size: [0.55, 0.06, 0.95], yaw, color: '#3a3f3a', collider: false, absoluteY: true },
-  ];
-  const wheels = [
-    [-0.85, 0.62, 0.66], [-0.85, -0.62, 0.66], [0.85, 0.55, 0.47], [0.85, -0.55, 0.47],
-  ];
-  wheels.forEach(([fwd, side, radius], index) => {
-    items.push({
-      id: `${id}-wheel-${index}`, kind: 'furniture', shape: 'cylinder',
-      position: at(fwd, side, WALK_TOP + radius), size: [radius * 2, 0.07, radius * 2],
-      yaw, rotation: [Math.PI / 2, 0, -yaw], color: '#403428', collider: false, absoluteY: true,
-    });
-  });
-  for (const side of [-1, 1]) {
-    items.push({
-      id: `${id}-shaft-${side}`, kind: 'furniture', position: at(1.95, side * 0.45, WALK_TOP + 0.45),
-      size: [1.7, 0.06, 0.06], yaw, rotation: [0, yaw, 0.32], color: '#4f4234', collider: false, absoluteY: true,
-    });
-  }
-  return items;
 }
 
 // Telegraph pole with four crossarms — the 1890s avenue skyline at eye level.
@@ -198,30 +190,20 @@ function buildStreets() {
   const items = [];
   elTerminus(items);
 
-  // Road beds and sidewalks.
-  for (const road of ROADS) {
-    const length = road.to - road.from;
-    const mid = (road.from + road.to) / 2;
-    const width = road.hi - road.lo;
-    const center = (road.lo + road.hi) / 2;
-    if (road.axis === 'z') {
-      items.push(strip(`${road.id}-bed`, mid, center, length, width, ROAD_TOP, 0.12, 'road', '#6d6a66'));
-      items.push(strip(`${road.id}-walk-n`, mid, road.lo - 1.6, length, 3.2, WALK_TOP, 0.26, 'paving', '#9a958c'));
-      items.push(strip(`${road.id}-walk-s`, mid, road.hi + 1.6, length, 3.2, WALK_TOP, 0.26, 'paving', '#9a958c'));
-    } else {
-      items.push(strip(`${road.id}-bed`, center, mid, width, length, ROAD_TOP, 0.12, 'road', '#6d6a66'));
-      items.push(strip(`${road.id}-walk-w`, road.lo - 1.6, mid, 3.2, length, WALK_TOP, 0.26, 'paving', '#9a958c'));
-      items.push(strip(`${road.id}-walk-e`, road.hi + 1.6, mid, 3.2, length, WALK_TOP, 0.26, 'paving', '#9a958c'));
-    }
-    // Wheel ruts: carriage traffic stains two lanes into every roadbed.
-    for (const side of [-1, 1]) {
-      const rutOffset = side * width * 0.19;
-      const rut =
-        road.axis === 'z'
-          ? strip(`${road.id}-rut${side}`, mid, center + rutOffset, length, 0.95, ROAD_TOP + 0.012, 0.02, 'road', '#5d5a55')
-          : strip(`${road.id}-rut${side}`, center + rutOffset, mid, 0.95, length, ROAD_TOP + 0.012, 0.02, 'road', '#5d5a55');
-      items.push({ ...rut, collider: false });
-    }
+  // StreetSurfaces draws the partitioned top planes. These boxes provide the
+  // matching collision volume and stay invisible, preventing coplanar road
+  // strips and raised rut meshes from fighting at intersections.
+  for (const surface of [...STREET_SURFACES.roads, ...STREET_SURFACES.intersections]) {
+    items.push({
+      ...strip(`collision-${surface.id}`, surface.x, surface.z, surface.sx, surface.sz, ROAD_TOP, 0.12),
+      render: false,
+    });
+  }
+  for (const surface of STREET_SURFACES.sidewalks) {
+    items.push({
+      ...strip(`collision-${surface.id}`, surface.x, surface.z, surface.sx, surface.sz, WALK_TOP, 0.26),
+      render: false,
+    });
   }
 
   // Landmarks (provisional identifications; massing only). Free-standing, so
@@ -262,11 +244,7 @@ function buildStreets() {
   parcelRow(items, 'sixth-west', 'x', -46, 100, 170, 11, -1, 0.5);
   parcelRow(items, 'block-a-inner', 'z', 118, 118, 158, 12, 1, 0.5);
 
-  // Street lamps along Fifth and Central Park South.
-  for (let i = 0; i < 9; i += 1) {
-    items.push(...lamp(`fifth-lamp-${i}`, 97.5, -70 + i * 28));
-    items.push(...lamp(`cps-lamp-${i}`, -92 + i * 28, 84.5));
-  }
+  for (const site of STREET_LAMP_SITES) items.push(...lamp(site.id, site.x, site.z, site.yaw));
 
   // Sidewalk iron: hitching posts and hydrants on the built side of Fifth
   // and Central Park South, telegraph poles down the Sixth Avenue stand-in.
@@ -284,14 +262,8 @@ function buildStreets() {
     items.push(...telegraphPole(`sixth-pole-${i}`, -47.7, 104 + i * 30));
   }
 
-  // Broughams waiting at the curbs: outside the hotels, along the park wall,
-  // and one by the El stairs. Yaw runs with the street.
-  items.push(
-    ...carriage('carriage-plaza', 104.8, 76, Math.PI / 2),
-    ...carriage('carriage-savoy', 111.5, 100, Math.PI / 2),
-    ...carriage('carriage-cps', -20, 88.4, 0),
-    ...carriage('carriage-el', -30, 137.6, Math.PI),
-  );
+  // Vendor pushcarts are dynamic bodies, not blueprint items: see
+  // world/pushcarts.js for the pitches and scene/Pushcarts.jsx for the body.
 
   return items;
 }

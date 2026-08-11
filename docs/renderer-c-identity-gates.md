@@ -1,5 +1,10 @@
 # Renderer C identity gates
 
+These identity tests support the broader
+[Renderer C production objective](renderer-c-production-objective.md). The
+production gate also requires bounded character-specific resting-face
+signatures, modular presentation assets, animation compatibility, and web LODs.
+
 ## First viable gate: White women around age 30
 
 The first viable contact sheet and Ben's annotated review are preserved at:
@@ -59,7 +64,8 @@ GLB for every patient. Build them with `npm run renderer-c:masters`.
 - `renderer-c-women.glb` and `renderer-c-men.glb` each contain the eight
   approved GNM-derived anchors on fixed MPFB topology.
 - Each master exports 58 signed face endpoints, six body endpoints, four
-  demographic endpoints, 52 MPFB face units, and two idle clips. Face, age,
+  demographic endpoints, 52 MPFB face units, and ten seated, standing, and
+  walking clips. Face, age,
   ancestry, stature, body mass, muscularity, and proportions update in Three.js
   without launching Blender.
 - Every identity anchor has its own fitted MPFB eyes, sclerae/irises, brows,

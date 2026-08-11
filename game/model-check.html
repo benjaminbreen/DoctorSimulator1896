@@ -1,0 +1,152 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Model check</title>
+    <style>
+      body { margin: 0; background: #202428; color: #ddd; font: 13px monospace; }
+      #info { position: fixed; top: 8px; left: 8px; white-space: pre; text-shadow: 0 1px 2px #000; }
+    </style>
+  </head>
+  <body>
+    <div id="info">loading…</div>
+    <script type="module">
+      // Judge a prop before it ships. Two things to look at:
+      //
+      //   ?view=game   the game's own camera — its field of view, its shoulder
+      //                rig, and a prop at the distance a room actually plays
+      //                at, with the player figure beside it. This is the shot
+      //                that decides whether a piece reads right. A metre is
+      //                the truth about an object; it is not what your eye
+      //                measures, which is pixels at a distance.
+      //   ?view=front  (also iso, side, top) a metre grid for measuring.
+      //
+      //   ?models=props/explorers_globe,park/small_park_bench
+      //   ?scale=1,1   per-model override, in the same order
+      import * as THREE from 'three';
+      import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+      import { MeshoptDecoder } from 'meshoptimizer';
+      import { settingsSchema } from './src/tuning/settingsSchema.js';
+
+      // The camera values the game ships, so this is not a second opinion.
+      const defaults = {};
+      for (const group of settingsSchema.groups) {
+        for (const parameter of group.parameters) defaults[parameter.id] = parameter.default;
+      }
+      const PLAYER_HEIGHT = 2 * (defaults.capsuleHalfHeight + defaults.capsuleRadius);
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      document.body.appendChild(renderer.domElement);
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color('#202428');
+      scene.add(new THREE.HemisphereLight('#ffffff', '#444444', 2.2));
+      const sun = new THREE.DirectionalLight('#ffffff', 2);
+      sun.position.set(3, 6, 4);
+      scene.add(sun);
+      const grid = new THREE.GridHelper(20, 20, '#6a7', '#455');
+      scene.add(grid);
+
+      const cube = new THREE.Mesh(
+        new THREE.BoxGeometry(1, 1, 1),
+        new THREE.MeshBasicMaterial({ color: '#c0392b', wireframe: true }),
+      );
+      cube.position.set(-2.2, 0.5, 0);
+      scene.add(cube);
+
+      const camera = new THREE.PerspectiveCamera(defaults.fov, 16 / 9, 0.1, 200);
+      function resize() {
+        const width = window.innerWidth || 1280;
+        const height = window.innerHeight || 720;
+        renderer.setSize(width, height);
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+      }
+      window.addEventListener('resize', resize);
+      resize();
+
+      const params = new URLSearchParams(location.search);
+      const scales = (params.get('scale') ?? '').split(',').map(Number);
+      const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+
+      // The human reference: the same figure the game puts on the capsule.
+      const player = await loader.loadAsync('/models/player-placeholder.glb');
+      const figure = player.scene;
+      const figureBox = new THREE.Box3().setFromObject(figure);
+      figure.scale.setScalar(PLAYER_HEIGHT / (figureBox.max.y - figureBox.min.y));
+      figure.position.set(0, 0, 0);
+      scene.add(figure);
+
+      const files = (params.get('models') ?? 'props/vintage_wooden_workdesk')
+        .split(',')
+        .map((name) => `/models/${name.trim()}.glb`);
+      const lines = [];
+      const placed = [];
+      let x = 1.0;
+      for (const [index, file] of files.entries()) {
+        const gltf = await loader.loadAsync(file);
+        const raw = new THREE.Box3().setFromObject(gltf.scene).getSize(new THREE.Vector3());
+        const scale = scales[index] > 0 ? scales[index] : 1;
+        gltf.scene.scale.setScalar(scale);
+        const box = new THREE.Box3().setFromObject(gltf.scene);
+        const size = box.getSize(new THREE.Vector3());
+        gltf.scene.position.set(x - box.min.x, -box.min.y, 0);
+        placed.push({ name: file.split('/').pop(), x: x + size.x / 2, height: size.y, size });
+        x += size.x + 0.8;
+        scene.add(gltf.scene);
+        lines.push(
+          `${file.split('/').pop()}  ${size.toArray().map((v) => v.toFixed(2)).join(' x ')} m` +
+            (scale === 1 ? '' : `  (x${scale})`),
+        );
+      }
+
+      // How tall a thing renders at a given distance, in this camera. Quoted
+      // at fixed distances rather than where each piece happens to stand: laid
+      // out in a row they sit at different depths, and comparing those numbers
+      // would measure the layout instead of the props.
+      function pixelsAt(height, distance) {
+        const halfView = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * distance;
+        return (height / (2 * halfView)) * renderer.domElement.clientHeight;
+      }
+      // Arm's length, and across a room — the two distances interiors play at.
+      const READ_DISTANCES = [2.5, 8];
+
+      const VIEWS = {
+        // Where the player's own camera sits: shoulder offsets from the figure,
+        // looking along the row of props.
+        game: () => {
+          camera.fov = defaults.fov;
+          // Centred on the row so nothing is favoured by being nearer.
+          const middle = (x - 0.8) / 2;
+          camera.position.set(middle + defaults.shoulderSide, defaults.shoulderUp, defaults.shoulderBack);
+          camera.lookAt(middle, 0.9, 0);
+        },
+        iso: () => { camera.fov = 45; camera.position.set(5, 3, 6); camera.lookAt(1.5, 0.6, 0); },
+        front: () => { camera.fov = 45; camera.position.set(1.5, 1.0, 9); camera.lookAt(1.5, 1.0, 0); },
+        side: () => { camera.fov = 45; camera.position.set(10, 1.0, 0); camera.lookAt(0, 1.0, 0); },
+        top: () => { camera.fov = 45; camera.position.set(1.5, 10, 0.01); camera.lookAt(1.5, 0, 0); },
+      };
+
+      const info = document.getElementById('info');
+      window.setView = (name) => {
+        (VIEWS[name] ?? VIEWS.game)();
+        camera.updateProjectionMatrix();
+        grid.visible = name !== 'game';
+        cube.visible = name !== 'game';
+        const reads = (label, height) =>
+          `${label} ${height.toFixed(2)}m: ` +
+          READ_DISTANCES.map((d) => `${pixelsAt(height, d).toFixed(0)}px @${d}m`).join(', ');
+        const read = [
+          reads('figure', PLAYER_HEIGHT),
+          ...placed.map((p) => reads(p.name.replace('.glb', ''), p.height)),
+        ];
+        info.textContent = `${lines.join('\n')}\nview: ${name} · fov ${camera.fov}\n${read.join('\n')}`;
+        return name;
+      };
+      window.setView(params.get('view') ?? 'game');
+
+      renderer.setAnimationLoop(() => renderer.render(scene, camera));
+    </script>
+  </body>
+</html>

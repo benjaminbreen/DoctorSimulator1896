@@ -306,6 +306,44 @@ test('Renderer C women ship a morphable production dress on the Mixamo skeleton'
     'walking the character root must not leave the production dress behind');
 });
 
+test('Renderer C women ship the golden dress as reusable skinned parts', async () => {
+  const gltf = await loadModel('../character-lab/public/models/renderer-c-women.glb');
+  const carrier = gltf.scene.getObjectByName('RendererC_BaseGarment');
+  const names = [
+    'RendererC_GoldenDressBodice',
+    'RendererC_GoldenDressSkirt',
+    'RendererC_GoldenDressSeatedSkirt',
+    'RendererC_GoldenDressDetails',
+  ];
+  const parts = names.map((name) => {
+    const meshes = [];
+    gltf.scene.getObjectByName(name)?.traverse((object) => { if (object.isMesh) meshes.push(object); });
+    assert.ok(meshes.length, `golden dress lost ${name}`);
+    return meshes;
+  });
+  for (const mesh of parts.flat()) {
+    assert.ok(mesh.isSkinnedMesh && mesh.geometry.attributes.skinIndex && mesh.geometry.attributes.skinWeight);
+    assert.deepEqual(mesh.skeleton.bones.map((bone) => bone.name), carrier.skeleton.bones.map((bone) => bone.name));
+    assert.notEqual(mesh.morphTargetDictionary.rc_live_weight_pos, undefined,
+      `${mesh.name} lost its supported body-build morph`);
+  }
+  assert.ok(parts[0].every((mesh) => mesh.geometry.attributes.uv), 'golden bodice must retain fitted UVs');
+  assert.ok(parts[1].every((mesh) => mesh.geometry.attributes.uv), 'golden skirt must retain authored UVs');
+  assert.ok(parts[2].every((mesh) => mesh.geometry.attributes.uv), 'golden seated skirt must retain fitted UVs');
+  assert.ok(parts[1].every((mesh) => mesh.morphTargetDictionary.rc_seated_lap !== undefined),
+    'golden skirt must retain its seated corrective');
+  for (const mesh of parts[3]) {
+    for (const morph of [
+      'rc_dress_bust_coverage', 'rc_dress_collar_height', 'rc_dress_cuff_width',
+      'rc_dress_collar_thickness', 'rc_dress_cuff_thickness',
+    ]) {
+      assert.notEqual(mesh.morphTargetDictionary[morph], undefined, `golden details lost ${morph}`);
+    }
+    assert.ok(mesh.geometry.attributes.position.count >= 400 && mesh.geometry.index.count >= 1700,
+      'golden details lost the solid collar, cuff, or inset shells');
+  }
+});
+
 test('Renderer C women retain the procedural dress as a coordinate-safe concept comparison', async () => {
   const gltf = await loadModel('../character-lab/public/models/renderer-c-women.glb');
   const characterRoot = new THREE.Group();
@@ -413,7 +451,7 @@ test('Renderer C blends between separated folded hands and hands resting on each
   assert.ok(idle.seatedHandBlend < 0.01, 'hand-pose transition did not settle');
 });
 
-test('Renderer C menswear refits three silhouettes across body builds without Blender', async () => {
+test('Renderer C menswear refits four production wardrobe sources across body builds', async () => {
   const [manifestText, gltf] = await Promise.all([
     readFile(new URL('../character-lab/public/models/renderer-c-cohorts.json', import.meta.url), 'utf8'),
     loadModel('../character-lab/public/models/renderer-c-men.glb'),
@@ -434,26 +472,53 @@ test('Renderer C menswear refits three silhouettes across body builds without Bl
   const menswear = createRendererCMenswear(gltf.scene, bones, gltf.scene);
   const baseGarment = gltf.scene.getObjectByName('RendererC_BaseGarment');
   const workGarment = gltf.scene.getObjectByName('RendererC_WorkGarment');
+  const victorianGarment = gltf.scene.getObjectByName('RendererC_VictorianGarment');
+  const authoredWaistcoat = gltf.scene.getObjectByName('RendererC_AuthoredVictorianWaistcoat_01');
   assert.equal(baseGarment.visible, true);
   assert.ok(baseGarment.isSkinnedMesh && baseGarment.geometry.attributes.skinIndex && baseGarment.geometry.attributes.skinWeight);
   assert.ok(baseGarment.morphTargetDictionary.rc_live_weight_pos !== undefined);
   assert.ok(workGarment?.isSkinnedMesh && workGarment.geometry.attributes.skinIndex && workGarment.geometry.attributes.skinWeight);
   assert.ok(workGarment.morphTargetDictionary.rc_live_weight_pos !== undefined);
+  assert.ok(victorianGarment?.isSkinnedMesh && victorianGarment.geometry.attributes.skinIndex && victorianGarment.geometry.attributes.skinWeight);
+  assert.ok(victorianGarment.morphTargetDictionary.rc_live_weight_pos !== undefined);
+  assert.ok(authoredWaistcoat?.isSkinnedMesh
+    && authoredWaistcoat.geometry.attributes.skinIndex
+    && authoredWaistcoat.geometry.attributes.skinWeight);
+  assert.ok(authoredWaistcoat.morphTargetDictionary.rc_live_weight_pos !== undefined);
+
   const signatures = new Set();
   for (const weight of [0.25, 0.48, 0.76]) {
     values.weight = weight;
     controller.applyValues(values, { force: true });
     gltf.scene.updateMatrixWorld(true);
-    for (const style of ['mens-working-clothes', 'mens-sack-suit', 'mens-formal-suit']) {
+    for (const style of ['mens-working-clothes', 'mens-sack-suit', 'mens-victorian-sample', 'mens-authored-victorian-set']) {
       values.outfitStyle = style;
       values.menswearPalette = style === 'mens-working-clothes' ? 'work-earth'
-        : style === 'mens-formal-suit' ? 'formal-black-grey' : 'trade-charcoal';
+        : style === 'mens-authored-victorian-set' ? 'formal-black-grey' : 'trade-charcoal';
       menswear.rebuild(values);
       const names = menswear.pieces().map(({ mesh }) => mesh.name);
       const stats = menswear.stats();
-      assert.ok(stats.components >= 20 && stats.triangles > 14000 && stats.triangles < 18000);
-      assert.equal(names[0], style === 'mens-working-clothes' ? 'RendererC_WorkGarment' : 'RendererC_BaseGarment');
-      assert.ok(names.slice(1).every((name) => name.startsWith('RendererC_Menswear_')));
+      assert.ok(
+        stats.components >= 20 && stats.triangles > 14000 && stats.triangles < 70000,
+        `${style} produced ${JSON.stringify(stats)}`,
+      );
+      const expectedCarrier = style === 'mens-working-clothes' ? 'RendererC_WorkGarment'
+        : style === 'mens-victorian-sample' ? 'RendererC_VictorianGarment'
+          : style === 'mens-authored-victorian-set' ? 'RendererC_WorkGarment'
+          : 'RendererC_BaseGarment';
+      assert.equal(names[0], expectedCarrier);
+      if (style === 'mens-authored-victorian-set') {
+        assert.ok(names.includes('RendererC_AuthoredVictorianWaistcoat_01'));
+        const underlayerMaterials = new Set(workGarment.material.map((material) => material.name));
+        assert.ok(!underlayerMaterials.has('RendererC_Menswear_Hidden'), 'authored waistcoat tore holes in its continuous shirt underlayer');
+        assert.ok(underlayerMaterials.has('RendererC_Menswear_Shirt'), 'authored waistcoat lost its continuous MPFB shirt');
+        assert.ok(
+          underlayerMaterials.has('RendererC_Menswear_Trousers'),
+          `authored waistcoat lost its MPFB trousers: ${[...underlayerMaterials].join(', ')}`,
+        );
+      } else {
+        assert.ok(names.slice(1).every((name) => name.startsWith('RendererC_Menswear_')));
+      }
       for (const { mesh } of menswear.pieces()) {
         assert.ok([...mesh.geometry.attributes.position.array].every(Number.isFinite), `${mesh.name} contains invalid garment vertices`);
       }
@@ -463,14 +528,22 @@ test('Renderer C menswear refits three silhouettes across body builds without Bl
       const workSize = workGarment.geometry.boundingBox.getSize(new THREE.Vector3());
       assert.ok(size.x < 2.1 && size.y < 3 && size.z < 1, `${style} escaped the fitted garment envelope`);
       assert.ok(workSize.x < 2.1 && workSize.y < 3 && workSize.z < 1, `${style} escaped the working garment envelope`);
-      const activeCarrier = style === 'mens-working-clothes' ? workGarment : baseGarment;
-      signatures.add(`${style}:${activeCarrier.material.map((material) => material.name).join(',')}:${names.includes('RendererC_Menswear_Brace_L')}`);
+      const activeCarrier = style === 'mens-working-clothes' ? workGarment
+        : style === 'mens-victorian-sample' ? victorianGarment
+          : style === 'mens-authored-victorian-set' ? workGarment : baseGarment;
+      const carrierMaterials = Array.isArray(activeCarrier.material)
+        ? activeCarrier.material.map((material) => material.name)
+        : [activeCarrier.material.name];
+      const activeMaterials = style === 'mens-authored-victorian-set'
+        ? [...carrierMaterials, authoredWaistcoat.material.name]
+        : carrierMaterials;
+      signatures.add(`${style}:${activeMaterials.join(',')}:${names.includes('RendererC_Menswear_Brace_L')}`);
     }
   }
-  assert.equal(signatures.size, 3, 'working, sack, and professional silhouettes should use different modules');
+  assert.equal(signatures.size, 4, 'working, sack, MPFB Victorian, and authored Victorian sources should remain distinct');
   assert.deepEqual(Object.keys(RENDERER_C_MENSWEAR_PALETTES), [
     'work-earth', 'work-indigo', 'trade-charcoal', 'trade-brown', 'trade-olive',
-    'formal-black-grey', 'formal-navy-grey', 'mourning',
+    'formal-black-grey', 'formal-navy-grey', 'elite-charcoal-dove', 'elite-midnight-buff', 'mourning',
   ]);
   menswear.dispose();
   assert.equal(baseGarment.visible, true);

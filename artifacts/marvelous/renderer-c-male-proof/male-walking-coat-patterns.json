@@ -1,0 +1,852 @@
+{
+"formatVersion" : 1,
+"generator" : {
+"name" : "Marvelous Designer Personal",
+"organization" : "CLO Virtual Fashion",
+"version" : "2026.0.315"
+},
+"FabricList" : [ {
+"FabricName" : "FABRIC 1",
+"FabricType" : "None",
+"FabricContent" : "None",
+"strBaseColorHexCode" : "#FFFFFF",
+"FabricUUID" : "8KcAdp"
+} ],
+"GradingRuleTableList" : [  ],
+"Unit" : "mm",
+"PatternList" : [ {
+"Name" : "Pattern_9096",
+"fGrainlineAngle" : 0.0,
+"ID" : "wHhzUt",
+"IsHalfSymmetric" : false,
+"strGrainlineOrientation" : "One Way",
+"OuterSeamAllowanceList" : [  ],
+"strSuperImposeSide" : "None",
+"CurrentFabricUUID" : "8KcAdp",
+"IsClosed" : true,
+"InternalLineList" : [  ],
+"ButtonHeadList" : [  ],
+"ButtonHoleList" : [  ],
+"NotchList" : [  ],
+"AnnotationList" : [  ],
+"ShapeInfo" : {
+"IsSlashed" : false,
+"LineList" : [ {
+"ID" : "ivDXtV",
+"PointList" : [ {
+"ID" : "xl9g6O",
+"PointType" : "Straight",
+"Position" : {
+"x" : 240.0,
+"y" : 45.0
+},
+"GradingRuleID" : 0
+}, {
+"ID" : "BW5zv6",
+"PointType" : "Straight",
+"Position" : {
+"x" : 365.0,
+"y" : 70.0
+},
+"GradingRuleID" : 0
+} ]
+}, {
+"ID" : "90qaoF",
+"PointList" : [ {
+"ID" : "BW5zv6",
+"PointType" : "Straight",
+"Position" : {
+"x" : 365.0,
+"y" : 70.0
+},
+"GradingRuleID" : 0
+}, {
+"ID" : "AzY4Gz",
+"PointType" : "Straight",
+"Position" : {
+"x" : 505.0,
+"y" : 225.0
+},
+"GradingRuleID" : 0
+} ]
+}, {
+"ID" : "c4dyPb",
+"PointList" : [ {
+"ID" : "AzY4Gz",
+"PointType" : "Straight",
+"Position" : {
+"x" : 505.0,
+"y" : 225.0
+},
+"GradingRuleID" : 0
+}, {
+"ID" : "QOwQqe",
+"PointType" : "Straight",
+"Position" : {
+"x" : 525.0,
+"y" : 865.0
+},
+"GradingRuleID" : 0
+} ]
+}, {
+"ID" : "zt6GXq",
+"PointList" : [ {
+"ID" : "QOwQqe",
+"PointType" : "Straight",
+"Position" : {
+"x" : 525.0,
+"y" : 865.0
+},
+"GradingRuleID" : 0
+}, {
+"ID" : "2BWQch",
+"PointType" : "Straight",
+"Position" : {
+"x" : -45.0,
+"y" : 865.0
+},
+"GradingRuleID" : 0
+} ]
+}, {
+"ID" : "jtEKUZ",
+"PointList" : [ {
+"ID" : "2BWQch",
+"PointType" : "Straight",
+"Position" : {
+"x" : -45.0,
+"y" : 865.0
+},
+"GradingRuleID" : 0
+}, {
+"ID" : "lQx4Gm",
+"PointType" : "Straight",
+"Position" : {
+"x" : -25.0,
+"y" : 225.0
+},
+"GradingRuleID" : 0
+} ]
+}, {
+"ID" : "znLrkP",
+"PointList" : [ {
+"ID" : "lQx4Gm",
+"PointType" : "Straight",
+"Position" : {
+"x" : -25.0,
+"y" : 225.0
+},
+"GradingRuleID" : 0
+}, {
+"ID" : "GubBU9",
+"PointType" : "Straight",
+"Position" : {
+"x" : 115.0,
+"y" : 70.0
+},
+"GradingRuleID" : 0
+} ]
+}, {
+"ID" : "2DmdzD",
+"PointList" : [ {
+"ID" : "GubBU9",
+"PointType" : "Straight",
+"Position" : {
+"x" : 115.0,
+"y" : 70.0
+},
+"GradingRuleID" : 0
+}, {
+"ID" : "xl9g6O",
+"PointType" : "Straight",
+"Position" : {
+"x" : 240.0,
+"y" : 45.0
+},
+"GradingRuleID" : 0
+} ]
+} ]
+},
+"ArrangementPointDataMap" : {
+"PointName" : "Body_Front_Waist",
+"fOffSetX" : -0.5,
+"fOffSetY" : -0.5,
+"fAngle" : 0.0
+}
+}, {
+"Name" : "Pattern_9283",
+"fGrainlineAngle" : 0.0,
+"ID" : "7nwlxE",
+"IsHalfSymmetric" : false,
+"strGrainlineOrientation" : "One Way",
+"OuterSeamAllowanceList" : [  ],
+"strSuperImposeSide" : "None",
+"CurrentFabricUUID" : "8KcAdp",
+"IsClosed" : true,
+"InternalLineList" : [  ],
+"ButtonHeadList" : [  ],
+"ButtonHoleList" : [  ],
+"NotchList" : [  ],
+"AnnotationList" : [  ],
+"ShapeInfo" : {
+"IsSlashed" : false,
+"LineList" : [ {
+"ID" : "mXA1IG",
+"PointList" : [ {
+"ID" : "W391h0",
+"PointType" : "Straight",
+"Position" : {
+"x" : 840.0,
+"y" : 15.0
+},
+"GradingRuleID" : 0
+}, {
+"ID" : "RVUW9P",
+"PointType" : "Straight",
+"Position" : {
+"x" : 965.0,
+"y" : 60.0
+},
+"GradingRuleID" : 0
+} ]
+}, {
+"ID" : "QXW86T",
+"PointList" : [ {
+"ID" : "RVUW9P",
+"PointType" : "Straight",
+"Position" : {
+"x" : 965.0,
+"y" : 60.0
+},
+"GradingRuleID" : 0
+}, {
+"ID" : "K4a0zf",
+"PointType" : "Straight",
+"Position" : {
+"x" : 1105.0,
+"y" : 225.0
+},
+"GradingRuleID" : 0
+} ]
+}, {
+"ID" : "zD3ne0",
+"PointList" : [ {
+"ID" : "K4a0zf",
+"PointType" : "Straight",
+"Position" : {
+"x" : 1105.0,
+"y" : 225.0
+},
+"GradingRuleID" : 0
+}, {
+"ID" : "IU9LVh",
+"PointType" : "Straight",
+"Position" : {
+"x" : 1125.0,
+"y" : 865.0
+},
+"GradingRuleID" : 0
+} ]
+}, {
+"ID" : "5SjWBP",
+"PointList" : [ {
+"ID" : "IU9LVh",
+"PointType" : "Straight",
+"Position" : {
+"x" : 1125.0,
+"y" : 865.0
+},
+"GradingRuleID" : 0
+}, {
+"ID" : "k1csTf",
+"PointType" : "Straight",
+"Position" : {
+"x" : 555.0,
+"y" : 865.0
+},
+"GradingRuleID" : 0
+} ]
+}, {
+"ID" : "UEnfHk",
+"PointList" : [ {
+"ID" : "k1csTf",
+"PointType" : "Straight",
+"Position" : {
+"x" : 555.0,
+"y" : 865.0
+},
+"GradingRuleID" : 0
+}, {
+"ID" : "I13dIO",
+"PointType" : "Straight",
+"Position" : {
+"x" : 575.0,
+"y" : 225.0
+},
+"GradingRuleID" : 0
+} ]
+}, {
+"ID" : "rNDzsj",
+"PointList" : [ {
+"ID" : "I13dIO",
+"PointType" : "Straight",
+"Position" : {
+"x" : 575.0,
+"y" : 225.0
+},
+"GradingRuleID" : 0
+}, {
+"ID" : "vdqN94",
+"PointType" : "Straight",
+"Position" : {
+"x" : 715.0,
+"y" : 60.0
+},
+"GradingRuleID" : 0
+} ]
+}, {
+"ID" : "bsnDFo",
+"PointList" : [ {
+"ID" : "vdqN94",
+"PointType" : "Straight",
+"Position" : {
+"x" : 715.0,
+"y" : 60.0
+},
+"GradingRuleID" : 0
+}, {
+"ID" : "W391h0",
+"PointType" : "Straight",
+"Position" : {
+"x" : 840.0,
+"y" : 15.0
+},
+"GradingRuleID" : 0
+} ]
+} ]
+},
+"ArrangementPointDataMap" : {
+"PointName" : "Body_Back_Waist",
+"fOffSetX" : -0.5,
+"fOffSetY" : -0.5,
+"fAngle" : 0.0
+}
+}, {
+"Name" : "Pattern_9470",
+"fGrainlineAngle" : 0.0,
+"ID" : "Ht4cZS",
+"IsHalfSymmetric" : false,
+"strGrainlineOrientation" : "One Way",
+"OuterSeamAllowanceList" : [  ],
+"strSuperImposeSide" : "None",
+"CurrentFabricUUID" : "8KcAdp",
+"IsClosed" : true,
+"InternalLineList" : [  ],
+"ButtonHeadList" : [  ],
+"ButtonHoleList" : [  ],
+"NotchList" : [  ],
+"AnnotationList" : [  ],
+"ShapeInfo" : {
+"IsSlashed" : false,
+"LineList" : [ {
+"ID" : "Ci6xcK",
+"PointList" : [ {
+"ID" : "lWv5ek",
+"PointType" : "Straight",
+"Position" : {
+"x" : 1340.0,
+"y" : 25.0
+},
+"GradingRuleID" : 0
+}, {
+"ID" : "DjMPvG",
+"PointType" : "Straight",
+"Position" : {
+"x" : 1510.0,
+"y" : 190.0
+},
+"GradingRuleID" : 0
+} ]
+}, {
+"ID" : "HctEXP",
+"PointList" : [ {
+"ID" : "DjMPvG",
+"PointType" : "Straight",
+"Position" : {
+"x" : 1510.0,
+"y" : 190.0
+},
+"GradingRuleID" : 0
+}, {
+"ID" : "OvsR7K",
+"PointType" : "Straight",
+"Position" : {
+"x" : 1460.0,
+"y" : 690.0
+},
+"GradingRuleID" : 0
+} ]
+}, {
+"ID" : "Rt9YEC",
+"PointList" : [ {
+"ID" : "OvsR7K",
+"PointType" : "Straight",
+"Position" : {
+"x" : 1460.0,
+"y" : 690.0
+},
+"GradingRuleID" : 0
+}, {
+"ID" : "P0I7hD",
+"PointType" : "Straight",
+"Position" : {
+"x" : 1220.0,
+"y" : 690.0
+},
+"GradingRuleID" : 0
+} ]
+}, {
+"ID" : "gpS59P",
+"PointList" : [ {
+"ID" : "P0I7hD",
+"PointType" : "Straight",
+"Position" : {
+"x" : 1220.0,
+"y" : 690.0
+},
+"GradingRuleID" : 0
+}, {
+"ID" : "pZRvLV",
+"PointType" : "Straight",
+"Position" : {
+"x" : 1170.0,
+"y" : 190.0
+},
+"GradingRuleID" : 0
+} ]
+}, {
+"ID" : "WnhIJc",
+"PointList" : [ {
+"ID" : "pZRvLV",
+"PointType" : "Straight",
+"Position" : {
+"x" : 1170.0,
+"y" : 190.0
+},
+"GradingRuleID" : 0
+}, {
+"ID" : "lWv5ek",
+"PointType" : "Straight",
+"Position" : {
+"x" : 1340.0,
+"y" : 25.0
+},
+"GradingRuleID" : 0
+} ]
+} ]
+},
+"ArrangementPointDataMap" : {
+"PointName" : "Arm_Outside_2_L",
+"fOffSetX" : -0.5,
+"fOffSetY" : -0.5,
+"fAngle" : 0.0
+}
+}, {
+"Name" : "Pattern_9613",
+"fGrainlineAngle" : 0.0,
+"ID" : "wrYckx",
+"IsHalfSymmetric" : false,
+"strGrainlineOrientation" : "One Way",
+"OuterSeamAllowanceList" : [  ],
+"strSuperImposeSide" : "None",
+"CurrentFabricUUID" : "8KcAdp",
+"IsClosed" : true,
+"InternalLineList" : [  ],
+"ButtonHeadList" : [  ],
+"ButtonHoleList" : [  ],
+"NotchList" : [  ],
+"AnnotationList" : [  ],
+"ShapeInfo" : {
+"IsSlashed" : false,
+"LineList" : [ {
+"ID" : "DCv5mO",
+"PointList" : [ {
+"ID" : "T6E2UW",
+"PointType" : "Straight",
+"Position" : {
+"x" : 1790.0,
+"y" : 25.0
+},
+"GradingRuleID" : 0
+}, {
+"ID" : "jyvIvW",
+"PointType" : "Straight",
+"Position" : {
+"x" : 1960.0,
+"y" : 190.0
+},
+"GradingRuleID" : 0
+} ]
+}, {
+"ID" : "0aAJ0X",
+"PointList" : [ {
+"ID" : "jyvIvW",
+"PointType" : "Straight",
+"Position" : {
+"x" : 1960.0,
+"y" : 190.0
+},
+"GradingRuleID" : 0
+}, {
+"ID" : "kOGcKC",
+"PointType" : "Straight",
+"Position" : {
+"x" : 1910.0,
+"y" : 690.0
+},
+"GradingRuleID" : 0
+} ]
+}, {
+"ID" : "9LlLzj",
+"PointList" : [ {
+"ID" : "kOGcKC",
+"PointType" : "Straight",
+"Position" : {
+"x" : 1910.0,
+"y" : 690.0
+},
+"GradingRuleID" : 0
+}, {
+"ID" : "xWWFG1",
+"PointType" : "Straight",
+"Position" : {
+"x" : 1670.0,
+"y" : 690.0
+},
+"GradingRuleID" : 0
+} ]
+}, {
+"ID" : "7cFo2W",
+"PointList" : [ {
+"ID" : "xWWFG1",
+"PointType" : "Straight",
+"Position" : {
+"x" : 1670.0,
+"y" : 690.0
+},
+"GradingRuleID" : 0
+}, {
+"ID" : "NrvTG0",
+"PointType" : "Straight",
+"Position" : {
+"x" : 1620.0,
+"y" : 190.0
+},
+"GradingRuleID" : 0
+} ]
+}, {
+"ID" : "uHv4TG",
+"PointList" : [ {
+"ID" : "NrvTG0",
+"PointType" : "Straight",
+"Position" : {
+"x" : 1620.0,
+"y" : 190.0
+},
+"GradingRuleID" : 0
+}, {
+"ID" : "T6E2UW",
+"PointType" : "Straight",
+"Position" : {
+"x" : 1790.0,
+"y" : 25.0
+},
+"GradingRuleID" : 0
+} ]
+} ]
+},
+"ArrangementPointDataMap" : {
+"PointName" : "Arm_Outside_2_R",
+"fOffSetX" : -0.5,
+"fOffSetY" : -0.5,
+"fAngle" : 0.0
+}
+} ],
+"SymmetricDataList" : [ {
+"SymmetricPatternID" : "None",
+"OriginPatternID" : "wHhzUt"
+}, {
+"SymmetricPatternID" : "None",
+"OriginPatternID" : "7nwlxE"
+}, {
+"SymmetricPatternID" : "None",
+"OriginPatternID" : "Ht4cZS"
+}, {
+"SymmetricPatternID" : "None",
+"OriginPatternID" : "wrYckx"
+} ],
+"InstanceDataList" : [ {
+"OriginPatternID" : "wHhzUt",
+"InstancePatternIDArray" : [  ]
+}, {
+"OriginPatternID" : "7nwlxE",
+"InstancePatternIDArray" : [  ]
+}, {
+"OriginPatternID" : "Ht4cZS",
+"InstancePatternIDArray" : [  ]
+}, {
+"OriginPatternID" : "wrYckx",
+"InstancePatternIDArray" : [  ]
+} ],
+"POMList" : [  ],
+"SeamLinePairGroupList" : [ {
+"Name" : "Sewing_9768",
+"bIsTurned" : false,
+"PairList" : [ {
+"First" : {
+"ShapeID" : "wHhzUt",
+"LengthParam" : {
+"fStart" : 0.13329387,
+"fEnd" : 0.38705301
+},
+"Direction" : true
+},
+"Second" : {
+"ShapeID" : "7nwlxE",
+"LengthParam" : {
+"fStart" : 0.8629939,
+"fEnd" : 0.61180359
+},
+"Direction" : false
+}
+} ],
+"FoldData" : {
+"iAngle" : 180,
+"iStrength" : 5
+}
+}, {
+"Name" : "Sewing_9811",
+"bIsTurned" : false,
+"PairList" : [ {
+"First" : {
+"ShapeID" : "wHhzUt",
+"LengthParam" : {
+"fStart" : 0.61294699,
+"fEnd" : 0.86670607
+},
+"Direction" : true
+},
+"Second" : {
+"ShapeID" : "7nwlxE",
+"LengthParam" : {
+"fStart" : 0.38819638,
+"fEnd" : 0.13700613
+},
+"Direction" : false
+}
+} ],
+"FoldData" : {
+"iAngle" : 180,
+"iStrength" : 5
+}
+}, {
+"Name" : "Sewing_9850",
+"bIsTurned" : false,
+"PairList" : [ {
+"First" : {
+"ShapeID" : "wHhzUt",
+"LengthParam" : {
+"fStart" : 0.0,
+"fEnd" : 0.050519198
+},
+"Direction" : true
+},
+"Second" : {
+"ShapeID" : "7nwlxE",
+"LengthParam" : {
+"fStart" : 1.0,
+"fEnd" : 0.94788253
+},
+"Direction" : false
+}
+} ],
+"FoldData" : {
+"iAngle" : 180,
+"iStrength" : 5
+}
+}, {
+"Name" : "Sewing_9889",
+"bIsTurned" : false,
+"PairList" : [ {
+"First" : {
+"ShapeID" : "wHhzUt",
+"LengthParam" : {
+"fStart" : 0.94948077,
+"fEnd" : 1.0
+},
+"Direction" : true
+},
+"Second" : {
+"ShapeID" : "7nwlxE",
+"LengthParam" : {
+"fStart" : 0.052117456,
+"fEnd" : 0.0
+},
+"Direction" : false
+}
+} ],
+"FoldData" : {
+"iAngle" : 180,
+"iStrength" : 5
+}
+}, {
+"Name" : "Sewing_9928",
+"bIsTurned" : false,
+"PairList" : [ {
+"First" : {
+"ShapeID" : "wHhzUt",
+"LengthParam" : {
+"fStart" : 0.050519198,
+"fEnd" : 0.13329387
+},
+"Direction" : true
+},
+"Second" : {
+"ShapeID" : "Ht4cZS",
+"LengthParam" : {
+"fStart" : 0.0,
+"fEnd" : 0.13783273
+},
+"Direction" : true
+}
+} ],
+"FoldData" : {
+"iAngle" : 180,
+"iStrength" : 5
+}
+}, {
+"Name" : "Sewing_9967",
+"bIsTurned" : false,
+"PairList" : [ {
+"First" : {
+"ShapeID" : "7nwlxE",
+"LengthParam" : {
+"fStart" : 0.8629939,
+"fEnd" : 0.94788253
+},
+"Direction" : true
+},
+"Second" : {
+"ShapeID" : "Ht4cZS",
+"LengthParam" : {
+"fStart" : 0.8621673,
+"fEnd" : 1.0
+},
+"Direction" : true
+}
+} ],
+"FoldData" : {
+"iAngle" : 180,
+"iStrength" : 5
+}
+}, {
+"Name" : "Sewing_10006",
+"bIsTurned" : false,
+"PairList" : [ {
+"First" : {
+"ShapeID" : "Ht4cZS",
+"LengthParam" : {
+"fStart" : 0.13783273,
+"fEnd" : 0.43018392
+},
+"Direction" : true
+},
+"Second" : {
+"ShapeID" : "Ht4cZS",
+"LengthParam" : {
+"fStart" : 0.8621673,
+"fEnd" : 0.56981605
+},
+"Direction" : false
+}
+} ],
+"FoldData" : {
+"iAngle" : 180,
+"iStrength" : 5
+}
+}, {
+"Name" : "Sewing_10042",
+"bIsTurned" : false,
+"PairList" : [ {
+"First" : {
+"ShapeID" : "wHhzUt",
+"LengthParam" : {
+"fStart" : 0.86670607,
+"fEnd" : 0.94948077
+},
+"Direction" : true
+},
+"Second" : {
+"ShapeID" : "wrYckx",
+"LengthParam" : {
+"fStart" : 0.13783273,
+"fEnd" : 0.0
+},
+"Direction" : false
+}
+} ],
+"FoldData" : {
+"iAngle" : 180,
+"iStrength" : 5
+}
+}, {
+"Name" : "Sewing_10081",
+"bIsTurned" : false,
+"PairList" : [ {
+"First" : {
+"ShapeID" : "7nwlxE",
+"LengthParam" : {
+"fStart" : 0.052117456,
+"fEnd" : 0.13700613
+},
+"Direction" : true
+},
+"Second" : {
+"ShapeID" : "wrYckx",
+"LengthParam" : {
+"fStart" : 1.0,
+"fEnd" : 0.8621673
+},
+"Direction" : false
+}
+} ],
+"FoldData" : {
+"iAngle" : 180,
+"iStrength" : 5
+}
+}, {
+"Name" : "Sewing_10120",
+"bIsTurned" : false,
+"PairList" : [ {
+"First" : {
+"ShapeID" : "wrYckx",
+"LengthParam" : {
+"fStart" : 0.13783273,
+"fEnd" : 0.43018392
+},
+"Direction" : true
+},
+"Second" : {
+"ShapeID" : "wrYckx",
+"LengthParam" : {
+"fStart" : 0.8621673,
+"fEnd" : 0.56981605
+},
+"Direction" : false
+}
+} ],
+"FoldData" : {
+"iAngle" : 180,
+"iStrength" : 5
+}
+} ]
+}

@@ -1,0 +1,1059 @@
+{
+  "ok": true,
+  "route": "Marvelous Designer native male AVT -> simulated garment -> Blender Renderer C fit",
+  "avatar": "/Applications/MarvelousDesigner.app/Contents/Assets/New Assets/Avatar/Male/MV2.1_Luka.avt",
+  "outputs": {
+    "preSimulationProject": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/marvelous/renderer-c-male-proof/male-walking-coat-pre-sim.zprj",
+    "patternJSON": true,
+    "project": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/marvelous/renderer-c-male-proof/male-walking-coat-simulated.zprj",
+    "obj": [
+      "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/marvelous/renderer-c-male-proof/male-walking-coat-simulated.obj",
+      "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/marvelous/renderer-c-male-proof/male-walking-coat-simulated.mtl"
+    ],
+    "thumbnail": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/marvelous/renderer-c-male-proof/male-walking-coat-simulated.png"
+  },
+  "avatarImport": {
+    "result": true,
+    "count": 1,
+    "names": [
+      "MV2_Thomas_1_eye_Joint"
+    ],
+    "genders": [
+      0
+    ],
+    "arrangementCount": 110,
+    "arrangements": [
+      {
+        "ArrangementIndex": "0",
+        "ArrangementName": "Arm_Back_1_L",
+        "ArrangementOffsetX": "75",
+        "ArrangementOffsetY": "75",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "1",
+        "ArrangementName": "Arm_Back_1_R",
+        "ArrangementOffsetX": "75",
+        "ArrangementOffsetY": "75",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "2",
+        "ArrangementName": "Arm_Back_2_L",
+        "ArrangementOffsetX": "75",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "3",
+        "ArrangementName": "Arm_Back_2_R",
+        "ArrangementOffsetX": "75",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "4",
+        "ArrangementName": "Arm_Back_3_L",
+        "ArrangementOffsetX": "75",
+        "ArrangementOffsetY": "25",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "5",
+        "ArrangementName": "Arm_Back_3_R",
+        "ArrangementOffsetX": "75",
+        "ArrangementOffsetY": "25",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "6",
+        "ArrangementName": "Arm_Front_1_L",
+        "ArrangementOffsetX": "25",
+        "ArrangementOffsetY": "75",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "7",
+        "ArrangementName": "Arm_Front_1_R",
+        "ArrangementOffsetX": "25",
+        "ArrangementOffsetY": "75",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "8",
+        "ArrangementName": "Arm_Front_2_L",
+        "ArrangementOffsetX": "25",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "9",
+        "ArrangementName": "Arm_Front_2_R",
+        "ArrangementOffsetX": "25",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "10",
+        "ArrangementName": "Arm_Front_3_L",
+        "ArrangementOffsetX": "25",
+        "ArrangementOffsetY": "25",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "11",
+        "ArrangementName": "Arm_Front_3_R",
+        "ArrangementOffsetX": "25",
+        "ArrangementOffsetY": "25",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "12",
+        "ArrangementName": "Arm_Inside_1_L",
+        "ArrangementOffsetX": "0",
+        "ArrangementOffsetY": "75",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "13",
+        "ArrangementName": "Arm_Inside_1_R",
+        "ArrangementOffsetX": "0",
+        "ArrangementOffsetY": "75",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "14",
+        "ArrangementName": "Arm_Inside_2_L",
+        "ArrangementOffsetX": "0",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "15",
+        "ArrangementName": "Arm_Inside_2_R",
+        "ArrangementOffsetX": "0",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "16",
+        "ArrangementName": "Arm_Inside_3_L",
+        "ArrangementOffsetX": "0",
+        "ArrangementOffsetY": "25",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "17",
+        "ArrangementName": "Arm_Inside_3_R",
+        "ArrangementOffsetX": "0",
+        "ArrangementOffsetY": "25",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "18",
+        "ArrangementName": "Arm_Outside_1_L",
+        "ArrangementOffsetX": "50",
+        "ArrangementOffsetY": "75",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "19",
+        "ArrangementName": "Arm_Outside_1_R",
+        "ArrangementOffsetX": "50",
+        "ArrangementOffsetY": "75",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "20",
+        "ArrangementName": "Arm_Outside_2_L",
+        "ArrangementOffsetX": "50",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "21",
+        "ArrangementName": "Arm_Outside_2_R",
+        "ArrangementOffsetX": "50",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "22",
+        "ArrangementName": "Arm_Outside_3_L",
+        "ArrangementOffsetX": "50",
+        "ArrangementOffsetY": "25",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "23",
+        "ArrangementName": "Arm_Outside_3_R",
+        "ArrangementOffsetX": "50",
+        "ArrangementOffsetY": "25",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "24",
+        "ArrangementName": "Wrist_Back_L",
+        "ArrangementOffsetX": "75",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "25",
+        "ArrangementName": "Wrist_Back_R",
+        "ArrangementOffsetX": "75",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "26",
+        "ArrangementName": "Wrist_Front_L",
+        "ArrangementOffsetX": "25",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "27",
+        "ArrangementName": "Wrist_Front_R",
+        "ArrangementOffsetX": "25",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "28",
+        "ArrangementName": "Wrist_Inside_L",
+        "ArrangementOffsetX": "0",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "29",
+        "ArrangementName": "Wrist_Inside_R",
+        "ArrangementOffsetX": "0",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "30",
+        "ArrangementName": "Wrist_Outside_L",
+        "ArrangementOffsetX": "50",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "31",
+        "ArrangementName": "Wrist_Outside_R",
+        "ArrangementOffsetX": "50",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "32",
+        "ArrangementName": "Body_Back_1_L",
+        "ArrangementOffsetX": "90",
+        "ArrangementOffsetY": "90",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "33",
+        "ArrangementName": "Body_Back_1_R",
+        "ArrangementOffsetX": "90",
+        "ArrangementOffsetY": "90",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "34",
+        "ArrangementName": "Body_Back_2_L",
+        "ArrangementOffsetX": "90",
+        "ArrangementOffsetY": "75",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "35",
+        "ArrangementName": "Body_Back_2_R",
+        "ArrangementOffsetX": "90",
+        "ArrangementOffsetY": "75",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "36",
+        "ArrangementName": "Body_Back_3_L",
+        "ArrangementOffsetX": "90",
+        "ArrangementOffsetY": "55",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "37",
+        "ArrangementName": "Body_Back_3_R",
+        "ArrangementOffsetX": "90",
+        "ArrangementOffsetY": "55",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "38",
+        "ArrangementName": "Body_Back_4_L",
+        "ArrangementOffsetX": "90",
+        "ArrangementOffsetY": "35",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "39",
+        "ArrangementName": "Body_Back_4_R",
+        "ArrangementOffsetX": "90",
+        "ArrangementOffsetY": "35",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "40",
+        "ArrangementName": "Body_Back_5_L",
+        "ArrangementOffsetX": "90",
+        "ArrangementOffsetY": "15",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "41",
+        "ArrangementName": "Body_Back_5_R",
+        "ArrangementOffsetX": "90",
+        "ArrangementOffsetY": "15",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "42",
+        "ArrangementName": "Body_Back_Center_1",
+        "ArrangementOffsetX": "0",
+        "ArrangementOffsetY": "90",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "43",
+        "ArrangementName": "Body_Back_Center_2",
+        "ArrangementOffsetX": "0",
+        "ArrangementOffsetY": "75",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "44",
+        "ArrangementName": "Body_Back_Center_3",
+        "ArrangementOffsetX": "0",
+        "ArrangementOffsetY": "55",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "45",
+        "ArrangementName": "Body_Back_Waist",
+        "ArrangementOffsetX": "0",
+        "ArrangementOffsetY": "35",
+        "ArrangementOffsetZ": "30",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "46",
+        "ArrangementName": "Body_Back_Center_5",
+        "ArrangementOffsetX": "0",
+        "ArrangementOffsetY": "15",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "47",
+        "ArrangementName": "Body_Back_Side_R",
+        "ArrangementOffsetX": "80",
+        "ArrangementOffsetY": "55",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "48",
+        "ArrangementName": "Body_Back_Side_L",
+        "ArrangementOffsetX": "80",
+        "ArrangementOffsetY": "55",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "49",
+        "ArrangementName": "Body_Front_1_L",
+        "ArrangementOffsetX": "60",
+        "ArrangementOffsetY": "90",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "50",
+        "ArrangementName": "Body_Front_1_R",
+        "ArrangementOffsetX": "60",
+        "ArrangementOffsetY": "90",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "51",
+        "ArrangementName": "Body_Front_2_L",
+        "ArrangementOffsetX": "60",
+        "ArrangementOffsetY": "75",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "52",
+        "ArrangementName": "Body_Front_2_R",
+        "ArrangementOffsetX": "60",
+        "ArrangementOffsetY": "75",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "53",
+        "ArrangementName": "Body_Front_3_L",
+        "ArrangementOffsetX": "60",
+        "ArrangementOffsetY": "55",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "54",
+        "ArrangementName": "Body_Front_3_R",
+        "ArrangementOffsetX": "60",
+        "ArrangementOffsetY": "55",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "55",
+        "ArrangementName": "Body_Front_4_L",
+        "ArrangementOffsetX": "60",
+        "ArrangementOffsetY": "35",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "56",
+        "ArrangementName": "Body_Front_4_R",
+        "ArrangementOffsetX": "60",
+        "ArrangementOffsetY": "35",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "57",
+        "ArrangementName": "Body_Front_5_L",
+        "ArrangementOffsetX": "60",
+        "ArrangementOffsetY": "15",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "58",
+        "ArrangementName": "Body_Front_5_R",
+        "ArrangementOffsetX": "60",
+        "ArrangementOffsetY": "15",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "59",
+        "ArrangementName": "Body_Front_Center_1",
+        "ArrangementOffsetX": "50",
+        "ArrangementOffsetY": "90",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "60",
+        "ArrangementName": "Body_Front_Center_2",
+        "ArrangementOffsetX": "50",
+        "ArrangementOffsetY": "75",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "61",
+        "ArrangementName": "Body_Front_Center_3",
+        "ArrangementOffsetX": "50",
+        "ArrangementOffsetY": "55",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "62",
+        "ArrangementName": "Body_Front_Waist",
+        "ArrangementOffsetX": "50",
+        "ArrangementOffsetY": "35",
+        "ArrangementOffsetZ": "30",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "63",
+        "ArrangementName": "Body_Front_Center_5",
+        "ArrangementOffsetX": "50",
+        "ArrangementOffsetY": "15",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "64",
+        "ArrangementName": "Body_Side_R",
+        "ArrangementOffsetX": "70",
+        "ArrangementOffsetY": "55",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "65",
+        "ArrangementName": "Body_Side_L",
+        "ArrangementOffsetX": "70",
+        "ArrangementOffsetY": "55",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "66",
+        "ArrangementName": "Body_Waist_L",
+        "ArrangementOffsetX": "75",
+        "ArrangementOffsetY": "35",
+        "ArrangementOffsetZ": "30",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "67",
+        "ArrangementName": "Body_Waist_R",
+        "ArrangementOffsetX": "75",
+        "ArrangementOffsetY": "35",
+        "ArrangementOffsetZ": "30",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "68",
+        "ArrangementName": "Shoulder_L",
+        "ArrangementOffsetX": "45",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "69",
+        "ArrangementName": "Shoulder_R",
+        "ArrangementOffsetX": "45",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "70",
+        "ArrangementName": "Head",
+        "ArrangementOffsetX": "0",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "71",
+        "ArrangementName": "Head_L",
+        "ArrangementOffsetX": "75",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "72",
+        "ArrangementName": "Head_R",
+        "ArrangementOffsetX": "75",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "73",
+        "ArrangementName": "Head_Top_Back",
+        "ArrangementOffsetX": "25",
+        "ArrangementOffsetY": "15",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "74",
+        "ArrangementName": "Head_Top_Center",
+        "ArrangementOffsetX": "25",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "75",
+        "ArrangementName": "Head_Top_Front",
+        "ArrangementOffsetX": "25",
+        "ArrangementOffsetY": "85",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "76",
+        "ArrangementName": "Neck_Back",
+        "ArrangementOffsetX": "50",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "77",
+        "ArrangementName": "Neck_Collar",
+        "ArrangementOffsetX": "50",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "70",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "78",
+        "ArrangementName": "Neck_Front",
+        "ArrangementOffsetX": "0",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "79",
+        "ArrangementName": "Neck_L",
+        "ArrangementOffsetX": "25",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "80",
+        "ArrangementName": "Neck_R",
+        "ArrangementOffsetX": "25",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "81",
+        "ArrangementName": "Leg_Calf_Front_L",
+        "ArrangementOffsetX": "75",
+        "ArrangementOffsetY": "30",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "82",
+        "ArrangementName": "Leg_Calf_Front_R",
+        "ArrangementOffsetX": "75",
+        "ArrangementOffsetY": "30",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "83",
+        "ArrangementName": "Leg_Front_L",
+        "ArrangementOffsetX": "75",
+        "ArrangementOffsetY": "55",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "84",
+        "ArrangementName": "Leg_Front_R",
+        "ArrangementOffsetX": "75",
+        "ArrangementOffsetY": "55",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "85",
+        "ArrangementName": "Leg_Calf_Back_L",
+        "ArrangementOffsetX": "25",
+        "ArrangementOffsetY": "30",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "86",
+        "ArrangementName": "Leg_Calf_Back_R",
+        "ArrangementOffsetX": "25",
+        "ArrangementOffsetY": "30",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "87",
+        "ArrangementName": "Leg_Back_L",
+        "ArrangementOffsetX": "25",
+        "ArrangementOffsetY": "55",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "88",
+        "ArrangementName": "Leg_Back_R",
+        "ArrangementOffsetX": "25",
+        "ArrangementOffsetY": "55",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "89",
+        "ArrangementName": "Leg_Outside_1_L",
+        "ArrangementOffsetX": "100",
+        "ArrangementOffsetY": "85",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "90",
+        "ArrangementName": "Leg_Outside_1_R",
+        "ArrangementOffsetX": "100",
+        "ArrangementOffsetY": "85",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "91",
+        "ArrangementName": "Leg_Outside_2_L",
+        "ArrangementOffsetX": "100",
+        "ArrangementOffsetY": "55",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "92",
+        "ArrangementName": "Leg_Outside_2_R",
+        "ArrangementOffsetX": "100",
+        "ArrangementOffsetY": "55",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "93",
+        "ArrangementName": "Leg_Outside_3_L",
+        "ArrangementOffsetX": "100",
+        "ArrangementOffsetY": "30",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "94",
+        "ArrangementName": "Leg_Outside_3_R",
+        "ArrangementOffsetX": "100",
+        "ArrangementOffsetY": "30",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "95",
+        "ArrangementName": "Leg_Skirt_Front",
+        "ArrangementOffsetX": "0",
+        "ArrangementOffsetY": "80",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "96",
+        "ArrangementName": "Leg_Skirt_Front_L",
+        "ArrangementOffsetX": "10",
+        "ArrangementOffsetY": "80",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "97",
+        "ArrangementName": "Leg_Skirt_Front_R",
+        "ArrangementOffsetX": "10",
+        "ArrangementOffsetY": "80",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "98",
+        "ArrangementName": "Leg_Skirt_Back",
+        "ArrangementOffsetX": "50",
+        "ArrangementOffsetY": "80",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "99",
+        "ArrangementName": "Leg_Skirt_Back_L",
+        "ArrangementOffsetX": "40",
+        "ArrangementOffsetY": "80",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "100",
+        "ArrangementName": "Leg_Skirt_Back_R",
+        "ArrangementOffsetX": "40",
+        "ArrangementOffsetY": "80",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "101",
+        "ArrangementName": "Ankle_Back_L",
+        "ArrangementOffsetX": "75",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "102",
+        "ArrangementName": "Ankle_Back_R",
+        "ArrangementOffsetX": "75",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "103",
+        "ArrangementName": "Ankle_Front_L",
+        "ArrangementOffsetX": "25",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "104",
+        "ArrangementName": "Ankle_Front_R",
+        "ArrangementOffsetX": "25",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "105",
+        "ArrangementName": "Ankle_Outside_L",
+        "ArrangementOffsetX": "50",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "106",
+        "ArrangementName": "Ankle_Outside_R",
+        "ArrangementOffsetX": "50",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "107",
+        "ArrangementName": "Ankle_Inside_L",
+        "ArrangementOffsetX": "100",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "108",
+        "ArrangementName": "Ankle_Inside_R",
+        "ArrangementOffsetX": "100",
+        "ArrangementOffsetY": "50",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      },
+      {
+        "ArrangementIndex": "109",
+        "ArrangementName": "Head_Front",
+        "ArrangementOffsetX": "50",
+        "ArrangementOffsetY": "15",
+        "ArrangementOffsetZ": "50",
+        "ArrangementOrientation": "180",
+        "ArrangementType": "Curved"
+      }
+    ]
+  },
+  "selectedArrangements": {
+    "front": [
+      62,
+      "{\"arrangementindex\": \"62\", \"arrangementname\": \"body_front_waist\", \"arrangementoffsetx\": \"50\", \"arrangementoffsety\": \"35\", \"arrangementoffsetz\": \"30\", \"arrangementorientation\": \"180\", \"arrangementtype\": \"curved\"}"
+    ],
+    "back": [
+      45,
+      "{\"arrangementindex\": \"45\", \"arrangementname\": \"body_back_waist\", \"arrangementoffsetx\": \"0\", \"arrangementoffsety\": \"35\", \"arrangementoffsetz\": \"30\", \"arrangementorientation\": \"180\", \"arrangementtype\": \"curved\"}"
+    ],
+    "leftArm": [
+      20,
+      "{\"arrangementindex\": \"20\", \"arrangementname\": \"arm_outside_2_l\", \"arrangementoffsetx\": \"50\", \"arrangementoffsety\": \"50\", \"arrangementoffsetz\": \"50\", \"arrangementorientation\": \"180\", \"arrangementtype\": \"curved\"}"
+    ],
+    "rightArm": [
+      21,
+      "{\"arrangementindex\": \"21\", \"arrangementname\": \"arm_outside_2_r\", \"arrangementoffsetx\": \"50\", \"arrangementoffsety\": \"50\", \"arrangementoffsetz\": \"50\", \"arrangementorientation\": \"180\", \"arrangementtype\": \"curved\"}"
+    ]
+  },
+  "patterns": {
+    "front": 0,
+    "back": 1,
+    "leftSleeve": 2,
+    "rightSleeve": 3
+  },
+  "seams": {
+    "leftSide": true,
+    "rightSide": true,
+    "leftShoulder": true,
+    "rightShoulder": true,
+    "leftFrontArmhole": true,
+    "leftBackArmhole": true,
+    "leftSleeveUnderarm": true,
+    "rightFrontArmhole": true,
+    "rightBackArmhole": true,
+    "rightSleeveUnderarm": true
+  },
+  "simulation": {
+    "steps": 160,
+    "result": true
+  },
+  "patternCount": 4
+}

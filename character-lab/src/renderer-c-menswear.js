@@ -20,13 +20,19 @@ export const RENDERER_C_MENSWEAR_PALETTES = Object.freeze({
     label: 'Tradesman · olive', coat: '#3f4539', trousers: '#353a35', waistcoat: '#595847', shirt: '#d1c8b7', neckwear: '#583b35', hardware: '#86734f', shoes: '#211a15', roughness: 0.9,
   }),
   'formal-black-grey': Object.freeze({
-    label: 'Professional · black and grey', coat: '#202123', trousers: '#464749', waistcoat: '#333235', shirt: '#ddd6c9', neckwear: '#34282a', hardware: '#9a8050', shoes: '#171313', roughness: 0.84,
+    label: 'Professional · black and grey', coat: '#202123', trousers: '#464749', waistcoat: '#333235', shirt: '#ddd6c9', neckwear: '#34282a', lining: '#33242b', hardware: '#9a8050', shoes: '#171313', roughness: 0.84,
   }),
   'formal-navy-grey': Object.freeze({
-    label: 'Professional · navy and grey', coat: '#252d37', trousers: '#44474a', waistcoat: '#343b43', shirt: '#ddd7cb', neckwear: '#533a36', hardware: '#967b4d', shoes: '#171415', roughness: 0.84,
+    label: 'Professional · navy and grey', coat: '#252d37', trousers: '#44474a', waistcoat: '#343b43', shirt: '#ddd7cb', neckwear: '#533a36', lining: '#392832', hardware: '#967b4d', shoes: '#171415', roughness: 0.84,
+  }),
+  'elite-charcoal-dove': Object.freeze({
+    label: 'Elite · charcoal and dove', coat: '#1c1e20', trousers: '#4a4948', waistcoat: '#716f68', shirt: '#e1dcd0', neckwear: '#4b2931', lining: '#38262d', hardware: '#9b8354', shoes: '#151214', roughness: 0.82,
+  }),
+  'elite-midnight-buff': Object.freeze({
+    label: 'Elite · midnight and buff', coat: '#1c2530', trousers: '#48494a', waistcoat: '#74654e', shirt: '#ded7c9', neckwear: '#56382f', lining: '#3d2930', hardware: '#967c4e', shoes: '#151315', roughness: 0.82,
   }),
   mourning: Object.freeze({
-    label: 'Mourning · black', coat: '#171718', trousers: '#242425', waistcoat: '#202021', shirt: '#d5d0c6', neckwear: '#181719', hardware: '#554b3d', shoes: '#141212', roughness: 0.9,
+    label: 'Mourning · black', coat: '#171718', trousers: '#242425', waistcoat: '#202021', shirt: '#d5d0c6', neckwear: '#181719', lining: '#201b1d', hardware: '#554b3d', shoes: '#141212', roughness: 0.9,
   }),
 });
 
@@ -121,7 +127,8 @@ function paletteFor(values) {
     return {
       coat: hex(coat), trousers: hex(coat.clone().multiplyScalar(0.78)),
       waistcoat: hex(coat.clone().lerp(accent, 0.42)), shirt: '#d3cbbd',
-      neckwear: hex(accent), hardware: '#8b7650', shoes: '#211916', roughness: 0.88,
+      neckwear: hex(accent), lining: hex(coat.clone().lerp(accent, 0.22)),
+      hardware: '#8b7650', shoes: '#211916', roughness: 0.88,
     };
   }
   return RENDERER_C_MENSWEAR_PALETTES[values.menswearPalette]
@@ -131,6 +138,18 @@ function paletteFor(values) {
 export function createRendererCMenswear(scene, bones, model) {
   const carrier = model?.getObjectByName?.('RendererC_BaseGarment');
   const workCarrier = model?.getObjectByName?.('RendererC_WorkGarment');
+  const victorianCarrier = model?.getObjectByName?.('RendererC_VictorianGarment');
+  const eliteCarrier = model?.getObjectByName?.('RendererC_EliteMorningSuit');
+  const authoredMeshes = [];
+  model?.traverse?.((object) => {
+    if (object.isSkinnedMesh && object.name.startsWith('RendererC_AuthoredVictorianWaistcoat_')) {
+      authoredMeshes.push(object);
+    }
+  });
+  const eliteMeshes = [];
+  eliteCarrier?.traverse?.((object) => {
+    if (object.isSkinnedMesh) eliteMeshes.push(object);
+  });
   if (!carrier?.isSkinnedMesh || !workCarrier?.isSkinnedMesh) {
     throw new Error('Renderer C menswear needs its tailored and working fitted garment carriers');
   }
@@ -141,6 +160,7 @@ export function createRendererCMenswear(scene, bones, model) {
     waistcoat: fabric('RendererC_Menswear_Waistcoat', '#4b4840', 165),
     shirt: fabric('RendererC_Menswear_Shirt', '#d3cbbd', 185),
     neckwear: fabric('RendererC_Menswear_Neckwear', '#5a3934', 175),
+    lining: fabric('RendererC_Menswear_Lining', '#38272d', 170),
     hardware: new THREE.MeshStandardMaterial({ name: 'RendererC_Menswear_Hardware', color: '#8b7650', roughness: 0.58, metalness: 0.16 }),
     hidden: new THREE.MeshBasicMaterial({ name: 'RendererC_Menswear_Hidden', visible: false }),
   };
@@ -152,11 +172,62 @@ export function createRendererCMenswear(scene, bones, model) {
     shoeMaterials.push(...list);
   });
   let pieces = [];
+  const eliteOriginal = eliteCarrier ? {
+    visible: eliteCarrier.visible,
+    meshes: eliteMeshes.map((mesh) => ({
+      mesh,
+      material: mesh.material,
+      morphs: mesh.morphTargetInfluences?.slice() || [],
+    })),
+  } : null;
+  const authoredOriginal = authoredMeshes.map((mesh) => ({ mesh, visible: mesh.visible }));
 
   function garmentComponents(mesh, role) {
     const geometry = mesh.geometry;
     const positions = geometry.attributes.position;
     const index = geometry.index;
+    if (role === 'working' && mesh.isSkinnedMesh
+      && geometry.attributes.skinIndex && geometry.attributes.skinWeight) {
+      const skinIndex = geometry.attributes.skinIndex;
+      const skinWeight = geometry.attributes.skinWeight;
+      const regions = new Map([
+        ['shirt', { indices: [], vertices: new Set(), kind: 'shirt' }],
+        ['sleeve', { indices: [], vertices: new Set(), kind: 'sleeve' }],
+        ['trousers', { indices: [], vertices: new Set(), kind: 'trousers' }],
+      ]);
+      const regionForBone = (bone) => {
+        const name = bone?.name?.toLowerCase().replaceAll(/[^a-z0-9]/g, '') || '';
+        if (['leftupleg', 'rightupleg', 'leftleg', 'rightleg', 'leftfoot', 'rightfoot']
+          .some((part) => name.includes(part))) return 'trousers';
+        if (['leftshoulder', 'rightshoulder', 'leftarm', 'rightarm', 'leftforearm', 'rightforearm', 'lefthand', 'righthand']
+          .some((part) => name.includes(part))) return 'sleeve';
+        return 'shirt';
+      };
+      for (let offset = 0; offset < index.count; offset += 3) {
+        const vertices = [index.getX(offset), index.getX(offset + 1), index.getX(offset + 2)];
+        const scores = { shirt: 0, sleeve: 0, trousers: 0 };
+        for (const vertex of vertices) {
+          for (let influence = 0; influence < 4; influence += 1) {
+            const bone = mesh.skeleton.bones[skinIndex.getComponent(vertex, influence)];
+            scores[regionForBone(bone)] += skinWeight.getComponent(vertex, influence);
+          }
+        }
+        const kind = Object.keys(scores).sort((left, right) => scores[right] - scores[left])[0];
+        regions.get(kind).indices.push(...vertices);
+        vertices.forEach((vertex) => regions.get(kind).vertices.add(vertex));
+      }
+      const components = [...regions.values()].filter((component) => component.indices.length);
+      geometry.clearGroups();
+      const reordered = [];
+      for (let componentIndex = 0; componentIndex < components.length; componentIndex += 1) {
+        const component = components[componentIndex];
+        const start = reordered.length;
+        reordered.push(...component.indices);
+        geometry.addGroup(start, component.indices.length, componentIndex);
+      }
+      geometry.setIndex(reordered);
+      return components;
+    }
     const parents = Int32Array.from({ length: positions.count }, (_, vertex) => vertex);
     const find = (vertex) => {
       let root = vertex;
@@ -200,6 +271,7 @@ export function createRendererCMenswear(scene, bones, model) {
         kind = 'coat';
         if (count <= 48) kind = 'hardware';
         else if (box.max.y < 0.34) kind = 'trousers';
+        else if (Math.abs(center.x) < 0.08 && box.max.x - box.min.x < 0.17 && box.min.y > 0.48) kind = 'neckwear';
         else if (Math.abs(center.x) > 0.22 && count < 210) kind = 'shirt';
         else if (box.min.y > 0.93) kind = 'shirt';
         else if (Math.abs(center.x) < 0.13 && count > 300 && box.max.x - box.min.x < 0.25) kind = 'waistcoat';
@@ -249,6 +321,10 @@ export function createRendererCMenswear(scene, bones, model) {
 
   const tailoredState = prepareCarrier(carrier, 'tailored');
   const workingState = prepareCarrier(workCarrier, 'working');
+  const victorianState = victorianCarrier?.isSkinnedMesh
+    ? prepareCarrier(victorianCarrier, 'victorian')
+    : null;
+  const carrierStates = [tailoredState, workingState, victorianState].filter(Boolean);
   const components = tailoredState.components;
 
   function add(name, geometry, material, bone) {
@@ -275,6 +351,15 @@ export function createRendererCMenswear(scene, bones, model) {
   function materialFor(component, values, role) {
     if (component.kind === 'trousers') return materials.trousers;
     if (component.kind === 'hardware') return materials.hardware;
+    if (role === 'working' && values.outfitStyle === 'mens-authored-victorian-set') {
+      // Keep the fitted MPFB shirt continuous beneath the authored waistcoat.
+      // Hiding torso triangles by their dominant bone produced torn armholes
+      // wherever shoulder weights blended into the chest.
+      return materials.shirt;
+    }
+    if (component.kind === 'neckwear') {
+      return values.outfitStyle === 'mens-victorian-sample' ? materials.hidden : materials.neckwear;
+    }
     if (role === 'working') {
       if (component.kind === 'shirt' && values.workingLayer === 'waistcoat') return materials.waistcoat;
       return materials.shirt;
@@ -291,6 +376,8 @@ export function createRendererCMenswear(scene, bones, model) {
   function applyCarrierSilhouette(state, values) {
     const { mesh, role, originalPositions, vertexKinds } = state;
     const position = mesh.geometry.attributes.position;
+    const victorianSample = values.outfitStyle === 'mens-victorian-sample';
+    const tailored = role !== 'working';
     const formal = ['mens-formal-suit', 'mens-mourning-suit'].includes(values.outfitStyle);
     const working = values.outfitStyle === 'mens-working-clothes';
     const frock = (values.formalCoatCut || 'morning-cutaway') === 'frock-coat';
@@ -307,12 +394,12 @@ export function createRendererCMenswear(scene, bones, model) {
       let y = originalPositions[offset + 1];
       let z = originalPositions[offset + 2];
       const kinds = vertexKinds[vertex];
-      if (role === 'tailored' && (kinds.has('coat') || kinds.has('sleeve'))) {
+      if (tailored && (kinds.has('coat') || kinds.has('sleeve'))) {
         const fullnessAmount = (fullness - 1) * (kinds.has('sleeve') ? 0.045 : 0.09);
         x *= 1 + fullnessAmount;
         z *= 1 + fullnessAmount * 0.72;
       }
-      if (role === 'tailored' && kinds.has('coat')) {
+      if (tailored && kinds.has('coat')) {
         if (z > -0.02 && y > 0.44) x *= 1 + (lapelWidth - 1) * 0.16;
         const hem = THREE.MathUtils.clamp((0.47 - y) / 0.40, 0, 1);
         if (formal) {
@@ -322,12 +409,16 @@ export function createRendererCMenswear(scene, bones, model) {
           y -= hem * cutaway * 0.30 * length;
           x *= 1 + hem * 0.035 * fullness;
         } else if (!working || values.workingLayer === 'work-jacket') {
-          y -= hem * 0.045 * length;
+          y -= hem * (victorianSample ? 0.10 : 0.045) * length;
         }
       }
-      if (role === 'tailored' && kinds.has('waistcoat')) {
+      if (tailored && kinds.has('waistcoat')) {
         x *= waistcoatFit;
         z *= 1 + (waistcoatFit - 1) * 0.65;
+      }
+      if (victorianSample && kinds.has('neckwear')) {
+        x *= 0.58;
+        y = 0.93 + (y - 0.93) * 0.55;
       }
       if ((kinds.has('shirt') || kinds.has('collar')) && y > 0.82 && Math.abs(x) < 0.20) {
         x *= collarSpread;
@@ -355,6 +446,7 @@ export function createRendererCMenswear(scene, bones, model) {
       waistcoat: palette.waistcoat,
       shirt: palette.shirt,
       neckwear: palette.neckwear,
+      lining: palette.lining || palette.neckwear,
       hardware: palette.hardware,
     };
     const roughness = THREE.MathUtils.clamp(values.fabricRoughness ?? palette.roughness, 0.45, 1);
@@ -365,7 +457,9 @@ export function createRendererCMenswear(scene, bones, model) {
       material.color.set(colors[key]);
       if ('roughness' in material) material.roughness = key === 'hardware' ? 0.58 : Math.max(roughness, palette.roughness - 0.08);
       if (material.userData.menswearUniforms) {
-        material.userData.menswearUniforms.pattern.value = key === 'shirt' || key === 'neckwear' ? 0 : pattern;
+        const eliteFormal = ['mens-formal-suit', 'mens-mourning-suit'].includes(values.outfitStyle);
+        material.userData.menswearUniforms.pattern.value = key === 'shirt' || key === 'neckwear' || key === 'lining' ? 0
+          : eliteFormal && key === 'trousers' ? PATTERN_IDS.pinstripe : pattern;
         material.userData.menswearUniforms.wear.value = key === 'shirt' ? wear * 0.35 : wear;
       }
       material.needsUpdate = true;
@@ -375,9 +469,42 @@ export function createRendererCMenswear(scene, bones, model) {
       if ('roughness' in material) material.roughness = 0.84;
       material.needsUpdate = true;
     }
-    for (const state of [tailoredState, workingState]) {
+    for (const state of carrierStates) {
       state.mesh.material = state.components.map((component) => materialFor(component, values, state.role));
     }
+    const eliteMaterialByName = {
+      RendererC_Elite_Coat: materials.coat,
+      RendererC_Elite_Trousers: materials.trousers,
+      RendererC_Elite_Waistcoat: materials.waistcoat,
+      RendererC_Elite_Shirt: materials.shirt,
+      RendererC_Elite_Neckwear: materials.neckwear,
+      RendererC_Elite_Lining: materials.lining,
+      RendererC_Elite_Hardware: materials.hardware,
+    };
+    for (const mesh of eliteMeshes) {
+      mesh.material = eliteMaterialByName[mesh.userData.eliteMaterialName || mesh.material?.name]
+        || mesh.material;
+    }
+  }
+
+  function setEliteMorph(name, value) {
+    const weight = THREE.MathUtils.clamp(value, -1, 1);
+    for (const mesh of eliteMeshes) {
+      const index = mesh.morphTargetDictionary?.[name];
+      if (index !== undefined) mesh.morphTargetInfluences[index] = weight;
+    }
+  }
+
+  function updateEliteMorphs(values) {
+    if (!eliteCarrier) return;
+    setEliteMorph('elite_frock_coat', values.formalCoatCut === 'frock-coat' ? 1 : 0);
+    setEliteMorph('elite_coat_length', ((values.coatLength ?? 1) - 1) / 0.18);
+    setEliteMorph('elite_coat_fullness', ((values.coatFullness ?? 1) - 1) / 0.22);
+    setEliteMorph('elite_lapel_width', ((values.lapelWidth ?? 1) - 1) / 0.35);
+    setEliteMorph('elite_trouser_width', ((values.trouserWidth ?? 1) - 1) / 0.22);
+    setEliteMorph('elite_waistcoat_fit', ((values.waistcoatFit ?? 1) - 1) / 0.14);
+    setEliteMorph('elite_collar_height', ((values.collarHeight ?? 0.92) - 0.92) / 0.48);
+    setEliteMorph('elite_collar_spread', ((values.collarSpread ?? 0.96) - 0.96) / 0.45);
   }
 
   function rebuild(values) {
@@ -385,14 +512,22 @@ export function createRendererCMenswear(scene, bones, model) {
     updateMaterials(values);
     applyCarrierSilhouette(tailoredState, values);
     applyCarrierSilhouette(workingState, values);
+    if (victorianState) applyCarrierSilhouette(victorianState, values);
     if (!bones.pelvis || !bones.head) return;
 
     const outfit = values.outfitStyle || 'mens-sack-suit';
     const working = outfit === 'mens-working-clothes';
+    const eliteFormal = ['mens-formal-suit', 'mens-mourning-suit'].includes(outfit) && eliteMeshes.length > 0;
+    const useVictorianCarrier = outfit === 'mens-victorian-sample' && Boolean(victorianCarrier);
+    const useAuthoredVictorian = outfit === 'mens-authored-victorian-set' && authoredMeshes.length > 0;
     const workingLayer = values.workingLayer || 'shirt-braces';
-    const useWorkingCarrier = working && workingLayer !== 'work-jacket';
-    carrier.visible = !useWorkingCarrier;
+    const useWorkingCarrier = (working && workingLayer !== 'work-jacket') || useAuthoredVictorian;
+    carrier.visible = !useWorkingCarrier && !useVictorianCarrier && !eliteFormal && !useAuthoredVictorian;
     workCarrier.visible = useWorkingCarrier;
+    if (victorianCarrier) victorianCarrier.visible = useVictorianCarrier;
+    if (eliteCarrier) eliteCarrier.visible = eliteFormal;
+    for (const mesh of authoredMeshes) mesh.visible = useAuthoredVictorian;
+    updateEliteMorphs(values);
 
     const pelvis = world(bones.pelvis);
     const head = world(bones.head);
@@ -421,6 +556,19 @@ export function createRendererCMenswear(scene, bones, model) {
         .addScaledVector(forward, row.offset + row.rz + clearance)
         .addScaledVector(right, side);
     };
+    if (outfit === 'mens-victorian-sample') {
+      const throat = frontAt(0.035, 0, 0.022);
+      const knot = frontAt(0.085, 0, 0.025);
+      const lower = frontAt(0.29, 0, 0.023);
+      add('RendererC_Menswear_Cravat', panelGeometry([
+        throat.clone().addScaledVector(right, -0.036),
+        throat.clone().addScaledVector(right, 0.036),
+        knot.clone().addScaledVector(right, 0.030),
+        lower.clone().addScaledVector(right, 0.017),
+        lower.clone().addScaledVector(right, -0.017),
+        knot.clone().addScaledVector(right, -0.030),
+      ]), materials.neckwear, bones.spine03 || bones.neck);
+    }
     // Braces are the only separate cloth layer in the working silhouette. They
     // overlap a continuously skinned shirt carrier and never bridge a joint.
     if (working && workingLayer === 'shirt-braces') {
@@ -437,7 +585,7 @@ export function createRendererCMenswear(scene, bones, model) {
 
   function dispose() {
     clear();
-    for (const state of [tailoredState, workingState]) {
+    for (const state of carrierStates) {
       const { mesh, originalPositions, originalIndex, originalGroups } = state;
       const position = mesh.geometry.attributes.position;
       for (let vertex = 0; vertex < position.count; vertex += 1) {
@@ -450,6 +598,16 @@ export function createRendererCMenswear(scene, bones, model) {
       mesh.material = state.originalMaterial;
       mesh.visible = state.originalVisible;
     }
+    if (eliteCarrier && eliteOriginal) {
+      eliteCarrier.visible = eliteOriginal.visible;
+      for (const original of eliteOriginal.meshes) {
+        original.mesh.material = original.material;
+        original.mesh.morphTargetInfluences?.forEach((_value, index) => {
+          original.mesh.morphTargetInfluences[index] = original.morphs[index] || 0;
+        });
+      }
+    }
+    for (const original of authoredOriginal) original.mesh.visible = original.visible;
     for (const material of Object.values(materials)) material.dispose();
   }
 
@@ -461,15 +619,27 @@ export function createRendererCMenswear(scene, bones, model) {
     invalidateFit() {},
     carrier,
     workCarrier,
+    victorianCarrier,
+    eliteCarrier,
+    authoredMeshes,
     components,
     pieces: () => [
-      ...[carrier, workCarrier].filter((mesh) => mesh.visible).map((mesh) => ({ mesh, bone: null })),
+      ...[carrier, workCarrier, victorianCarrier].filter((mesh) => mesh?.visible).map((mesh) => ({ mesh, bone: null })),
+      ...(eliteCarrier?.visible ? eliteMeshes.map((mesh) => ({ mesh, bone: null })) : []),
+      ...authoredMeshes.filter((mesh) => mesh.visible).map((mesh) => ({ mesh, bone: null })),
       ...pieces,
     ],
     stats: () => ({
       pieces: 1 + pieces.length,
       components: tailoredState.components.length + workingState.components.length,
-      triangles: (carrier.visible ? carrier.geometry.index.count : workCarrier.geometry.index.count) / 3
+      triangles: [
+        ...[carrier, workCarrier, victorianCarrier].filter((mesh) => mesh?.visible),
+        ...(eliteCarrier?.visible ? eliteMeshes : []),
+        ...authoredMeshes.filter((mesh) => mesh.visible),
+      ].reduce(
+        (sum, mesh) => sum + (mesh.geometry.index?.count || mesh.geometry.attributes.position.count) / 3,
+        0,
+      )
         + pieces.reduce((sum, { mesh }) => sum + (mesh.geometry.index?.count || mesh.geometry.attributes.position.count) / 3, 0),
     }),
   };

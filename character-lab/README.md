@@ -1,7 +1,7 @@
 # 1896 Character Lab
 
-Preset-driven pipeline for game-ready 1890s patients: MPFB parametric body in
-Blender, procedural costume and layered idle animation in three.js.
+Development and approval tool for Renderer C patients. It uses the same
+Renderer C controller, recipe contract, and material path as the game.
 
 ## Run
 
@@ -19,18 +19,19 @@ character without facial controls.
 
 ## How it fits together
 
-The header keeps patient generation separate from asset baking:
+The lab is organized by task: Cast, Appearance, Wardrobe, Performance, and QA.
+Renderer C is the only active renderer.
 
 - **Appearance variation** advances the appearance seed and rerolls the current
   patient's body, face, hair, palette, clothing, and surface controls without
   replacing her identity, case record, or clinically derived performance.
 - **New random patient** draws fresh patient seeds, selects the candidate whose
-  baked facial landmarks are most distinct from the person currently visible,
+  facial parameters are most distinct from the person currently visible,
   creates a new identity, household, clinical presentation, appearance, and
-  performance profile, then immediately rebuilds renderer A.
-- **Regenerate model** sends manually tuned or appearance-variation controls to
-  Blender when the user is ready.
-- Each generated renderer-A patient receives a coherent resting-face signature
+  performance profile, then resolves it through Renderer C without Blender.
+- Cohort, age band, and ancestry are derived from the patient record. The Cast
+  workspace can unlock those fields for deliberate renderer experiments.
+- Each generated patient receives a coherent resting-face signature
   assembled from all 52 available MPFB units. **Surprise me** below the atomic
   debugger rerolls only that signature live; performances layer over it.
 - Baked facial identity spans 37 structural controls: broad cranial archetype
@@ -53,7 +54,8 @@ The header keeps patient generation separate from asset baking:
 - `src/hair/` — modular period-hair system: scalp sampling, anatomical
   style-specific hairlines, true open parts, textured under-shells,
   directional locks, alpha-tested wisps, waves, chignons and coiled buns.
-- `src/stylized.js` — topology-safe live skin treatment for A and Meta MHR:
+- `src/stylized.js` — retained experimental skin treatment from renderers A
+  and B. Renderer C does not currently load this module's surface layers:
   anatomy-guided facial colour, capillary colour, procedural microstructure,
   pore scale, pigment variation, lip tint, and eye-white contrast. Freckles and
   lip pigment use a landmark-derived UV overlay so their edges are independent
@@ -83,17 +85,24 @@ The patient-domain record is stored at the top-level `patient` key in every
 generated preset. See `src/patients/README.md` for module boundaries and extension
 rules, and `public/schema/patient.schema.json` for the record contract.
 
-Skin-rendering values are generated as identity consequences. Older patients
-trend toward more micro-detail, larger visible pore
-scale, greater pigment unevenness, a rougher/more matte surface, less saturated
-lips, and lower eye-white contrast. Seeded variation remains broad enough that
-age does not produce identical surfaces. Every value remains live and editable
-in the **Skin rendering · A and Meta MHR** control group. The `stylized…` JSON
-prefixes are retained for preset compatibility.
+Skin-rendering values are generated as identity consequences, but the Renderer
+C runtime currently uses only skin colour and roughness. Skin tone is selected
+from six named, renderer-calibrated choices rather than a free-form colour
+picker. Eye colour uses six named choices and changes the exported iris texture
+without tinting the sclera. Procedural casting uses broad ancestry-aware subsets
+of those palettes; these are visual sampling defaults, not fixed biological
+rules, and every approved option remains manually selectable. The older-age
+normal, roughness, albedo, and mask layers are Work Package 2. The `stylized…`
+JSON fields remain in presets for compatibility; the lab does not present them
+as working Renderer C controls.
 
-## A/B character engines
+## Retired A/B experiments
 
-The stage toggle cycles two deliberately different character foundations:
+Renderers A and B are no longer selectable in Character Lab and are not part of
+the game runtime. Their source files and regression tests are retained
+temporarily because Renderer C's offline Blender scripts still reuse some MPFB
+generation code. The notes below are historical implementation reference, not
+the current workflow.
 
 - **A · MPFB** uses the generated MPFB basemesh and the complete exported
   `faceunits01` target library. Matching targets on brows, lashes, eyes, and
@@ -147,13 +156,42 @@ from regularized local deformation fields. Smile, sadness and fatigue share
 the same attack/hold/release scheduler as renderer A, and MPFB resting-face
 signatures are translated into the corresponding MHR controls.
 
-### Renderer C dress study
+### Renderer C wardrobe
 
-The **Dress study** stage button opens a Renderer C woman with a Blender-authored
-gored skirt on the same 52-bone Mixamo skeleton as the body. The fitted
-MPFB/MakeClothes carrier supplies the bodice, sleeves, body mask and body-build
-morphs. The visible A-line skirt uses one continuous hip-driven envelope for
-standing and walking, so Mixamo leg motion cannot split it into separate lobes.
+The **Dress the figure** panel replaces the hard-coded Dress study button. It
+switches directly between the women and men cohort masters and lists only
+outfits the active cohort can already render live. Some are embedded skinned
+garments and some are the existing procedural silhouette comparisons.
+Selecting an outfit does not run Blender.
+
+The women’s list starts with the Golden day-dress prototype, followed by the
+older fitted proof, five procedural silhouette comparisons, and the plain MPFB
+carrier. The men’s list exposes the
+working layers, sack suit, fitted Victorian sample, authored waistcoat set, and
+formal or mourning coat variants. This is an audition tool; the labels do not
+claim that a garment is approved 1896 content.
+
+The Golden day dress is a separate retained option. It copies the proven
+skinned upper carrier, removes its modern short skirt, and combines it with a
+full gored skirt. Its chest insert follows the fitted bodice surface, its cuffs
+and standing collar are hollow skinned shells with inner and outer faces, and
+its buttons are solid geometry. Primary, secondary, and accent colours are
+material slots rather than screen-space or object-space paint masks. Fabric
+maps add surface grain but do not define the neckline, cuffs, or trim. Separate
+controls adjust bust coverage, collar height, cuff width, and the material
+thickness of the collar and cuffs.
+
+Stable seated clips use a lower-gown surface copied from the fitted source so
+the skirt follows the thighs and falls toward the floor. A visible knee seam
+and simple rear drape remain prototype limitations. This garment is an
+approximately period-shaped technical base, not an approved historical
+reconstruction.
+
+The fitted dress uses a Blender-authored gored skirt on the same 52-bone Mixamo
+skeleton as the body. The fitted MPFB/MakeClothes carrier supplies the bodice,
+sleeves, body mask and body-build morphs. The visible A-line skirt uses one
+continuous hip-driven envelope for standing and walking, so Mixamo leg motion
+cannot split it into separate lobes.
 
 Long skirts need different deformation strategies for locomotion and sitting.
 At stable seated clips Character Lab switches to the authored fitted garment
@@ -163,6 +201,36 @@ comparison in the **Women’s garment proof** selector. This is deterministic
 prototype behavior, not cloth simulation; approved final garments should add
 skirt bones, corrective shapes, or secondary physics where the animation set
 needs them.
+
+The panel also lists downloaded MPFB source garments that are not yet wearable.
+They remain disabled until a checked cohort-master build embeds their fitted
+mesh, morphs and rig weights. Standalone, unskinned GLBs are never presented as
+wearable clothing.
+
+Press **Shift+2** to open Asset examination. The full-screen catalog exposes
+all Renderer C wearable states, retained OBJ/MHCLO sources, and imported
+Victorian GLB studies.
+Wearable entries appear on the live male or female figure. Source-only dresses,
+suits, hats, boots and glasses appear as neutral standalone meshes in the same
+orbitable Three.js stage, with their source and licence visible. Escape or
+Shift+2 closes the catalog.
+
+### Renderer C elite menswear proof
+
+The male `mens-formal-suit` and `mens-mourning-suit` styles now use
+`RendererC_EliteMorningSuit`, an authored seven-material SkinnedMesh exported
+inside the Renderer C male master. It uses the existing MPFB garment only as a
+source for fitted sleeves, trousers, body morph deltas, and Mixamo weights. The
+visible morning-coat shell, tails and back vent, waistcoat, lapels, starched
+collar, shirt, neckwear, pocket welts, buttons, lining, and watch chain are
+purpose-built geometry.
+
+Coat cut, length and fullness, lapel width, trouser width, waistcoat fit, and
+collar height and spread are named garment morphs, so Character Lab can tune
+them live without a Blender rebuild. Palettes, restrained patterns, wear, and
+material regions also remain live. The historical interpretation is
+provisional until Ben approves it; the principal silhouette reference is the
+Metropolitan Museum's 1894 J. B. Johnstone morning suit (2009.300.548a-c).
 
 `character:generate` and the local regeneration endpoint produce/cache A. The
 full 35 MB MHR asset remains the live-authoring master. `npm run mhr:generate`
@@ -188,11 +256,9 @@ npm run patient:audit -- 2000 # inspect generated distributions
 holds frame 0 as the pose), `clip` (baked GLB clip plays; only gaze, tremor,
 and gestures layer on top), `clip+procedural` (both).
 
-Renderer B exposes a contextual **Stand up / Sit down** stage button. It drives
-a reversible 2.25-second MHR rig transition with eased pelvis, leg, arm and
-balance-transfer motion. Pose transitions continue when ambient idle motion is
-disabled, and procedural clothing is refitted after the stable endpoint rather
-than during every animation frame.
+Renderer C exposes its authored seated, standing, transition, and walking clips
+in the Performance workspace. Pose transitions continue when ambient idle
+motion is disabled.
 
 ## Gotchas learned the hard way
 
@@ -207,18 +273,18 @@ than during every animation frame.
   baked geometry into an in-between animation frame.
 - `window.__lab` in the viewer console exposes scene/bones/preset/idle for
   calibration probes.
-- Orange controls alter identity and require **Regenerate model**. In local
-  development the Vite endpoint runs headless Blender, atomically replaces the
-  GLB, saves the preset, and reloads the lab. Seeded variation does this
-  automatically. Blue controls remain immediate Three.js changes.
+- Blue controls update the active Renderer C master immediately. Orange
+  controls are retained schema fields that need a future asset-bank build; the
+  normal lab workflow never launches Blender.
 - Identity morphs must be baked before adding the rig, eyes, teeth, proxy
   garments, and other fitted assets. Replaying them on the skin alone causes
   floating facial features and must never be used for character variation.
 - Seated rigs are aligned from the generated pelvis position to the 0.455 m
   chair surface; never use a fixed vertical offset across body proportions.
 - Seed demographics use an explicit 1896 elite-clinic profile rather than
-  choosing MPFB ancestry targets uniformly. Hair and eye palettes are
-  conditional on that profile; both remain manually editable live controls.
+  choosing MPFB ancestry targets uniformly. Complexion and eye palettes use
+  bounded ancestry-aware sampling defaults; all six named choices remain
+  manually editable live controls.
 - Facial target names and count are discovered from the exported body rather
   than assumed. The current pack exports 52 body targets, but runtime support
   is based on required sentinel names and not that number.

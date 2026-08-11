@@ -99,3 +99,24 @@ this exact setting — neurasthenia spread as a fashionable diagnosis through
 the social networks Beard's book named, and post-1884 cocaine enthusiasm
 created iatrogenic addiction (Halsted). The contagion sim is this argument in
 executable form; a Res Obscura essay lives in that sentence.
+
+## Cattell's laboratory — apparatus built for the game
+
+Needs Ben's verification before any of it becomes game text. What the props
+were modelled from:
+
+- The ten tests are Cattell's own list from "Mental Tests and Measurements"
+  (*Mind*, 1890), which he then ran on entering Columbia freshmen from 1894:
+  dynamometer pressure; rate of movement; sensation-areas; pressure causing
+  pain; least noticeable difference in weight; reaction-time for sound; time
+  for naming colours; bisection of a 50cm line; judgment of 10 seconds time;
+  number of letters repeated on once hearing.
+- **Chronology problem.** Columbia was still on the 49th Street campus in
+  1896; Morningside Heights and Schermerhorn Hall open in 1897. The room in
+  `cattell-lab.blueprint.json` is therefore a converted upper floor, not the
+  purpose-built laboratory usually pictured. If the game wants Schermerhorn,
+  the date has to move.
+- The apparatus forms (Hipp chronoscope, kymograph, fall-screen
+  tachistoscope, du Bois-Reymond sledge coil, Maxwell discs) are the common
+  patterns of the period, not any one maker's plate. Zimmermann, Verdin and
+  Willyoung catalogues would settle the details.

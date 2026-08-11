@@ -186,9 +186,13 @@
       "wardrobeCarriers": [
         "RendererC_BaseGarment",
         "RendererC_VictorianDress",
-        "RendererC_VictorianDetails"
+        "RendererC_VictorianDetails",
+        "RendererC_GoldenDressBodice",
+        "RendererC_GoldenDressSkirt",
+        "RendererC_GoldenDressSeatedSkirt",
+        "RendererC_GoldenDressDetails"
       ],
-      "bytes": 25696424,
+      "bytes": 26480024,
       "morphTargets": 128,
       "clips": 10,
       "path": "/models/renderer-c-women.glb"
@@ -377,9 +381,11 @@
       },
       "wardrobeCarriers": [
         "RendererC_BaseGarment",
-        "RendererC_WorkGarment"
+        "RendererC_WorkGarment",
+        "RendererC_VictorianGarment",
+        "RendererC_AuthoredVictorianWaistcoat_01"
       ],
-      "bytes": 27723368,
+      "bytes": 34424436,
       "morphTargets": 128,
       "clips": 10,
       "path": "/models/renderer-c-men.glb"

@@ -1,0 +1,170 @@
+{
+  "sourceImage": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/reagent-bottle-rack/reference/imagegen-concept.png",
+  "zonesDir": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/reagent-bottle-rack/detail-zones",
+  "detailInventory": {
+    "scanMethod": "component-zones",
+    "targetMinDetails": 10,
+    "details": [
+      {
+        "id": "rack-rounded-edges",
+        "kind": "bevel",
+        "description": "Rounded bevels catch light on the long base, back board, cheeks, rails, and dividers.",
+        "region": {
+          "x": 0.04,
+          "y": 0.2,
+          "width": 0.92,
+          "height": 0.7,
+          "units": "normalized"
+        },
+        "scale": "meso",
+        "affects": "silhouette and wood highlight response",
+        "mapsTo": {
+          "type": "component.localFeatures",
+          "ref": "rack-frame.edge-bevel"
+        },
+        "evidenceRef": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/reagent-bottle-rack/detail-zones/rack-frame.png",
+        "confidence": 0.96
+      },
+      {
+        "id": "rack-member-overlap",
+        "kind": "seam line",
+        "description": "Base, rear board, side cheeks, rails, and dividers meet with visible overlap and no air gaps.",
+        "region": {
+          "x": 0.1,
+          "y": 0.23,
+          "width": 0.8,
+          "height": 0.55,
+          "units": "normalized"
+        },
+        "scale": "macro",
+        "affects": "construction hierarchy",
+        "mapsTo": {
+          "type": "component.localFeatures",
+          "ref": "rack-frame.member-contacts"
+        },
+        "evidenceRef": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/reagent-bottle-rack/detail-zones/bottle-row.png",
+        "confidence": 0.94
+      },
+      {
+        "id": "repeated-slot-dividers",
+        "kind": "raised ridge",
+        "description": "Short vertical dividers define one repeated bay per bottle beneath the front rail.",
+        "region": {
+          "x": 0.08,
+          "y": 0.13,
+          "width": 0.84,
+          "height": 0.72,
+          "units": "normalized"
+        },
+        "scale": "meso",
+        "affects": "repetition rhythm and bottle separation",
+        "mapsTo": {
+          "type": "component.localFeatures",
+          "ref": "rack-frame.slot-dividers"
+        },
+        "evidenceRef": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/reagent-bottle-rack/detail-zones/materials.png",
+        "confidence": 0.95
+      },
+      {
+        "id": "bottle-profile-variation",
+        "kind": "contour",
+        "description": "Bottle bodies vary between round shoulders and straighter sloped shoulders while retaining a coherent narrow-neck family.",
+        "region": {"x": 0.1, "y": 0.23, "width": 0.8, "height": 0.55, "units": "normalized"},
+        "scale": "macro",
+        "affects": "bottle silhouette",
+        "mapsTo": {"type": "component.localFeatures", "ref": "bottle-family.profile-variation"},
+        "evidenceRef": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/reagent-bottle-rack/detail-zones/bottle-row.png",
+        "confidence": 0.92
+      },
+      {
+        "id": "rolled-glass-lips",
+        "kind": "raised ridge",
+        "description": "Each neck ends in a thick rolled annular lip that catches a bright glass highlight.",
+        "region": {"x": 0.1, "y": 0.23, "width": 0.8, "height": 0.55, "units": "normalized"},
+        "scale": "meso",
+        "affects": "glass silhouette and highlight",
+        "mapsTo": {"type": "component.localFeatures", "ref": "bottle-family.rolled-lip"},
+        "evidenceRef": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/reagent-bottle-rack/detail-zones/bottle-row.png",
+        "confidence": 0.97
+      },
+      {
+        "id": "curved-paper-labels",
+        "kind": "decal or label area",
+        "description": "Aged paper labels curve around the cylindrical bottle bodies instead of floating as flat cards.",
+        "region": {"x": 0.1, "y": 0.23, "width": 0.8, "height": 0.55, "units": "normalized"},
+        "scale": "meso",
+        "affects": "bottle identity and text placement",
+        "mapsTo": {"type": "component.localFeatures", "ref": "bottle-family.curved-label"},
+        "evidenceRef": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/reagent-bottle-rack/detail-zones/bottle-row.png",
+        "confidence": 0.96
+      },
+      {
+        "id": "liquid-menisci",
+        "kind": "linework",
+        "description": "Liquid surfaces form thin elliptical meniscus highlights at varied heights inside the bottles.",
+        "region": {"x": 0.1, "y": 0.23, "width": 0.8, "height": 0.55, "units": "normalized"},
+        "scale": "micro",
+        "affects": "liquid depth reading",
+        "mapsTo": {"type": "component.localFeatures", "ref": "liquid-volumes.meniscus"},
+        "evidenceRef": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/reagent-bottle-rack/detail-zones/bottle-row.png",
+        "confidence": 0.93
+      },
+      {
+        "id": "wood-grain",
+        "kind": "linework",
+        "description": "Long directional wood grain and fine scratches run across rack members with scale appropriate to each board.",
+        "region": {"x": 0.08, "y": 0.13, "width": 0.84, "height": 0.72, "units": "normalized"},
+        "scale": "micro",
+        "affects": "wood albedo, roughness, and normal response",
+        "mapsTo": {"type": "material.localOverrides", "ref": "deal-wood.directional-grain"},
+        "evidenceRef": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/reagent-bottle-rack/detail-zones/materials.png",
+        "confidence": 0.9
+      },
+      {
+        "id": "wood-edge-wear",
+        "kind": "stain",
+        "description": "High edges are lighter and smoother while recesses and contacts are darker.",
+        "region": {"x": 0.08, "y": 0.13, "width": 0.84, "height": 0.72, "units": "normalized"},
+        "scale": "meso",
+        "affects": "wood roughness and cavity contrast",
+        "mapsTo": {"type": "material.localOverrides", "ref": "deal-wood.edge-wear"},
+        "evidenceRef": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/reagent-bottle-rack/detail-zones/materials.png",
+        "confidence": 0.86
+      },
+      {
+        "id": "glass-highlight-bands",
+        "kind": "gloss",
+        "description": "Narrow bright highlight bands and darker transmitted edges communicate curved reflective glass.",
+        "region": {"x": 0.08, "y": 0.13, "width": 0.84, "height": 0.72, "units": "normalized"},
+        "scale": "meso",
+        "affects": "glass transmission and reflection",
+        "mapsTo": {"type": "material.localOverrides", "ref": "clear-glass.edge-response"},
+        "evidenceRef": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/reagent-bottle-rack/detail-zones/materials.png",
+        "confidence": 0.96
+      },
+      {
+        "id": "paper-mottling",
+        "kind": "stain",
+        "description": "Labels show subtle warm mottling and darker printed borders without legible text in the concept.",
+        "region": {"x": 0.08, "y": 0.13, "width": 0.84, "height": 0.72, "units": "normalized"},
+        "scale": "micro",
+        "affects": "paper albedo and roughness",
+        "mapsTo": {"type": "material.localOverrides", "ref": "aged-paper.mottling"},
+        "evidenceRef": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/reagent-bottle-rack/detail-zones/materials.png",
+        "confidence": 0.88
+      },
+      {
+        "id": "cork-porosity",
+        "kind": "stain",
+        "description": "Cork stoppers have irregular dark pores and a matte granular surface.",
+        "region": {"x": 0.08, "y": 0.13, "width": 0.84, "height": 0.72, "units": "normalized"},
+        "scale": "micro",
+        "affects": "cork roughness and bump",
+        "mapsTo": {"type": "material.localOverrides", "ref": "cork.porosity"},
+        "evidenceRef": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/reagent-bottle-rack/detail-zones/materials.png",
+        "confidence": 0.91
+      }
+    ]
+  },
+  "authoringInstruction": "Open each zone crop under zonesDir and replace every detail stub's kind, description, scale, affects, mapsTo, and confidence with what is actually observed. Add more detail entries per zone if a single zone contains multiple distinct marks; do not leave stubs unfilled or unlinked (mapsTo must reference a real component.localFeatures or material.localOverrides entry)."
+}

@@ -1,0 +1,88 @@
+{
+  "ok": true,
+  "verdict": "pass",
+  "confidence": 0.842,
+  "estimatedFidelity": 0.842,
+  "targetThreshold": 0.7,
+  "materialId": "pale-softwood",
+  "sourceImage": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/laboratory-bench/imagegen-albedo-source.png",
+  "outDir": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/laboratory-bench/material-evidence",
+  "palette": [
+    "#E5CC91",
+    "#EBD39A",
+    "#DDC288",
+    "#F1DBA5",
+    "#CEB37C"
+  ],
+  "maps": {
+    "albedo": {
+      "path": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/laboratory-bench/material-evidence/pale-softwood_albedo.png",
+      "url": "/textures/props/laboratory-bench/pale-softwood_albedo.png",
+      "channel": "albedo",
+      "source": "reference-pixel-extraction"
+    },
+    "roughness": {
+      "path": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/laboratory-bench/material-evidence/pale-softwood_roughness.png",
+      "url": "/textures/props/laboratory-bench/pale-softwood_roughness.png",
+      "channel": "roughness",
+      "source": "reference-pixel-extraction"
+    },
+    "height": {
+      "path": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/laboratory-bench/material-evidence/pale-softwood_height.png",
+      "url": "/textures/props/laboratory-bench/pale-softwood_height.png",
+      "channel": "height",
+      "source": "reference-pixel-extraction"
+    },
+    "normal": {
+      "path": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/laboratory-bench/material-evidence/pale-softwood_normal.png",
+      "url": "/textures/props/laboratory-bench/pale-softwood_normal.png",
+      "channel": "normal",
+      "source": "reference-pixel-extraction"
+    },
+    "ao": {
+      "path": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/artifacts/img2threejs/laboratory-bench/material-evidence/pale-softwood_ao.png",
+      "url": "/textures/props/laboratory-bench/pale-softwood_ao.png",
+      "channel": "ao",
+      "source": "reference-pixel-extraction"
+    }
+  },
+  "diagnostics": {
+    "sourceWidth": 1254,
+    "sourceHeight": 1254,
+    "mapSize": 1024,
+    "cropBBoxPixels": {
+      "x": 0,
+      "y": 0,
+      "width": 1254,
+      "height": 1254
+    },
+    "mask": {
+      "backgroundColor": "#EAD39D",
+      "backgroundNoise": 19.339,
+      "transparentPixelFraction": 0.0,
+      "foregroundCoverage": 1.0
+    },
+    "mapStats": {
+      "valueRange": 0.1471,
+      "heightP90Gradient": 0.10116,
+      "roughnessBase": 0.8,
+      "roughnessVariation": 0.162,
+      "normalStrength": 0.275,
+      "blurRadius": 21
+    },
+    "palette": [
+      "#E5CC91",
+      "#EBD39A",
+      "#DDC288",
+      "#F1DBA5",
+      "#CEB37C"
+    ]
+  },
+  "warnings": [
+    "image is not clearly isolated from background; using most pixels as material evidence",
+    "object/background separation is weak",
+    "single-image inverse rendering cannot prove true physical PBR; confidence is capped",
+    "low value range weakens height/roughness inference"
+  ],
+  "limitation": "single-image PBR extraction is an estimate; 70%+ extraction confidence still needs render screenshot review"
+}

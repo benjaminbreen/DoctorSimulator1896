@@ -1,7 +1,10 @@
 // Mutable tuning store. The panel writes values; useFrame code reads them
 // directly, so slider changes show on the next frame with no React state.
 
-import { schemaParameters } from './settingsSchema.js';
+import { schemaParameters, STARTING_TIME, STARTING_ZONE } from './settingsSchema.js';
+import { isOutdoorZone } from './zoneCategory.js';
+import outdoorPreset from './presets/outdoor.json' with { type: 'json' };
+import indoorPreset from './presets/indoor.json' with { type: 'json' };
 
 const STORAGE_KEY = 'ghosts-game.tuning.v1';
 const storage = typeof localStorage === 'undefined' ? null : localStorage;
@@ -37,10 +40,30 @@ export function createTuningRuntime(schema) {
     }, 250);
   }
 
+  // Indoors and outdoors are tuned as different places: light, camera, and
+  // movement all change. Crossing the boundary swaps the category preset in
+  // the same update, so the zone rebuild that follows sees the new values.
+  let outdoorNow = false;
+
+  function applyCategoryPreset(preset) {
+    for (const [id, value] of Object.entries(preset.values)) {
+      // Location tuning may change light and camera, never simulation time.
+      if (id === 'timeOfDay') continue;
+      const definition = byId.get(id);
+      if (!definition) continue;
+      values[id] = coerce(definition, value);
+      for (const listener of changeListeners) listener(id, values[id]);
+    }
+  }
+
   function set(id, value) {
     const definition = byId.get(id);
     if (!definition) return;
     values[id] = coerce(definition, value);
+    if (id === 'zone' && isOutdoorZone(values.zone) !== outdoorNow) {
+      outdoorNow = !outdoorNow;
+      applyCategoryPreset(outdoorNow ? outdoorPreset : indoorPreset);
+    }
     for (const listener of changeListeners) listener(id, values[id]);
     if (definition.mode === 'rebuild') for (const listener of rebuildListeners) listener(id);
     persist();
@@ -89,6 +112,23 @@ export function createTuningRuntime(schema) {
     onChange: (listener) => (changeListeners.add(listener), () => changeListeners.delete(listener)),
     onRebuild: (listener) => (rebuildListeners.add(listener), () => rebuildListeners.delete(listener)),
   };
+  // A fresh profile starts from the category preset of the starting zone;
+  // stored values then win where present.
+  if (isOutdoorZone(values.zone)) {
+    for (const [id, value] of Object.entries(outdoorPreset.values)) {
+      const definition = byId.get(id);
+      if (definition) values[id] = coerce(definition, value);
+    }
+  }
   loadStored();
+  outdoorNow = isOutdoorZone(values.zone);
+  return runtime;
+}
+
+// Zone and clock are game-session state, not remembered tuning. Apply these
+// after stored development values so every launch begins in the same place.
+export function applyGameStart(runtime) {
+  runtime.set('zone', STARTING_ZONE);
+  runtime.set('timeOfDay', STARTING_TIME);
   return runtime;
 }

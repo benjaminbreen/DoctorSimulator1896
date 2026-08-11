@@ -1,4 +1,170 @@
 @import 'tailwindcss';
+/* Period faces for the working chrome: Cormorant for display and numerals,
+   its true small-caps companion for engraved labels. */
+@import '@fontsource/cormorant/500.css';
+@import '@fontsource/cormorant/600.css';
+@import '@fontsource/cormorant/700.css';
+@import '@fontsource/cormorant/500-italic.css';
+@import '@fontsource/cormorant/600-italic.css';
+@import '@fontsource/cormorant-sc/500.css';
+@import '@fontsource/cormorant-sc/600.css';
+@import '@fontsource/cormorant-sc/700.css';
+/* Script hand for letter signatures. */
+@import '@fontsource/tangerine/400.css';
+@import '@fontsource/tangerine/700.css';
+/* Label-editor choices: locally bundled modern revivals, so exported recipes
+   do not depend on a network font service. */
+@import '@fontsource/libre-caslon-text/latin-400.css';
+@import '@fontsource/libre-caslon-text/latin-700.css';
+@import '@fontsource/bodoni-moda/latin-500.css';
+@import '@fontsource/bodoni-moda/latin-700.css';
+@import '@fontsource/old-standard-tt/latin-400.css';
+@import '@fontsource/old-standard-tt/latin-700.css';
+
+.park-intro {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #050505;
+  color: #eee7d7;
+  opacity: 1;
+  transition: opacity 1200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.park-intro--leaving {
+  pointer-events: none;
+  opacity: 0;
+}
+
+.park-intro__title-card {
+  width: min(88vw, 52rem);
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+
+.park-intro__location {
+  animation: park-intro-reveal 1600ms 150ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.park-intro__place {
+  margin: 0;
+  font-family: 'Cormorant SC', 'Cormorant', Georgia, serif;
+  font-size: clamp(0.72rem, 1.5vw, 0.9rem);
+  font-weight: 600;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+}
+
+.park-intro__rule {
+  width: 4.5rem;
+  height: 1px;
+  margin: 1.35rem auto 1.1rem;
+  background: #a68c57;
+  transform-origin: center;
+  animation: park-intro-rule 1200ms 350ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.park-intro h1 {
+  margin: 0;
+  font-family: 'Bodoni Moda', Didot, 'Times New Roman', serif;
+  font-size: clamp(2.5rem, 6.5vw, 4.8rem);
+  font-weight: 500;
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+}
+
+.park-intro__time {
+  margin: 1rem 0 0;
+  font-family: 'Libre Caslon Text', Georgia, serif;
+  font-size: clamp(0.85rem, 1.8vw, 1.05rem);
+  letter-spacing: 0.08em;
+  color: #b8ae9a;
+}
+
+.park-intro__premise {
+  max-width: 44rem;
+  margin: 2.25rem auto 0;
+  font-family: 'Libre Caslon Text', Georgia, serif;
+  font-size: clamp(0.88rem, 1.7vw, 1.02rem);
+  line-height: 1.7;
+  color: #d2cabb;
+  opacity: 0;
+}
+
+.park-intro__premise--visible {
+  animation: park-intro-reveal 1100ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.park-intro__premise strong {
+  color: #f1e8d6;
+  font-weight: 700;
+}
+
+.park-intro__secret {
+  max-width: 44rem;
+  margin: 0.65rem auto 0;
+  font-family: 'Libre Caslon Text', Georgia, serif;
+  font-size: clamp(0.88rem, 1.7vw, 1.02rem);
+  line-height: 1.7;
+  color: #bfb5a4;
+  opacity: 0;
+}
+
+.park-intro__secret--visible {
+  animation: park-intro-reveal 1100ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.park-intro__credit {
+  max-width: 38rem;
+  margin: 2rem auto 0;
+  font-family: 'Cormorant SC', 'Cormorant', Georgia, serif;
+  font-size: clamp(0.68rem, 1.35vw, 0.8rem);
+  font-weight: 500;
+  line-height: 1.55;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #918878;
+  opacity: 0;
+}
+
+.park-intro__credit--visible {
+  animation: park-intro-reveal 1500ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.park-intro__credit cite {
+  color: #b9ae99;
+  font-style: normal;
+}
+
+@keyframes park-intro-reveal {
+  from { opacity: 0; filter: blur(3px); transform: translateY(0.55rem); }
+  to { opacity: 1; filter: blur(0); transform: translateY(0); }
+}
+
+@keyframes park-intro-rule {
+  from { opacity: 0; transform: scaleX(0); }
+  to { opacity: 1; transform: scaleX(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .park-intro,
+  .park-intro__location,
+  .park-intro__rule {
+    animation: none;
+    transition-duration: 150ms;
+  }
+
+  .park-intro__premise--visible,
+  .park-intro__secret--visible,
+  .park-intro__credit--visible {
+    animation: none;
+    opacity: 1;
+  }
+}
 
 /* Panel controls; everything else is Tailwind utilities. */
 .panel-row input[type='range'] {

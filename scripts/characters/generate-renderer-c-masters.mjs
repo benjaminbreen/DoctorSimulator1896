@@ -63,7 +63,7 @@ async function compressGlb(source, output, { quantizationVolume = 'mesh' } = {})
     .registerExtensions([EXTMeshoptCompression, KHRMeshQuantization])
     .registerDependencies({ 'meshopt.encoder': MeshoptEncoder, 'meshopt.decoder': MeshoptDecoder });
   const document = await io.read(source);
-  const transforms = [dedup(), prune(), reorder({ encoder: MeshoptEncoder, target: 'size' })];
+  const transforms = [dedup(), prune({ keepAttributes: true }), reorder({ encoder: MeshoptEncoder, target: 'size' })];
   transforms.push(quantize({
       quantizationVolume,
       quantizePosition: 16,
@@ -85,8 +85,19 @@ async function validate(cohort, modelPath, manifest) {
   const arrayBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
   const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(arrayBuffer, '');
   const required = ['Human_Body', 'Patient_Rig', 'RendererC_Eyes_01', 'RendererC_Teeth_01', 'RendererC_BaseGarment'];
-  if (cohort === 'women') required.push('RendererC_VictorianDress', 'RendererC_VictorianDetails');
-  if (cohort === 'men') required.push('RendererC_WorkGarment');
+  if (cohort === 'women') required.push(
+    'RendererC_VictorianDress',
+    'RendererC_VictorianDetails',
+    'RendererC_GoldenDressBodice',
+    'RendererC_GoldenDressSkirt',
+    'RendererC_GoldenDressSeatedSkirt',
+    'RendererC_GoldenDressDetails',
+  );
+  if (cohort === 'men') required.push(
+    'RendererC_WorkGarment',
+    'RendererC_VictorianGarment',
+      'RendererC_AuthoredVictorianWaistcoat_01',
+  );
   for (const name of required) if (!gltf.scene.getObjectByName(name)) throw new Error(`${cohort} master is missing ${name}`);
   const body = gltf.scene.getObjectByName('Human_Body');
   if (cohort === 'women') {
@@ -134,6 +145,52 @@ async function validate(cohort, modelPath, manifest) {
     if (detailsMeshes.some((details) => details.skeleton.bones.length !== carrier.skeleton.bones.length
       || details.skeleton.bones.some((bone, index) => bone !== carrier.skeleton.bones[index]))) {
       throw new Error('women period details changed skeletons');
+    }
+    const goldenNames = [
+      'RendererC_GoldenDressBodice',
+      'RendererC_GoldenDressSkirt',
+      'RendererC_GoldenDressSeatedSkirt',
+      'RendererC_GoldenDressDetails',
+    ];
+    const goldenRoots = goldenNames.map((name) => gltf.scene.getObjectByName(name));
+    const goldenParts = goldenRoots.map((root) => {
+      const meshes = [];
+      root?.traverse((object) => { if (object.isMesh) meshes.push(object); });
+      return meshes;
+    });
+    if (goldenParts.some((meshes) => !meshes.length || meshes.some((mesh) => !mesh.isSkinnedMesh
+      || !mesh.geometry.attributes.skinIndex || !mesh.geometry.attributes.skinWeight
+      || !Object.hasOwn(mesh.morphTargetDictionary || {}, 'rc_live_weight_pos')))) {
+      throw new Error('women master lost a skinned golden dress component or body-build morph');
+    }
+    if (goldenParts[0].some((mesh) => !mesh.geometry.attributes.uv)
+      || goldenParts[1].some((mesh) => !mesh.geometry.attributes.uv)
+      || goldenParts[2].some((mesh) => !mesh.geometry.attributes.uv)) {
+      throw new Error('women golden dress lost its authored bodice or skirt UVs');
+    }
+    if (goldenParts[1].some((mesh) => !Object.hasOwn(mesh.morphTargetDictionary || {}, 'rc_seated_lap'))) {
+      throw new Error('women golden dress lost its seated skirt corrective');
+    }
+    if (goldenParts.flat().some((mesh) => mesh.skeleton.bones.length !== carrier.skeleton.bones.length
+      || mesh.skeleton.bones.some((bone, index) => bone !== carrier.skeleton.bones[index]))) {
+      throw new Error('women golden dress changed skeletons');
+    }
+  }
+  if (cohort === 'men') {
+    const authoredMeshes = [];
+    gltf.scene.traverse((object) => {
+      if (object.isMesh && object.name.startsWith('RendererC_AuthoredVictorianWaistcoat_')) {
+        authoredMeshes.push(object);
+      }
+    });
+    if (authoredMeshes.length !== 1 || authoredMeshes.some((mesh) => !mesh.isSkinnedMesh
+      || !mesh.geometry.attributes.skinIndex || !mesh.geometry.attributes.skinWeight)) {
+      throw new Error('men master lost the authored Victorian garment skin weights');
+    }
+    for (const morph of ['rc_live_weight_pos', 'rc_live_muscle_neg', 'rc_live_proportions_pos']) {
+      if (authoredMeshes.some((mesh) => !Object.hasOwn(mesh.morphTargetDictionary || {}, morph))) {
+        throw new Error(`men master lost authored garment morph ${morph}`);
+      }
     }
   }
   const morphs = Object.keys(body.morphTargetDictionary || {});

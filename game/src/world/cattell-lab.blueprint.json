@@ -1,0 +1,224 @@
+{
+  "id": "CATTELL_LAB",
+  "label": "Cattell's Laboratory",
+  "schemaVersion": 1,
+  "dimensions": {
+    "width": 9.0,
+    "depth": 13.0,
+    "ceiling": 4.2,
+    "floorY": 0
+  },
+  "outline": [
+    [
+      -4.5,
+      6.5
+    ],
+    [
+      4.5,
+      6.5
+    ],
+    [
+      4.5,
+      -6.5
+    ],
+    [
+      -4.5,
+      -6.5
+    ]
+  ],
+  "navigation": {
+    "defaultSpawn": [
+      1.2,
+      0,
+      4.4
+    ],
+    "defaultFacing": [
+      0,
+      0,
+      -1
+    ]
+  },
+  "walls": [
+    {
+      "id": "north-wall",
+      "position": [
+        0,
+        2.1,
+        -6.5
+      ],
+      "size": [
+        9.0,
+        4.2,
+        0.5
+      ],
+      "yaw": 0,
+      "openings": [
+        {
+          "id": "window-lab-0",
+          "type": "window",
+          "center": [
+            -3.0,
+            2.2
+          ],
+          "size": [
+            1.3,
+            2.6
+          ],
+          "sillHeight": 0.9
+        },
+        {
+          "id": "window-lab-1",
+          "type": "window",
+          "center": [
+            -1.0,
+            2.2
+          ],
+          "size": [
+            1.3,
+            2.6
+          ],
+          "sillHeight": 0.9
+        },
+        {
+          "id": "window-lab-2",
+          "type": "window",
+          "center": [
+            1.0,
+            2.2
+          ],
+          "size": [
+            1.3,
+            2.6
+          ],
+          "sillHeight": 0.9
+        },
+        {
+          "id": "window-lab-3",
+          "type": "window",
+          "center": [
+            3.0,
+            2.2
+          ],
+          "size": [
+            1.3,
+            2.6
+          ],
+          "sillHeight": 0.9
+        }
+      ]
+    },
+    {
+      "id": "south-wall",
+      "position": [
+        0,
+        2.1,
+        6.5
+      ],
+      "size": [
+        9.0,
+        4.2,
+        0.3
+      ],
+      "yaw": 0,
+      "openings": [
+        {
+          "id": "door-corridor",
+          "type": "door",
+          "center": [
+            2.6,
+            1.25
+          ],
+          "size": [
+            1.1,
+            2.5
+          ],
+          "sillHeight": 0,
+          "blocked": true
+        }
+      ]
+    },
+    {
+      "id": "west-wall",
+      "position": [
+        -4.5,
+        2.1,
+        0
+      ],
+      "size": [
+        0.3,
+        4.2,
+        13.0
+      ],
+      "yaw": 0,
+      "openings": []
+    },
+    {
+      "id": "east-wall",
+      "position": [
+        4.5,
+        2.1,
+        0
+      ],
+      "size": [
+        0.3,
+        4.2,
+        13.0
+      ],
+      "yaw": 0,
+      "openings": []
+    }
+  ],
+  "transitions": [
+    {
+      "id": "to-park",
+      "label": "Out to Fifth Avenue",
+      "position": [
+        2.6,
+        5.4
+      ],
+      "radius": 1.1,
+      "to": {
+        "zone": "central-park",
+        "spawn": [
+          83,
+          1.25,
+          66
+        ],
+        "facing": [
+          -0.7,
+          -0.7
+        ]
+      }
+    }
+  ],
+  "furniture": [],
+  "props": [
+    {
+      "id": "lamp-north",
+      "kind": "lightMarker",
+      "position": [
+        0,
+        3.15,
+        -3.4
+      ]
+    },
+    {
+      "id": "lamp-centre",
+      "kind": "lightMarker",
+      "position": [
+        0,
+        3.15,
+        0.4
+      ]
+    },
+    {
+      "id": "lamp-south",
+      "kind": "lightMarker",
+      "position": [
+        0,
+        3.15,
+        4.0
+      ]
+    }
+  ]
+}

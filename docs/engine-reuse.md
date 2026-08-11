@@ -56,13 +56,12 @@ All paths below are relative to `../Darwin-Game v1/`.
 
 ## Known gaps (the real new work)
 
-1. **Victorian human NPCs** — models plus modest animation (enter, sit,
-   gesture). The Galapagos pipeline built animals, not people. Largest new
-   asset cost; the darwin5 GLB/animation pipeline transfers as technique.
-   A first pipeline now exists in-repo: `character-lab/` (MPFB parametric
-   human → rigged GLB with idle clip, preset-driven, headless Makefile
-   build). Remaining work is the costume/pose layer and expression morphs —
-   see decisions.md 2026-08-06.
+1. **Victorian human NPCs** — Renderer C now provides two reusable cohort
+   masters with sixteen curated face anchors, 52 named face units, fitted
+   facial parts, ten seated, standing, and walking clips, a shared game/lab
+   runtime, and bounded complexion and eye palettes. The remaining M1 work is
+   three approved patient outfits and the playable consultations. Broader
+   wardrobe families and crowd LODs are later asset work.
 2. **Interior asset set** — Victorian furniture, instruments, bottles.
 3. **Patient/contagion sim** — new code, deliberately plain JS, no LLM.
 4. **Prompt layer** — all three route prompts rewritten (~2,400 words), via

@@ -8,7 +8,8 @@
 // logic does not change.
 
 import { facadeLayout, doorWorld } from './facade.js';
-import { pickModel, modelSize, fixtureBurners, pickSurfaces } from './victorianCatalog.js';
+import { pickModel, modelSize, fixtureBurners, pickSurfaces, looseMass } from './victorianCatalog.js';
+import { friezeBand, ceilingPanel } from './mouldings.js';
 
 // Size classes. `base` is [width, depth] in meters; the per-class tuning
 // slider (interiorScaleS..XL) multiplies it, so "make small 20% bigger" is
@@ -143,6 +144,9 @@ export function generateInterior(building, values = {}) {
   // Height of the chair rail capping the dado; the wainscot panels below it
   // are sized from this, so it has to be known before either is placed.
   const dadoY = 0.95;
+  // Picture rail height. Declared here rather than with the rest of the
+  // joinery because the wall art hangs from it and is placed first.
+  const railY = round(Math.min(H - 0.5, sill + winH + 0.3));
   // Visible burner glow. Free, so every flame in a fixture gets one.
   const flame = (id, x, y, z, radius = 0.04) => {
     props.push({ id, kind: 'flame', position: [round(x), round(y), round(z)], radius });
@@ -190,6 +194,15 @@ export function generateInterior(building, values = {}) {
       yaw: round(options.yaw ?? 0),
     };
     if (options.solid === false) item.collider = false;
+    else if (y === 0 && options.dynamic !== false) {
+      // Loose pieces standing on the floor get their own dynamic body. Raised
+      // and wall-fixed pieces stay put — their lights were placed with them.
+      const mass = looseMass(model);
+      if (mass !== null) {
+        item.dynamic = true;
+        item.mass = mass;
+      }
+    }
     furniture.push(item);
 
     // Lamps light themselves, from their actual burners. A twin-armed sconce
@@ -284,6 +297,13 @@ export function generateInterior(building, values = {}) {
     place('radiator', opening.center[0], D / 2 - 0.42, { yaw: Math.PI, rollSalt: opening.center[0] * 2.3 });
   }
   if (humble) place('work', hearthSide * (W / 2 - 1.0), round(D * 0.22), { yaw: 0.2, rollSalt: 6.7 });
+  // A floor globe stands in the back of a grand room — a study piece, so not
+  // in every one of them.
+  if (grand && hash01(seed * 9.7) < 0.6) {
+    place('globe', hearthSide * round(W / 2 - 1.3), round(-D * 0.3), {
+      yaw: -hearthSide * 0.7, rollSalt: 12.9,
+    });
+  }
 
   // Side tables carry the lamps; bigger rooms get more of both.
   const tableCount = scaled(humble ? 1 : 2);
@@ -293,7 +313,9 @@ export function generateInterior(building, values = {}) {
     const tx = side * (rugW / 2 + 1.1);
     const tz = frontZ + bank * (rugD / 2 + 0.5);
     if (Math.abs(tx) > W / 2 - 0.9 || Math.abs(tz) > D / 2 - 0.9) continue;
-    const sideTable = place('sideTable', tx, tz, { rollSalt: 8.9 + i * 2.7 });
+    // Anchored, however light: the lamp that goes on top is placed separately
+    // and would hang in the air if the table were pushed out from under it.
+    const sideTable = place('sideTable', tx, tz, { rollSalt: 8.9 + i * 2.7, dynamic: false });
     if (sideTable) {
       place('tableLamp', sideTable.position[0], sideTable.position[2], {
         y: sideTable.size[1], solid: false, rollSalt: 9.3 + i * 3.1,
@@ -320,9 +342,10 @@ export function generateInterior(building, values = {}) {
   if (grand) {
     const panel = pickModel('wainscot', wealth, hash01(seed * 6.1));
     if (panel) {
-      const [pw, ph] = modelSize(panel);
+      const [pw, ph, pd] = modelSize(panel);
       const panelScale = round((dadoY - 0.28) / ph);
       const step = pw * panelScale;
+      const panelSize = [round(step), round(ph * panelScale), round(pd * panelScale)];
       const runs = Math.floor((D - 1.5) / step);
       for (const side of [-1, 1]) {
         for (let i = 0; i < runs; i += 1) {
@@ -330,7 +353,7 @@ export function generateInterior(building, values = {}) {
           furniture.push({
             id: `wainscot-${side}-${i}`, kind: 'furniture', model: panel, modelScale: panelScale,
             position: [round(side * (W / 2 - 0.14)), 0.26, pz],
-            size: [round(step), dadoY - 0.28, 0.1],
+            size: panelSize,
             yaw: side > 0 ? -Math.PI / 2 : Math.PI / 2, collider: false,
           });
         }
@@ -338,14 +361,25 @@ export function generateInterior(building, values = {}) {
     }
   }
 
+  // Framed prints, hung from the picture rail on cords. Drawn rather than
+  // modelled: the pack's painting carries a modern colour photograph.
   const decorCount = scaled(grand ? 3 : humble ? 0 : 2);
   for (let i = 0; i < decorCount; i += 1) {
     const side = i % 2 === 0 ? -1 : 1;
     const z = round(frontZ + (i < 2 ? -1 : 1) * D * 0.14);
     if (side === hearthSide && Math.abs(z - hearthZ) < 2.4) continue;
-    place('wallDecor', side * (W / 2 - 0.14), z, {
-      y: round(1.75 * caseScale), yaw: side > 0 ? -Math.PI / 2 : Math.PI / 2,
-      solid: false, rollSalt: i * 11.3, scale: caseScale,
+    const w = round((0.62 + hash01(seed + i * 5.1) * 0.42) * caseScale);
+    furniture.push({
+      id: `wall-art-${i}`,
+      kind: 'wallArt',
+      art: 'engraving',
+      moulding: grand ? 'gilt' : 'walnut',
+      position: [round(side * (W / 2 - 0.16)), round(1.75 * caseScale), z],
+      size: [w, round(w * 0.78), 0.06],
+      yaw: side > 0 ? -Math.PI / 2 : Math.PI / 2,
+      seed: seed + i * 13,
+      railY: railY,
+      collider: false,
     });
   }
   for (const side of [-1, 1]) {
@@ -385,15 +419,16 @@ export function generateInterior(building, values = {}) {
     // makes the void read as two storeys rather than one very tall room.
     const rail = pickModel('railing', wealth, hash01(seed * 8.3));
     if (rail) {
-      const [rw] = modelSize(rail);
+      const [rw, rh, rd] = modelSize(rail);
       const step = rw;
+      const railSize = [round(rw), round(rh), round(rd)];
       const spans = Math.floor((D - 4) / step);
       for (const side of [-1, 1]) {
         for (let i = 0; i < spans; i += 1) {
           furniture.push({
             id: `gallery-${side}-${i}`, kind: 'furniture', model: rail, modelScale: 1,
             position: [round(side * (W / 2 - 2.2)), round(H / 2), round(-D / 2 + 2 + (i + 0.5) * step)],
-            size: [round(step), 1.2, 0.24],
+            size: railSize,
             yaw: side > 0 ? -Math.PI / 2 : Math.PI / 2, collider: false,
           });
         }
@@ -403,14 +438,15 @@ export function generateInterior(building, values = {}) {
 
   // The front door leaf, shut in its opening. The opening is already blocked
   // by the wall derivation, so this is the visible half of that.
-  const leafHeight = modelSize('Door_02_Wing')[1];
+  const leaf = modelSize('Door_02_Wing');
+  const leafScale = round(2.68 / leaf[1]);
   furniture.push({
     id: 'front-door-leaf',
     kind: 'furniture',
     model: 'Door_02_Wing',
-    modelScale: round(2.68 / leafHeight),
+    modelScale: leafScale,
     position: [doorAlong, 0, round(D / 2 - 0.16)],
-    size: [1.3, 2.68, 0.18],
+    size: leaf.map((value) => round(value * leafScale)),
     yaw: 0,
     collider: false,
   });
@@ -424,7 +460,6 @@ export function generateInterior(building, values = {}) {
       size: [round(sx), round(sy), round(sz)], yaw: 0, color, collider: false,
     });
   };
-  const railY = round(Math.min(H - 0.5, sill + winH + 0.3));
   // Runs are [alongCentre, length] pairs per wall; the south wall breaks
   // either side of the front door.
   // A moulding stops at an opening and picks up on the far side — it cannot
@@ -543,13 +578,26 @@ export function generateInterior(building, values = {}) {
     props,
   };
 
+  // The wall above the picture rail and the panel in the ceiling both need
+  // the finished wall list, so they go on after the blueprint is assembled.
+  // A humble room took one paper and no frieze; there is no picture rail up
+  // there to divide it from anyway.
+  furniture.push(
+    ...(humble ? [] : friezeBand(blueprint, { wall: wallColor, ceiling: palette.ceiling, pictureRail: railY })),
+    ...ceilingPanel(blueprint, { ceiling: palette.ceiling, inset: Math.max(1, Math.min(W, D) * 0.14) }),
+  );
+
   const lighting = {
     id: `${blueprint.id}_LIGHT`,
     // `scale` dims the panel's global fill for this room. Gas-lit interiors
     // need very little ambient — the flat corner glow is what makes a room
     // read as fake, so the lamps and windows do nearly all the work.
     ambient: { color: '#6b6558', intensity: 0.38, scale: 0.3 },
-    hemisphere: { skyColor: '#8e9ab5', groundColor: '#3a2e22', intensity: 0.55, scale: 0.3 },
+    // `groundColor` lights every downward-facing surface in the room, and
+    // the ceiling is the largest of them. A saturated brown here — however
+    // well it stands for bounce off the boards — stains a whitened ceiling
+    // tan whatever colour it is painted. Keep it warm but near-grey.
+    hemisphere: { skyColor: '#8e9ab5', groundColor: '#5e574f', intensity: 0.55, scale: 0.3 },
     windowSky: '#bcc8e0',
     windowPortals,
     gaslights,
@@ -580,6 +628,8 @@ export function generateInterior(building, values = {}) {
       size,
       seed,
       building,
+      // Generated interiors are all street-front rooms, so all parlors.
+      role: 'parlor',
       viewAnchor: [0, round(1.1 + winH / 2), round(D / 2)],
     },
   };

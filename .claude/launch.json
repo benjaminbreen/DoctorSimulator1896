@@ -4,20 +4,82 @@
     {
       "name": "character-lab",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "lab", "--", "--port", "5199", "--strictPort"],
+      "runtimeArgs": [
+        "run",
+        "lab",
+        "--",
+        "--port",
+        "5199",
+        "--strictPort"
+      ],
       "port": 5199
     },
     {
       "name": "game",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "game", "run", "dev"],
+      "runtimeArgs": [
+        "--prefix",
+        "game",
+        "run",
+        "dev"
+      ],
       "port": 5175
     },
     {
       "name": "game-alt",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "game", "run", "dev", "--", "--port", "5185"],
+      "runtimeArgs": [
+        "--prefix",
+        "game",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5185"
+      ],
       "port": 5185
+    },
+    {
+      "name": "game-b",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "game",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5195"
+      ],
+      "port": 5195
+    },
+    {
+      "name": "game-c",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "game",
+        "exec",
+        "vite",
+        "--",
+        "--config",
+        "/private/tmp/claude-501/-Users-benjaminbreen-code-Ghosts-of-the-Machine-Age-Game/3350e495-b2e9-48b8-9009-90cbafa97052/scratchpad/vite.session.mjs"
+      ],
+      "port": 5205
+    },
+    {
+      "name": "game-d",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "game",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5215"
+      ],
+      "port": 5215
     }
   ]
 }

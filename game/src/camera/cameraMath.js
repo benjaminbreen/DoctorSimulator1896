@@ -1,7 +1,7 @@
 // Pure camera math: shoulder target, pitch clamp, and the occlusion ray
 // against blueprint boxes. No three.js, unit-tested.
 
-import { clamp } from '../movement/mathUtils.js';
+import { clamp, dampAngle } from '../movement/mathUtils.js';
 
 // Rotate the shoulder offset (side, up, back) by pitch then yaw and add to the
 // player position. Positive pitch raises the eye. yaw=0 faces -Z, so the
@@ -25,7 +25,7 @@ export function clampPitch(pitch, tunables) {
 }
 
 // Ray vs yawed box (center position, full extents). Returns hit distance or null.
-export function rayVsBox(origin, direction, box) {
+export function rayVsBox(origin, direction, box, inflate = 0) {
   const yaw = box.yaw || 0;
   const cos = Math.cos(-yaw);
   const sin = Math.sin(-yaw);
@@ -41,7 +41,7 @@ export function rayVsBox(origin, direction, box) {
   let tMin = 0;
   let tMax = Infinity;
   for (let axis = 0; axis < 3; axis += 1) {
-    const half = box.size[axis] / 2;
+    const half = box.size[axis] / 2 + inflate;
     if (Math.abs(localDirection[axis]) < 1e-9) {
       if (Math.abs(localOrigin[axis]) > half) return null;
       continue;
@@ -59,7 +59,7 @@ export function rayVsBox(origin, direction, box) {
 
 // Longest allowed boom distance from anchor toward eyeTarget before a box
 // would occlude the camera.
-export function occlusionLimit(anchor, eyeTarget, boxes, { padding, minDistance }) {
+export function occlusionLimit(anchor, eyeTarget, boxes, { padding, minDistance, radius = 0 }) {
   const dx = eyeTarget[0] - anchor[0];
   const dy = eyeTarget[1] - anchor[1];
   const dz = eyeTarget[2] - anchor[2];
@@ -69,11 +69,40 @@ export function occlusionLimit(anchor, eyeTarget, boxes, { padding, minDistance 
 
   let nearest = Infinity;
   for (const box of boxes) {
-    const hit = rayVsBox(anchor, direction, box);
+    const hit = rayVsBox(anchor, direction, box, radius);
     if (hit !== null && hit > 0 && hit < nearest) nearest = hit;
   }
   if (nearest === Infinity || nearest >= full) return full;
   // minDistance is a comfort floor, but never park the camera inside the wall.
   const padded = Math.max(minDistance, nearest - padding);
   return Math.min(padded, Math.max(nearest - 0.06, 0.25));
+}
+
+// Hero mode keeps a world-space yaw while the player orbits manually. Once
+// input has been idle long enough, movement eases the view behind the player.
+// Holding still never wrestles an inspected view away from the player.
+export function heroFollowYaw({
+  cameraYaw,
+  playerYaw,
+  manualDelta = 0,
+  idleSeconds,
+  moving,
+  followRate,
+  recenterDelay,
+  dt,
+}) {
+  const manualYaw = cameraYaw + manualDelta;
+  if (manualDelta !== 0 || !moving || idleSeconds < recenterDelay) return manualYaw;
+  return dampAngle(manualYaw, playerYaw, followRate, dt);
+}
+
+export function heroLookAhead(playerPos, velocity, distance, referenceSpeed) {
+  const speed = Math.hypot(velocity[0], velocity[2]);
+  if (speed < 1e-4 || distance <= 0) return [...playerPos];
+  const amount = distance * clamp(speed / Math.max(referenceSpeed, 1e-4), 0, 1);
+  return [
+    playerPos[0] + (velocity[0] / speed) * amount,
+    playerPos[1],
+    playerPos[2] + (velocity[2] / speed) * amount,
+  ];
 }
