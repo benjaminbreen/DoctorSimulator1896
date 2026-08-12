@@ -13,6 +13,15 @@
 
 import { ROAD_TOP } from './streetGrid.js';
 
+// This cart is an authored opening beat: the first horseless carriage is
+// allowed to hit it. Once that contact happens the scene begins publishing
+// its live footprint, so later traffic treats the wreck as an obstacle.
+export const OPENING_CHAOS_CART_ID = 'cart-savoy';
+
+export function pushcartStartsAsTrafficObstacle(id) {
+  return id !== OPENING_CHAOS_CART_ID;
+}
+
 function hashId(id) {
   let total = 9;
   for (let i = 0; i < id.length; i += 1) total = (total * 31 + id.charCodeAt(i)) | 0;
@@ -381,6 +390,17 @@ function buildCart(site) {
     });
   }
 
+  // Traffic respects the dense tray and wheel assembly, not the light handles
+  // or spilled produce. Kinematic vehicles may clip or shove those pieces;
+  // that slight recklessness is part of the street scene.
+  const trafficRadius = Math.max(0.5, W / 2 + 0.08);
+  const trafficMinX = -L / 2;
+  const trafficMaxX = L / 2;
+  const trafficCenters = [
+    trafficMinX + trafficRadius,
+    trafficMaxX - trafficRadius,
+  ];
+
   return {
     id: site.id,
     load: site.load,
@@ -399,6 +419,13 @@ function buildCart(site) {
       tray: { half: [L / 2, 0.3, W / 2], position: [0, deckTop + 0.08, 0] },
       legs: { half: [0.03, legH / 2, W / 2 - 0.1], position: [-(L / 2 - 0.1), legH / 2, 0] },
       handles: { half: [0.4, 0.025, W / 2 - 0.05], position: [-(L / 2 + 0.36), deckY + 0.05, 0] },
+    },
+    // Two cheap circles cover the tray and wheels in plan view. The scene
+    // rotates these points by the live rigid-body quaternion, so a fallen cart
+    // keeps the footprint produced by its particular impact.
+    trafficFootprint: {
+      centers: trafficCenters.map((x) => [x, deckY + 0.08, 0]),
+      radius: trafficRadius,
     },
   };
 }

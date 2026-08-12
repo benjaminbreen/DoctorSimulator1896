@@ -107,7 +107,9 @@ export function patientToRendererCRecipe(patient, options = {}) {
     appearanceSeed,
     anchorCount: options.anchorCount ?? 8,
     animation: options.animation,
+    asset: options.asset,
     lod: options.lod || 'consultation',
+    asset: options.asset,
     placement: options.placement,
   });
 }

@@ -53,8 +53,19 @@ export function cattellLabItems(blueprint, lighting) {
 
   // Timing apparatus, on the east bench and out of the walking line. The
   // chronoscope, its key, and the battery and coil that drive them.
-  add(hippChronoscope('chronoscope', ex - 0.5, BENCH, -1.6, -Math.PI / 2));
-  add(reactionKey('reaction-key', ex - 0.55, BENCH, -0.7, -Math.PI / 2));
+  const chronoscope = hippChronoscope('chronoscope', ex - 0.5, BENCH, -1.6, -Math.PI / 2);
+  chronoscope[0] = {
+    ...chronoscope[0],
+    affordance: {
+      verb: 'Use',
+      name: 'the Hipp chronoscope',
+      kind: 'instrument',
+      instrument: 'reaction-chronoscope',
+      group: 'chronoscope',
+    },
+  };
+  add(chronoscope);
+  add(reactionKey('reaction-key', ex - 0.55, BENCH, -1.05, -Math.PI / 2));
   add(batteryJars('battery', ex - 0.5, BENCH, 0.6, -Math.PI / 2));
   const coil = inductionCoil('coil', ex - 0.5, BENCH, 1.5, -Math.PI / 2);
   coil[0] = {
@@ -149,24 +160,45 @@ export function cattellLabItems(blueprint, lighting) {
     }),
   );
 
-  // A blackboard on the corridor wall, which is where the day's series and
-  // the constants for the chronoscope were kept.
-  const board = (suffix, x, y, z, size, color) =>
+  // A broad slate on the corridor wall for the day's series and chronoscope
+  // constants. The image is a plausible reconstruction from Cattell's 1890
+  // test list, not a transcription of a surviving board.
+  const sz = D / 2 - 0.16;
+  items.push({
+    id: 'cattell-blackboard',
+    kind: 'wallArt',
+    art: 'blackboard',
+    artTexture: '/textures/cattell-lab/cattell-blackboard-1896.png',
+    position: [-1.25, 2.05, sz - 0.025],
+    size: [4.35, 1.9, 0.06],
+    yaw: Math.PI,
+    moulding: 'walnut',
+    mount: 0,
+    collider: false,
+  });
+
+  // Cattell's intellectual company, in period photographs: Galton's mental
+  // measurement, Spencer's evolutionary synthesis, and James's psychology.
+  const portraits = [
+    ['francis-galton', 2.88, 0.4, '/textures/cattell-lab/francis-galton-c1890.jpg'],
+    ['herbert-spencer', 2.2, 0.52, '/textures/cattell-lab/herbert-spencer-1889.jpg'],
+    ['william-james', 1.52, 0.44, '/textures/cattell-lab/william-james-1890s.jpg'],
+  ];
+  for (const [id, y, width, artTexture] of portraits) {
     items.push({
-      id: `blackboard-${suffix}`,
-      kind: 'furniture',
-      position: [x, y, z],
-      size,
-      yaw: 0,
-      color,
+      id: `portrait-${id}`,
+      kind: 'wallArt',
+      art: 'portrait',
+      artTexture,
+      position: [1.45, y, sz - 0.02],
+      size: [width, 0.58, 0.06],
+      yaw: Math.PI,
+      moulding: 'victorian-brass',
+      frameStyle: 'victorian-brass',
+      frameRail: 0.05,
+      mount: 0.025,
       collider: false,
     });
-  const sz = D / 2 - 0.16;
-  board('face', -1.6, 1.9, sz, [2.6, 1.3, 0.03], '#23282a');
-  board('frame-top', -1.6, 2.58, sz - 0.01, [2.72, 0.06, 0.05], '#4a4038');
-  board('frame-foot', -1.6, 1.19, sz - 0.02, [2.72, 0.1, 0.08], '#4a4038');
-  for (const side of [-1, 1]) {
-    board(`frame-${side}`, -1.6 + side * 1.33, 1.9, sz - 0.01, [0.06, 1.36, 0.05], '#4a4038');
   }
 
   return items;

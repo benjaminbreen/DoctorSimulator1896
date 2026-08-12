@@ -198,6 +198,16 @@ export function labBench(id, x, z, yaw, options = {}) {
     });
   }
 
+  // A rigid top bridge ties both standards together and carries the fly
+  // governor's lower bearing. Without this rail the governor reads as if it
+  // were hanging above the dial rather than being driven by the clock train.
+  box('top-bridge', [0, 0.435, -0.035], [0.41, 0.045, 0.055], BRASS_DARK, {
+    shape: 'roundedBox', finish: 'brassAged', bevelRadius: 0.008,
+  });
+  box('governor-bearing', [0.02, 0.462, -0.025], [0.052, 0.025, 0.052], BRASS, {
+    shape: 'cylinder', finish: 'brass',
+  });
+
   if (options.stretcher) {
     box('rear-stretcher', [0, Math.max(0.34, shelfHeight + 0.12), -legZ], [railLength, 0.085, 0.055], 'frame', {
       ...timber(0), inferred: true, socket: 'rear-stretcher',
@@ -368,6 +378,14 @@ export function liftedWeights(id, x, y, z, options = {}) {
   return items;
 }
 
+export const CHRONOSCOPE_FRAME = {
+  largeDial: [-0.075, 0.29, 0.112],
+  smallDial: [0.105, 0.3, 0.113],
+  governor: [0.02, 0.47, -0.025],
+  keyPivot: [0.385, 0.075, 0.05],
+  signal: [-0.3, 0.33, 0.055],
+};
+
 // Tests 6 and 7, "Reaction-time for Sound" and "Time for naming Colours":
 // both timed on a Hipp chronoscope, the clock-driven instrument reading to
 // the thousandth of a second that every laboratory of the period was built
@@ -378,27 +396,133 @@ export function hippChronoscope(id, x, y, z, yaw = 0) {
   const box = (suffix, offset, size, color, extra) =>
     items.push(part(`${id}-${suffix}`, origin, offset, size, yaw, color, extra));
 
-  box('base', [0, 0.018, 0], [0.3, 0.036, 0.22], IRON, { collider: true });
-  box('base-lip', [0, 0.04, 0], [0.26, 0.012, 0.18], IRON);
+  box('base', [0, 0.028, 0], [0.64, 0.056, 0.3], MAHOGANY, {
+    shape: 'roundedBox', finish: 'mahogany', bevelRadius: 0.018, bevelSegments: 3, collider: true,
+  });
+  box('base-lip', [0, 0.063, 0], [0.58, 0.025, 0.25], BRASS_DARK, {
+    shape: 'roundedBox', bevelRadius: 0.01,
+  });
+  box('mechanism-bed', [0, 0.082, -0.015], [0.49, 0.024, 0.18], IRON, {
+    shape: 'roundedBox', finish: 'iron', bevelRadius: 0.01,
+  });
   for (const side of [-1, 1]) {
-    box(`pillar-${side}`, [side * 0.1, 0.14, -0.03], [0.022, 0.18, 0.022], BRASS, { shape: 'cylinder' });
+    box(`pillar-foot-${side}`, [side * 0.19, 0.105, -0.035], [0.06, 0.04, 0.06], BRASS_DARK, {
+      shape: 'cylinder', finish: 'brassAged',
+    });
+    box(`pillar-${side}`, [side * 0.19, 0.275, -0.035], [0.032, 0.34, 0.032], BRASS, {
+      shape: 'cylinder', finish: 'brass',
+    });
+    box(`pillar-cap-${side}`, [side * 0.19, 0.445, -0.035], [0.052, 0.036, 0.052], BRASS_DARK, {
+      shape: 'cylinder', finish: 'brassAged',
+    });
   }
-  // The train and its housing, laid across the pillars.
-  box('barrel', [0, 0.2, -0.03], [0.09, 0.2, 0.09], BRASS_DARK, { shape: 'cylinder', rotation: [0, 0, Math.PI / 2] });
-  // Two dials: thousandths on the large one, seconds on the small.
-  box('dial-large', [-0.055, 0.19, 0.06], [0.11, 0.012, 0.11], IVORY, { shape: 'cylinder', rotation: [Math.PI / 2, 0, 0] });
-  box('dial-large-bezel', [-0.055, 0.19, 0.052], [0.125, 0.01, 0.125], BRASS, { shape: 'torus', rotation: [0, 0, 0] });
-  box('dial-small', [0.06, 0.215, 0.055], [0.062, 0.01, 0.062], IVORY, { shape: 'cylinder', rotation: [Math.PI / 2, 0, 0] });
-  box('hand-large', [-0.055, 0.205, 0.068], [0.004, 0.042, 0.004], IRON);
-  box('hand-small', [0.06, 0.225, 0.062], [0.003, 0.024, 0.003], IRON);
-  // The fly governor on top, and the binding posts the key wires land on.
-  box('governor-post', [0.02, 0.31, -0.03], [0.014, 0.04, 0.014], BRASS, { shape: 'cylinder' });
+
+  // Clock train and electromagnetic release between the columns.
+  box('barrel', [0, 0.205, -0.04], [0.13, 0.31, 0.13], BRASS_DARK, {
+    shape: 'cylinder', rotation: [0, 0, Math.PI / 2], finish: 'brassAged',
+  });
+  for (let index = 0; index < 4; index += 1) {
+    box(`gear-${index}`, [-0.1 + index * 0.065, 0.17 + (index % 2) * 0.06, 0.028], [
+      0.07 - index * 0.008, 0.012, 0.07 - index * 0.008,
+    ], index % 2 ? BRASS : BRASS_DARK, {
+      shape: 'cylinder', rotation: [Math.PI / 2, 0, 0], finish: 'brassAged',
+    });
+  }
+  box('magnet-yoke', [0.13, 0.16, 0.035], [0.085, 0.11, 0.04], IRON, {
+    shape: 'roundedBox', finish: 'iron', bevelRadius: 0.008,
+  });
+  box('magnet-coil', [0.13, 0.18, 0.06], [0.052, 0.075, 0.052], '#6e4525', {
+    shape: 'cylinder', finish: 'brassAged', tint: '#7d5430',
+  });
+
+  // Two deeply bezelled enamel dials, with real tick geometry.
+  const dials = [
+    { name: 'large', centre: CHRONOSCOPE_FRAME.largeDial, diameter: 0.19, ticks: 40 },
+    { name: 'small', centre: CHRONOSCOPE_FRAME.smallDial, diameter: 0.105, ticks: 20 },
+  ];
+  for (const dial of dials) {
+    const [cx, cy, cz] = dial.centre;
+    box(`dial-${dial.name}-back`, [cx, cy, cz - 0.02], [dial.diameter + 0.04, 0.025, dial.diameter + 0.04], BRASS_DARK, {
+      shape: 'cylinder', rotation: [Math.PI / 2, 0, 0], finish: 'brassAged',
+    });
+    box(`dial-${dial.name}`, dial.centre, [dial.diameter, 0.014, dial.diameter], IVORY, {
+      shape: 'cylinder', rotation: [Math.PI / 2, 0, 0], finish: 'ivory',
+    });
+    box(`dial-${dial.name}-bezel`, [cx, cy, cz + 0.008], [dial.diameter + 0.028, 0.012, dial.diameter + 0.028], BRASS, {
+      shape: 'torus', finish: 'brass',
+    });
+    const radius = dial.diameter * 0.39;
+    for (let index = 0; index < dial.ticks; index += 1) {
+      const angle = (index / dial.ticks) * Math.PI * 2;
+      const major = index % 5 === 0;
+      box(`dial-${dial.name}-tick-${index}`, [
+        round(cx + Math.sin(angle) * radius),
+        round(cy + Math.cos(angle) * radius),
+        cz + 0.012,
+      ], [major ? 0.005 : 0.0025, major ? 0.018 : 0.011, 0.003], IRON, {
+        rotation: [0, 0, round(-angle)],
+      });
+    }
+  }
+  box('hand-large', [-0.075, 0.328, 0.128], [0.006, 0.076, 0.006], IRON, {
+    channel: 'large-hand',
+  });
+  box('hand-large-pin', CHRONOSCOPE_FRAME.largeDial, [0.018, 0.012, 0.018], BRASS_DARK, {
+    shape: 'cylinder', rotation: [Math.PI / 2, 0, 0], channel: 'large-hand',
+  });
+  box('hand-small', [0.105, 0.32, 0.128], [0.004, 0.04, 0.004], IRON, {
+    channel: 'small-hand',
+  });
+  box('hand-small-pin', CHRONOSCOPE_FRAME.smallDial, [0.013, 0.01, 0.013], BRASS_DARK, {
+    shape: 'cylinder', rotation: [Math.PI / 2, 0, 0], channel: 'small-hand',
+  });
+
+  // The fly governor is deliberately exposed: it is the moving crown of the
+  // instrument and shows that the clock is armed before the signal arrives.
+  // Carry the shaft well down behind the large dial. Its lower end is hidden
+  // by the clock face, so the visible upper length clearly grows out of the
+  // mechanism instead of stopping in mid-air above it.
+  box('governor-post', [0.02, 0.365, -0.025], [0.018, 0.25, 0.018], BRASS, {
+    shape: 'cylinder', finish: 'brass',
+  });
   for (const vane of [-1, 1]) {
-    box(`governor-vane-${vane}`, [0.02 + vane * 0.022, 0.328, -0.03], [0.04, 0.002, 0.018], BRASS);
+    box(`governor-vane-${vane}`, [0.02 + vane * 0.055, 0.47, -0.025], [0.1, 0.006, 0.026], BRASS, {
+      shape: 'roundedBox', finish: 'brass', bevelRadius: 0.006, channel: 'governor',
+    });
+    box(`governor-weight-${vane}`, [0.02 + vane * 0.105, 0.47, -0.025], [0.027, 0.027, 0.027], BRASS_DARK, {
+      shape: 'sphere', finish: 'brassAged', channel: 'governor',
+    });
   }
+
+  // A matched light signal is wired beside the bell. It is always presented
+  // with the sound cue, so the test remains playable without hearing.
+  box('signal-standard', [-0.3, 0.21, 0.02], [0.025, 0.25, 0.025], BRASS_DARK, {
+    shape: 'cylinder', finish: 'brassAged',
+  });
+  box('signal-foot', [-0.3, 0.085, 0.02], [0.075, 0.028, 0.075], BRASS_DARK, {
+    shape: 'cylinder', finish: 'brassAged',
+  });
+  box('signal-brace', [-0.245, 0.205, 0.005], [0.12, 0.022, 0.028], BRASS, {
+    shape: 'roundedBox', finish: 'brass', bevelRadius: 0.006,
+  });
+  box('signal-brace-collar', [-0.19, 0.205, 0.005], [0.045, 0.036, 0.045], BRASS_DARK, {
+    shape: 'cylinder', finish: 'brassAged',
+  });
+  box('signal-hood', [-0.3, 0.33, 0.035], [0.13, 0.075, 0.13], BRASS_DARK, {
+    shape: 'cylinder', rotation: [Math.PI / 2, 0, 0], finish: 'brassAged',
+  });
+  box('signal-lens', CHRONOSCOPE_FRAME.signal, [0.09, 0.018, 0.09], '#ead58b', {
+    shape: 'cylinder', rotation: [Math.PI / 2, 0, 0], finish: 'ivory', channel: 'signal-lens',
+  });
+
+  // Binding posts and insulated leads to the separate response key.
   for (const side of [-1, 1]) {
-    box(`terminal-${side}`, [side * 0.11, 0.052, 0.08], [0.014, 0.024, 0.014], BRASS, { shape: 'cylinder' });
-    box(`terminal-nut-${side}`, [side * 0.11, 0.066, 0.08], [0.022, 0.008, 0.022], BRASS_DARK, { shape: 'cylinder' });
+    box(`terminal-${side}`, [side * 0.21, 0.095, 0.1], [0.018, 0.035, 0.018], BRASS, {
+      shape: 'cylinder', finish: 'brass',
+    });
+    box(`terminal-nut-${side}`, [side * 0.21, 0.118, 0.1], [0.03, 0.014, 0.03], EBONITE, {
+      shape: 'cylinder', finish: 'ebonite',
+    });
   }
   return items;
 }
@@ -410,14 +534,29 @@ export function reactionKey(id, x, y, z, yaw = 0) {
   const items = [];
   const box = (suffix, offset, size, color, extra) =>
     items.push(part(`${id}-${suffix}`, origin, offset, size, yaw, color, extra));
-  box('base', [0, 0.012, 0], [0.14, 0.024, 0.09], MAHOGANY, { collider: true });
-  box('trunnion', [-0.01, 0.036, 0], [0.02, 0.024, 0.03], BRASS);
+  box('base', [0, 0.018, 0], [0.22, 0.036, 0.13], MAHOGANY, {
+    shape: 'roundedBox', finish: 'mahogany', bevelRadius: 0.012, collider: true,
+  });
+  box('base-inlay', [0, 0.04, 0], [0.18, 0.012, 0.09], EBONITE, {
+    shape: 'roundedBox', finish: 'ebonite', bevelRadius: 0.008,
+  });
+  box('trunnion', [-0.035, 0.065, 0], [0.032, 0.05, 0.05], BRASS_DARK, {
+    shape: 'roundedBox', bevelRadius: 0.008,
+  });
   // The lever, resting a little above its contact.
-  box('lever', [0.02, 0.05, 0], [0.11, 0.008, 0.014], BRASS, { rotation: [0, 0, -0.06] });
-  box('knob', [0.062, 0.052, 0], [0.028, 0.014, 0.028], EBONITE, { shape: 'cylinder' });
-  box('contact', [0.03, 0.038, 0], [0.008, 0.006, 0.008], '#b0763a', { shape: 'cylinder' });
+  box('lever', [0.025, 0.075, 0], [0.15, 0.012, 0.02], BRASS, {
+    rotation: [0, 0, -0.08], finish: 'brass', channel: 'reaction-key',
+  });
+  box('knob', [0.095, 0.08, 0], [0.045, 0.02, 0.045], EBONITE, {
+    shape: 'cylinder', finish: 'ebonite', channel: 'reaction-key',
+  });
+  box('contact', [0.065, 0.052, 0], [0.014, 0.01, 0.014], '#b0763a', {
+    shape: 'cylinder', finish: 'brassAged',
+  });
   for (const side of [-1, 1]) {
-    box(`terminal-${side}`, [-0.05, 0.034, side * 0.03], [0.01, 0.02, 0.01], BRASS, { shape: 'cylinder' });
+    box(`terminal-${side}`, [-0.075, 0.052, side * 0.035], [0.014, 0.03, 0.014], BRASS, {
+      shape: 'cylinder', finish: 'brass',
+    });
   }
   return items;
 }
@@ -1237,10 +1376,32 @@ export function pendantLamp(id, x, ceilingY, z, options = {}) {
   const items = [];
   const box = (suffix, offset, size, color, extra) =>
     items.push(part(`${id}-${suffix}`, origin, offset, size, 0, color, extra));
-  box('rose', [0, -0.03, 0], [0.09, 0.03, 0.09], IVORY, { shape: 'cylinder' });
-  box('flex', [0, -drop / 2, 0], [0.008, drop, 0.008], '#2a2622', { shape: 'cylinder' });
-  box('shade', [0, -drop - 0.06, 0], [0.26, 0.13, 0.26], '#4b5a52', { shape: 'cone', rotation: [Math.PI, 0, 0] });
-  box('lamp', [0, -drop - 0.14, 0], [0.07, 0.09, 0.07], '#fff2cf', { shape: 'sphere', emissive: '#ffdc9a' });
+  box('rose', [0, -0.018, 0], [0.11, 0.036, 0.11], IVORY, {
+    shape: 'cylinder', finish: 'ivory', radialSegments: 24,
+  });
+  box('rose-cap', [0, -0.044, 0], [0.055, 0.025, 0.055], BRASS_DARK, {
+    shape: 'cylinder', finish: 'brassAged', radialSegments: 18,
+  });
+  box('flex', [0, -drop / 2 - 0.035, 0], [0.009, drop - 0.04, 0.009], '#241d18', {
+    shape: 'cylinder', radialSegments: 10,
+  });
+  box('socket-cap', [0, -drop + 0.015, 0], [0.075, 0.055, 0.075], BRASS_DARK, {
+    shape: 'cylinder', finish: 'brassAged', radialSegments: 20,
+  });
+  // An open bell shade: narrow at the socket and broad at the lower rim.
+  // The former solid cone produced an upside-down duplicate-looking cup.
+  box('shade', [0, -drop - 0.06, 0], [0.34, 0.14, 0.34], '#46534e', {
+    shape: 'openFrustum', topDiameter: 0.1, finish: 'iron', radialSegments: 32,
+  });
+  box('shade-rim', [0, -drop - 0.13, 0], [0.355, 0.018, 0.355], BRASS_DARK, {
+    shape: 'torus', rotation: [Math.PI / 2, 0, 0], finish: 'brassAged', radialSegments: 32,
+  });
+  box('socket', [0, -drop - 0.095, 0], [0.055, 0.09, 0.055], BRASS_DARK, {
+    shape: 'cylinder', finish: 'brassAged', radialSegments: 18,
+  });
+  box('lamp', [0, -drop - 0.165, 0], [0.08, 0.105, 0.08], '#fff2cf', {
+    shape: 'sphere', emissive: '#ffdc9a', radialSegments: 20,
+  });
   return items;
 }
 

@@ -12,14 +12,19 @@ systems extracted from the Darwin Game
 
 ## Status
 
-Planning stage (started 2026-08-05). No code yet. Read the docs in order:
+The playable game has a deterministic consultation engine, the production
+consultation interface, and a complete authored proof-of-concept patient, Nora
+Byrne. Nora supports authored branches, custom inquiry and thought, examination,
+immediate patient reaction, and a separate one-month outcome. Two seeded
+technical patients remain as procedural development fixtures.
 
-1. [docs/design.md](docs/design.md) — concept, core loops, mechanics, locations
-2. [docs/research.md](docs/research.md) — historical grounding, chronology, sources
-3. [docs/engine-reuse.md](docs/engine-reuse.md) — what carries over from Darwin, by file path
-4. [docs/decisions.md](docs/decisions.md) — why this project, rules adopted, open questions
+Run the game with `npm run game`; it serves on port 5175. Run Character Lab
+with `npm run lab`.
 
-## First milestone
+Start with [docs/README.md](docs/README.md) for the current documentation order.
 
-One consulting room. Three patients. One modality set. Case-note assessment.
-No contagion simulation yet. See [docs/design.md](docs/design.md#milestones).
+## Current development direction
+
+Complete more researched authored patients, strengthen procedural encounters,
+and then connect consultation results to the wider practice simulation. The
+current patient-system specification is [docs/patient-system.md](docs/patient-system.md).

@@ -8,35 +8,80 @@ import { BODY_CUE_CLIPS } from '../../../../shared/characters/recipe.js';
 import { applyRendererCRecipe, cloneRendererCMaterials } from './rendererCController.js';
 import { createFaceController } from './faceController.js';
 
+const TRANSIENT_BODY_CUES = new Set([
+  'sit-down',
+  'sitting-talking',
+  'sitting-distressed',
+  'sitting-self-soothing',
+  'sitting-disapproval',
+  'sitting-disbelief',
+]);
+
 export default function RendererCActor({ recipe, manifest, onReady, paused = false }) {
-  const gltf = useLoader(GLTFLoader, recipe.asset?.path || manifest.path, (loader) => loader.setMeshoptDecoder(MeshoptDecoder));
+  const gltf = useLoader(
+    GLTFLoader,
+    recipe.asset?.path || manifest.path,
+    (loader) => loader.setMeshoptDecoder(MeshoptDecoder),
+  );
+  const clips = gltf.animations;
   const actor = useMemo(() => {
     const root = cloneSkeleton(gltf.scene);
+    root.rotation.x = Number(recipe.asset?.modelRotationX) || 0;
+    root.updateMatrixWorld(true);
     cloneRendererCMaterials(root);
     root.traverse((object) => {
       if (!object.isMesh && !object.isSkinnedMesh) return;
       object.castShadow = true;
       object.receiveShadow = true;
       if (object.isSkinnedMesh) object.frustumCulled = false;
+      if (recipe.asset?.opaque) {
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        for (const material of materials) {
+          if (!material) continue;
+          material.transparent = false;
+          material.opacity = 1;
+          material.alphaTest = 0;
+          material.depthWrite = true;
+          material.needsUpdate = true;
+        }
+      }
     });
-    applyRendererCRecipe(root, manifest, recipe);
+    if (recipe.asset?.applyRecipe !== false) applyRendererCRecipe(root, manifest, recipe);
     const mixer = new THREE.AnimationMixer(root);
     const face = createFaceController(root, recipe);
     return { root, mixer, face };
   }, [gltf, manifest, recipe]);
 
   useEffect(() => {
-    const clipName = BODY_CUE_CLIPS[recipe.animation.body] || 'ClinicIdle';
-    const clip = gltf.animations.find((candidate) => candidate.name === clipName)
-      || gltf.animations.find((candidate) => candidate.name === 'ClinicIdle');
+    const clipName = recipe.asset?.clipMap?.[recipe.animation.body]
+      || BODY_CUE_CLIPS[recipe.animation.body]
+      || 'ClinicIdle';
+    const fallbackName = recipe.asset?.clipMap?.['clinic-idle'] || 'ClinicIdle';
+    const clip = clips.find((candidate) => candidate.name === clipName)
+      || clips.find((candidate) => candidate.name === fallbackName)
+      || clips[0];
     const action = clip ? actor.mixer.clipAction(clip) : null;
+    const idleClip = clips.find((candidate) => candidate.name === fallbackName) || clips[0];
+    const idleAction = idleClip ? actor.mixer.clipAction(idleClip) : null;
+    const transient = TRANSIENT_BODY_CUES.has(recipe.animation.body) && action !== idleAction;
+    const returnToIdle = (event) => {
+      if (!transient || event.action !== action || !idleAction) return;
+      action.fadeOut(0.18);
+      idleAction.reset().setLoop(THREE.LoopRepeat, Infinity).fadeIn(0.18).play();
+    };
+    if (transient || recipe.animation.body === 'stand-up') {
+      action?.setLoop(THREE.LoopOnce, 1);
+      if (action) action.clampWhenFinished = true;
+    }
+    actor.mixer.addEventListener('finished', returnToIdle);
     action?.reset().fadeIn(0.18).play();
     if (paused && clip) actor.mixer.setTime(clip.duration * 0.18);
     return () => {
+      actor.mixer.removeEventListener('finished', returnToIdle);
       action?.fadeOut(0.12);
       actor.mixer.stopAllAction();
     };
-  }, [actor, gltf.animations, paused, recipe.animation.body]);
+  }, [actor, clips, paused, recipe.animation.body]);
 
   const readyRef = useCallback((node) => {
     if (node) onReady?.(recipe.id);

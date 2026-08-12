@@ -6,47 +6,56 @@ The player is a physician in New York beginning on 3 August 1896. Patients
 arrive with complaints the era
 reads through its own categories: neurasthenia, hysteria, nervous exhaustion,
 spirit communication. The player examines, diagnoses in period vocabulary,
-treats with period modalities, and writes case notes. The game scores both how
-the era judges the player and what actually happens to the patients. The gap
-between those two ledgers is the point.
+treats with period modalities, and writes case notes. The game records both how
+patients and peers judge the player and what later happens to the patients. The
+gap between approval and outcome is the point.
 
 The game is the book's argument made playable: consciousness *treated* (the
 consulting room) versus consciousness *counted* (the anthropometric lab).
 
+The final patient and consultation design is in
+[patient-system.md](patient-system.md). That document takes precedence over
+older consultation notes.
+
 ## Core loop: the consultation
 
-1. A patient arrives (encounter system; social-graph sim decides who comes).
-2. Observe and examine — pulse, tongue, pupils, tremor, affect. Uses the
-   Darwin examine contract: `{reply, fact{label, value, confidence,
-   measurement}, behavior, uncertainty}`.
-3. Take a history through dialogue. Warm start: an authored opening complaint
-   and one authored branch round, then free text handed to the LLM with the
-   disclosure state already set. The patient is played by the LLM but carries
-   a deterministic ground-truth condition the LLM cannot alter. See
-   [decisions.md](decisions.md#2026-08-06--consultation-dialogue-architecture).
-4. Diagnose in period terms. Choose a modality: electrotherapy, bromides,
-   tinctures (incl. coca preparations), rest cure, talk, placebo, referral.
-5. Write the case note. An LLM assessor grades it against period diagnostic
-   epistemology — the writing is the gameplay.
+1. A patient arrives. The later social simulation decides who comes.
+2. A fixed arrival panel describes the patient's bearing and gives their short
+   opening complaint. The player continues when ready; no model call is required.
+3. The next panel presents one required rumination: take a history,
+   examine first, or begin with a provisional diagnosis. Afterward, Ruminate
+   is optional and never interrupts the consultation automatically.
+4. The player takes a history through three deterministic questions plus an
+   optional custom question handled by GPT-5.6 Luna.
+5. The player examines the patient. Observations and facts come from the fixed
+   patient record.
+6. The player selects a period diagnosis, treatment, and directions, then
+   writes the case note.
+7. The visit ends with the patient's immediate reaction. This affects payment,
+   recommendation, complaints, and reputation.
+8. When the player ends the run, the game advances one month and reports
+   health, reputation, finances, a William James assessment, and a separate
+   modern explanation.
 
-## The dual ledger
+## Two kinds of outcome
 
-- **Reputation**: standing with 1880s–90s peers, scored by period standards.
-  Prescribing fashionable treatments raises it. Refusing them can lower it.
-- **Record**: the retrospective, historian's-eye outcome for each patient.
-  Ground truth decides it; charm never cures anyone.
+- **Immediate experience**: whether the patient felt heard, considered the
+  visit worth its cost, and would recommend the practice.
+- **Later record**: what happened to the patient's health and to the practice
+  one month later.
 
-Some era-approved treatments harm. Some quack tinctures are merely inert. The
-divergence between the ledgers teaches the historiography of medicine.
+The month-later report keeps period reputation, practice finances, and the
+modern health record separate. A satisfied patient may have been harmed. A
+dissatisfied patient may have received reasonable advice.
 
 ## Patient casting model
 
-Roughly **eight deeply authored anchor patients**, each returning several
-times across the game — 3–4 of them actual historical figures, the rest
-composites built from real case records. Procedurally generated minor
-patients (via the historical-persona-generator) supply queue pressure and
-social texture and populate the contagion graph. The generator is a casting
-and variation system, not the author of the central cases.
+Roughly **eight deeply authored anchor patients** return several times. They
+are composites built from verified medical and psychological case reports.
+Procedurally generated patients supply queue pressure and social texture and
+later populate the social graph. Both kinds of patient use the same record and
+consultation engine. The interface does not label them as authored or
+procedural.
 
 Body pipeline for 3D patients: Renderer C in `character-lab/`. It combines
 curated GNM-derived face anchors with MPFB topology, rigging, live morphs, and
@@ -59,12 +68,10 @@ current architecture and gates.
 
 ## Ground truth beneath the LLM
 
-Every patient has a deterministic condition assigned at creation — some match
-their era-label (a "neurasthenic" with no organic disease), some do not (early
-TB, syphilis, lead poisoning, thyroid disease presenting as nerves). The LLM
-renders dialogue, narration, and prose; the simulation decides sickness,
-response to treatment, and outcomes. This is the anti-sycophancy architecture:
-the player cannot talk the disease out of behaving like a disease.
+Every patient has a fixed etiology assigned at creation. It may contain several
+physical, psychological, social, or environmental causes. The model renders
+language; the simulation decides facts, disclosure, treatment response, and
+outcomes.
 
 ## Social contagion simulation
 
@@ -82,10 +89,9 @@ The scholarly anchor is Ian Hacking's looping effect: categories of people
 change the people categorized. The sim makes the player enact it. All feedback
 is triggered by the deterministic sim, never by the LLM.
 
-**Legibility device**: a weekly period newspaper health column, written by the
-LLM from sim facts only (grounded generation). It is how the player sees the
-pool shifting — who is talking about nerves, what is fashionable, what rumors
-attach to the player's practice.
+**Weekly feedback**: a period newspaper health column, written from simulation
+facts, shows changes in public language, medical fashion, and rumors about the
+practice.
 
 ## Locations
 
@@ -106,7 +112,7 @@ attach to the player's practice.
 
 Four presentation modes over one world state:
 
-1. **Patient mode** — first-person at the physician's desk, patient seated
+1. **Consultation view** — first-person at the physician's desk, patient seated
    across in 3D, full working chrome: top bar (clinic nameplate, clock, date,
    patient queue, incoming letters), right rail (case overview, action verbs,
    case file), portrait card and patient panel lower left, casebook on the
@@ -117,7 +123,7 @@ Four presentation modes over one world state:
 2. **Examination mode** — a static, zoomed-out reading of the same scene:
    the patient further away, in silhouette, symptom annotations arrayed
    around the figure, minimalist chrome (no verb buttons), bottom band for
-   questioning stances. Entered from patient mode via the Examine verb.
+   questioning stances. Entered from consultation view via the Examine verb.
    Reference: round-two HTML concept IV, formerly titled "The Sitting."
 3. **Exploration mode** — close third-person over-the-shoulder hero camera
    for areas with 3D movement (the street, Central Park, house calls, the
@@ -127,66 +133,31 @@ Four presentation modes over one world state:
    with E from exploration mode, left with Escape. Used for the laboratory
    apparatus, where operating the thing *is* the mechanic.
 
-### What E does, and to what
-
-One field on a furniture item, three tiers:
-
-| `affordance` | Example | What happens |
-|---|---|---|
-| absent | table, wall, carpet | no prompt at all |
-| `{ verb, kind: 'act' }` | chair, couch, lamp, vase | prompt, then an action in place — sit, extinguish, take a flower. The camera does not move. |
-| `{ verb, kind: 'instrument' }` | tachistoscope, colour wheel, chronoscope | prompt, then instrument mode |
-
-The prompt and the proximity test are shared; only the payload differs. This
-is the same channel the door triggers already use.
-
-### The rule instrument mode has to keep
-
-An instrument view is **a view onto a simulation, not a scripted animation**
-— the same constraint the LLM systems work under. The tachistoscope has a
-shutter position, a drop height and a slot width; the exposure the player
-gets is whatever those produce, computed from `v = sqrt(2gd)`. A hard-coded
-"40ms flash" would teach nothing, could not be tuned, and could not be got
-wrong — and being able to get it wrong is the point of an instrument.
-
-Each instrument is therefore a module with `{ framing, state, step(dt, input) }`
-and no renderer, so its physics is unit-tested like the movement math is. The
-3D view reads that state and draws it.
+Exploration interactions use shared action and instrument affordances.
+Instrument views display real simulation state rather than scripted outcomes.
+The implementation contract is in
+[engine-architecture.md](engine-architecture.md#interaction-and-instrument-contract).
 
 ## LLM roles (all JSON-contract, all on deterministic ground truth)
 
 | Role | Carries from Darwin |
 |---|---|
-| Patient dialogue | encounter route contract (dialogue, trustDelta, flags), plus a new appraisal channel — the model classifies what the player did, the sim prices it |
-| Physician narrator (stream of consciousness) | narrator profile templating |
-| Examination feedback | examine route contract |
-| Case-note assessment | finalAssessment pattern |
-| Weekly newspaper column | new, but pure grounded generation |
+| Custom patient dialogue | Classify topic, intent, and tone; write the resolved response |
+| Custom private thought | Classify the player's hypothesis and supporting evidence |
+| William James letter | Explain scores within ranges set from the stored gameplay record |
+| Modern debrief | Explain the fixed etiology, treatment effects, and outcome |
+| Weekly newspaper column | Write from social-simulation facts |
 
 ## Design principles
 
-1. Deterministic ground truth beneath every LLM surface.
-2. Resistant NPCs — patients, rivals, and assessors push back; no sycophancy.
+1. Deterministic ground truth beneath every model-written surface.
+2. Patients, rivals, and assessors may disagree with the player.
 3. Primary sources in-world via the library reader; reading unlocks and
    justifies modalities.
-4. Every phase must yield two durable results (playable piece, essay,
-   classroom evidence, book material, or reusable capability). Open-ended
-   polish counts as zero.
-5. Scope stop-losses set in advance. The Darwin lesson: art direction can
-   absorb unlimited time.
 
-## Milestones
+## Development direction
 
-**M1 — the consultation, proven.** One consulting room. Three patients: one
-organic disease mislabeled as nerves, one true neurasthenia presentation, one
-psychical-research case (hears a dead sibling). One modality set. Case-note
-assessment working end to end. No contagion sim, no park, no lab. M1 has three
-internal phases: the character runtime foundation, the consultation MVP with
-basic placeholder controls, and the production patient UI. See
-[m1-work-plan.md](m1-work-plan.md).
-
-**M2 — the pool.** Weekly tick, social graph, newspaper column, dual ledger
-surfaced in UI.
-
-**M3 — the lab and the park.** Anthropometric lab as a bounded episode;
-Central Park zone from Darwin assets.
+The current playable focus is the consultation. Nora Byrne is the reference
+authored encounter. More researched patients and stronger procedural cases can
+use the same engine. Consultation results can then feed the wider practice,
+social graph, laboratory, and park without imposing a fixed milestone scheme.

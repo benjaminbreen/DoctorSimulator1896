@@ -76,9 +76,9 @@ test('foreign-born profiles retain a coherent migration record', () => {
 
 test('private interpretation records a hypothesis without advancing time', () => {
   const state = beginInquiry();
-  const next = consultationTransition(state, patient, { type: 'interpret', id: 'read-distress' });
+  const next = consultationTransition(state, patient, { type: 'interpret', id: 'read-history-first' });
   assert.equal(next.elapsedMinutes, 0);
-  assert.deepEqual(next.interpretationIds, ['read-distress']);
+  assert.deepEqual(next.interpretationIds, ['read-history-first']);
   assert.equal(next.history.at(-1).kind, 'interpretation');
 });
 
@@ -96,7 +96,7 @@ test('case notebook starts with identity only and grows from player actions', ()
   assert.deepEqual(notebook.clues, []);
   assert.deepEqual(notebook.diagnoses, []);
 
-  state = consultationTransition(state, patient, { type: 'interpret', id: 'read-distress' });
+  state = consultationTransition(state, patient, { type: 'interpret', id: 'read-history-first' });
   state = consultationTransition(state, patient, { type: 'examine', id: exam.id });
   const input = { stance: 'question', text: `Tell me more about the ${fact.releaseOn[0]}.` };
   state = consultationTransition(state, patient, {
@@ -104,7 +104,8 @@ test('case notebook starts with identity only and grows from player actions', ()
     response: renderOfflineDialogue(buildDialogueRequest(patient, state, input), patient),
   });
   notebook = buildCaseNotebook(patient, state);
-  assert.deepEqual(notebook.observations.map((entry) => entry.kind), ['Private impression', exam.label]);
+  assert.deepEqual(notebook.observations.map((entry) => entry.kind), [exam.label, 'Patient account']);
+  assert.equal(notebook.observations.at(-1).text, fact.notebookSummary);
   assert.deepEqual(notebook.clues.map((clue) => clue.label), [fact.label]);
   assert.equal(notebook.diagnosesAvailable, false);
 
@@ -213,7 +214,7 @@ test('the runtime reports only deterministic consultation time costs', () => {
   });
   runtime.start(patient.id);
   runtime.dispatch({ type: 'begin-inquiry' });
-  runtime.dispatch({ type: 'interpret', id: 'read-distress' });
+  runtime.dispatch({ type: 'interpret', id: 'read-history-first' });
   runtime.dispatch({ type: 'examine', id: exam.id });
   runtime.speak({ stance: 'question', text: `Tell me about the ${fact.releaseOn[0]}.` });
   assert.deepEqual(advances, [[3, 'examine'], [5, 'speech-response']]);

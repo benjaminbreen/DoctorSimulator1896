@@ -11,7 +11,7 @@ export default function ThrowAimHud() {
   useEffect(() => subscribeThrowablePlay(setPlay), []);
 
   const definition = throwableDefinition(play.heldType);
-  if (play.phase === 'empty' || !definition) return null;
+  if (play.phase === 'empty' || play.phase === 'picking-up' || !definition) return null;
   const charging = play.phase === 'charging';
   const distance = Math.round(estimateThrowableRange(play.charge, play.heldType));
   const title = play.phase === 'held' ? `${definition.label} ready` : charging ? 'Throw power' : 'Let fly!';

@@ -175,6 +175,20 @@ The Character Lab remains the approval surface for these gates. Contact sheets
 are useful regression artifacts, but Ben's live review in the lab decides
 whether a face, resting signature, garment, or animation is accepted.
 
+## Build and review
+
+- Build both consultation masters with `npm run renderer-c:masters`.
+- The runtime manifest is
+  `character-lab/public/models/renderer-c-cohorts.json`.
+- Render the women’s identity grid with
+  `scripts/characters/render_renderer_c_face_range_grid.py`.
+- Render the men’s identity grid with
+  `scripts/characters/render_renderer_c_male_face_range_grid.py`.
+- Accepted reference sheets are preserved under
+  `docs/artifacts/renderer-c-identity-gate/`. New tests must not overwrite
+  them.
+- Do not replace the curated anchors with stock MPFB randomization.
+
 ## Current implementation
 
 Renderer C already has two reusable consultation masters with eight approved
@@ -183,7 +197,7 @@ controls, fitted facial assets, deterministic cohort grids, and a shared Mixamo
 motion library. The versioned recipe, shared game/lab controller, actor layer,
 validated publication command, bounded face-performance rules, and shared
 complexion and iris palettes are now implemented. Phase 1 of
-`m1-work-plan.md` is complete.
+the current authored consultation cast is complete.
 
 The six complexion choices are calibrated for the current skin texture and
 material path. Each face anchor keeps the eye geometry fitted to that face. The

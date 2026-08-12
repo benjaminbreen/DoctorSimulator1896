@@ -102,6 +102,21 @@ the existing MPFB fitting stage; generated characters export to GLB afterward.
 | --- | --- | --- |
 | `Wallpaper_Vintage` | gre4esky | CC-BY-4.0 |
 
+## Procedural facade surfaces — `game/public/textures/facades/`
+
+| Texture | Creator / source | Licence |
+| --- | --- | --- |
+| `ashlar-gray.webp` | OpenAI ImageGen, directed for this project (2026) | Project-generated asset |
+
+## Cattell laboratory wall images — `game/public/textures/cattell-lab/`
+
+| Image | Creator / source | Licence |
+| --- | --- | --- |
+| `francis-galton-c1890.jpg` | Graham's Art Studios, circa 1890; [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Sir_Francis_Galton,_circa_1890.jpg) | Public domain |
+| `herbert-spencer-1889.jpg` | Herbert Spencer photograph (1889), Wellcome Collection; [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Herbert_Spencer._Photograph,_1889._Wellcome_V0027201.jpg) | CC-BY-4.0 |
+| `william-james-1890s.jpg` | Sarah Choate Sears, 1890s; Houghton Library / [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:William_James_in_1890s.jpg) | Public domain |
+| `cattell-blackboard-1896.png` | OpenAI ImageGen, directed for this project (2026) | Project-generated asset |
+
 ## Renderer C clothing studies
 
 The local copies of `a_set_of_victorian_clothes` and
@@ -128,3 +143,9 @@ purchased asset; its licence terms live with the purchase, not here.
 
 The Pond outline and Gapstow Bridge footprint in `game/src/world/` are traced
 from OpenStreetMap data (© OpenStreetMap contributors, ODbL).
+
+The animated street horse (`game/public/models/horse.glb`) is **Horse** by
+[kenchoo](https://sketchfab.com/kenchoo), licensed
+[CC-BY-NC-SA-4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/), from
+[Sketchfab](https://sketchfab.com/3d-models/horse-86d47bdcd5ab41238ba44547e4d21f9c).
+The original credit and licence metadata remain embedded in the GLB.

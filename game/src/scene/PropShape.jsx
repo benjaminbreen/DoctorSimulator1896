@@ -46,6 +46,9 @@ export default function PropShape({ item }) {
     );
   }
   if (item.shape === 'frustum') return <cylinderGeometry args={[(item.topDiameter ?? sx) / 2, sx / 2, sy, item.radialSegments ?? 16]} />;
+  if (item.shape === 'openFrustum') {
+    return <cylinderGeometry args={[(item.topDiameter ?? sx) / 2, sx / 2, sy, item.radialSegments ?? 24, 1, true]} />;
+  }
   if (item.shape === 'sphere') return <sphereGeometry args={[sx / 2, item.radialSegments ?? 18, 14]} />;
   if (item.shape === 'cone') return <coneGeometry args={[sx / 2, sy, item.radialSegments ?? 16]} />;
   // Rings: a dynamometer's spring, a binding post's collar, a drum hoop.

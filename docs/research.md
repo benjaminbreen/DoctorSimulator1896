@@ -1,7 +1,8 @@
 # Research notes
 
-Drafted by an AI agent 2026-08-05 from conversation with Ben; every date and
-claim below needs Ben's verification before it becomes game content.
+Drafted by an AI agent 2026-08-05 from conversation with Ben. Treat it as a
+working source list: check claims against the cited primary material as they
+enter the game.
 
 ## Chronology
 
@@ -102,8 +103,7 @@ executable form; a Res Obscura essay lives in that sentence.
 
 ## Cattell's laboratory — apparatus built for the game
 
-Needs Ben's verification before any of it becomes game text. What the props
-were modelled from:
+Working research record for what the props were modelled from:
 
 - The ten tests are Cattell's own list from "Mental Tests and Measurements"
   (*Mind*, 1890), which he then ran on entering Columbia freshmen from 1894:
@@ -120,3 +120,8 @@ were modelled from:
   tachistoscope, du Bois-Reymond sledge coil, Maxwell discs) are the common
   patterns of the period, not any one maker's plate. Zimmermann, Verdin and
   Willyoung catalogues would settle the details.
+- Cattell specifies a sound stimulus for reaction time, a Hipp chronoscope,
+  three valid reactions, and recording the minimum result. The game's amber
+  lamp fires from the same event as the bell as an accessibility adaptation;
+  it is not presented as part of Cattell's original procedure. Source:
+  Cattell, ["Mental Tests and Measurements" (1890)](https://psychclassics.yorku.ca/Cattell/mental.htm).

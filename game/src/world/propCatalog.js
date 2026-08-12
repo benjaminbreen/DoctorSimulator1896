@@ -6,6 +6,7 @@
 // choosing a renderer.
 
 import { INSTRUMENTS } from './instruments.js';
+import { COACHWORKS } from './coachworks.js';
 import { bookcase, labeledBottle, reagentBottleRack, screen, vaseOfFlowers } from './furnishings.js';
 import { LABEL_FONT_IDS, LABEL_FONT_LABELS } from './labelFonts.js';
 import victorian from '../../public/models/victorian/manifest.json' with { type: 'json' };
@@ -315,6 +316,7 @@ const BUILT_FURNITURE = {
 // Groups in the order the panel lists them.
 export const PROP_GROUPS = [
   { id: 'instruments', label: 'Laboratory apparatus', kind: 'built', entries: INSTRUMENTS },
+  { id: 'coachworks', label: 'Coachworks workshop', kind: 'built', entries: COACHWORKS },
   { id: 'built', label: 'Built furniture', kind: 'built', entries: BUILT_FURNITURE },
   { id: 'victorian', label: 'Victorian pack', kind: 'model', manifest: victorian },
   { id: 'props', label: 'Props pack', kind: 'model', manifest: props },
@@ -338,6 +340,7 @@ export function propList() {
           family: entry.family ?? null,
           schema: entry.schema ?? null,
           defaultSeed: entry.defaultSeed ?? 1,
+          defaultValues: entry.defaultValues ?? null,
           historicalStatus: entry.historicalStatus ?? null,
           performanceBudget: entry.performanceBudget ?? null,
         });
@@ -374,6 +377,13 @@ export function builtBounds(items) {
   };
   for (const item of items) {
     if (item.parts) {
+      if (item.boundsSize) {
+        eat(
+          item.position.map((value, axis) => value + (item.boundsCenter?.[axis] ?? 0)),
+          item.boundsSize,
+        );
+        continue;
+      }
       for (const part of item.parts) {
         eat(
           [

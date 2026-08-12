@@ -84,6 +84,7 @@ const PARK_FINAL_STAGE = PARK_STAGE_LABELS.length - 1;
 const PARK_LIFE_FEATURES = new Set([
   'pedestrians',
   'horseless-carriage',
+  'horse-drawn-traffic',
   'pigeon-flock',
   'bees',
   'butterflies',
@@ -426,6 +427,7 @@ function SceneContents({ runtime, worldClock, keyboard, look, actors, onReadyFor
                 spawn={spawn}
                 spawnYaw={spawnYaw}
                 water={zone.water}
+                motionAffordances={zone.motionAffordances}
                 forcePlaceholder={values.showAvatarGlb && !avatarReady}
               />
               <CameraRig
@@ -533,6 +535,7 @@ function SceneContents({ runtime, worldClock, keyboard, look, actors, onReadyFor
               look={look}
               spawn={spawn}
               spawnYaw={spawnYaw}
+              motionAffordances={zone.motionAffordances}
             />
             {values.showAvatarGlb && <PlayerAvatar runtime={runtime} />}
             <CameraRig room={room} runtime={runtime} look={look} keyboard={keyboard} heightAt={null} />

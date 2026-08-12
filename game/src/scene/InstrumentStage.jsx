@@ -6,16 +6,24 @@ import { createTachistoscope, step as stepTachistoscope } from '../instruments/t
 import { createColourWheel, step as stepColourWheel } from '../instruments/colourWheel.js';
 import { createInductionCoil, step as stepInductionCoil, shockCurrent } from '../instruments/inductionCoil.js';
 import { createSecondsPendulum, stepSecondsPendulum } from '../instruments/secondsPendulum.js';
+import {
+  createReactionChronoscope,
+  stepReactionChronoscope,
+} from '../instruments/reactionChronoscope.js';
 import { instrumentBus } from '../instruments/bus.js';
+import { playSfx } from '../audio/sound.js';
 import {
   tachistoscope as buildTachistoscope,
   colourWheel as buildColourWheel,
   inductionCoil as buildInductionCoil,
   secondsPendulum as buildSecondsPendulum,
+  hippChronoscope as buildChronoscope,
+  reactionKey as buildReactionKey,
   TACHISTOSCOPE_FRAME,
   COLOUR_WHEEL_FRAME,
   COIL_FRAME,
   SECONDS_PENDULUM_FRAME,
+  CHRONOSCOPE_FRAME,
 } from '../world/instruments.js';
 import PropShape from './PropShape.jsx';
 import PropMaterial from './PropMaterial.jsx';
@@ -40,6 +48,7 @@ const BUILDERS = {
   'colour-wheel': createColourWheel,
   'induction-coil': createInductionCoil,
   'seconds-pendulum': createSecondsPendulum,
+  'reaction-chronoscope': createReactionChronoscope,
 };
 
 const STEP = {
@@ -47,6 +56,7 @@ const STEP = {
   'colour-wheel': stepColourWheel,
   'induction-coil': stepInductionCoil,
   'seconds-pendulum': stepSecondsPendulum,
+  'reaction-chronoscope': stepReactionChronoscope,
 };
 
 const GEOMETRY = {
@@ -54,6 +64,10 @@ const GEOMETRY = {
   'colour-wheel': (id) => buildColourWheel(id, 0, 0, 0, 0),
   'induction-coil': (id) => buildInductionCoil(id, 0, 0, 0, 0),
   'seconds-pendulum': (id) => buildSecondsPendulum(id, 0, 0, 0, 0),
+  'reaction-chronoscope': (id) => [
+    ...buildChronoscope(id, 0, 0, 0, 0),
+    ...buildReactionKey(`${id}-response`, 0.42, 0, 0.05, 0),
+  ],
 };
 
 // How much of the model to draw the working copy at. The tachistoscope is
@@ -63,6 +77,7 @@ const SCALE = {
   'colour-wheel': 1.35,
   'induction-coil': 1.5,
   'seconds-pendulum': 1.08,
+  'reaction-chronoscope': 1.25,
 };
 
 // Split a built instrument into its static parts and its moving channels.
@@ -259,6 +274,112 @@ function SecondsPendulum({ groups, instrument }) {
         pivot={SECONDS_PENDULUM_FRAME.catchPivot}
         groupRef={catchLever}
       />
+    </>
+  );
+}
+
+function SignalLens({ item, instrument }) {
+  const material = useRef();
+  const light = useRef();
+  useFrame(() => {
+    const amount = Math.min(1, (instrument.state.cueFlash ?? 0) / 0.16);
+    if (material.current) material.current.emissiveIntensity = 0.25 + amount * 7;
+    if (light.current) light.current.intensity = amount * 24;
+  });
+  return (
+    <group>
+      <mesh position={item.position} rotation={item.rotation ?? [0, 0, 0]}>
+        <PropShape item={item} />
+        <meshStandardMaterial
+          ref={material}
+          color="#ead58b"
+          emissive="#ffd56b"
+          emissiveIntensity={0.25}
+          roughness={0.35}
+        />
+      </mesh>
+      <pointLight
+        ref={light}
+        position={CHRONOSCOPE_FRAME.signal}
+        color="#ffd979"
+        intensity={0}
+        distance={2.1}
+        decay={2}
+      />
+    </group>
+  );
+}
+
+function ReactionChronoscope({ groups, instrument }) {
+  const largeHand = useRef();
+  const smallHand = useRef();
+  const governor = useRef();
+  const responseKey = useRef();
+  const keyTimer = useRef(0);
+  const heard = useRef({ signalCount: 0, keyStrikes: 0, eventCount: 0 });
+
+  useFrame((_, delta) => {
+    const state = instrument.state;
+    const reading = state.phase === 'signal'
+      ? state.reactionElapsed
+      : state.lastEvent?.type === 'reading'
+        ? state.lastEvent.seconds
+        : state.phase === 'complete'
+          ? state.best ?? 0
+          : 0;
+
+    if (largeHand.current) largeHand.current.rotation.z = -reading * Math.PI * 2;
+    if (smallHand.current) smallHand.current.rotation.z = -reading * Math.PI * 0.2;
+    if (governor.current) {
+      const running = state.phase === 'waiting' || state.phase === 'signal';
+      governor.current.rotation.y += running ? delta * 18 : delta * 1.2;
+    }
+
+    if (state.keyStrikes !== heard.current.keyStrikes) {
+      heard.current.keyStrikes = state.keyStrikes;
+      keyTimer.current = 0.1;
+      playSfx('reaction-key');
+    }
+    keyTimer.current = Math.max(0, keyTimer.current - delta);
+    if (responseKey.current) responseKey.current.rotation.z = keyTimer.current > 0 ? -0.12 : 0;
+
+    if (state.signalCount !== heard.current.signalCount) {
+      heard.current.signalCount = state.signalCount;
+      playSfx('reaction-signal');
+    }
+    if (state.eventCount !== heard.current.eventCount) {
+      heard.current.eventCount = state.eventCount;
+      if (state.lastEvent?.type === 'armed') playSfx('chronoscope-arm');
+      if (state.lastEvent?.type === 'false-start') playSfx('reaction-false-start');
+      if (state.phase === 'complete' && state.lastEvent?.type === 'reading') playSfx('reaction-complete');
+    }
+  });
+
+  return (
+    <>
+      <Channel
+        items={groups.get('large-hand') ?? []}
+        pivot={CHRONOSCOPE_FRAME.largeDial}
+        groupRef={largeHand}
+      />
+      <Channel
+        items={groups.get('small-hand') ?? []}
+        pivot={CHRONOSCOPE_FRAME.smallDial}
+        groupRef={smallHand}
+      />
+      <Channel
+        items={groups.get('governor') ?? []}
+        pivot={CHRONOSCOPE_FRAME.governor}
+        groupRef={governor}
+      />
+      <Channel
+        items={groups.get('reaction-key') ?? []}
+        pivot={CHRONOSCOPE_FRAME.keyPivot}
+        groupRef={responseKey}
+      />
+      {(groups.get('signal-lens') ?? []).map((item) => (
+        <SignalLens key={item.id} item={item} instrument={instrument} />
+      ))}
     </>
   );
 }
@@ -530,6 +651,7 @@ function BuiltInstrument({ kind, instrument }) {
       {kind === 'colour-wheel' && <ColourWheel groups={groups} instrument={instrument} />}
       {kind === 'induction-coil' && <InductionCoil groups={groups} instrument={instrument} />}
       {kind === 'seconds-pendulum' && <SecondsPendulum groups={groups} instrument={instrument} />}
+      {kind === 'reaction-chronoscope' && <ReactionChronoscope groups={groups} instrument={instrument} />}
     </group>
   );
 }

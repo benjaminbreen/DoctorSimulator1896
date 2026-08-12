@@ -96,7 +96,10 @@ export function createAssetRecipe(definition, input = {}) {
     kind: 'procedural-asset',
     family: definition.family,
     seed: integerSeed(input.seed, definition.defaultSeed ?? 1),
-    values: normalizeValues(definition.schema, input.values),
+    values: normalizeValues(definition.schema, {
+      ...(definition.defaultValues ?? {}),
+      ...(input.values ?? {}),
+    }),
     historicalStatus: definition.historicalStatus ?? 'draft',
   };
 }

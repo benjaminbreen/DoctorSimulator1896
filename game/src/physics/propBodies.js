@@ -10,6 +10,12 @@ const half = (size) => [size[0] / 2, size[1] / 2, size[2] / 2];
 // from its footprint. A model's position is its floor contact point, a
 // placeholder's is its box centre, hence the difference in y.
 export function itemBoxes(item) {
+  if (item.colliderBoxes?.length) {
+    return item.colliderBoxes.map((box) => ({
+      center: box.center ?? [0, 0, 0],
+      half: half(box.size),
+    }));
+  }
   if (item.model) {
     // An explicit size wins: pieces that are mostly air (a lamppost's
     // crossarm) should not be solid to their whole footprint.

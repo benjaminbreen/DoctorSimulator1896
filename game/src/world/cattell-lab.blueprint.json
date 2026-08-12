@@ -200,7 +200,10 @@
         0,
         3.15,
         -3.4
-      ]
+      ],
+      "fixture": false,
+      "electric": true,
+      "ceilingRose": false
     },
     {
       "id": "lamp-centre",
@@ -209,7 +212,10 @@
         0,
         3.15,
         0.4
-      ]
+      ],
+      "fixture": false,
+      "electric": true,
+      "ceilingRose": false
     },
     {
       "id": "lamp-south",
@@ -218,7 +224,10 @@
         0,
         3.15,
         4.0
-      ]
+      ],
+      "fixture": false,
+      "electric": true,
+      "ceilingRose": false
     }
   ]
 }

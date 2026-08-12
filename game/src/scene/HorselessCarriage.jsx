@@ -10,13 +10,23 @@ import { handlesAlive } from '../physics/useCharacterController.js';
 import {
   applyCarriageProjectileHit,
   createCarriageState,
+  HORSELESS_TRAFFIC_ROSTER,
   stepCarriage,
-  ROUTES,
   RIDE_HEIGHT,
 } from '../world/horselessCarriage.js';
 import { takeCarriageProjectileHit } from '../world/carriageImpacts.js';
-import { carriageImpactEffect, getPlayer, harm } from '../world/player.js';
+import { queueActorImpact } from '../world/actorImpacts.js';
+import { getPlayer, harm } from '../world/player.js';
 import { listAgents, reportAgent, removeAgent } from '../world/agents.js';
+import { streetTrafficAdvice, trafficAgentDetails } from '../world/streetTraffic.js';
+import {
+  applyTrafficImpacts,
+  beginTrafficFrame,
+  removeTrafficBody,
+  reportTrafficBody,
+  takeTrafficImpacts,
+  trafficCircleChain,
+} from '../world/trafficContacts.js';
 import { gameDebug } from '../debug.js';
 
 // A small fleet of 1895 electric road wagons (after the Morris & Salom
@@ -28,14 +38,13 @@ import { gameDebug } from '../debug.js';
 // world/horselessCarriage.js; this component owns only the looks.
 
 const MAX_DT = 1 / 30;
-const FLEET_SIZE = 3;
 // Vehicle local frame: +z forward, y up from the roadbed.
 const FRONT_R = 0.5;
 const REAR_R = 0.4;
 const FRONT_Z = 0.85;
 const REAR_Z = -0.85;
-// Shadows and rider animation are paid for only near the camera.
-const SHADOW_DISTANCE = 22;
+// Rider animation is paid for only near the camera. Shadow distance follows
+// the outdoor tuning control shared with the sun's shadow camera.
 const ANIMATE_DISTANCE = 45;
 const POSE_PADDING = 1.7;
 
@@ -272,7 +281,7 @@ function updateDriverMood(driver, state, dt) {
   driver.hold = MOOD_HOLD;
 }
 
-export default function HorselessCarriage() {
+export default function HorselessCarriage({ runtime }) {
   const driverGltf = useLoader(GLTFLoader, '/models/carriage-driver.glb', (loader) =>
     loader.setMeshoptDecoder(MeshoptDecoder),
   );
@@ -305,14 +314,21 @@ export default function HorselessCarriage() {
     const source = driverGltf.scene;
     const spheres = new Map();
 
-    return Array.from({ length: FLEET_SIZE }, (_, index) => {
-      const routeIndex = index % ROUTES.length;
+    return HORSELESS_TRAFFIC_ROSTER.map((roster) => {
+      const index = roster.id;
       const livery = LIVERIES[Math.floor(rand() * LIVERIES.length)];
-      const lane = 1.35 + rand() * 0.4;
+      const lane = roster.route === 4 ? 0.18 : 1.35 + rand() * 0.4;
       return {
         id: index,
-        params: { cruise: 3.6 + rand() * 1.1, lane },
-        state: createCarriageState(routeIndex, (index * 131 + 40) % ROUTES[routeIndex].total, lane),
+        params: {
+          id: `carriage-${index}`,
+          cruise: 3.6 + rand() * 1.1,
+          lane,
+          minGap: 2.8,
+          length: 2.4,
+          priority: 10 + index,
+        },
+        state: createCarriageState(roster.route, roster.start, lane),
         driver: makeDriver(source, driverGltf.animations, rand(), spheres),
         umbrellas: rand() < 0.5,
         materials: {
@@ -325,7 +341,7 @@ export default function HorselessCarriage() {
         refs: { root: null, bodyGroup: null, wheels: [], steers: [], tiller: null, body: null, collider: null },
         shadowMeshes: [],
         shadowNear: true,
-        lastPlayerImpact: -Infinity,
+        lastActorImpacts: new Map(),
       };
     });
   }, [driverGltf, shared]);
@@ -345,6 +361,7 @@ export default function HorselessCarriage() {
     () => () => {
       for (const unit of fleet) {
         removeAgent(`carriage-${unit.id}`);
+        removeTrafficBody(`carriage-${unit.id}`);
         Object.values(unit.materials).forEach((material) => material.dispose());
       }
     },
@@ -353,31 +370,60 @@ export default function HorselessCarriage() {
 
   useFrame((frame, delta) => {
     const dt = Math.min(delta, MAX_DT);
+    const trafficFrame = frame.clock.elapsedTime;
+    beginTrafficFrame(trafficFrame);
     const player = gameDebug.player.position;
     const eye = frame.camera.position;
     let nearestCarriageSq = Infinity;
+    const agents = [...listAgents()];
 
     for (const unit of fleet) {
-      // Obstacles: the player, every reported figure, and senior carriages.
-      // Junior yields to senior, so two carriages never wait on each other.
+      // Pedestrians and the player remain local obstacles. Vehicles negotiate
+      // through the lane coordinator, so reciprocal avoidance cannot deadlock.
       const obstacles = obstaclesRef.current;
       obstacles.length = 0;
       obstacles.push({ x: player[0], z: player[2], r: 0.6 });
-      for (const agent of listAgents()) {
-        if (agent.id.startsWith('carriage-')) {
-          if (Number(agent.id.slice(9)) >= unit.id) continue;
-        }
+      for (const agent of agents) {
+        if (agent.trafficId) continue;
         obstacles.push(agent);
       }
 
+      const trafficImpacts = takeTrafficImpacts(`carriage-${unit.id}`);
+      const impactedState = applyTrafficImpacts(unit.state, trafficImpacts);
       const projectileHit = takeCarriageProjectileHit(unit.id);
       const beforeStep = projectileHit
-        ? applyCarriageProjectileHit(unit.state, projectileHit.velocity, projectileHit.power)
-        : unit.state;
-      const state = stepCarriage(beforeStep, dt, obstacles, unit.params);
+        ? applyCarriageProjectileHit(impactedState, projectileHit.velocity, projectileHit.power)
+        : impactedState;
+      const advice = streetTrafficAdvice(beforeStep, agents, unit.params, dt);
+      const state = {
+        ...stepCarriage(beforeStep, dt, obstacles, {
+          ...unit.params,
+          cruise: Math.min(unit.params.cruise, advice.cruise),
+          lane: advice.lane,
+          swerveLambda: advice.laneLambda,
+        }),
+        traffic: advice.traffic,
+        intersection: advice.intersection,
+      };
       unit.state = state;
       nearestCarriageSq = Math.min(nearestCarriageSq, (state.x - player[0]) ** 2 + (state.z - player[2]) ** 2);
-      reportAgent(`carriage-${unit.id}`, state.x, state.z, 1.7);
+      reportAgent(
+        `carriage-${unit.id}`,
+        state.x,
+        state.z,
+        1.7,
+        trafficAgentDetails(state, unit.params),
+      );
+      const carriageVx = Math.sin(state.yaw) * state.speed;
+      const carriageVz = Math.cos(state.yaw) * state.speed;
+      reportTrafficBody({
+        id: `carriage-${unit.id}`,
+        circles: trafficCircleChain(state.x, state.z, state.yaw, [-0.82, 0.82], 0.9),
+        vx: carriageVx,
+        vz: carriageVz,
+        mass: 680,
+        priority: unit.params.priority,
+      }, trafficFrame);
 
       const { root, bodyGroup, wheels, steers, tiller, body, collider } = unit.refs;
       if (root) {
@@ -402,7 +448,8 @@ export default function HorselessCarriage() {
 
       // Shadows and rider animation only near the camera.
       const distSq = (state.x - eye.x) ** 2 + (state.z - eye.z) ** 2;
-      const near = distSq < SHADOW_DISTANCE * SHADOW_DISTANCE;
+      const shadowDistance = runtime.values.outdoorShadowDistance;
+      const near = distSq < shadowDistance * shadowDistance;
       if (near !== unit.shadowNear) {
         unit.shadowNear = near;
         for (const mesh of unit.shadowMeshes) mesh.castShadow = near;
@@ -451,21 +498,21 @@ export default function HorselessCarriage() {
   ];
 
   return fleet.map((unit) => {
-    const onPlayerImpact = ({ other }) => {
-      if (other.rigidBodyObject?.userData?.gameKind !== 'player') return;
+    const onActorImpact = ({ other }) => {
+      const actorId = other.rigidBodyObject?.userData?.actorId;
+      if (!actorId) return;
       const state = unit.state;
       const carriageVx = Math.sin(state.yaw) * state.speed;
       const carriageVz = Math.cos(state.yaw) * state.speed;
-      const playerVelocity = gameDebug.player.velocity;
-      const relativeSpeed = Math.hypot(
-        carriageVx - playerVelocity[0],
-        carriageVz - playerVelocity[2],
-      );
-      const effect = carriageImpactEffect(relativeSpeed);
       const now = getPlayer().clock;
-      if (!effect || now - unit.lastPlayerImpact < 4) return;
-      unit.lastPlayerImpact = now;
-      harm(effect);
+      if (now - (unit.lastActorImpacts.get(actorId) ?? -Infinity) < 4) return;
+      unit.lastActorImpacts.set(actorId, now);
+      queueActorImpact(actorId, {
+        cause: 'horseless-carriage',
+        sourceId: `carriage-${unit.id}`,
+        sourceVelocity: [carriageVx, 0, carriageVz],
+        direction: [carriageVx, carriageVz],
+      });
     };
     const wheel = (index) => (
       <group key={index} ref={(node) => (unit.refs.wheels[index] = node)}>
@@ -514,7 +561,7 @@ export default function HorselessCarriage() {
           type="kinematicPosition"
           colliders={false}
           position={[0, -20 - unit.id * 5, 0]}
-          onCollisionEnter={onPlayerImpact}
+          onCollisionEnter={onActorImpact}
           userData={{ gameKind: 'horseless-carriage', carriageId: unit.id }}
         >
           <CuboidCollider

@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { useFrame, useThree } from '@react-three/fiber';
+import { useFrame, useLoader, useThree } from '@react-three/fiber';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { buildingFacade } from './textures.js';
 import { solarRamps } from '../world/solar.js';
 import { streetItems, STREET_LEVEL } from '../world/streetGrid.js';
 import { parkItems } from '../world/centralPark.js';
 import { FACES } from '../world/facade.js';
+import {
+  createFacadeMaterial,
+  FACADE_TEXTURE_URLS,
+  prepareFacadeTextures,
+} from './facadeMaterials.js';
 
 // What you see out of an interior window. Rendering the real exterior zone
 // would mean carrying the whole park in memory while indoors, so this builds
@@ -100,7 +104,7 @@ const PANE_FRAGMENT = `
 
 // Massing only: boxes for the street buildings, merged blobs for the park
 // trees, two ground planes, and a sky shell.
-function buildProxy(hostId) {
+function buildProxy(hostId, facadeTextures) {
   const scene = new THREE.Scene();
   const disposables = [];
   // Coal-smoke haze. Everything but the sky fades into the horizon colour
@@ -150,10 +154,17 @@ function buildProxy(hostId) {
 
   for (const item of streetItems) {
     if (item.kind !== 'backdrop' || item.id === hostId) continue;
-    const map = buildingFacade(item.facadeStyle ?? 0, Math.abs(item.position[0] * 7) % 97, item.size[0], item.size[1]);
+    const seed = Math.abs(item.position[0] * 7 + item.position[2] * 11) % 997;
     const mesh = new THREE.Mesh(
       new THREE.BoxGeometry(...item.size),
-      new THREE.MeshBasicMaterial({ map }),
+      createFacadeMaterial(
+        facadeTextures,
+        item.facadeStyle ?? 0,
+        seed,
+        true,
+        item.size[1],
+        item.facadeTone,
+      ),
     );
     mesh.position.set(...item.position);
     scene.add(mesh);
@@ -213,9 +224,14 @@ function buildProxy(hostId) {
 export default function WindowView({ holes, building, runtime, anchor }) {
   const gl = useThree((state) => state.gl);
   const lastBucket = useRef(null);
+  const facadeSources = useLoader(THREE.TextureLoader, FACADE_TEXTURE_URLS);
+  const facadeTextures = useMemo(
+    () => prepareFacadeTextures(facadeSources),
+    [...facadeSources],
+  );
 
   const rig = useMemo(() => {
-    const { scene, sky, disposables } = buildProxy(building.id);
+    const { scene, sky, disposables } = buildProxy(building.id, facadeTextures);
     const target = new THREE.WebGLCubeRenderTarget(CUBE_SIZE, {
       generateMipmaps: true,
       minFilter: THREE.LinearMipmapLinearFilter,
@@ -258,7 +274,7 @@ export default function WindowView({ holes, building, runtime, anchor }) {
     });
 
     return { scene, sky, camera, target, material, disposables };
-  }, [building, anchor]);
+  }, [building, anchor, facadeTextures]);
 
   useFrame(() => {
     const time = runtime.values.timeOfDay;

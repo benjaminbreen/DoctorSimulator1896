@@ -11,7 +11,12 @@ import labBlueprint from './cattell-lab.blueprint.json' with { type: 'json' };
 import labLighting from './cattell-lab.lighting.json' with { type: 'json' };
 import parkBlueprint from './central-park.blueprint.json' with { type: 'json' };
 import parkLighting from './central-park.lighting.json' with { type: 'json' };
-import { parkItems, POND_OUTLINE, WATER_LEVEL } from './centralPark.js';
+import {
+  parkItems,
+  PARK_MOTION_AFFORDANCES,
+  POND_OUTLINE,
+  WATER_LEVEL,
+} from './centralPark.js';
 import { groundCoverItems, buildGroundCover } from './groundCover.js';
 import { streetItems, INTERIOR_BUILDINGS } from './streetGrid.js';
 import { generateInterior, interiorEntryTransitions, interiorZoneId } from './interiors.js';
@@ -102,6 +107,7 @@ export const zones = {
     extraItems: [...parkItems, ...streetItems, ...groundCoverItems],
     extraTransitions: interiorEntryTransitions(INTERIOR_BUILDINGS),
     water: { outline: POND_OUTLINE, level: WATER_LEVEL },
+    motionAffordances: PARK_MOTION_AFFORDANCES,
     // Set dressing, resolved by scene/ZoneFeatures.jsx.
     features: [
       'backdrop',
@@ -114,6 +120,7 @@ export const zones = {
       'carousel',
       'checkers-tables',
       'horseless-carriage',
+      'horse-drawn-traffic',
       'pushcarts',
       'pigeon-flock',
       'bees',

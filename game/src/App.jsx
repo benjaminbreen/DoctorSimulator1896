@@ -23,12 +23,13 @@ import { renderOfflineDialogue } from './consultation/offlineRenderer.js';
 import { setConsultationMode, setGamePaused } from './input/uiMode.js';
 import { seatFramingForPatient, setConsultationSeat } from './consultation/seatFraming.js';
 import {
-  createTechnicalPatients,
+  createConsultationPatients,
   DEFAULT_TECHNICAL_PATIENT_SEEDS,
-} from './consultation/technicalPatients.js';
+} from './consultation/patients.js';
 import { nextSeed } from '../../shared/patients/index.js';
 import { createWorldClock } from './world/clock.js';
 import { notice } from './world/notices.js';
+import { attachSoundUnlock } from './audio/sound.js';
 
 const TuningPanel = lazy(() => import('./panel/TuningPanel.jsx'));
 const PropsPanel = lazy(() => import('./panel/PropsPanel.jsx'));
@@ -37,18 +38,22 @@ const ShotBar = lazy(() => import('./shots/ShotBar.jsx'));
 const ConsultationDevPanel = lazy(() => import('./consultation/ConsultationDevPanel.jsx'));
 const ConsultationView = lazy(() => import('./consultation/ConsultationView.jsx'));
 
+const pageParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
 // ?shot=1 strips the panel and HUD so the canvas fills the window: the shot
 // search screenshots whatever is on screen.
-const shotMode =
-  typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('shot');
+const shotMode = Boolean(pageParams?.has('shot'));
 // ?devconsult=1 keeps the raw engine fixture panel for testing.
-const devConsult =
-  typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('devconsult');
+const devConsult = Boolean(pageParams?.has('devconsult'));
+// A test or art-review URL can boot one zone directly. Normal play still opens
+// in Central Park.
+const bootZone = pageParams?.get('zone');
 
 export default function App() {
   const worldClock = useMemo(() => createWorldClock(), []);
   const runtime = useMemo(() => {
     const next = applyGameStart(createTuningRuntime(settingsSchema));
+    const zoneDefinition = next.definitions.find((item) => item.id === 'zone');
+    if (bootZone && zoneDefinition?.options?.includes(bootZone)) next.set('zone', bootZone);
     const time = worldClock.getSnapshot();
     next.values.timeOfDay = time.hours;
     next.values.dayOfYear = time.dayOfYear;
@@ -57,15 +62,15 @@ export default function App() {
   const keyboard = useMemo(() => createKeyboard(), []);
   const look = useMemo(() => createLook(runtime), [runtime]);
   const [patientSeeds, setPatientSeeds] = useState(() => [...DEFAULT_TECHNICAL_PATIENT_SEEDS]);
-  const technicalPatients = useMemo(() => createTechnicalPatients(patientSeeds), [patientSeeds]);
-  const actorRuntime = useMemo(() => createActorRuntime([technicalPatients[0].actor]), []);
+  const consultationPatients = useMemo(() => createConsultationPatients(patientSeeds), [patientSeeds]);
+  const actorRuntime = useMemo(() => createActorRuntime([consultationPatients[0].actor]), []);
   const consultationRuntime = useMemo(
-    () => createConsultationRuntime(technicalPatients, renderOfflineDialogue, {
+    () => createConsultationRuntime(consultationPatients, renderOfflineDialogue, {
       onAdvanceMinutes: (minutes) => worldClock.advanceMinutes(minutes, {
         reason: 'consultation',
       }),
     }),
-    [technicalPatients, worldClock],
+    [consultationPatients, worldClock],
   );
   const [actors, setActors] = useState(() => actorRuntime.get());
   const [zone, setZone] = useState(runtime.values.zone);
@@ -90,7 +95,7 @@ export default function App() {
   const [paused, setPaused] = useState(false);
   useEffect(() => subscribe((state) => setUsingInstrument(isFocusedInteraction(state.using))), []);
   useEffect(() => actorRuntime.subscribe(setActors), [actorRuntime]);
-  useEffect(() => actorRuntime.setSingle(technicalPatients[0].actor), [actorRuntime, technicalPatients]);
+  useEffect(() => actorRuntime.setSingle(consultationPatients[0].actor), [actorRuntime, consultationPatients]);
   useEffect(() => runtime.onChange((id, value) => {
     if (id === 'zone') setZone(value);
     if (id === 'timeOfDay') worldClock.setTimeOfDay(value);
@@ -108,11 +113,11 @@ export default function App() {
   useEffect(() => consultationRuntime.subscribe((state) => {
     setConsultActive(Boolean(state));
     if (!state) return;
-    const patient = technicalPatients.find((candidate) => candidate.id === state.patientId);
+    const patient = consultationPatients.find((candidate) => candidate.id === state.patientId);
     if (!patient) return;
     if (actorRuntime.get()[0]?.id !== patient.actor.id) actorRuntime.setSingle(patient.actor);
     actorRuntime.cue(patient.actor.id, actorCueForConsultation(state));
-  }), [actorRuntime, consultationRuntime, technicalPatients]);
+  }), [actorRuntime, consultationRuntime, consultationPatients]);
 
   // Receiving a patient seats the doctor: the camera eases to the chair and
   // gameplay keys rest until the consultation lets go (or the zone changes).
@@ -124,13 +129,13 @@ export default function App() {
       return undefined;
     }
     const state = consultationRuntime.get();
-    const patient = technicalPatients.find((candidate) => candidate.id === state?.patientId);
+    const patient = consultationPatients.find((candidate) => candidate.id === state?.patientId);
     setConsultationSeat(seatFramingForPatient(patient?.actor.recipe.placement?.position));
     return () => {
       setConsultationMode(false);
       setConsultationSeat(null);
     };
-  }, [consultActive, zone, consultationRuntime, technicalPatients]);
+  }, [consultActive, zone, consultationRuntime, consultationPatients]);
 
   useEffect(() => {
     installDebugHandle(runtime);
@@ -138,6 +143,7 @@ export default function App() {
     gameDebug.look = look.look;
     gameDebug.setLook = look.set;
     keyboard.attach();
+    const detachSound = attachSoundUnlock();
     gameDebug.showActor = (id) => {
       const actor = phase1Cast.find((candidate) => candidate.id === id);
       if (actor) actorRuntime.setSingle(actor);
@@ -183,6 +189,7 @@ export default function App() {
     return () => {
       window.removeEventListener('keydown', onKey);
       keyboard.detach();
+      detachSound();
       setGamePaused(false);
       offRebuild();
     };
@@ -262,7 +269,7 @@ export default function App() {
       )}
       {!shotMode && npcOpen && (
         <Suspense fallback={null}>
-          <NpcPanel patients={technicalPatients} onClose={() => setNpcOpen(false)} />
+          <NpcPanel patients={consultationPatients} onClose={() => setNpcOpen(false)} />
         </Suspense>
       )}
       </div>

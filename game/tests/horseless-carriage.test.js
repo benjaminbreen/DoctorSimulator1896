@@ -5,9 +5,11 @@ import {
   ROUTES,
   applyCarriageProjectileHit,
   createCarriageState,
+  HORSELESS_TRAFFIC_ROSTER,
   sampleRoute,
   stepCarriage,
 } from '../src/world/horselessCarriage.js';
+import { shortestArc } from '../src/movement/mathUtils.js';
 
 const DT = 1 / 60;
 
@@ -26,7 +28,7 @@ function loopPoint(dist, lat) {
 }
 
 test('routes are closed and deterministic', () => {
-  assert.equal(ROUTES.length, 3);
+  assert.equal(ROUTES.length, 5);
   for (const route of ROUTES) {
     assert.ok(route.total > 150, `route length ${route.total}`);
     assert.deepEqual(sampleRoute(route, 37.5), sampleRoute(route, 37.5 + route.total));
@@ -34,6 +36,33 @@ test('routes are closed and deterministic', () => {
   const a = run(createCarriageState(0, 10), 5);
   const b = run(createCarriageState(0, 10), 5);
   assert.deepEqual(a, b);
+});
+
+test('the opening fleet is distributed across district and park-front routes', () => {
+  assert.equal(HORSELESS_TRAFFIC_ROSTER.length, 3);
+  assert.equal(new Set(HORSELESS_TRAFFIC_ROSTER.map((entry) => entry.route)).size, 3);
+  assert.ok(HORSELESS_TRAFFIC_ROSTER.some((entry) => entry.route === 4));
+  const starts = HORSELESS_TRAFFIC_ROSTER.map((entry) => createCarriageState(
+    entry.route,
+    entry.start,
+    entry.route === 4 ? 0.18 : 1.55,
+  ));
+  assert.ok(starts.some((state) => state.x < 96 && state.z > 86 && state.z < 96));
+});
+
+test('route tangents remain continuous through every corner', () => {
+  for (const route of ROUTES) {
+    let previous = sampleRoute(route, 0);
+    for (let s = 0.1; s <= route.total; s += 0.1) {
+      const current = sampleRoute(route, s);
+      const turn = Math.abs(shortestArc(
+        Math.atan2(previous[2], previous[3]),
+        Math.atan2(current[2], current[3]),
+      ));
+      assert.ok(turn < 0.11, `route tangent jumped ${turn} rad at ${s}`);
+      previous = current;
+    }
+  }
 });
 
 test('reaches cruise on an open road and holds its lane', () => {
@@ -54,12 +83,60 @@ test('swerves around a figure standing in its lane', () => {
   assert.ok(minDist > 1.0, `kept clear, min distance ${minDist}`);
 });
 
+test('commits to a side and passes a multi-circle fallen cart without crawling', () => {
+  const cart = [-0.8, 0, 0.8].map((offset) => ({
+    ...loopPoint(35 + offset, CARRIAGE_TUNING.lane),
+    r: 0.62,
+  }));
+  let state = createCarriageState(0, 5);
+  let sawCommittedPass = false;
+  let slowestCommittedSpeed = Infinity;
+  for (let i = 0; i < 24 * 60; i += 1) {
+    state = stepCarriage(state, DT, cart);
+    if (state.avoidTarget !== null) {
+      sawCommittedPass = true;
+      slowestCommittedSpeed = Math.min(slowestCommittedSpeed, state.speed);
+    }
+  }
+  assert.equal(sawCommittedPass, true);
+  assert.ok(state.s > 48, `cleared the fallen cart, s=${state.s}`);
+  assert.ok(slowestCommittedSpeed > 0.7, `kept a deliberate pass speed, min=${slowestCommittedSpeed}`);
+  assert.equal(state.avoidTarget, null, 'released the passing side after clearing the cart');
+});
+
+test('a long rig holds its passing line until its rear has cleared', () => {
+  const obstacle = { ...loopPoint(36, CARRIAGE_TUNING.lane), r: 0.55 };
+  const state = {
+    ...createCarriageState(0, 40, -1.5),
+    speed: 2,
+    avoidTarget: -1.5,
+  };
+  const next = stepCarriage(state, DT, [obstacle], {
+    lane: CARRIAGE_TUNING.lane,
+    rearClearance: 6,
+  });
+  assert.equal(next.avoidTarget, -1.5, 'coach rear is still beside the obstruction');
+  assert.ok(next.lat < -1.4, `did not cut back early, lat=${next.lat}`);
+});
+
 test('stops short of a line it cannot swerve around', () => {
   const wall = [-2.4, -1.2, 0, 1.2, 2.4].map((lat) => ({ ...loopPoint(30, lat), r: 0.5 }));
   const state = run(createCarriageState(0, 5), 25, wall);
   assert.ok(state.speed < 0.05, `stopped, speed ${state.speed}`);
   assert.ok(state.s < 30, `held short of the wall, s=${state.s}`);
   assert.ok(30 - state.s > CARRIAGE_TUNING.minGap - 1, `gap ${30 - state.s}`);
+});
+
+test('soft street debris never turns into a road closure', () => {
+  const debris = [-2.4, -1.2, 0, 1.2, 2.4].map((lat) => ({
+    ...loopPoint(30, lat),
+    r: 0.55,
+    trafficPolicy: 'soft',
+  }));
+  const state = run(createCarriageState(0, 5), 16, debris);
+  assert.ok(state.s > 42, `drove through the soft obstruction, s=${state.s}`);
+  assert.ok(state.speed > 1, `kept moving through debris, speed=${state.speed}`);
+  assert.equal(state.blocked, false);
 });
 
 test('holds still while someone stands against the hull', () => {

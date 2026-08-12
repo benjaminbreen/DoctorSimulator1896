@@ -1,12 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  THROWABLE_PICKUP_SECONDS,
+  THROWABLE_PICKUP_TRANSFER,
   THROWABLE_RELEASE_DELAY,
+  advanceThrowablePickup,
   advanceThrowableThrow,
   beginThrowableCharge,
   chargeThrowable,
   findReachableThrowable,
   getThrowablePlay,
+  interruptThrowablePlay,
   pickUpThrowable,
   queueThrowableThrow,
   reportThrowableSource,
@@ -40,8 +44,16 @@ test('pickup, hold, release, and delayed launch preserve object identity', () =>
     return true;
   });
   assert.equal(pickUpThrowable('cart:apple:2'), true);
-  assert.equal(taken, 1);
+  assert.equal(getThrowablePlay().phase, 'picking-up');
+  assert.equal(taken, 0);
   assert.equal(getThrowablePlay().heldType, 'apple');
+  advanceThrowablePickup(THROWABLE_PICKUP_TRANSFER - 0.01);
+  assert.equal(taken, 0);
+  advanceThrowablePickup(0.02);
+  assert.equal(taken, 1);
+  assert.equal(getThrowablePlay().pickupTaken, true);
+  advanceThrowablePickup(THROWABLE_PICKUP_SECONDS);
+  assert.equal(getThrowablePlay().phase, 'held');
 
   assert.equal(beginThrowableCharge(), true);
   chargeThrowable(0.575);
@@ -59,6 +71,32 @@ test('pickup, hold, release, and delayed launch preserve object identity', () =>
   assert.equal(launch.sourceId, 'cart:apple:2');
   assert.equal(launch.type, 'apple');
   assert.equal(getThrowablePlay().phase, 'empty');
+});
+
+test('pickup safely returns to empty if its source disappears at hand contact', () => {
+  reportThrowableSource('stale', 'cabbage', [0, 0.2, -0.5], () => false);
+  assert.equal(pickUpThrowable('stale'), true);
+  assert.equal(advanceThrowablePickup(THROWABLE_PICKUP_TRANSFER), false);
+  assert.equal(getThrowablePlay().phase, 'empty');
+  assert.equal(getThrowablePlay().heldType, null);
+});
+
+test('a knockdown cancels gestures without losing an object', () => {
+  reportThrowableSource('apple', 'apple', [0, 0.5, -0.5], () => true);
+  pickUpThrowable('apple');
+  assert.equal(interruptThrowablePlay(), true);
+  assert.equal(getThrowablePlay().phase, 'empty', 'an untaken object stays in the scene');
+
+  pickUpThrowable('apple');
+  advanceThrowablePickup(THROWABLE_PICKUP_TRANSFER);
+  assert.equal(interruptThrowablePlay(), true);
+  assert.equal(getThrowablePlay().phase, 'held', 'an object already in hand stays held');
+
+  beginThrowableCharge();
+  chargeThrowable(0.4);
+  assert.equal(interruptThrowablePlay(), true);
+  assert.equal(getThrowablePlay().phase, 'held');
+  assert.equal(getThrowablePlay().charge, 0);
 });
 
 test('each type owns its throw speed while sharing the same camera aim', () => {
@@ -87,5 +125,9 @@ test('throwable definitions contain the data needed by UI and physics', () => {
     assert.ok(definition.throwMax > definition.throwMin);
     assert.ok(definition.impactColor.startsWith('#'));
     assert.ok(definition.aimColor.startsWith('#'));
+    assert.ok(['right-hand', 'two-hand'].includes(definition.grip.mode));
   }
+  assert.equal(THROWABLE_TYPES.apple.grip.mode, 'right-hand');
+  assert.equal(THROWABLE_TYPES.cabbage.grip.mode, 'two-hand');
+  assert.ok(THROWABLE_TYPES.cabbage.grip.throwClearance > 0);
 });

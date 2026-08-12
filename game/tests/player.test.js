@@ -11,6 +11,8 @@ import {
   fallEffect,
   pushcartImpactEffect,
   carriageImpactEffect,
+  beginPlayerReaction,
+  advancePlayerReaction,
   tickPlayer,
   condition,
   isDown,
@@ -29,6 +31,7 @@ import {
   waterWalkingStep,
   WATER_WALK_INTERVAL_SECONDS,
 } from '../src/world/player.js';
+import { REACTION_MOTION, REACTION_PHASE } from '../src/world/actorReactions.js';
 
 test.beforeEach(() => resetPlayer());
 
@@ -209,6 +212,25 @@ test('a hard shock puts the player down for a while', () => {
   tickPlayer(4);
   assert.equal(isDown(), true);
   tickPlayer(3);
+  assert.equal(isDown(), false);
+});
+
+test('the player knockdown follows the shared fall, prone, and rise phases', () => {
+  beginPlayerReaction({ response: 'knockdown', cause: 'horseless-carriage' });
+  assert.equal(getPlayer().reaction.phase, REACTION_PHASE.FALLING);
+  assert.equal(isDown(), true);
+
+  tickPlayer(REACTION_MOTION.fallShoulder.duration);
+  advancePlayerReaction();
+  assert.equal(getPlayer().reaction.phase, REACTION_PHASE.PRONE);
+
+  tickPlayer(getPlayer().reaction.proneUntil - getPlayer().clock);
+  advancePlayerReaction({ canStand: true });
+  assert.equal(getPlayer().reaction.phase, REACTION_PHASE.RISING);
+
+  tickPlayer(REACTION_MOTION.rise.duration);
+  advancePlayerReaction();
+  assert.equal(getPlayer().reaction.phase, REACTION_PHASE.NORMAL);
   assert.equal(isDown(), false);
 });
 

@@ -197,6 +197,11 @@ export default function CameraRig({ room, runtime, look, keyboard, heightAt = nu
 
     look.look.pitch = clampPitch(look.look.pitch, values);
     const playerPos = gameDebug.player.position;
+    const postureHeight = clamp(
+      Number(gameDebug.player.cameraHeight) || ANCHOR_HEIGHT,
+      0.4,
+      ANCHOR_HEIGHT,
+    );
     gameDebug.player.visible = mode !== 'first';
 
     if (mode === 'first') {
@@ -204,10 +209,11 @@ export default function CameraRig({ room, runtime, look, keyboard, heightAt = nu
       const pitch = -look.look.pitch;
       const yaw = look.look.yaw;
       const cos = Math.cos(pitch);
-      camera.position.set(playerPos[0], playerPos[1] + EYE_HEIGHT, playerPos[2]);
+      const eyeHeight = postureHeight + (EYE_HEIGHT - ANCHOR_HEIGHT);
+      camera.position.set(playerPos[0], playerPos[1] + eyeHeight, playerPos[2]);
       camera.lookAt(
         playerPos[0] - Math.sin(yaw) * cos,
-        playerPos[1] + EYE_HEIGHT + Math.sin(pitch),
+        playerPos[1] + eyeHeight + Math.sin(pitch),
         playerPos[2] - Math.cos(yaw) * cos,
       );
       gameDebug.stats.cameraYaw = yaw;
@@ -304,9 +310,14 @@ export default function CameraRig({ room, runtime, look, keyboard, heightAt = nu
     back = responsiveBoom.back;
 
     // Zoom scales the whole boom, so the framing angle holds as it dollies.
-    const anchor = [lookPoint[0], playerPos[1] + ANCHOR_HEIGHT, lookPoint[2]];
+    const anchor = [lookPoint[0], playerPos[1] + postureHeight, lookPoint[2]];
+    const cameraPlayerPos = [
+      playerPos[0],
+      playerPos[1] + postureHeight - ANCHOR_HEIGHT,
+      playerPos[2],
+    ];
     const eyeTarget = computeEyeTarget({
-      playerPos,
+      playerPos: cameraPlayerPos,
       yaw,
       pitch: look.look.pitch,
       side: side * zoom,

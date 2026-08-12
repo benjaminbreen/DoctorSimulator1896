@@ -1,9 +1,12 @@
-# Consultation MVP testing
+# Consultation testing
 
-The consultation follows one deterministic sequence:
+This guide describes the current implementation. The final target is in
+[patient-system.md](patient-system.md).
+
+The current consultation follows this sequence:
 
 1. The patient gives an authored opening complaint. No model call is needed.
-2. Inquiry begins. The player may alternate between patient mode and
+2. Inquiry begins. The player may alternate between consultation and
    examination mode.
 3. Private interpretations record the physician's working ideas and cost no
    time.
@@ -15,48 +18,62 @@ The consultation follows one deterministic sequence:
 6. The player selects a diagnosis and treatment.
 7. The player writes a case note. The test fixtures require at least twelve
    words and check whether important observed facts appear in the note.
-8. The result shows two scores: period reputation and the patient record.
-   They may disagree.
+8. Authored cases end with an immediate patient reaction and a separate
+   one-month result. Technical fixtures retain simple development scores.
 
 ## Current test content
 
-`game/src/consultation/technicalPatients.js` contains three technical fixtures.
-They are deliberately generic and are marked `technical-fixture`. They test
-the engine and character changes without treating draft historical material as
-approved content. They must be replaced by Ben-verified patient records before
-the three encounters count as finished consultation content.
+`game/src/consultation/authoredPatients/noraByrne.js` contains the first complete
+authored case. `technicalPatients.js` still creates seeded fixtures used to test
+procedural identity, appearance, and basic consultation behavior.
+
+Nora is a researched fictional composite. Her sources and invented connective
+material are recorded in [patients/nora-byrne.md](patients/nora-byrne.md). The
+technical fixtures' diagnosis and treatment mappings remain placeholders.
+Animation parameters are not clinical measurements unless the patient record
+defines them as such.
 
 ## Automated checks
 
 Run:
 
 ```sh
-node --test game/tests/consultation.test.js
+npm --prefix game test
 ```
 
 The tests cover:
 
 - all three patient records satisfying the contract;
+- seeded patient and appearance generation being reproducible;
+- the generated draft presentation remaining connected to the playable case;
 - interpretation taking no time;
 - speech and examination advancing time;
 - questions unlocking only eligible facts;
 - rejection of facts invented or released early by a dialogue model;
 - deterministic examinations;
+- the case notebook beginning with identity and growing from player actions;
 - a complete opening-to-ledgers playthrough;
 - actor cues following speech, examination, results, and termination;
-- severe misconduct ending the consultation.
+- severe misconduct ending the consultation;
+- Nora satisfying the authored-patient contract;
+- state-based authored prompt selection;
+- custom inquiry finding unlisted but eligible evidence;
+- locked evidence resisting forced prompt ids;
+- custom thought classification without time or patient reaction;
+- authored examinations and evidence-sensitive scoring;
+- immediate satisfaction diverging from one-month health.
 
 ## In-game playtest
 
-The temporary consultation panel is mounted only in the consulting office. It
-is separate from the main HUD and does not determine the production Phase 3
-layout. Enter the room, choose one of the three technical patients, and select
-**Begin inquiry**.
+The production consultation view is mounted in the consulting office. For a
+direct test URL use `?zone=consulting-office`. The raw engine panel is available
+with `?zone=consulting-office&devconsult=1`.
 
-For each technical patient, test these paths:
+For Nora, test these paths:
 
-1. Ask a relevant question, perform both examinations, choose a diagnosis and
-   treatment, write a complete note, and reach both ledgers.
+1. Complete a careful history and examination, choose support and continued
+   occupation, write a complete note, and reach the immediate and one-month
+   results.
 2. Ask an unrelated question and confirm that no hidden fact is disclosed.
 3. Interpret several cards and confirm that the clock does not advance.
    Then ask a question and confirm that both the numeric time and the hands on
@@ -66,8 +83,20 @@ For each technical patient, test these paths:
    state.
 5. Use insulting text and confirm that the patient ends the consultation and
    begins to stand.
-6. Watch the character during speech and examination. The body and facial cue
+6. Choose spirit control and continued communications. Confirm that immediate
+   acceptance and later health move in different directions.
+7. Watch the character during speech and examination. The body and facial cue
    should change without breaking the selected identity or outfit.
 
-During this pass, judge the mechanics and pacing. Do not judge the technical
-labels as final writing or historical content.
+The two technical patients should still complete their simpler flows without
+errors.
+
+## Final-system gaps
+
+The current tests do not yet cover:
+
+- modular state-based choice selection for procedural patients;
+- GPT-5.6 Luna contracts and server failure handling;
+- practice-wide reputation and financial outcomes;
+- model-rendered William James and modern debrief prose;
+- full visual regression automation.

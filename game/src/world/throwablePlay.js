@@ -5,6 +5,11 @@ import { applyPlayerEvent, throwingEffect } from './player.js';
 export const THROWABLE_REACH = 1.8;
 export const THROWABLE_CHARGE_SECONDS = 1.15;
 export const THROWABLE_RELEASE_DELAY = 0.66;
+// The Mixamo pickup reaches the ground at about 1.1s and settles into its
+// carrying pose at 2.73s. It plays at 1.6x in PlayerAvatar, so these gameplay
+// timings put the transfer on the actual hand-contact frame.
+export const THROWABLE_PICKUP_SECONDS = 1.71;
+export const THROWABLE_PICKUP_TRANSFER = 0.69;
 
 const sources = new Map();
 const listeners = new Set();
@@ -13,6 +18,10 @@ let state = {
   phase: 'empty',
   heldId: null,
   heldType: null,
+  pickupElapsed: 0,
+  pickupTaken: false,
+  pickupPosition: null,
+  pickupSerial: 0,
   charge: 0,
   windup: 0,
   pendingVelocity: null,
@@ -80,9 +89,64 @@ export function findReachableThrowable(position, yaw, reach = THROWABLE_REACH) {
 export function pickUpThrowable(id) {
   if (state.phase !== 'empty') return false;
   const source = sources.get(id);
-  if (!source || !throwableDefinition(source.type) || source.take?.() === false) return false;
-  sources.delete(id);
-  publish({ phase: 'held', heldId: id, heldType: source.type, charge: 0 });
+  if (!source || !throwableDefinition(source.type)) return false;
+  publish({
+    phase: 'picking-up',
+    heldId: id,
+    heldType: source.type,
+    pickupElapsed: 0,
+    pickupTaken: false,
+    pickupPosition: [...source.position],
+    pickupSerial: state.pickupSerial + 1,
+    charge: 0,
+  });
+  return true;
+}
+
+function abandonPickup() {
+  publish({
+    phase: 'empty',
+    heldId: null,
+    heldType: null,
+    pickupElapsed: 0,
+    pickupTaken: false,
+    pickupPosition: null,
+  });
+}
+
+// Keep the source in the scene until the animated fingers reach it. The
+// player controller calls this while pickup owns and freezes the body.
+export function advanceThrowablePickup(dt) {
+  if (state.phase !== 'picking-up') return false;
+  const pickupElapsed = Math.min(
+    THROWABLE_PICKUP_SECONDS,
+    state.pickupElapsed + Math.max(0, dt),
+  );
+  let pickupTaken = state.pickupTaken;
+  if (!pickupTaken && pickupElapsed >= THROWABLE_PICKUP_TRANSFER) {
+    const source = sources.get(state.heldId);
+    if (!source || source.take?.() === false) {
+      abandonPickup();
+      return false;
+    }
+    sources.delete(state.heldId);
+    pickupTaken = true;
+    publish({ pickupElapsed, pickupTaken: true });
+  } else {
+    state = { ...state, pickupElapsed };
+  }
+  if (pickupElapsed >= THROWABLE_PICKUP_SECONDS) {
+    if (!pickupTaken) {
+      abandonPickup();
+      return false;
+    }
+    publish({
+      phase: 'held',
+      pickupElapsed: 0,
+      pickupTaken: false,
+      pickupPosition: null,
+    });
+  }
   return true;
 }
 
@@ -90,6 +154,31 @@ export function beginThrowableCharge() {
   if (state.phase !== 'held') return false;
   publish({ phase: 'charging', charge: 0 });
   return true;
+}
+
+// A knockdown cancels a pending gesture without silently deleting an object.
+// Untaken pickups return to the source; an object already in hand stays held.
+export function interruptThrowablePlay() {
+  if (state.phase === 'picking-up') {
+    if (!state.pickupTaken) abandonPickup();
+    else publish({
+      phase: 'held',
+      pickupElapsed: 0,
+      pickupTaken: false,
+      pickupPosition: null,
+    });
+    return true;
+  }
+  if (state.phase === 'charging' || state.phase === 'windup') {
+    publish({
+      phase: 'held',
+      charge: 0,
+      windup: 0,
+      pendingVelocity: null,
+    });
+    return true;
+  }
+  return false;
 }
 
 export function chargeThrowable(dt) {
@@ -161,6 +250,9 @@ export function advanceThrowableThrow(dt, origin) {
     phase: 'empty',
     heldId: null,
     heldType: null,
+    pickupElapsed: 0,
+    pickupTaken: false,
+    pickupPosition: null,
     charge: 0,
     windup: 0,
     pendingVelocity: null,
@@ -182,6 +274,10 @@ export function resetThrowablePlayForTests() {
     phase: 'empty',
     heldId: null,
     heldType: null,
+    pickupElapsed: 0,
+    pickupTaken: false,
+    pickupPosition: null,
+    pickupSerial: 0,
     charge: 0,
     windup: 0,
     pendingVelocity: null,

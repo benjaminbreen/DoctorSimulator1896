@@ -3,6 +3,7 @@ export const CHARACTER_RECIPE_VERSION = 1;
 export const CHARACTER_LODS = Object.freeze(['consultation', 'nearby', 'crowd']);
 export const CHARACTER_BODY_CUES = Object.freeze([
   'clinic-idle', 'sitting-talking', 'sitting-distressed',
+  'sitting-disapproval', 'sitting-disbelief', 'sitting-self-soothing',
   'sit-down', 'stand-up', 'standing-idle', 'walk',
 ]);
 export const CHARACTER_EXPRESSIONS = Object.freeze([
@@ -14,6 +15,9 @@ export const BODY_CUE_CLIPS = Object.freeze({
   'clinic-idle': 'ClinicIdle',
   'sitting-talking': 'SittingTalking',
   'sitting-distressed': 'SittingDejected',
+  'sitting-disapproval': 'SittingDejected',
+  'sitting-disbelief': 'SittingDejected',
+  'sitting-self-soothing': 'ClinicIdle',
   'sit-down': 'SitDown',
   'stand-up': 'StandUp',
   'standing-idle': 'StandingIdle',
@@ -74,9 +78,10 @@ export function validateCharacterRecipe(recipe, manifest = null) {
     if (!['women', 'men'].includes(recipe.cohort)) errors.push(`unsupported Renderer C cohort: ${recipe.cohort}`);
     if (!Number.isInteger(recipe.anchor?.index) || recipe.anchor.index < 0) errors.push('anchor.index must be a non-negative integer');
     if (anchors.length && recipe.anchor.index >= anchors.length) errors.push(`anchor.index ${recipe.anchor.index} exceeds ${anchors.length - 1}`);
-    const clip = BODY_CUE_CLIPS[recipe.animation?.body];
-    if (cohort?.motionClips?.length && !cohort.motionClips.includes(clip)) errors.push(`cohort is missing clip ${clip}`);
+    const clip = recipe.asset?.clipMap?.[recipe.animation?.body]
+      || BODY_CUE_CLIPS[recipe.animation?.body];
+    const availableClips = recipe.asset?.motionClips || cohort?.motionClips || [];
+    if (availableClips.length && !availableClips.includes(clip)) errors.push(`character asset is missing clip ${clip}`);
   }
   return errors;
 }
-

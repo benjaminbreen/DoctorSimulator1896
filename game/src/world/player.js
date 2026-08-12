@@ -12,6 +12,13 @@
 // sake: this is a game about experiments on people, and being able to say
 // "three shocks and a burn, all from the induction coil" is the point.
 
+import {
+  beginReaction,
+  createReactionState,
+  reactionLocksMovement,
+  stepReaction,
+} from './actorReactions.js';
+
 const listeners = new Set();
 
 export const MAX = 100;
@@ -23,6 +30,7 @@ export const THROW_NEURASTHENIA = 2;
 export const NPC_STARTLE_NEURASTHENIA = 3;
 export const WATER_WALK_INTERVAL_SECONDS = 2;
 export const WATER_WALK_HEALTH_LOSS = 1;
+export const PLAYER_AGE = 28;
 
 const clamp = (value) => Math.min(MAX, Math.max(0, value));
 
@@ -38,6 +46,7 @@ function fresh() {
     log: [],
     // Set while the player is unable to act — knocked down, and coming round.
     downUntil: 0,
+    reaction: createReactionState(),
     clock: 0,
     seatCooldowns: {},
   };
@@ -60,6 +69,27 @@ export function getPlayer() {
 export function resetPlayer() {
   state = fresh();
   notify();
+}
+
+export function beginPlayerReaction(event) {
+  const reaction = beginReaction(
+    state.reaction,
+    event,
+    state.clock,
+    { age: PLAYER_AGE },
+  );
+  if (reaction === state.reaction) return state.reaction;
+  state = { ...state, reaction };
+  notify();
+  return reaction;
+}
+
+export function advancePlayerReaction(options) {
+  const reaction = stepReaction(state.reaction, state.clock, options);
+  if (reaction === state.reaction) return reaction;
+  state = { ...state, reaction };
+  notify();
+  return reaction;
 }
 
 /**
@@ -344,5 +374,5 @@ export function tickPlayer(seconds) {
 }
 
 export function isDown() {
-  return state.clock < state.downUntil;
+  return state.clock < state.downUntil || reactionLocksMovement(state.reaction);
 }

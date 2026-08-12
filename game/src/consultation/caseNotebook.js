@@ -10,25 +10,32 @@ export function buildCaseNotebook(patient, state) {
   const facts = factMapFor(patient);
   const observations = [];
   const clues = [];
+  const recordedPatientNotes = new Set();
+  let latestEntryId = null;
 
   state.history.forEach((event, eventIndex) => {
-    if (event.kind === 'interpretation') {
-      observations.push({
-        id: `interpretation-${event.id}-${eventIndex}`,
-        kind: 'Private impression',
-        text: event.text,
-      });
-    }
-
     if (event.kind === 'examination') {
-      observations.push({
+      const entry = {
         id: `examination-${event.id}-${eventIndex}`,
         kind: event.label,
         text: event.reply,
-      });
+      };
+      observations.push(entry);
+      latestEntryId = entry.id;
     }
 
     if (event.kind === 'speech') {
+      const noteKey = event.noteKey || event.noteSummary?.trim().toLowerCase();
+      if (event.noteSummary && noteKey && !recordedPatientNotes.has(noteKey)) {
+        const entry = {
+          id: `patient-note-${eventIndex}`,
+          kind: 'Patient account',
+          text: event.noteSummary,
+        };
+        observations.push(entry);
+        recordedPatientNotes.add(noteKey);
+        latestEntryId = entry.id;
+      }
       (event.disclosedNow || []).forEach((factId) => {
         const fact = facts.get(factId);
         if (!fact) return;
@@ -50,6 +57,7 @@ export function buildCaseNotebook(patient, state) {
     },
     observations,
     clues,
+    latestEntryId,
     diagnosesAvailable,
     diagnoses: diagnosesAvailable
       ? patient.diagnoses.map((diagnosis) => ({

@@ -15,6 +15,7 @@ const KNOWN_FEATURES = [
   'carousel',
   'checkers-tables',
   'horseless-carriage',
+  'horse-drawn-traffic',
   'pushcarts',
   'pigeon-flock',
   'bees',

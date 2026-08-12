@@ -19,6 +19,7 @@ export default function SootStains({ room }) {
     const disposables = [];
 
     for (const marker of room.lightMarkers) {
+      if (marker.electric) continue;
       const gap = ceilingY - marker.position[1];
       // Fixtures at or above the ceiling line, and anything hung more than a
       // storey below it, are not making a mark worth drawing.

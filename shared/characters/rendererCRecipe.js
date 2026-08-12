@@ -94,6 +94,7 @@ export function resolveRendererCRecipe({
   appearanceSeed,
   anchorCount = 8,
   animation,
+  asset,
   lod = 'consultation',
   placement,
   overrides = {},
@@ -130,7 +131,7 @@ export function resolveRendererCRecipe({
     restingFace,
     animation: animation || { body: 'clinic-idle', expression: 'neutral', gaze: 'doctor' },
     lod,
-    asset: cohortManifest?.path ? { path: cohortManifest.path } : null,
+    asset: asset || (cohortManifest?.path ? { path: cohortManifest.path } : null),
     placement,
   });
 }

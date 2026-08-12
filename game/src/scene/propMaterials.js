@@ -414,6 +414,69 @@ function awningMaps(colour) {
   return set;
 }
 
+// Coach lacquer is subtly mottled and worn along high spots. At carriage
+// scale this reads as painted wood instead of a perfectly smooth plastic box.
+const coachPaintSets = new Map();
+
+function coachPaintMaps(colour) {
+  if (coachPaintSets.has(colour)) return coachPaintSets.get(colour);
+  const size = 256;
+  const col = canvas(size);
+  const cc = col.getContext('2d');
+  cc.fillStyle = colour;
+  cc.fillRect(0, 0, size, size);
+  blotches(cc, size, 20, 'rgba(255,236,202,0.055)', [10, 42], 101);
+  blotches(cc, size, 18, 'rgba(14,11,9,0.11)', [8, 34], 131);
+  for (let scratch = 0; scratch < 38; scratch += 1) {
+    const y = rand(211 + scratch * 4.1) * size;
+    const x = rand(241 + scratch * 6.3) * size;
+    cc.fillStyle = `rgba(170,130,82,${0.025 + rand(scratch) * 0.04})`;
+    cc.fillRect(x, y, 8 + rand(scratch * 3.7) * 48, 1);
+  }
+  speckle(cc, size, 0.018);
+  const rough = canvas(size);
+  const rc = rough.getContext('2d');
+  rc.fillStyle = '#696969';
+  rc.fillRect(0, 0, size, size);
+  blotches(rc, size, 22, 'rgba(165,165,165,0.32)', [8, 38], 131);
+  speckle(rc, size, 0.045);
+  const set = { map: canvasTexture(col, true), rough: canvasTexture(rough, false) };
+  coachPaintSets.set(colour, set);
+  return set;
+}
+
+function wovenMaps(colour, leatherSurface = false) {
+  const size = 256;
+  const col = canvas(size);
+  const cc = col.getContext('2d');
+  cc.fillStyle = colour;
+  cc.fillRect(0, 0, size, size);
+  if (leatherSurface) {
+    for (let mark = 0; mark < 520; mark += 1) {
+      const x = rand(mark * 2.7) * size;
+      const y = rand(mark * 6.1) * size;
+      cc.fillStyle = `rgba(20,12,9,${0.025 + rand(mark * 1.3) * 0.05})`;
+      cc.fillRect(x, y, 1.4, 1.4);
+    }
+  } else {
+    cc.strokeStyle = 'rgba(230,220,190,0.055)';
+    for (let line = 0; line < size; line += 6) {
+      cc.beginPath(); cc.moveTo(line, 0); cc.lineTo(line, size); cc.stroke();
+      cc.beginPath(); cc.moveTo(0, line); cc.lineTo(size, line); cc.stroke();
+    }
+  }
+  blotches(cc, size, 14, 'rgba(12,10,8,0.12)', [10, 42], leatherSurface ? 173 : 191);
+  const rough = canvas(size);
+  const rc = rough.getContext('2d');
+  rc.fillStyle = leatherSurface ? '#868686' : '#d0d0d0';
+  rc.fillRect(0, 0, size, size);
+  speckle(rc, size, leatherSurface ? 0.07 : 0.1);
+  return { map: canvasTexture(col, true), rough: canvasTexture(rough, false) };
+}
+
+const coachLeatherSets = new Map();
+const coachCanvasSets = new Map();
+
 function textureSet(name) {
   if (!MAKERS[name]) return null;
   if (!cache.has(name)) {
@@ -911,6 +974,27 @@ export function materialFor(item) {
     return {
       color: '#ffffff', map: set.map, roughnessMap: set.rough,
       roughness: 1, metalness: 0, envMapIntensity: 0.35,
+      side: THREE.DoubleSide,
+    };
+  }
+  if (item.finish === 'coachPaint') {
+    const set = coachPaintMaps(item.color ?? '#26372f');
+    return {
+      color: '#ffffff', map: set.map, roughnessMap: set.rough,
+      bumpMap: set.rough, bumpScale: 0.0008,
+      roughness: 0.48, metalness: 0.02, envMapIntensity: 0.9,
+    };
+  }
+  if (item.finish === 'coachLeather' || item.finish === 'coachCanvas') {
+    const colour = item.color ?? '#252b28';
+    const cache = item.finish === 'coachLeather' ? coachLeatherSets : coachCanvasSets;
+    if (!cache.has(colour)) cache.set(colour, wovenMaps(colour, item.finish === 'coachLeather'));
+    const set = cache.get(colour);
+    return {
+      color: '#ffffff', map: set.map, roughnessMap: set.rough,
+      bumpMap: set.rough, bumpScale: item.finish === 'coachLeather' ? 0.0011 : 0.0022,
+      roughness: item.finish === 'coachLeather' ? 0.72 : 0.94,
+      metalness: 0, envMapIntensity: item.finish === 'coachLeather' ? 0.6 : 0.35,
       side: THREE.DoubleSide,
     };
   }

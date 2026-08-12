@@ -26,6 +26,7 @@ export default function CeilingRose({ room, lighting }) {
 
     let placed = 0;
     for (const marker of room.lightMarkers) {
+      if (marker.ceilingRose === false) continue;
       const gap = ceilingY - marker.position[1];
       if (gap < 0.1 || gap > CEILING_GAP) continue;
       const inset = Math.min(

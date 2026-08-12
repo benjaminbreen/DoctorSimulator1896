@@ -11,6 +11,7 @@ import {
   sparkReach,
 } from '../instruments/inductionCoil.js';
 import { TARGET_SECONDS } from '../instruments/secondsPendulum.js';
+import { REQUIRED_REACTIONS } from '../instruments/reactionChronoscope.js';
 import { ink, surface, surfaceStyle, label, keycap, keycapStyle, readout } from './theme.js';
 
 // The chrome for instrument mode: a console along the foot of the screen, the
@@ -505,11 +506,79 @@ function secondsPendulumNote(state) {
 
 // ---------------------------------------------------------------------------
 
+function ReactionChronoscope({ state }) {
+  const event = state.lastEvent;
+  const headline = state.phase === 'idle'
+    ? 'THREE REACTIONS'
+    : state.phase === 'waiting'
+      ? 'WAIT FOR THE SIGNAL'
+      : state.phase === 'signal'
+        ? 'NOW'
+        : state.phase === 'complete'
+          ? `${Math.round(state.best * 1000)} ms BEST`
+          : event?.type === 'reading'
+            ? `${Math.round(event.seconds * 1000)} ms`
+            : event?.type === 'false-start'
+              ? 'FALSE START'
+              : 'NO RESPONSE';
+
+  return (
+    <>
+      <div className="mb-4 flex flex-col items-center gap-1 text-center">
+        <span className={label} style={{ color: ink.muted }}>
+          {state.phase === 'signal' ? 'Bell and lamp' : 'Reaction time for sound'}
+        </span>
+        <span
+          className={`${readout} text-2xl sm:text-3xl`}
+          style={{ color: state.phase === 'signal' ? ink.live : ink.ivory }}
+        >
+          {headline}
+        </span>
+      </div>
+
+      <div className="flex flex-wrap items-end justify-center gap-x-7 gap-y-4">
+        {Array.from({ length: REQUIRED_REACTIONS }, (_, index) => {
+          const reading = state.readings[index];
+          return (
+            <Reading
+              key={index}
+              name={`Trial ${index + 1}`}
+              value={reading == null ? '—' : String(Math.round(reading * 1000))}
+              unit={reading == null ? '' : 'ms'}
+              under={reading != null && reading === state.best ? 'minimum' : 'valid reaction'}
+            />
+          );
+        })}
+        {(state.falseStarts > 0 || state.misses > 0) && (
+          <Reading
+            name="Invalid"
+            value={String(state.falseStarts + state.misses)}
+            under={`${state.falseStarts} early · ${state.misses} missed`}
+          />
+        )}
+      </div>
+    </>
+  );
+}
+
+function reactionChronoscopeNote(state) {
+  if (state.phase === 'waiting') return 'The mechanism is running. Do not anticipate: press only when the bell sounds and the lamp flashes.';
+  if (state.phase === 'signal') return 'Signal! Press Space or tap the response key now.';
+  if (state.phase === 'complete') return 'Series complete. Cattell recorded the minimum of three valid reactions. Press again to clear the series.';
+  if (state.lastEvent?.type === 'false-start') return 'That was too early and does not count. Press again to arm the next trial.';
+  if (state.lastEvent?.type === 'miss') return 'No response was recorded in time. Press again to arm the next trial.';
+  if (state.lastEvent?.type === 'reading') return 'Valid reaction recorded. Press again to arm the next trial.';
+  return 'Press Space to arm it. After an unpredictable delay, the bell and amber lamp signal together; react as quickly as you can.';
+}
+
+// ---------------------------------------------------------------------------
+
 const TITLES = {
   tachistoscope: ['Tachistoscope', 'Fall-screen exposure apparatus'],
   'colour-wheel': ['Colour wheel', 'Rotating disc colour mixer'],
   'induction-coil': ['Induction coil', 'du Bois-Reymond sledge coil'],
   'seconds-pendulum': ['Seconds pendulum', 'Judgment of ten seconds'],
+  'reaction-chronoscope': ['Hipp chronoscope', 'Reaction time for sound and light'],
 };
 
 export default function InstrumentPanel() {
@@ -577,6 +646,10 @@ export default function InstrumentPanel() {
         instrumentBus.push({ toggle: true });
         return;
       }
+      if (kind === 'reaction-chronoscope') {
+        instrumentBus.push({ press: true });
+        return;
+      }
       instrumentBus.push(
         usingRef.current.runtime?.state.phase === 'set'
           ? { release: true, seed: Math.floor(Math.random() * 1e9) }
@@ -610,6 +683,8 @@ export default function InstrumentPanel() {
   const [title, subtitle] = TITLES[kind] ?? [using.runtime?.label ?? '', ''];
   const wheel = kind === 'colour-wheel';
   const coil = kind === 'induction-coil';
+  const pendulum = kind === 'seconds-pendulum';
+  const chronoscope = kind === 'reaction-chronoscope';
 
   const releaseHeldControl = (event) => {
     if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
@@ -623,6 +698,7 @@ export default function InstrumentPanel() {
     if (wheel) instrumentBus.push({ cranking: true });
     else if (coil) instrumentBus.push({ key: true });
     else if (pendulum) instrumentBus.push({ toggle: true });
+    else if (chronoscope) instrumentBus.push({ press: true });
     else {
       instrumentBus.push(
         state.phase === 'set'
@@ -631,7 +707,6 @@ export default function InstrumentPanel() {
       );
     }
   };
-  const pendulum = kind === 'seconds-pendulum';
 
   return (
     <>
@@ -650,6 +725,35 @@ export default function InstrumentPanel() {
         <span aria-hidden="true">×</span>
       </button>
 
+      {chronoscope && (
+        <>
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center"
+            style={{
+              opacity: Math.min(1, (state.cueFlash ?? 0) * 5),
+              background: 'radial-gradient(circle, rgba(255,226,135,0.36) 0%, rgba(227,167,52,0.16) 42%, transparent 72%)',
+              boxShadow: 'inset 0 0 0 10px rgba(255,207,91,0.92), inset 0 0 90px rgba(255,190,54,0.7)',
+            }}
+          >
+            <span
+              className={`${readout} rounded border px-8 py-4 text-5xl sm:text-7xl`}
+              style={{
+                color: '#fff4c7',
+                borderColor: '#ffe187',
+                background: 'rgba(60,38,8,0.78)',
+                textShadow: '0 0 28px rgba(255,210,92,1)',
+              }}
+            >
+              NOW
+            </span>
+          </div>
+          <span className="sr-only" role="status" aria-live="assertive">
+            {state.phase === 'signal' ? 'Signal now' : ''}
+          </span>
+        </>
+      )}
+
       {/* Title, top centre, out of the way of the apparatus. */}
       <div className="instrument-title pointer-events-none absolute left-1/2 top-6 -translate-x-1/2 text-center">
         <p className={label} style={{ color: ink.brass }}>
@@ -667,7 +771,8 @@ export default function InstrumentPanel() {
           {coil && <InductionCoil state={state} />}
           {wheel && <ColourWheel state={state} names={using.runtime?.names ?? []} />}
           {pendulum && <SecondsPendulum state={state} />}
-          {!coil && !wheel && !pendulum && <Tachistoscope state={state} answerRef={answerRef} />}
+          {chronoscope && <ReactionChronoscope state={state} />}
+          {!coil && !wheel && !pendulum && !chronoscope && <Tachistoscope state={state} answerRef={answerRef} />}
 
           <div
             className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t pt-2.5"
@@ -680,6 +785,8 @@ export default function InstrumentPanel() {
                   ? colourWheelNote(state)
                   : pendulum
                     ? secondsPendulumNote(state)
+                    : chronoscope
+                      ? reactionChronoscopeNote(state)
                     : tachistoscopeNote(state)}
             </p>
             <div className="flex items-center gap-4">
@@ -700,7 +807,16 @@ export default function InstrumentPanel() {
                   {state.phase === 'reference' ? 'catch and begin' : state.phase === 'timing' ? 'mark ten seconds' : 'swing again'}
                 </Hint>
               )}
-              {!coil && !wheel && !pendulum && (
+              {chronoscope && (
+                <Hint keys="Space">
+                  {state.phase === 'idle' || state.phase === 'result'
+                    ? 'arm next trial'
+                    : state.phase === 'complete'
+                      ? 'clear series'
+                      : 'press response key'}
+                </Hint>
+              )}
+              {!coil && !wheel && !pendulum && !chronoscope && (
                 <Hint keys="Space">{state.phase === 'set' ? 'release shutter' : 'set again'}</Hint>
               )}
               <Hint keys="Drag">look</Hint>
@@ -739,6 +855,12 @@ export default function InstrumentPanel() {
                       : state.phase === 'timing'
                         ? 'Mark ten seconds'
                         : 'Swing again'
+                    : chronoscope
+                      ? state.phase === 'idle' || state.phase === 'result'
+                        ? 'Arm next trial'
+                        : state.phase === 'complete'
+                          ? 'Clear series'
+                          : 'Press response key'
                     : state.phase === 'set'
                       ? 'Release shutter'
                       : 'Set shutter'}

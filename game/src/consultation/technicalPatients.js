@@ -47,9 +47,9 @@ const PRESENTATION_DETAILS = Object.freeze({
 });
 
 const commonInterpretations = Object.freeze([
-  Object.freeze({ id: 'read-distress', text: 'The patient appears genuinely distressed.' }),
-  Object.freeze({ id: 'read-reserve', text: 'The patient is withholding part of the account.' }),
-  Object.freeze({ id: 'read-physical', text: 'A physical sign deserves more weight than the manner of speaking.' }),
+  Object.freeze({ id: 'read-history-first', text: 'I should hear how this began and what was happening in the patient’s life before I draw conclusions.', nextMode: 'patient' }),
+  Object.freeze({ id: 'read-examine-first', text: 'An examination may disclose an ordinary bodily cause before I question the patient further.', nextMode: 'examination' }),
+  Object.freeze({ id: 'read-diagnose-first', text: 'This resembles the nervous disorder named in the initial complaint; I will question the patient with that possibility in mind.', nextMode: 'patient' }),
 ]);
 
 function sentence(value) {
@@ -93,6 +93,7 @@ function symptomFact(prefix, symptom, index) {
     kind: 'symptom',
     label: sentence(symptom).replace(/\.$/, ''),
     value: sentence(symptom),
+    notebookSummary: sentence(`Patient reports ${symptom}`),
     confidence: 'high',
     measurement: false,
     disclosure: disclosed ? 'open' : 'withheld',
@@ -160,11 +161,14 @@ function consultationFor(profile, index) {
   const diagnoses = details?.diagnoses || [profile.clinical.periodCategory, 'Neurasthenic exhaustion'];
   const treatments = details?.treatments || ['Rest and observation', 'Galvanic treatment'];
   const subject = profile.identity.sex === 'male' ? 'He' : 'She';
+  const bearing = ['weary', 'sad'].includes(profile.clinical.affect)
+    ? 'settles wearily into the chair and takes a moment before speaking'
+    : 'takes the chair with a guarded expression and watches for your reaction';
 
   return {
     opening: {
       dialogue: `“${sentence(profile.clinical.presentingComplaint).replace(/\.$/, '')}”`,
-      behavior: `${subject} describes the trouble as having lasted ${profile.clinical.duration}.`,
+      behavior: `${subject} ${bearing}. ${subject} says the trouble has lasted ${profile.clinical.duration}.`,
     },
     facts,
     examinations: examinationsFor(prefix, signs),

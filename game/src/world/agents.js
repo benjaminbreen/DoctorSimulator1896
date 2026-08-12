@@ -5,15 +5,16 @@
 
 const agents = new Map();
 
-export function reportAgent(id, x, z, r = 0.45) {
+export function reportAgent(id, x, z, r = 0.45, details = null) {
   const entry = agents.get(id);
   if (entry) {
     entry.x = x;
     entry.z = z;
     entry.r = r;
+    if (details) Object.assign(entry, details);
     return;
   }
-  agents.set(id, { id, x, z, r });
+  agents.set(id, { id, x, z, r, ...(details ?? {}) });
 }
 
 export function removeAgent(id) {

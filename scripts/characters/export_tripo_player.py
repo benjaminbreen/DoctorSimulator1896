@@ -23,6 +23,13 @@ DEFAULT_SOURCE_DIR = os.path.join(
     "source",
     "tripo-victorian-player",
 )
+DEFAULT_REACTION_SOURCE_DIR = os.path.join(
+    ROOT,
+    "assets",
+    "source",
+    "mixamo",
+    "reactions",
+)
 SOURCE_MODEL = "Standing W_Briefcase Idle with skin.fbx"
 CLIPS = (
     ("Neutral Idle.fbx", "StandingIdle"),
@@ -34,12 +41,26 @@ CLIPS = (
     ("Shaking Hands 2.fbx", "Handshake"),
     ("Smoking.fbx", "Smoking"),
     ("Throw Object.fbx", "Throw"),
+    ("Idle Preparing Throw.fbx", "ThrowReady"),
+    ("Carrying idle.fbx", "CarryIdle"),
+    ("Walking carrying object.fbx", "CarryWalk"),
+    ("Running carrying object.fbx", "CarryRun"),
+    ("Pick up object.fbx", "PickUp"),
+    ("Climbing Ladder.fbx", "ClimbCarriage"),
+)
+REACTION_CLIPS = (
+    ("Edge Slip on heights.fbx", "EdgeSlip"),
+    ("Shoulder Hit And Fall.fbx", "FallShoulder"),
+    ("Falling Down.fbx", "FallGeneric"),
+    ("Fallen Idle.fbx", "FallenIdle"),
+    ("Standing Up from Fall.fbx", "RiseFromFall"),
 )
 
 
 def arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("--source-dir", default=DEFAULT_SOURCE_DIR)
+    parser.add_argument("--reaction-source-dir", default=DEFAULT_REACTION_SOURCE_DIR)
     parser.add_argument("--output", required=True)
     argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
     return parser.parse_args(argv)
@@ -79,7 +100,16 @@ def remove_objects(objects):
             bpy.data.objects.remove(obj, do_unlink=True)
 
 
-def transfer_action(path, name, target, target_contract):
+def transfer_action(
+    path,
+    name,
+    target,
+    target_contract,
+    *,
+    in_place=False,
+    remove_vertical=False,
+    lock_vertical=False,
+):
     source, objects = import_fbx(path)
     source_action = source.animation_data.action if source.animation_data else None
     if not source_action:
@@ -133,6 +163,33 @@ def transfer_action(path, name, target, target_contract):
                 frame=frame,
                 group=bone.name,
             )
+
+    if in_place:
+        hips_bone = target.pose.bones[hips]
+        bpy.context.scene.frame_set(frame_start)
+        bpy.context.view_layer.update()
+        start_location = hips_bone.location.copy()
+        bpy.context.scene.frame_set(frame_end)
+        bpy.context.view_layer.update()
+        drift = hips_bone.location - start_location
+        # Mixamo's imported armature is x/y horizontal and z vertical here.
+        if not remove_vertical:
+            drift.z = 0.0
+        span = max(1, frame_end - frame_start)
+        for frame in range(frame_start, frame_end + 1):
+            bpy.context.scene.frame_set(frame)
+            bpy.context.view_layer.update()
+            if lock_vertical:
+                hips_bone.location.z = start_location.z
+                hips_bone.location.x -= drift.x * ((frame - frame_start) / span)
+                hips_bone.location.y -= drift.y * ((frame - frame_start) / span)
+            else:
+                hips_bone.location -= drift * ((frame - frame_start) / span)
+            hips_bone.keyframe_insert("location", frame=frame, group=hips_bone.name)
+        print(
+            f"TRIPO_ACTION_IN_PLACE name={name} "
+            f"drift={tuple(round(value, 5) for value in drift)}"
+        )
 
     target.animation_data.action = None
     remove_objects(objects)
@@ -212,6 +269,7 @@ def repair_tripo_material(material):
 def main():
     args = arguments()
     source_dir = os.path.abspath(args.source_dir)
+    reaction_source_dir = os.path.abspath(args.reaction_source_dir)
     output = os.path.abspath(args.output)
     os.makedirs(os.path.dirname(output), exist_ok=True)
     clear_scene()
@@ -238,9 +296,28 @@ def main():
     actions = []
     for filename, clip_name in CLIPS:
         path = os.path.join(source_dir, filename)
+        if clip_name == "ClimbCarriage" and not os.path.exists(path):
+            path = os.path.join(ROOT, filename)
         if not os.path.exists(path):
             raise RuntimeError(f"Missing Mixamo source: {path}")
-        actions.append(transfer_action(path, clip_name, rig, target_contract))
+        actions.append(
+            transfer_action(
+                path,
+                clip_name,
+                rig,
+                target_contract,
+                in_place=clip_name == "ClimbCarriage",
+                remove_vertical=clip_name == "ClimbCarriage",
+                lock_vertical=clip_name == "ClimbCarriage",
+            )
+        )
+    for filename, clip_name in REACTION_CLIPS:
+        path = os.path.join(reaction_source_dir, filename)
+        if not os.path.exists(path):
+            raise RuntimeError(f"Missing reaction source: {path}")
+        actions.append(
+            transfer_action(path, clip_name, rig, target_contract, in_place=True)
+        )
     stash_actions(rig, actions)
 
     materials = {slot.material for slot in meshes[0].material_slots if slot.material}

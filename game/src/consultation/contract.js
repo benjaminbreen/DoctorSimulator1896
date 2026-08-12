@@ -13,8 +13,8 @@ function ids(items) {
 export function validateConsultationPatient(patient) {
   const errors = [];
   if (!patient?.id) return ['patient id is required'];
-  if (patient.contentStatus !== 'technical-fixture' && patient.contentStatus !== 'verified') {
-    errors.push('contentStatus must be technical-fixture or verified');
+  if (!['technical-fixture', 'research-draft', 'verified'].includes(patient.contentStatus)) {
+    errors.push('contentStatus must be technical-fixture, research-draft, or verified');
   }
   if (!patient.actor?.recipe) errors.push('an actor recipe is required');
   if (patient.profileStatus === 'draft-procedural' && !patient.profile?.identity?.fullName) {
@@ -35,11 +35,32 @@ export function validateConsultationPatient(patient) {
   }
 
   const factIds = ids(patient.facts);
+  const validateFactReferences = (owner, references) => {
+    for (const factId of references || []) {
+      if (!factIds.has(factId)) errors.push(`${owner} has unknown fact ${factId}`);
+    }
+  };
   for (const examination of patient.examinations || []) {
     if (!factIds.has(examination.factId)) errors.push(`examination ${examination.id} has unknown fact ${examination.factId}`);
   }
   for (const factId of patient.caseNote?.requiredFactIds || []) {
     if (!factIds.has(factId)) errors.push(`case note requires unknown fact ${factId}`);
+  }
+  for (const fact of patient.facts || []) {
+    validateFactReferences(`fact ${fact.id}`, [...(fact.requiresFactIds || []), ...(fact.requiresAnyFactIds || [])]);
+  }
+  for (const rule of [...(patient.prompts || []), ...(patient.inquiryIntents || [])]) {
+    validateFactReferences(`inquiry rule ${rule.id}`, [
+      ...(rule.requiresFactIds || []), ...(rule.requiresAnyFactIds || []), ...(rule.discloseFactIds || []),
+    ]);
+  }
+  validateFactReferences('outcome model', [
+    ...(patient.outcomeModel?.evidenceFactIds || []), ...(patient.outcomeModel?.criticalFactIds || []),
+  ]);
+  if (patient.profileStatus === 'authored-composite') {
+    if (!patient.groundTruth?.etiologyId) errors.push('an authored composite requires deterministic ground truth');
+    if (!(patient.sources?.length > 0)) errors.push('an authored composite requires source provenance');
+    if (!patient.outcomeModel) errors.push('an authored composite requires an outcome model');
   }
   return errors;
 }

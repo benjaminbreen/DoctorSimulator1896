@@ -1,5 +1,5 @@
 // Walkable streets beyond the park wall: Fifth Avenue and Madison to the
-// east, Central Park South (59th), 58th, and 57th to the south, with the
+// east, East 60th, Central Park South (59th), 58th, and 57th to the south, with the
 // Sixth Avenue stand-in running south from the Artists' Gate. Landmark
 // identifications are provisional (Ben to verify): Hotel New Netherland
 // (1893), Savoy (1892), first Plaza Hotel (1890), Metropolitan Club (1894),
@@ -16,6 +16,10 @@ export const SIDEWALK_WIDTH = 3.2;
 
 // Roads as [axis, lo, hi, from, to]: axis 'z' = east-west street band.
 export const ROADS = [
+  // East 60th terminates at Fifth Avenue. It replaces the narrow visual gap
+  // that previously read as an alley between the Metropolitan Club and the
+  // next block. The actual clubhouse service alley was on the north side.
+  { id: 'east-sixtieth', axis: 'z', lo: 52, hi: 60, from: 99, to: 230 },
   { id: 'cps', axis: 'z', lo: 86, hi: 96, from: -100, to: 230 },
   { id: 'fifty-eighth', axis: 'z', lo: 130, hi: 140, from: -100, to: 230 },
   { id: 'fifty-seventh', axis: 'z', lo: 174, hi: 184, from: -100, to: 230 },
@@ -64,16 +68,17 @@ export const STREET_LAMP_SITES = [
   { id: 'plaza-south', x: 79.0, z: 80.5, yaw: Math.PI / 2 },
   { id: 'plaza-east', x: 95.0, z: 76.0, yaw: Math.PI },
   ...[-68, -42, -16, 10, 36, 50].map((z, index) => ({ id: `fifth-park-${index}`, x: 98.0, z, yaw: Math.PI })),
-  ...[-70, -44, -20, 4, 28, 52, 72, 110, 120, 154, 170].map((z, index) => ({ id: `fifth-built-${index}`, x: 108.0, z, yaw: 0 })),
+  ...[-70, -44, -20, 4, 28, 46, 72, 110, 120, 154, 170].map((z, index) => ({ id: `fifth-built-${index}`, x: 108.0, z, yaw: 0 })),
   ...[-90, -62, -6, 22, 50].map((x, index) => ({ id: `cps-park-${index}`, x, z: 85.0, yaw: Math.PI / 2 })),
   ...[-92, -66, -14, 12, 38, 64, 82, 124, 150, 176, 202].map((x, index) => ({ id: `cps-built-${index}`, x, z: 97.0, yaw: -Math.PI / 2 })),
 ];
 
-// Row of party-wall brownstones along one block face. Windows get geometry
-// only on the street face; laundry rows hang lines there too (provisional —
-// street-front laundry suits the modest Sixth Avenue side, not Fifth).
+// Row of party-wall brownstones along one block face. Every parcel gets a
+// formal street front and a simpler rear elevation; only the end parcels get
+// a side elevation. Interior party walls stay plain.
 function parcelRow(items, prefix, axis, faceCoord, from, to, depth, facing, laundryChance = 0) {
   const streetFace = axis === 'z' ? (facing > 0 ? '-z' : '+z') : (facing > 0 ? '-x' : '+x');
+  const rearFace = { '+x': '-x', '-x': '+x', '+z': '-z', '-z': '+z' }[streetFace];
   // A paved lot strip under the whole row, so the houses meet stone, not lawn.
   const lotMid = faceCoord + (facing * (depth + 2)) / 2;
   const lotLen = to - from;
@@ -81,22 +86,52 @@ function parcelRow(items, prefix, axis, faceCoord, from, to, depth, facing, laun
     axis === 'z' ? [(from + to) / 2, lotMid, lotLen, depth + 2] : [lotMid, (from + to) / 2, depth + 2, lotLen];
   items.push({ ...strip(`${prefix}-lot`, lx, lz, lsx, lsz, WALK_TOP - 0.015, 0.24, 'paving', '#8d8779'), collider: false });
   // 25-foot lots: the 1896 rowhouse rhythm is narrow and repetitive.
+  const parcels = [];
   let cursor = from;
   let index = 0;
   while (cursor < to - 5) {
-    const width = 6 + hash01(index * 3.1 + from) * 2.5;
+    // The final variable-width parcel must stop at the authored block edge.
+    // Letting it overshoot can place its wall on a neighbouring landmark's
+    // wall plane, which flickers as the depth buffer alternates between them.
+    let width = Math.min(6 + hash01(index * 3.1 + from) * 2.5, to - cursor);
+    // Absorb a sub-parcel remainder into the last house. Otherwise a row can
+    // stop a metre short and expose an accidental slit beside the next block.
+    if (to - cursor - width < 5) width = to - cursor;
     const height = 12 + hash01(index * 7.7 + to) * 3.5;
+    // Keep neighbouring houses in loose two-parcel masonry runs. Gray ashlar
+    // is the main non-brick counterpoint, with smaller runs of warm brownstone,
+    // buff stone, and charcoal. Ashlar gets its own large-block surface; the
+    // other tones reuse brownstone.
+    const toneRoll = hash01(
+      Math.floor(index / 2) * 4.61 + from * 0.31 + to * 0.17 + faceCoord * 0.11,
+    );
+    const grayAshlar = toneRoll < 0.5;
+    const facadeTone = grayAshlar ? null : toneRoll < 0.75 ? 0 : toneRoll < 0.92 ? 3 : 1;
     const center = cursor + width / 2;
     const [x, z, sx, sz] =
       axis === 'z' ? [center, faceCoord + (facing * depth) / 2, width - 0.3, depth] : [faceCoord + (facing * depth) / 2, center, depth, width - 0.3];
-    items.push(building(`${prefix}-${index}`, x, z, sx, height, sz, {
-      facadeStyle: index % 2 === 0 ? 0 : 3,
-      windowFaces: [streetFace],
+    parcels.push(building(`${prefix}-${index}`, x, z, sx, height, sz, {
+      facadeStyle: grayAshlar ? 5 : index % 2 === 0 ? 0 : 3,
+      facadeTone,
+      windowFaces: [streetFace, rearFace],
+      facadeRoles: { [streetFace]: 'front', [rearFace]: 'rear' },
       laundry: hash01(index * 9.13 + from * 0.7) < laundryChance,
     }));
     cursor += width;
     index += 1;
   }
+
+  // The row runs along X when its street is horizontal (`axis === 'z'`),
+  // and along Z when its street is vertical. Append these after streetFace:
+  // WindowField treats the first face as the entrance/frontage elevation.
+  const [startFace, endFace] = axis === 'z' ? ['-x', '+x'] : ['-z', '+z'];
+  if (parcels.length > 0) {
+    parcels[0].windowFaces.push(startFace);
+    parcels[0].facadeRoles[startFace] = 'end';
+    parcels[parcels.length - 1].windowFaces.push(endFace);
+    parcels[parcels.length - 1].facadeRoles[endFace] = 'end';
+  }
+  items.push(...parcels);
 }
 
 // Cast-iron hitching post: plinth, tapered shaft, collar, ball finial.
@@ -212,36 +247,81 @@ function buildStreets() {
   const apron = (id, x, z, sx, sz) =>
     ({ ...strip(`${id}-apron`, x, z, sx + 4, sz + 4, WALK_TOP - 0.015, 0.24, 'paving', '#8d8779'), collider: false });
   items.push(
-    apron('hotel-new-netherland', 122, 72, 15, 15),
     apron('hotel-savoy', 122, 104, 14, 14),
     apron('plaza-hotel-1890', 80, 106, 20, 14),
-    apron('metropolitan-club', 120, 52, 16, 12),
     apron('vanderbilt-mansion', 86, 116, 18, 14),
     apron('navarro-flats-a', -52, 108, 12, 13),
-    apron('navarro-flats-b', -38, 110, 12, 13),
+    apron('navarro-flats-b', -13, 110, 8, 13),
     apron('navarro-flats-c', -24, 108, 12, 13),
   );
   items.push(
-    building('hotel-new-netherland', 122, 72, 15, 34, 15, { facadeStyle: 1, roof: 'cone', awnings: true, ...ALL_FACES }),
-    building('hotel-savoy', 122, 104, 14, 24, 14, { facadeStyle: 1, roof: 'mansard', awnings: true, ...ALL_FACES }),
-    building('plaza-hotel-1890', 80, 106, 20, 17, 14, { facadeStyle: 2, roof: 'mansard', awnings: true, ...ALL_FACES }),
-    building('metropolitan-club', 120, 52, 16, 9, 12, { facadeStyle: 4, ...ALL_FACES }),
-    building('vanderbilt-mansion', 86, 116, 18, 13, 14, { facadeStyle: 1, roof: 'mansard', ...ALL_FACES }),
-    building('navarro-flats-a', -52, 108, 12, 21, 13, { facadeStyle: 1, roof: 'cone', ...ALL_FACES }),
-    building('navarro-flats-b', -38, 110, 12, 22, 13, { facadeStyle: 1, roof: 'mansard', ...ALL_FACES }),
-    building('navarro-flats-c', -24, 108, 12, 20, 13, { facadeStyle: 1, roof: 'cone', ...ALL_FACES }),
+    { ...strip('metropolitan-service-alley', 122, 32, 25, 4, WALK_TOP - 0.015, 0.24, 'paving', '#77746c'), collider: false },
+    // Only the south block receives a narrow private apron; East 60th's own
+    // generated sidewalks remain visible and continuous at the intersection.
+    { ...strip('hotel-new-netherland-apron', 122, 73, 19, 19.6, WALK_TOP - 0.015, 0.24, 'paving', '#8d8779'), collider: false },
+    // Full-depth corner mass between 60th and 59th. Its neighbouring parcels
+    // continue east as one solid block instead of leaving a freestanding tower.
+    building('hotel-new-netherland', 122, 72, 15, 34, 17.6, {
+      facadeStyle: 1, roof: 'cone', awnings: true,
+      landmarkLabel: 'New Netherland Hotel', ...ALL_FACES,
+    }),
+    building('hotel-savoy', 122, 104, 14, 24, 14, {
+      facadeStyle: 1, roof: 'mansard', awnings: true,
+      landmarkLabel: 'Hotel Savoy', ...ALL_FACES,
+    }),
+    building('plaza-hotel-1890', 80, 106, 20, 17, 14, {
+      facadeStyle: 2, roof: 'mansard',
+      landmarkLabel: 'The Plaza Hotel (1890)', ...ALL_FACES,
+    }),
+    building('metropolitan-club', 122, 42, 25, 17, 16, {
+      facadeStyle: 4, landmarkLabel: 'Metropolitan Club',
+      landmarkModel: 'metropolitan-club',
+      // The main block occupies the west side; these proxies preserve the
+      // open landscaped setback and eastern entrance court for collision.
+      colliderBoxes: [
+        { center: [-2.15, 0, 0], size: [17.4, 17, 13.4] },
+        { center: [9.4, -5.3, -4.8], size: [5.7, 6.4, 5.2] },
+      ],
+      ...ALL_FACES,
+    }),
+    building('vanderbilt-mansion', 86, 116, 18, 13, 14, {
+      facadeStyle: 1, roof: 'mansard',
+      landmarkLabel: 'Cornelius Vanderbilt II Mansion', ...ALL_FACES,
+    }),
+    building('navarro-flats-a', -52, 108, 12, 21, 13, {
+      facadeStyle: 1, roof: 'cone', landmarkLabel: 'Navarro Flats', ...ALL_FACES,
+    }),
+    // Keep the middle mass east of Sixth Avenue. Its former x=-38 footprint
+    // occupied the entire carriageway and made traffic drive through it.
+    building('navarro-flats-b', -13, 110, 8, 22, 13, {
+      facadeStyle: 1, roof: 'mansard', landmarkLabel: 'Navarro Flats', ...ALL_FACES,
+    }),
+    building('navarro-flats-c', -24, 108, 12, 20, 13, {
+      facadeStyle: 1, roof: 'cone', landmarkLabel: 'Navarro Flats', ...ALL_FACES,
+    }),
   );
 
   // Brownstone rows along the block faces, clear of the landmarks.
-  parcelRow(items, 'fifth-east-a', 'x', 110, -20, 40, 12, 1);
-  parcelRow(items, 'fifth-east-b', 'x', 110, 120, 160, 12, 1);
+  // Stop north of the clubhouse to preserve its documented service alley.
+  parcelRow(items, 'fifth-east-a', 'x', 110, -20, 30, 12, 1);
+  // Attached parcels complete the block between East 60th and Central Park
+  // South. Both long faces are detailed, so the row reads from either street.
+  parcelRow(items, 'sixtieth-south-block', 'z', 63.2, 129.45, 159.65, 17.6, 1);
+  // The surviving run begins south of the 58th Street curb return. One
+  // continuous row from z=120..160 put thirteen metres of houses across it.
+  parcelRow(items, 'fifth-east-b', 'x', 110, 144, 160, 12, 1);
   parcelRow(items, 'cps-south-a', 'z', 99, -96, -60, 12, 1);
-  parcelRow(items, 'cps-south-b', 'z', 99, -8, 68, 12, 1);
+  // Meet the first Plaza mass at x=70. Parcel geometry is inset 15cm from its
+  // authored lot, leaving a narrow construction seam instead of coplanar walls.
+  parcelRow(items, 'cps-south-b', 'z', 99, -8, 70, 12, 1);
   parcelRow(items, 'fifty-eighth-n', 'z', 128, 116, 160, 11, -1, 0.3);
   parcelRow(items, 'fifty-eighth-s', 'z', 141, -96, -52, 11, 1, 0.3);
   parcelRow(items, 'madison-west', 'x', 161, 100, 128, 11, -1);
-  parcelRow(items, 'madison-east', 'x', 173, 92, 170, 12, 1, 0.35);
-  parcelRow(items, 'sixth-west', 'x', -46, 100, 170, 11, -1, 0.5);
+  // Begin south of the Central Park South sidewalk; z=92 placed the first
+  // house across the eastbound carriage lanes.
+  parcelRow(items, 'madison-east', 'x', 173, 100, 170, 12, 1, 0.35);
+  // Navarro Flats occupies this same Sixth Avenue wall plane through z=114.5.
+  parcelRow(items, 'sixth-west', 'x', -46, 114.55, 170, 11, -1, 0.5);
   parcelRow(items, 'block-a-inner', 'z', 118, 118, 158, 12, 1, 0.5);
 
   for (const site of STREET_LAMP_SITES) items.push(...lamp(site.id, site.x, site.z, site.yaw));

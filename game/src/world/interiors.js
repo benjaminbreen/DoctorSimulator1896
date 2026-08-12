@@ -7,7 +7,7 @@
 // When the Victorian GLB catalog lands, slots swap to models — the layout
 // logic does not change.
 
-import { facadeLayout, doorWorld } from './facade.js';
+import { facadeLayoutForFace, doorWorld } from './facade.js';
 import { pickModel, modelSize, fixtureBurners, pickSurfaces, looseMass } from './victorianCatalog.js';
 import { friezeBand, ceilingPanel } from './mouldings.js';
 
@@ -64,7 +64,7 @@ const round = (value) => Math.round(value * 100) / 100;
 // read humble, brownstone rows middling, brick/stone landmarks grand.
 export function interiorSpec(building) {
   const style = building.facadeStyle ?? 0;
-  const wealth = style === 3 ? 'humble' : style === 0 ? 'middling' : 'grand';
+  const wealth = style === 3 ? 'humble' : style === 0 || style === 5 ? 'middling' : 'grand';
   let size;
   if (wealth === 'grand') size = 'XL';
   else if (building.size[0] < 6.6) size = 'M';
@@ -96,7 +96,7 @@ export function generateInterior(building, values = {}) {
   const surfaces = pickSurfaces(wealth, hash01(seed * 1.3), hash01(seed * 2.9));
 
   // Street wall openings from the facade grid, mapped proportionally.
-  const layout = facadeLayout(building.size[0], building.size[1]);
+  const layout = facadeLayoutForFace(building);
   const door = layout.ground.find((win) => win.isDoor);
   const doorAlong = round(Math.max(-W / 2 + 1.6, Math.min(W / 2 - 1.6, ((door.x + door.w / 2) / layout.texW - 0.5) * W)));
   // 1896 parlor sashes are tall and narrow with a low sill — near enough

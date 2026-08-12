@@ -24,12 +24,68 @@ function family(id) {
 test('the workbench exposes editable proof families', () => {
   assert.deepEqual(editable.map((row) => row.family), [
     'laboratory-bench',
+    'coachworks-utility',
+    'coachworks-hansom',
+    'coachworks-brougham',
+    'coachworks-landau',
+    'coachworks-omnibus',
     'bookcase',
     'folding-screen',
     'vase-of-flowers',
     'labeled-bottle-proof',
     'reagent-bottle-rack',
   ]);
+});
+
+test('coachworks presets share one bounded recipe system and remain distinct', () => {
+  const expected = {
+    'coachworks-utility': { type: 'utility', team: 'pair' },
+    'coachworks-hansom': { type: 'hansom', team: 'single' },
+    'coachworks-brougham': { type: 'brougham', team: 'single' },
+    'coachworks-landau': { type: 'landau', team: 'pair' },
+    'coachworks-omnibus': { type: 'omnibus', team: 'pair' },
+  };
+  const signatures = [];
+
+  for (const [familyId, preset] of Object.entries(expected)) {
+    const row = family(familyId);
+    const recipe = createAssetRecipe(row);
+    const [coach] = row.build(`preset-${preset.type}`, [0, 0, 0], recipe);
+    const stats = assetBuildStats([coach]);
+
+    assert.equal(recipe.values.vehicleType, preset.type);
+    assert.equal(recipe.values.team, preset.team);
+    assert.equal(coach.coachworkType, preset.type);
+    assert.equal(coach.team, preset.team);
+    assert.ok(coach.parts.some((part) => part.sculptPart.includes('wheel')));
+    assert.ok(coach.parts.some((part) => part.sculptPart.includes(preset.team === 'pair' ? 'pair-pole' : 'single-shaft')));
+    assert.ok(stats.parts <= row.performanceBudget.maxParts, `${familyId} part budget`);
+    assert.ok(stats.materials <= row.performanceBudget.maxMaterials, `${familyId} material budget`);
+    signatures.push(coach.parts.map((part) => part.sculptPart).join('|'));
+  }
+  assert.equal(new Set(signatures).size, 5);
+});
+
+test('coachwork sliders alter dimensions and preserve preset defaults on partial recipes', () => {
+  const row = family('coachworks-brougham');
+  const base = createAssetRecipe(row);
+  const long = setRecipeValue(row, base, 'bodyLength', 3.4);
+  const wide = setRecipeValue(row, base, 'bodyWidth', 1.85);
+  const single = row.build('single', [0, 0, 0], base)[0];
+  const pairRecipe = setRecipeValue(row, base, 'team', 'pair');
+  const pair = row.build('pair', [0, 0, 0], pairRecipe)[0];
+
+  assert.ok(builtBounds(row.build('long', [0, 0, 0], long)).size[0]
+    > builtBounds(row.build('base', [0, 0, 0], base)).size[0]);
+  assert.ok(builtBounds(row.build('wide', [0, 0, 0], wide)).size[2]
+    > builtBounds(row.build('base-wide', [0, 0, 0], base)).size[2]);
+  assert.ok(single.parts.some((part) => part.sculptPart === 'single-shaft--1'));
+  assert.ok(pair.parts.some((part) => part.sculptPart === 'pair-pole'));
+
+  const partial = createAssetRecipe(row, { values: { bodyColor: '#123456' } });
+  assert.equal(partial.values.vehicleType, 'brougham');
+  assert.equal(partial.values.team, 'single');
+  assert.equal(partial.values.bodyColor, '#123456');
 });
 
 test('laboratory bench keeps its construction and PBR surface editable', () => {

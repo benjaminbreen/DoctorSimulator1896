@@ -369,9 +369,15 @@ export default function PropsPanel({ onClose }) {
   // the selected piece belongs to — never all 170 at once, which would be a
   // wall of thumbnails nobody can read.
   const sheetRows = useMemo(() => {
-    if (query.trim()) return filtered.slice(0, 30);
-    return rows.filter((entry) => entry.group === row?.group).slice(0, 30);
-  }, [rows, filtered, query, row]);
+    const entries = query.trim()
+      ? filtered.slice(0, 30)
+      : rows.filter((entry) => entry.group === row?.group).slice(0, 30);
+    // A contact sheet is a set of presets, not a set of clones of the
+    // selected prop. Give each editable row its own saved/default recipe.
+    return entries.map((entry) => entry.family && entry.schema
+      ? { ...entry, recipe: createAssetRecipe(entry, editorState.assets?.[entry.key]) }
+      : entry);
+  }, [rows, filtered, query, row, editorState.assets]);
   const variantRows = useMemo(() => {
     if (!editable) return [];
     return generateAssetVariants(row, recipe).map((variant, index) => ({

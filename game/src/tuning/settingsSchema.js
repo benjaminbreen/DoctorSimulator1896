@@ -206,6 +206,7 @@ export const settingsSchema = {
         // Separate from the interior slider: the sun's shadow map covers ~50m,
         // so the same texel radius blurs a metre wide outdoors and a few cm in.
         { id: 'sunShadowRadius', label: 'Sun shadow softness', type: 'range', min: 0, max: 6, step: 0.25, default: 1 },
+        { id: 'outdoorShadowDistance', label: 'Outdoor shadow distance (m)', type: 'range', min: 10, max: 80, step: 1, default: 25 },
         { id: 'fogDensity', label: 'Fog density', type: 'range', min: 0, max: 0.05, step: 0.001, default: 0.004 },
         { id: 'envIntensity', label: 'Environment light', type: 'range', min: 0, max: 3, step: 0.05, default: 0.45 },
         // Outdoor fill: multipliers on the zone's hemisphere light. skyFill

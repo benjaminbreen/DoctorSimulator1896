@@ -79,6 +79,14 @@ test('hero camera has an independent follow profile', () => {
   assert.equal(byId.get('heroCollisionRadius').default, 0.22);
 });
 
+test('outdoor shadow distance is live and defaults to the current coverage', () => {
+  const definition = parameters.find((parameter) => parameter.id === 'outdoorShadowDistance');
+  assert.equal(definition.default, 25);
+  assert.equal(definition.min, 10);
+  assert.equal(definition.max, 80);
+  assert.notEqual(definition.mode, 'rebuild');
+});
+
 test('pigeon visibility controls are live outdoor tuning', () => {
   const byId = new Map(parameters.map((parameter) => [parameter.id, parameter]));
   assert.equal(byId.get('pigeonCount').default, 14);

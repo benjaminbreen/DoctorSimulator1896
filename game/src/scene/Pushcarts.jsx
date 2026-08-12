@@ -4,10 +4,15 @@ import { useFrame } from '@react-three/fiber';
 import { RigidBody, BallCollider, CuboidCollider, CylinderCollider } from '@react-three/rapier';
 import PropShape from './PropShape.jsx';
 import PropMaterial from './PropMaterial.jsx';
-import { PUSHCART_SPECS } from '../world/pushcarts.js';
+import {
+  OPENING_CHAOS_CART_ID,
+  PUSHCART_SPECS,
+  pushcartStartsAsTrafficObstacle,
+} from '../world/pushcarts.js';
 import { gameDebug } from '../debug.js';
 import { getPlayer, harm, pushcartImpactEffect } from '../world/player.js';
 import { removeThrowableSource, reportThrowableSource } from '../world/throwablePlay.js';
+import { removeAgent, reportAgent } from '../world/agents.js';
 import ThrowableProjectiles from './ThrowableProjectiles.jsx';
 
 // Dynamic vendor carts. Each is one rigid body: the player can shove it and
@@ -124,6 +129,10 @@ function Pushcart({ spec }) {
   const [taken, setTaken] = useState(() => new Set());
   const sourceTransform = useRef([NaN, NaN, NaN, NaN, NaN, NaN, NaN]);
   const takeCallbacks = useRef(new Map());
+  const trafficActive = useRef(pushcartStartsAsTrafficObstacle(spec.id));
+  const trafficDelay = useRef(0);
+  const trafficIds = useRef(spec.trafficFootprint.centers.map((_, index) =>
+    `road-obstacle:${spec.id}:${index}`));
   const throwableId = (index) => `${spec.id}:${spec.pieces[index].throwable}:${index}`;
   const takePiece = (index) => {
     removeThrowableSource(throwableId(index));
@@ -146,10 +155,20 @@ function Pushcart({ spec }) {
     spec.pieces.forEach((piece, index) => {
       if (piece.throwable) removeThrowableSource(throwableId(index));
     });
+    trafficIds.current.forEach(removeAgent);
+    delete gameDebug.pushcarts[spec.id];
   }, [spec]);
 
   const onCollisionEnter = ({ other }) => {
-    if (other.rigidBodyObject?.userData?.gameKind !== 'player') return;
+    const otherKind = other.rigidBodyObject?.userData?.gameKind;
+    if (spec.id === OPENING_CHAOS_CART_ID && otherKind === 'horseless-carriage') {
+      // Give the striking carriage time to clear the cart before avoidance
+      // switches on. The dynamic body remains free to roll or tip differently
+      // on every impact.
+      trafficActive.current = true;
+      trafficDelay.current = Math.max(trafficDelay.current, 0.75);
+    }
+    if (otherKind !== 'player') return;
     const rb = body.current;
     if (!rb) return;
     const cartVelocity = rb.linvel();
@@ -169,6 +188,33 @@ function Pushcart({ spec }) {
   useFrame((_, delta) => {
     const rb = body.current;
     if (!rb) return;
+    trafficDelay.current = Math.max(0, trafficDelay.current - Math.min(delta, 0.05));
+    if (trafficActive.current && trafficDelay.current <= 0) {
+      const t = rb.translation();
+      const q = rb.rotation();
+      quat.set(q.x, q.y, q.z, q.w);
+      spec.trafficFootprint.centers.forEach((center, index) => {
+        vec.set(...center).applyQuaternion(quat);
+        reportAgent(
+          trafficIds.current[index],
+          t.x + vec.x,
+          t.z + vec.z,
+          spec.trafficFootprint.radius,
+          { obstacleKind: 'pushcart', obstacleId: spec.id, trafficPolicy: 'soft' },
+        );
+      });
+    } else {
+      trafficIds.current.forEach(removeAgent);
+    }
+    const debugTranslation = rb.translation();
+    const debugRotation = rb.rotation();
+    gameDebug.pushcarts[spec.id] = {
+      position: [debugTranslation.x, debugTranslation.y, debugTranslation.z],
+      rotation: [debugRotation.x, debugRotation.y, debugRotation.z, debugRotation.w],
+      trafficActive: trafficActive.current,
+      trafficDelay: trafficDelay.current,
+      spilled: Boolean(spilled),
+    };
     if (!spilled) {
       const t = rb.translation();
       const q = rb.rotation();

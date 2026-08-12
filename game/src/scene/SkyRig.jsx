@@ -17,15 +17,12 @@ const HEMI_GROUND = { night: new THREE.Color('#0a0d12'), day: new THREE.Color('#
 const AMBIENT_NIGHT = new THREE.Color('#2a3a5c');
 const AMBIENT_DAY = new THREE.Color('#e4e7de');
 const scratch = new THREE.Color();
-// Half-width of the sun's shadow box, in metres. Smaller means more texels per
-// metre and crisper contact shadows; too small and shadows pop in at the edge.
-const SUN_SHADOW_EXTENT = 25;
-
 export default function SkyRig({ config, runtime }) {
   const scene = useThree((state) => state.scene);
   const sunRef = useRef();
   const ambientRef = useRef();
   const hemisphereRef = useRef();
+  const shadowExtentRef = useRef(0);
   // The sun's map covers 50m against an interior light's few metres, so it
   // needs the extra rank to resolve thin casters. A bench is slats and iron
   // bars: below about 3cm per texel it writes nothing and casts no shadow.
@@ -101,7 +98,20 @@ export default function SkyRig({ config, runtime }) {
     const player = gameDebug.player.position;
     const sun = sunRef.current;
     if (sun) {
-      const texel = (SUN_SHADOW_EXTENT * 2) / shadowMapSize;
+      // The distance slider is the half-width of the player-centred shadow
+      // box. Changing it live also changes texel density, so nearby shadows
+      // get softer as the range grows.
+      const shadowExtent = values.outdoorShadowDistance;
+      if (shadowExtentRef.current !== shadowExtent) {
+        shadowExtentRef.current = shadowExtent;
+        const camera = sun.shadow.camera;
+        camera.left = -shadowExtent;
+        camera.right = shadowExtent;
+        camera.top = shadowExtent;
+        camera.bottom = -shadowExtent;
+        camera.updateProjectionMatrix();
+      }
+      const texel = (shadowExtent * 2) / shadowMapSize;
       const anchorX = Math.round(player[0] / texel) * texel;
       const anchorZ = Math.round(player[2] / texel) * texel;
       sun.position.set(anchorX + direction[0] * 70, Math.max(direction[1], 0.02) * 70, anchorZ + direction[2] * 70);
@@ -165,10 +175,10 @@ export default function SkyRig({ config, runtime }) {
         shadow-mapSize-height={shadowMapSize}
         shadow-camera-near={1}
         shadow-camera-far={160}
-        shadow-camera-left={-SUN_SHADOW_EXTENT}
-        shadow-camera-right={SUN_SHADOW_EXTENT}
-        shadow-camera-top={SUN_SHADOW_EXTENT}
-        shadow-camera-bottom={-SUN_SHADOW_EXTENT}
+        shadow-camera-left={-runtime.values.outdoorShadowDistance}
+        shadow-camera-right={runtime.values.outdoorShadowDistance}
+        shadow-camera-top={runtime.values.outdoorShadowDistance}
+        shadow-camera-bottom={-runtime.values.outdoorShadowDistance}
         shadow-bias={-0.0001}
         shadow-normalBias={0.012}
       />

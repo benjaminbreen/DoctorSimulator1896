@@ -4,7 +4,11 @@
 export const gameDebug = {
   tuning: null,
   set: null,
-  player: { position: [0, 0, 0], velocity: [0, 0, 0], grounded: false, yaw: 0, visible: true },
+  player: {
+    position: [0, 0, 0], velocity: [0, 0, 0], grounded: false, yaw: 0,
+    visible: true, running: false, posture: 'normal', cameraHeight: 1.45,
+    climbing: false, climbSerial: 0,
+  },
   pendingTeleport: null,
   pendingYaw: null,
   teleport(x, y, z) {
@@ -30,6 +34,8 @@ export const gameDebug = {
   // {route, x, z, s, lat, speed, yaw} per vehicle; carriage is the first.
   carriage: null,
   carriages: [],
+  horseDrawnTraffic: [],
+  pushcarts: {},
   // Set by PlayerRig so the debug handle can enter instrument mode directly.
   enterInstrument: null,
   // Present while the mobile controls are mounted; the screenshot harness

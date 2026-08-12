@@ -5,6 +5,7 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { buildCaseNotebook } from './caseNotebook.js';
+import { availableDialoguePrompts, classifyCustomThought } from './patientLogic.js';
 import {
   addPatientNote,
   deletePatientNote,
@@ -39,12 +40,12 @@ function StethoscopeIcon({ size = 18 }) {
   );
 }
 
-function NotesIcon({ size = 17 }) {
+function RuminateIcon({ size = 18 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M5.5 2.8h8.6l2.9 2.9v13.5H5.5Z" />
-      <path d="M14.1 2.8v2.9H17" />
-      <path d="M8 9h6M8 12h6M8 15h4" />
+    <svg width={size} height={size} viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2.7 11c3.5-5 13.1-5 16.6 0-3.5 5-13.1 5-16.6 0Z" />
+      <circle cx="11" cy="11" r="3.1" />
+      <path d="M11 3V1.8M5.8 4.6 4.9 3.5M16.2 4.6l.9-1.1" />
     </svg>
   );
 }
@@ -168,14 +169,15 @@ function fallbackPrompts(patient) {
 
 /* ---------------- component ---------------- */
 
-const RAIL_ICONS = { interview: SpeechIcon, examine: StethoscopeIcon, notes: NotesIcon, treatment: BottleIcon };
+const RAIL_ICONS = { interview: SpeechIcon, examine: StethoscopeIcon, ruminate: RuminateIcon, treatment: BottleIcon };
 
 export default function ConsultationView({ runtime, onRegenerate, onDismissPatient }) {
   const state = useSyncExternalStore(runtime.subscribe, runtime.get, runtime.get);
   const patients = runtime.patients();
   const patient = patients.find((candidate) => candidate.id === state?.patientId) || null;
 
-  // 'thought' | 'speech' | 'exam'; only meaningful during the inquiry stage.
+  // The opening rumination is required once. After that, Interview and
+  // Examination continue until the player opens Ruminate deliberately.
   const [phase, setPhase] = useState('thought');
   const [cursor, setCursor] = useState(-1);
   const [bookOpen, setBookOpen] = useState(false);
@@ -183,8 +185,15 @@ export default function ConsultationView({ runtime, onRegenerate, onDismissPatie
   const [noteEditor, setNoteEditor] = useState(null);
   const [errorNote, setErrorNote] = useState('');
   const [queueDismissed, setQueueDismissed] = useState(false);
+  const [customSpeech, setCustomSpeech] = useState('');
+  const [customThought, setCustomThought] = useState('');
+  const [customThoughtOpen, setCustomThoughtOpen] = useState(false);
+  const [resultView, setResultView] = useState('immediate');
+  const [speechPending, setSpeechPending] = useState(false);
+  const [freshNotebookEntryId, setFreshNotebookEntryId] = useState(null);
   const errorTimer = useRef(null);
   const noteInput = useRef(null);
+  const notebookAutoRef = useRef({ patientId: null, entryId: null });
 
   const stage = state?.stage ?? null;
   const history = state?.history ?? [];
@@ -193,16 +202,16 @@ export default function ConsultationView({ runtime, onRegenerate, onDismissPatie
     [history],
   );
 
-  // The opening complaint is already on screen, so inquiry starts at once.
-  useEffect(() => {
-    if (stage === 'opening') runtime.dispatch({ type: 'begin-inquiry' });
-  }, [stage, runtime]);
-
   useEffect(() => {
     setPhase('thought');
     setBookOpen(false);
     setPlayerNotes(patient ? loadPatientNotes(patient) : []);
     setNoteEditor(null);
+    setCustomSpeech('');
+    setCustomThought('');
+    setCustomThoughtOpen(false);
+    setResultView('immediate');
+    setSpeechPending(false);
   }, [state?.patientId, patient?.profile?.seed]);
 
   useEffect(() => {
@@ -231,16 +240,17 @@ export default function ConsultationView({ runtime, onRegenerate, onDismissPatie
   const interpretations = patient?.interpretations ?? [];
   const noted = new Set(state?.interpretationIds ?? []);
   const prompts = useMemo(
-    () => (patient ? (patient.prompts?.length ? patient.prompts : fallbackPrompts(patient)) : []),
-    [patient],
+    () => (patient && state
+      ? (patient.prompts?.length ? availableDialoguePrompts(patient, state) : fallbackPrompts(patient))
+      : []),
+    [patient, state],
   );
   const asked = useMemo(
-    () => new Set(history.filter((event) => event.kind === 'speech').map((event) => event.input)),
+    () => new Set(history.filter((event) => event.kind === 'speech').map((event) => event.promptId || event.input)),
     [history],
   );
   const examined = new Set(state?.observedFactIds ?? []);
-  const remainingThoughts = interpretations.some((item) => !noted.has(item.id));
-
+  const hasRuminated = noted.size > 0 || (state?.customInterpretations?.length ?? 0) > 0;
   const clueTokens = useMemo(() => {
     if (!patient || !state) return [];
     const known = new Set(state.disclosedFactIds);
@@ -250,17 +260,48 @@ export default function ConsultationView({ runtime, onRegenerate, onDismissPatie
       .map((token) => String(token).toLowerCase());
   }, [patient, state]);
 
-  const speakPrompt = (prompt) => {
-    runtime.speak({ text: prompt.text, stance: prompt.stance });
-    const after = runtime.get();
-    if (after?.stage === 'inquiry') {
-      setPhase(remainingThoughts ? 'thought' : 'speech');
+  const speakPrompt = async (prompt) => {
+    if (speechPending) return;
+    setSpeechPending(true);
+    try {
+      await runtime.speak({ text: prompt.text, stance: prompt.stance, promptId: prompt.id });
+      const after = runtime.get();
+      if (after?.stage === 'inquiry') setPhase('speech');
+    } finally {
+      setSpeechPending(false);
+    }
+  };
+
+  const speakCustom = async () => {
+    const text = customSpeech.trim();
+    if (!text || speechPending) return;
+    setSpeechPending(true);
+    try {
+      await runtime.speak({ text, stance: 'question', custom: true });
+      setCustomSpeech('');
+      const after = runtime.get();
+      if (after?.stage === 'inquiry') setPhase('speech');
+    } finally {
+      setSpeechPending(false);
     }
   };
 
   const chooseThought = (item) => {
     if (noted.has(item.id)) return;
     runtime.dispatch({ type: 'interpret', id: item.id });
+    if (item.nextMode === 'examination') toExamination();
+    else toInterview();
+  };
+
+  const chooseCustomThought = () => {
+    const text = customThought.trim();
+    if (!text) return;
+    runtime.dispatch({
+      type: 'interpret-custom', text,
+      classification: classifyCustomThought(patient, text),
+    });
+    setCustomThought('');
+    setCustomThoughtOpen(false);
     setPhase('speech');
   };
 
@@ -278,10 +319,23 @@ export default function ConsultationView({ runtime, onRegenerate, onDismissPatie
     setPhase('exam');
   };
 
+  const toRumination = () => {
+    if (stage !== 'inquiry') return;
+    setCustomThoughtOpen(false);
+    setPhase('thought');
+  };
+
+  const beginInquiry = () => {
+    if (stage !== 'opening') return;
+    runtime.dispatch({ type: 'begin-inquiry' });
+    setPhase('thought');
+  };
+
   const toDecision = () => {
     if (stage === 'inquiry') {
       runtime.dispatch({ type: 'begin-decision' });
-      if (runtime.get()?.stage === 'decision') setBookOpen(true);
+      const narrow = typeof window !== 'undefined' && window.matchMedia('(max-width: 700px)').matches;
+      if (runtime.get()?.stage === 'decision' && !narrow) setBookOpen(true);
     }
   };
 
@@ -348,6 +402,9 @@ export default function ConsultationView({ runtime, onRegenerate, onDismissPatie
     nav.count = patients.length;
     nav.cols = patients.length || 1;
     nav.select = (index) => runtime.start(patients[index].id);
+  } else if (stage === 'opening') {
+    nav.count = 1;
+    nav.select = beginInquiry;
   } else if (stage === 'inquiry' && phase === 'thought') {
     nav.count = interpretations.length;
     nav.cols = interpretations.length || 1;
@@ -437,13 +494,31 @@ export default function ConsultationView({ runtime, onRegenerate, onDismissPatie
   const utterance = latestUtterance(history);
   const notebook = patient && state ? buildCaseNotebook(patient, state) : null;
 
+  // New clinical entries open the notebook. The projection supplies a stable
+  // ID, so rerenders and repeated questions do not reopen it.
+  useEffect(() => {
+    const patientId = patient?.id || null;
+    const entryId = notebook?.latestEntryId || null;
+    const previous = notebookAutoRef.current;
+    if (previous.patientId !== patientId) {
+      notebookAutoRef.current = { patientId, entryId };
+      setFreshNotebookEntryId(null);
+      return;
+    }
+    if (entryId && entryId !== previous.entryId) {
+      setFreshNotebookEntryId(entryId);
+      setBookOpen(true);
+    }
+    notebookAutoRef.current = { patientId, entryId };
+  }, [patient?.id, notebook?.latestEntryId]);
+
   const railItems = patient && state ? [
     {
       id: 'interview',
       title: 'Interview',
       sub: `Ask about ${possessive(patient.profile)} symptoms`,
       active: stage === 'inquiry' && phase === 'speech' && state.mode === 'patient',
-      disabled: stage !== 'inquiry',
+      disabled: stage !== 'inquiry' || !hasRuminated,
       act: toInterview,
     },
     {
@@ -451,16 +526,16 @@ export default function ConsultationView({ runtime, onRegenerate, onDismissPatie
       title: 'Examine',
       sub: 'Physical assessment',
       active: stage === 'inquiry' && phase === 'exam',
-      disabled: stage !== 'inquiry',
+      disabled: stage !== 'inquiry' || !hasRuminated,
       act: toExamination,
     },
     {
-      id: 'notes',
-      title: 'Consult Notes',
-      sub: 'Review case details',
-      active: bookOpen,
-      disabled: false,
-      act: () => setBookOpen((open) => !open),
+      id: 'ruminate',
+      title: 'Ruminate',
+      sub: 'Consider what the evidence means',
+      active: stage === 'inquiry' && phase === 'thought',
+      disabled: stage !== 'inquiry',
+      act: toRumination,
     },
     {
       id: 'treatment',
@@ -510,6 +585,20 @@ export default function ConsultationView({ runtime, onRegenerate, onDismissPatie
       );
     }
 
+    if (stage === 'opening') {
+      return (
+        <div className="gcon-arrival">
+          <p className="gcon-eyebrow">{patient.label}</p>
+          <p className="gcon-arrival-description">{patient.opening.behavior}</p>
+          <blockquote className="gcon-quote">{patient.opening.dialogue}</blockquote>
+          <Ornament />
+          <footer className="gcon-hint gcon-hint--arrival">
+            <button type="button" className="gcon-continue" onClick={beginInquiry}>Continue</button>
+          </footer>
+        </div>
+      );
+    }
+
     if (stage === 'inquiry' && phase === 'thought') {
       return (
         <>
@@ -540,10 +629,28 @@ export default function ConsultationView({ runtime, onRegenerate, onDismissPatie
             })}
           </div>
           <footer className="gcon-hint">
-            <span>
-              Select an interpretation or{' '}
-              <button type="button" className="gcon-hint-link" onClick={toInterview}>continue the conversation</button>
-            </span>
+            {customThoughtOpen ? (
+              <form className="gcon-custom-thought" onSubmit={(event) => { event.preventDefault(); chooseCustomThought(); }}>
+                <input
+                  aria-label="Suggest your own interpretation"
+                  placeholder="Suggest your own interpretation…"
+                  maxLength={600}
+                  value={customThought}
+                  onChange={(event) => setCustomThought(event.target.value)}
+                  autoFocus
+                />
+                <button type="submit" disabled={!customThought.trim()}>Record</button>
+                <button type="button" onClick={() => setCustomThoughtOpen(false)}>Cancel</button>
+              </form>
+            ) : (
+              <span>
+                Choose an approach,{' '}
+                <button type="button" className="gcon-hint-link" onClick={() => setCustomThoughtOpen(true)}>suggest your own</button>
+                {noted.size > 0 && (
+                  <>{', or '}<button type="button" className="gcon-hint-link" onClick={toInterview}>return to the consultation</button></>
+                )}
+              </span>
+            )}
           </footer>
         </>
       );
@@ -563,7 +670,8 @@ export default function ConsultationView({ runtime, onRegenerate, onDismissPatie
               <button
                 key={prompt.id}
                 type="button"
-                className={`gcon-card gcon-card--speech${cursor === index ? ' is-hot' : ''}${asked.has(prompt.text) ? ' is-done' : ''}`}
+                className={`gcon-card gcon-card--speech${cursor === index ? ' is-hot' : ''}${asked.has(prompt.id) ? ' is-done' : ''}`}
+                disabled={speechPending}
                 {...cardMouse(index)}
                 onClick={() => speakPrompt(prompt)}
               >
@@ -571,6 +679,26 @@ export default function ConsultationView({ runtime, onRegenerate, onDismissPatie
                 {prompt.text}
               </button>
             ))}
+            <form className="gcon-card gcon-card--custom-speech" onSubmit={(event) => { event.preventDefault(); speakCustom(); }}>
+              <textarea
+                aria-label="Ask in your own words"
+                placeholder="Ask in your own words…"
+                maxLength={600}
+                rows={2}
+                value={customSpeech}
+                disabled={speechPending}
+                onChange={(event) => setCustomSpeech(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    speakCustom();
+                  }
+                }}
+              />
+              <button type="submit" disabled={!customSpeech.trim() || speechPending} aria-label="Ask custom question">
+                {speechPending ? '…' : 'Ask'}
+              </button>
+            </form>
           </div>
         </>
       );
@@ -610,7 +738,7 @@ export default function ConsultationView({ runtime, onRegenerate, onDismissPatie
       return (
         <>
           <p className="gcon-eyebrow">Working Diagnosis</p>
-          <div className="gcon-options gcon-options--row">
+          <div className="gcon-options gcon-options--row gcon-options--decisions">
             {patient.diagnoses.map((item, index) => (
               <button
                 key={item.id}
@@ -620,12 +748,13 @@ export default function ConsultationView({ runtime, onRegenerate, onDismissPatie
                 onClick={() => runtime.dispatch({ type: 'select-diagnosis', id: item.id })}
               >
                 {item.label}
+                {item.description && <span className="gcon-card-sub">{item.description}</span>}
               </button>
             ))}
           </div>
           <div style={{ height: 14 }} />
           <p className="gcon-eyebrow">Course of Treatment</p>
-          <div className="gcon-options gcon-options--row">
+          <div className="gcon-options gcon-options--row gcon-options--decisions">
             {patient.treatments.map((item, index) => {
               const navIndex = patient.diagnoses.length + index;
               return (
@@ -637,6 +766,7 @@ export default function ConsultationView({ runtime, onRegenerate, onDismissPatie
                   onClick={() => runtime.dispatch({ type: 'select-treatment', id: item.id })}
                 >
                   {item.label}
+                  {item.description && <span className="gcon-card-sub">{item.description}</span>}
                 </button>
               );
             })}
@@ -682,6 +812,56 @@ export default function ConsultationView({ runtime, onRegenerate, onDismissPatie
     }
 
     if (stage === 'result') {
+      if (state.result.kind === 'authored-outcome') {
+        const immediate = state.result.immediate;
+        const month = state.result.oneMonth;
+        return (
+          <>
+            <p className="gcon-eyebrow">
+              {resultView === 'immediate' ? 'As the Patient Leaves' : 'One Month Later'}
+            </p>
+            {resultView === 'immediate' ? (
+              <>
+                <blockquote className="gcon-result-prose">{immediate.narrative}</blockquote>
+                <div className="gcon-figures">
+                  <div className="gcon-figure"><strong>{immediate.satisfaction}</strong><span>Satisfaction</span></div>
+                  <div className="gcon-figure"><strong>{immediate.paymentLabel}</strong><span>Payment</span></div>
+                  <div className="gcon-figure"><strong>{signed(immediate.reputation)}</strong><span>Reputation</span></div>
+                </div>
+                <p className="gcon-result-detail">{immediate.wordOfMouth}</p>
+              </>
+            ) : (
+              <>
+                <blockquote className="gcon-result-prose">{month.narrative}</blockquote>
+                <div className="gcon-figures">
+                  <div className="gcon-figure"><strong>{signed(month.healthChange)}</strong><span>Health</span></div>
+                  <div className="gcon-figure"><strong>{signed(month.functionChange)}</strong><span>Daily Function</span></div>
+                  <div className="gcon-figure"><strong>{state.result.scores.diagnosis}/10</strong><span>Reasoning</span></div>
+                </div>
+                <details className="gcon-debrief">
+                  <summary>Modern debrief</summary>
+                  <p>{state.result.modernDebrief}</p>
+                </details>
+                <details className="gcon-debrief">
+                  <summary>Letter from William James</summary>
+                  <p>{state.result.james.letter}</p>
+                  <small>{state.result.james.disclaimer}</small>
+                </details>
+              </>
+            )}
+            <footer className="gcon-hint">
+              {resultView === 'immediate' ? (
+                <button type="button" className="gcon-hint-link" onClick={() => setResultView('month')}>See what happened one month later</button>
+              ) : (
+                <>
+                  <button type="button" className="gcon-hint-link" onClick={() => setResultView('immediate')}>Return to the patient’s reaction</button>
+                  <button type="button" className="gcon-hint-link" onClick={() => runtime.reset()}>Receive the next patient</button>
+                </>
+              )}
+            </footer>
+          </>
+        );
+      }
       return (
         <>
           <p className="gcon-eyebrow">The Consultation Concludes</p>
@@ -718,7 +898,8 @@ export default function ConsultationView({ runtime, onRegenerate, onDismissPatie
 
   // The interview's question grid runs wider than the interpretation row,
   // matching the two mockups' panel widths.
-  const wideStage = (stage === 'inquiry' && (phase === 'speech' || phase === 'exam')) || stage === 'decision';
+  const wideStage = (stage === 'inquiry' && (phase === 'speech' || phase === 'exam'))
+    || stage === 'decision' || stage === 'result';
 
   if (!patient && queueDismissed) return null;
 
@@ -744,7 +925,7 @@ export default function ConsultationView({ runtime, onRegenerate, onDismissPatie
                   <strong>
                     <span className="gcon-desktop-label">{item.title}</span>
                     <span className="gcon-mobile-label">
-                      {{ interview: 'Talk', examine: 'Examine', notes: 'Notes', treatment: 'Treat' }[item.id]}
+                      {{ interview: 'Talk', examine: 'Examine', ruminate: 'Think', treatment: 'Treat' }[item.id]}
                     </span>
                   </strong>
                   <small>{item.sub}</small>
@@ -758,7 +939,9 @@ export default function ConsultationView({ runtime, onRegenerate, onDismissPatie
             <span className="gcon-mobile-label">Casebook</span>
             <span className="gcon-key">TAB</span>
           </button>
-          <p className="gcon-rail-followup"><span>Follow-Up Unavailable</span></p>
+          <p className="gcon-rail-followup">
+            <span>{patient.outcomeModel ? 'One-Month Follow-Up' : 'Follow-Up Unavailable'}</span>
+          </p>
         </aside>
       )}
 
@@ -810,9 +993,12 @@ export default function ConsultationView({ runtime, onRegenerate, onDismissPatie
               {notebook.observations.length > 0 && (
                 <section className="gcon-book-section">
                   <h3>Recent Observations</h3>
-                  <div className="gcon-book-observations">
+                  <div className="gcon-book-observations" aria-live="polite">
                     {notebook.observations.map((entry) => (
-                      <article key={entry.id} className="gcon-book-entry">
+                      <article
+                        key={entry.id}
+                        className={`gcon-book-entry${entry.id === freshNotebookEntryId ? ' is-new' : ''}`}
+                      >
                         <strong>{entry.kind}</strong>
                         <p>{entry.text}</p>
                       </article>

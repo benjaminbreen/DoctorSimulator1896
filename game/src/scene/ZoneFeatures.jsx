@@ -16,6 +16,7 @@ const FEATURES = {
   carousel: lazy(() => import('./Carousel.jsx')),
   'checkers-tables': lazy(() => import('./CheckersTables.jsx')),
   'horseless-carriage': lazy(() => import('./HorselessCarriage.jsx')),
+  'horse-drawn-traffic': lazy(() => import('./HorseDrawnTraffic.jsx')),
   pushcarts: lazy(() => import('./Pushcarts.jsx')),
   'pigeon-flock': lazy(() => import('./PigeonFlock.jsx')),
   bees: lazy(() => import('./BeeSwarms.jsx')),

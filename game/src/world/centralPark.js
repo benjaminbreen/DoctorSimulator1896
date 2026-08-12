@@ -11,7 +11,7 @@
 
 import { parkProp, gasLamp } from './parkCatalog.js';
 import { modelSize } from './modelPacks.js';
-import { GAPSTOW, walkY, RUN_W } from './gapstow.js';
+import { GAPSTOW, localToWorld, walkY, RUN_W } from './gapstow.js';
 
 const RAILING = 'metal_and_concrete_guardrail_8_MB';
 
@@ -29,6 +29,31 @@ export const POND_OUTLINE = [
 ];
 
 export const WATER_LEVEL = -0.5;
+
+// Motion affordances are sparse authored staging points, not another collider
+// layer. These four sit at the exposed ends of Gapstow's parapets. Future roof
+// and prop builders can emit the same local data contract after transforming
+// their own anchor and outward normal into world space.
+export const PARK_MOTION_AFFORDANCES = Object.freeze(
+  [-1, 1].flatMap((end) => [-1, 1].map((side) => {
+    const along = end * (RUN_W - 0.2);
+    const across = side * 1.62;
+    const [x, z] = localToWorld(along, across);
+    return Object.freeze({
+      id: `gapstow-parapet-${end < 0 ? 'west' : 'east'}-${side < 0 ? 'north' : 'south'}`,
+      type: 'ledge',
+      position: Object.freeze([x, walkY(along), z]),
+      outward: Object.freeze([
+        side * Math.sin(GAPSTOW.yaw),
+        side * Math.cos(GAPSTOW.yaw),
+      ]),
+      radius: 0.56,
+      heightTolerance: 0.5,
+      dwellSeconds: 0.35,
+      safeRetreat: 0.48,
+    });
+  })),
+);
 
 export const PATHS = [
   // Center Drive: Scholars' Gate, north past the east shore, then the sweep

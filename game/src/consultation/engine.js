@@ -5,6 +5,8 @@ import {
   normalizeDialogueResponse,
   validateConsultationPatient,
 } from './contract.js';
+import { relationshipEffects, resolveInquiryRule, ruleIsAvailable } from './patientLogic.js';
+import { resolveAuthoredOutcome } from './outcomes.js';
 
 const SPEECH_MINUTES = 5;
 const EXAMINATION_MINUTES = 3;
@@ -33,28 +35,46 @@ function factById(patient, id) {
   return patient.facts.find((fact) => fact.id === id) || null;
 }
 
+function notebookNoteFor(rule, acceptedFact, rejected) {
+  if (rejected.length) return { noteSummary: null, noteKey: null };
+  const noteSummary = String(
+    rule?.noteSummary || acceptedFact?.notebookSummary || acceptedFact?.value || '',
+  ).trim().slice(0, 300) || null;
+  const noteKey = noteSummary
+    ? rule?.noteKey || rule?.discloseFactIds?.[0] || acceptedFact?.id || rule?.id || null
+    : null;
+  return { noteSummary, noteKey };
+}
+
 export function eligibleDisclosureIds(patient, state, input) {
   const text = String(input?.text || '').toLowerCase();
   const known = new Set(state.disclosedFactIds);
+  const rule = resolveInquiryRule(patient, state, input);
+  const authorizedByRule = new Set(rule?.discloseFactIds || []);
   return patient.facts.filter((fact) => {
     if (known.has(fact.id) || fact.disclosure !== 'withheld') return false;
     const tokens = fact.releaseOn || [];
-    return state.trust >= (fact.minimumTrust ?? 0)
-      && tokens.some((token) => text.includes(String(token).toLowerCase()));
+    return ruleIsAvailable(fact, state)
+      && (authorizedByRule.has(fact.id) || tokens.some((token) => text.includes(String(token).toLowerCase())));
   }).map((fact) => fact.id);
 }
 
 export function buildDialogueRequest(patient, state, input) {
   const stance = SPEECH_STANCES.includes(input?.stance) ? input.stance : 'question';
+  const rule = resolveInquiryRule(patient, state, input);
+  const allowedDisclosureIds = eligibleDisclosureIds(patient, state, input);
   return {
     patientId: patient.id,
     playerInput: String(input?.text || '').trim().slice(0, 600),
     stance,
+    promptId: input?.promptId || null,
+    custom: Boolean(input?.custom),
+    resolvedRuleId: rule?.id || null,
     trust: state.trust,
     elapsedMinutes: state.elapsedMinutes,
     disclosedFacts: state.disclosedFactIds.map((id) => factById(patient, id)).filter(Boolean),
-    withheldFacts: patient.facts.filter((fact) => fact.disclosure === 'withheld'),
-    allowedDisclosureIds: eligibleDisclosureIds(patient, state, input),
+    allowedDisclosureIds,
+    allowedDisclosureFacts: allowedDisclosureIds.map((id) => factById(patient, id)).filter(Boolean),
     recentTurns: state.history.filter((event) => event.kind === 'speech').slice(-4),
   };
 }
@@ -74,15 +94,18 @@ export function startConsultation(patient) {
     .filter((fact) => fact.disclosure === 'open')
     .map((fact) => fact.id);
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     patientId: patient.id,
     stage: 'opening',
     mode: 'patient',
     elapsedMinutes: 0,
     trust: patient.initialTrust ?? 50,
+    satisfaction: patient.initialSatisfaction ?? 50,
     disclosedFactIds,
     observedFactIds: [],
     interpretationIds: [],
+    customInterpretations: [],
+    provisionalDiagnosisId: null,
     diagnosisId: null,
     treatmentId: null,
     caseNote: '',
@@ -113,7 +136,22 @@ export function consultationTransition(state, patient, action) {
       return record({
         ...state,
         interpretationIds: addUnique(state.interpretationIds, [interpretation.id]),
+        provisionalDiagnosisId: interpretation.provisionalDiagnosisId || state.provisionalDiagnosisId,
       }, { kind: 'interpretation', id: interpretation.id, text: interpretation.text });
+    }
+    case 'interpret-custom': {
+      const error = requireStage(state, 'inquiry');
+      if (error) return withError(state, error);
+      const text = String(action.text || '').trim().slice(0, 600);
+      if (!text) return withError(state, 'an interpretation requires text');
+      const entry = { text, classification: action.classification || null };
+      return record({
+        ...state,
+        customInterpretations: [...state.customInterpretations, entry],
+      }, {
+        kind: 'interpretation', id: `custom-${state.customInterpretations.length + 1}`,
+        text, custom: true, classification: entry.classification,
+      });
     }
     case 'examine': {
       const error = requireStage(state, 'inquiry');
@@ -121,14 +159,18 @@ export function consultationTransition(state, patient, action) {
       const examination = patient.examinations.find((item) => item.id === action.id);
       if (!examination) return withError(state, `unknown examination ${action.id}`);
       const fact = factById(patient, examination.factId);
+      const effects = examination.effects || {};
       return record({
         ...state,
         elapsedMinutes: state.elapsedMinutes + (examination.minutes ?? EXAMINATION_MINUTES),
+        trust: Math.max(0, Math.min(100, state.trust + (effects.trust || 0))),
+        satisfaction: Math.max(0, Math.min(100, state.satisfaction + (effects.satisfaction || 0))),
         disclosedFactIds: addUnique(state.disclosedFactIds, [fact.id]),
         observedFactIds: addUnique(state.observedFactIds, [fact.id]),
       }, {
         kind: 'examination', id: examination.id, label: examination.label,
         reply: examination.reply, fact,
+        bodyCue: examination.bodyCue || null,
         behavior: examination.behavior || '', uncertainty: examination.uncertainty || '',
       });
     }
@@ -141,23 +183,43 @@ export function consultationTransition(state, patient, action) {
       const allowed = new Set(request.allowedDisclosureIds);
       const accepted = response.disclosedNow.filter((id) => allowed.has(id));
       const rejected = response.disclosedNow.filter((id) => !allowed.has(id));
-      const trust = trustAfterResponse(state.trust, request.stance, response.appraisal);
+      const acceptedFact = accepted.length ? factById(patient, accepted[0]) : null;
+      const dialogue = rejected.length
+        ? acceptedFact ? `“${acceptedFact.patientWording || acceptedFact.value}”` : 'The patient waits for you to continue.'
+        : response.dialogue;
+      const behavior = rejected.length ? 'The patient remains attentive.' : response.behavior;
+      const effects = relationshipEffects(patient, state, action.input);
+      const rule = [...(patient.prompts || []), ...(patient.inquiryIntents || [])]
+        .find((candidate) => candidate.id === request.resolvedRuleId);
+      const notebookNote = notebookNoteFor(rule, acceptedFact, rejected);
+      const trust = Math.max(0, Math.min(100,
+        trustAfterResponse(state.trust, request.stance, response.appraisal) + (effects.trust || 0),
+      ));
+      const satisfaction = Math.max(0, Math.min(100, state.satisfaction + (effects.satisfaction || 0)));
       const terminated = response.appraisal.terminates || trust <= 0;
       const next = record({
         ...state,
         stage: terminated ? 'terminated' : state.stage,
         elapsedMinutes: state.elapsedMinutes + SPEECH_MINUTES,
         trust,
+        satisfaction,
         disclosedFactIds: addUnique(state.disclosedFactIds, accepted),
         errors: rejected.length
           ? [...state.errors, `dialogue attempted unauthorized disclosure: ${rejected.join(', ')}`]
           : state.errors,
       }, {
         kind: 'speech', input: request.playerInput, stance: request.stance,
-        dialogue: response.dialogue, behavior: response.behavior,
+        promptId: request.promptId, custom: request.custom, resolvedRuleId: request.resolvedRuleId,
+        bodyCue: rule?.bodyCue || null,
+        dialogue, behavior,
+        ...notebookNote,
         disclosedNow: accepted, appraisal: response.appraisal,
       });
       return next;
+    }
+    case 'dialogue-error': {
+      const error = requireStage(state, 'inquiry');
+      return error ? withError(state, error) : withError(state, String(action.error || 'dialogue service unavailable'));
     }
     case 'begin-decision': {
       const error = requireStage(state, 'inquiry');
@@ -197,18 +259,22 @@ export function consultationTransition(state, patient, action) {
       const diagnosis = patient.diagnoses.find((item) => item.id === state.diagnosisId);
       const treatment = patient.treatments.find((item) => item.id === state.treatmentId);
       const required = patient.caseNote?.requiredFactIds || [];
+      const knownFacts = new Set([...state.disclosedFactIds, ...state.observedFactIds]);
       const mentioned = required.filter((factId) => {
         const fact = factById(patient, factId);
-        return fact?.noteTerms?.some((term) => state.caseNote.toLowerCase().includes(term.toLowerCase()));
+        return knownFacts.has(factId)
+          && fact?.noteTerms?.some((term) => state.caseNote.toLowerCase().includes(term.toLowerCase()));
       });
       const noteRatio = required.length ? mentioned.length / required.length : 1;
+      const noteCoverage = Math.round(noteRatio * 100);
+      const authoredResult = resolveAuthoredOutcome(patient, state, noteCoverage);
       return record({
         ...state,
         stage: 'result',
-        result: {
+        result: authoredResult || {
           reputation: Math.round((diagnosis.reputation + treatment.reputation + noteRatio * 4) * 10) / 10,
           record: Math.round((diagnosis.record + treatment.record + noteRatio * 4) * 10) / 10,
-          noteCoverage: Math.round(noteRatio * 100),
+          noteCoverage,
           diagnosisId: diagnosis.id,
           treatmentId: treatment.id,
         },
@@ -253,7 +319,33 @@ export function createConsultationRuntime(patients, renderDialogue, options = {}
       if (!state) return null;
       const patient = patientMap.get(state.patientId);
       const request = buildDialogueRequest(patient, state, input);
-      return dispatch({ type: 'speech-response', input, response: renderDialogue(request, patient) });
+      const expectedPatientId = state.patientId;
+      const expectedHistoryLength = state.history.length;
+      const currentRequestStillApplies = () => (
+        state?.patientId === expectedPatientId
+        && state.stage === 'inquiry'
+        && state.history.length === expectedHistoryLength
+      );
+      const applyResponse = (response) => (
+        currentRequestStillApplies()
+          ? dispatch({ type: 'speech-response', input, response })
+          : state
+      );
+      const applyError = (error) => (
+        currentRequestStillApplies()
+          ? dispatch({ type: 'dialogue-error', error: error?.message || error })
+          : state
+      );
+      let rendered;
+      try {
+        rendered = renderDialogue(request, patient);
+      } catch (error) {
+        return applyError(error);
+      }
+      if (rendered && typeof rendered.then === 'function') {
+        return rendered.then(applyResponse).catch(applyError);
+      }
+      return applyResponse(rendered);
     },
     subscribe(listener) {
       listeners.add(listener);
@@ -274,14 +366,14 @@ export function actorCueForConsultation(state) {
   if (last?.kind === 'speech') {
     const difficult = ['prying', 'hostile'].includes(last.appraisal?.register);
     return {
-      body: 'sitting-talking',
+      body: last.bodyCue || (difficult ? 'sitting-disapproval' : 'sitting-talking'),
       expression: difficult ? 'distressed' : 'guarded',
       gaze: difficult ? 'away' : 'doctor',
       speaking: true,
     };
   }
   if (last?.kind === 'examination') {
-    return { body: 'clinic-idle', expression: 'guarded', gaze: 'doctor', speaking: false };
+    return { body: last.bodyCue || 'clinic-idle', expression: 'guarded', gaze: 'doctor', speaking: false };
   }
   return { body: 'clinic-idle', expression: 'neutral', gaze: 'doctor', speaking: false };
 }

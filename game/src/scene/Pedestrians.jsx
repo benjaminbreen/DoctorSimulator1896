@@ -9,11 +9,21 @@ import { handlesAlive } from '../physics/useCharacterController.js';
 import { terrainHeight } from '../world/terrain.js';
 import { parkItems } from '../world/centralPark.js';
 import { reportAgent, removeAgent } from '../world/agents.js';
+import { clearActorImpacts, queueActorImpact, takeActorImpacts } from '../world/actorImpacts.js';
+import {
+  REACTION_MOTION,
+  REACTION_PHASE,
+  beginReaction,
+  createReactionState,
+  reactionUsesProneCollider,
+  stepReaction,
+} from '../world/actorReactions.js';
 import { gameDebug } from '../debug.js';
 import { applyPlayerEvent, npcStartleEffect } from '../world/player.js';
 import {
   PEDESTRIAN_ARCHETYPES,
   PEDESTRIAN_BENCH_SITTERS as BENCH_SITTERS,
+  PEDESTRIAN_FALL_REACTION_FILE,
   PEDESTRIAN_MAN_CLIP_FILES as MAN_CLIP_FILES,
   PEDESTRIAN_POSERS as POSERS,
   PEDESTRIAN_REACTION_FILE,
@@ -29,8 +39,6 @@ import {
 // a bench. Clips retarget across figures that share the same Mixamo skeleton.
 const WALK_TOP = 1.29;
 const WALK_SPEED = 1.35;
-// How close a figure has to be before it is worth casting a shadow.
-const SHADOW_DISTANCE = 18;
 // Animation throttle: skinning pays per mixer update, so near figures
 // animate every frame, mid-distance every third, and past freeze they
 // hold pose until approached again.
@@ -43,7 +51,34 @@ const POSE_PADDING = 1.7;
 // Bumping into a figure: kinematic capsules make them solid, and standers
 // and walkers play a startle clip when the player presses in.
 const BUMP_DISTANCE = 0.85;
+const BUMP_RELEASE_DISTANCE = 1.15;
 const BUMP_COOLDOWN = 4;
+const STANDING_COLLIDER = Object.freeze({ halfHeight: 0.55, radius: 0.28, y: 0.88 });
+
+function playReactionPhase(entry) {
+  const { phase, variant } = entry.reaction;
+  if (entry.renderedPhase === phase && entry.renderedVariant === variant) return;
+  const previous = entry.activeAction;
+  let next = null;
+  if (phase === REACTION_PHASE.STAGGER) next = entry.actions.stagger;
+  else if (phase === REACTION_PHASE.FALLING) next = entry.actions[variant];
+  else if (phase === REACTION_PHASE.PRONE) next = entry.actions.prone;
+  else if (phase === REACTION_PHASE.RISING) next = entry.actions.rise;
+
+  if (phase === REACTION_PHASE.NORMAL) {
+    previous?.fadeOut(0.25);
+    entry.base.fadeIn(0.28).play();
+    entry.activeAction = null;
+  } else if (next) {
+    entry.base.fadeOut(0.14);
+    if (previous && previous !== next) previous.fadeOut(0.16);
+    const motion = REACTION_MOTION[variant];
+    next.reset().setEffectiveTimeScale(motion?.timeScale ?? 1).fadeIn(0.12).play();
+    entry.activeAction = next;
+  }
+  entry.renderedPhase = phase;
+  entry.renderedVariant = variant;
+}
 
 function benchSitterPose({ benchId, along }) {
   const bench = parkItems.find((item) => item.id === benchId);
@@ -115,7 +150,7 @@ function routeLength(points) {
   return total;
 }
 
-export default function Pedestrians() {
+export default function Pedestrians({ runtime }) {
   // All pedestrian GLBs are meshopt-compressed.
   const withMeshopt = (loader) => loader.setMeshoptDecoder(MeshoptDecoder);
   const manGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.m.modelPath, withMeshopt);
@@ -126,26 +161,37 @@ export default function Pedestrians() {
   const manClipGltfs = useLoader(GLTFLoader, MAN_CLIP_FILES, withMeshopt);
   const womanClipGltfs = useLoader(GLTFLoader, WOMAN_CLIP_FILES, withMeshopt);
   const reactGltf = useLoader(GLTFLoader, PEDESTRIAN_REACTION_FILE, withMeshopt);
-  const { world } = useRapier();
+  const fallGltf = useLoader(GLTFLoader, PEDESTRIAN_FALL_REACTION_FILE, withMeshopt);
+  const { world, rapier } = useRapier();
+  const standingShape = useMemo(
+    () => new rapier.Capsule(STANDING_COLLIDER.halfHeight, STANDING_COLLIDER.radius),
+    [rapier],
+  );
 
   const { group, walkers, figures } = useMemo(() => {
     const reactClip = reactGltf.animations[0];
-    const manClips = [...manGltf.animations, ...manClipGltfs.flatMap((entry) => entry.animations), reactClip];
+    const fallClips = fallGltf.animations;
+    const manClips = [
+      ...manGltf.animations,
+      ...manClipGltfs.flatMap((entry) => entry.animations),
+      reactClip,
+      ...fallClips,
+    ];
     const sharedClips = manClips.filter((clip) => SHARED_CLIPS.includes(clip.name));
     const womanWalk = womanClipGltfs.flatMap((entry) => entry.animations);
     const cast = {
       m: { source: manGltf.scene, clips: manClips },
       w: {
         source: womanGltf.scene,
-        clips: [...womanGltf.animations, ...womanWalk, ...sharedClips, reactClip],
+        clips: [...womanGltf.animations, ...womanWalk, ...sharedClips, reactClip, ...fallClips],
       },
       // The summer-dress woman walks and stands only; she shares the
       // working-class woman's gait.
-      d: { source: dressGltf.scene, clips: [...dressGltf.animations, ...womanWalk, reactClip] },
+      d: { source: dressGltf.scene, clips: [...dressGltf.animations, ...womanWalk, reactClip, ...fallClips] },
       // This figure carries its own long seated loop. The matching full
       // Mixamo rig also leaves walking clips available if she is reused later.
       s: { source: somberGltf.scene, clips: somberGltf.animations },
-      f: { source: fortiesGltf.scene, clips: [...fortiesGltf.animations, reactClip] },
+      f: { source: fortiesGltf.scene, clips: [...fortiesGltf.animations, reactClip, ...fallClips] },
     };
     const findClip = (who, name) =>
       cast[who].clips.find((clip) => clip.name === name) ?? cast[who].clips[0];
@@ -157,7 +203,8 @@ export default function Pedestrians() {
     const spheres = new Map();
     const all = [];
 
-    const spawn = (index, clipName, who) => {
+    const spawn = (index, spec, clipName = spec.clip) => {
+      const { who } = spec;
       const figure = cloneSkeleton(cast[who].source);
       figure.scale.setScalar(NPC_SCALE * (0.95 + hash01(index * 3.7) * 0.1));
       const meshes = [];
@@ -198,19 +245,38 @@ export default function Pedestrians() {
       const base = mixer.clipAction(clip);
       base.play();
       mixer.setTime(hash01(index * 11.3) * clip.duration);
-      const react = mixer.clipAction(reactClip);
-      react.setLoop(THREE.LoopOnce, 1);
-      react.clampWhenFinished = true;
+      const action = (name) => {
+        const found = cast[who].clips.find((entry) => entry.name === name);
+        return found ? mixer.clipAction(found) : null;
+      };
+      const actions = {
+        stagger: action(REACTION_MOTION.stagger.clip),
+        fallShoulder: action(REACTION_MOTION.fallShoulder.clip),
+        fallGeneric: action(REACTION_MOTION.fallGeneric.clip),
+        prone: action(REACTION_MOTION.prone.clip),
+        rise: action(REACTION_MOTION.rise.clip),
+      };
+      for (const key of ['stagger', 'fallShoulder', 'fallGeneric', 'rise']) {
+        actions[key]?.setLoop(THREE.LoopOnce, 1);
+        if (actions[key]) actions[key].clampWhenFinished = true;
+      }
+      actions.prone?.setLoop(THREE.LoopRepeat, Infinity);
       const entry = {
+        id: spec.id,
+        age: spec.age,
         wrapper,
         meshes,
         mixer,
         base,
-        react,
-        reacting: false,
-        reactEnd: 0,
+        actions,
+        reaction: createReactionState(),
+        activeAction: null,
+        renderedPhase: REACTION_PHASE.NORMAL,
+        renderedVariant: null,
         cooldownUntil: 0,
-        refs: { body: null, collider: null },
+        playerNear: false,
+        velocity: [0, 0],
+        refs: { body: null, standingCollider: null, proneCollider: null, restingCollider: null },
         poser: false,
         speed: 0.92 + hash01(index * 13.7) * 0.16,
         pending: 0,
@@ -219,30 +285,30 @@ export default function Pedestrians() {
       return entry;
     };
 
-    STANDERS.forEach(([x, z, yaw, onTerrain, clipName, who], index) => {
-      const entry = spawn(index, clipName, who);
-      entry.wrapper.position.set(x, onTerrain ? terrainHeight(x, z) : WALK_TOP, z);
-      entry.wrapper.rotation.y = yaw;
+    STANDERS.forEach((spec, index) => {
+      const entry = spawn(index, spec);
+      entry.wrapper.position.set(spec.x, spec.onTerrain ? terrainHeight(spec.x, spec.z) : WALK_TOP, spec.z);
+      entry.wrapper.rotation.y = spec.yaw;
     });
 
-    POSERS.forEach(([x, z, yaw, clipName, who], index) => {
-      const entry = spawn(index + 20, clipName, who);
-      entry.wrapper.position.set(x, terrainHeight(x, z), z);
-      entry.wrapper.rotation.y = yaw;
+    POSERS.forEach((spec, index) => {
+      const entry = spawn(index + 20, spec);
+      entry.wrapper.position.set(spec.x, terrainHeight(spec.x, spec.z), spec.z);
+      entry.wrapper.rotation.y = spec.yaw;
       // Ground figures stay in repose when bumped; only their collider acts.
       entry.poser = true;
     });
 
     BENCH_SITTERS.forEach((sitter, index) => {
       const { x, z, yaw } = benchSitterPose(sitter);
-      const entry = spawn(index + 30, sitter.clip, sitter.who);
+      const entry = spawn(index + 30, sitter);
       entry.wrapper.position.set(x, terrainHeight(x, z), z);
       entry.wrapper.rotation.y = yaw;
       entry.poser = true;
     });
 
     ROUTES.forEach((route, index) => {
-      const entry = spawn(index + 40, 'Walk', route.who);
+      const entry = spawn(index + 40, route, 'Walk');
       // Same object in both lists, so the bump state is shared.
       walking.push(Object.assign(entry, {
         route,
@@ -253,7 +319,7 @@ export default function Pedestrians() {
     });
 
     return { group: root, walkers: walking, figures: all };
-  }, [manGltf, womanGltf, dressGltf, somberGltf, fortiesGltf, manClipGltfs, womanClipGltfs, reactGltf]);
+  }, [manGltf, womanGltf, dressGltf, somberGltf, fortiesGltf, manClipGltfs, womanClipGltfs, reactGltf, fallGltf]);
 
   const frameCount = useRef(0);
   useFrame((state, delta) => {
@@ -261,57 +327,128 @@ export default function Pedestrians() {
     // metres the sun's shadow of a stranger is a smudge; only the ones near
     // the camera pay for it.
     const eye = state.camera.position;
+    const t = state.clock.elapsedTime;
     frameCount.current += 1;
     for (const [index, entry] of figures.entries()) {
       const { x, z } = entry.wrapper.position;
       const dist2 = (x - eye.x) ** 2 + (z - eye.z) ** 2;
-      const near = dist2 < SHADOW_DISTANCE * SHADOW_DISTANCE;
+      const shadowDistance = runtime.values.outdoorShadowDistance;
+      const near = dist2 < shadowDistance * shadowDistance;
       for (const mesh of entry.meshes) mesh.castShadow = near;
       // Accumulate time so a throttled figure moves at true speed, just in
       // coarser steps. The +index staggers mid-tier updates across frames.
-      entry.pending = Math.min(entry.pending + delta * entry.speed, 1);
+      const reacting = entry.reaction.phase !== REACTION_PHASE.NORMAL;
+      entry.pending = Math.min(entry.pending + delta * (reacting ? 1 : entry.speed), 1);
       const animate =
         dist2 < ANIM_NEAR * ANIM_NEAR ||
-        (dist2 < ANIM_FREEZE * ANIM_FREEZE && (frameCount.current + index) % 3 === 0);
+        ((reacting || dist2 < ANIM_FREEZE * ANIM_FREEZE)
+          && (frameCount.current + index) % 3 === 0);
       if (animate) {
         entry.mixer.update(entry.pending);
         entry.pending = 0;
       }
       // The carriages steer around whatever is reported here.
-      reportAgent(`pedestrian-${index}`, x, z);
+      reportAgent(entry.id, x, z, reactionUsesProneCollider(entry.reaction) ? 0.32 : 0.45);
 
       // The collider tracks the figure; the player's controller resolves
       // against it, so nobody can be walked through.
-      const { body, collider } = entry.refs;
-      if (body && handlesAlive(world, body, collider)) {
+      const activeCollider = entry.poser
+        ? entry.refs.restingCollider
+        : reactionUsesProneCollider(entry.reaction)
+          ? entry.refs.proneCollider
+          : entry.refs.standingCollider;
+      const { body } = entry.refs;
+      if (body && handlesAlive(world, body, activeCollider)) {
         const p = entry.wrapper.position;
         body.setNextKinematicTranslation({ x: p.x, y: p.y, z: p.z });
       }
 
-      // A close player startles standers and walkers, once per approach.
+      if (!entry.poser) {
+        const prone = reactionUsesProneCollider(entry.reaction);
+        entry.refs.standingCollider?.setEnabled(!prone);
+        entry.refs.proneCollider?.setEnabled(prone);
+
+        for (const impact of takeActorImpacts(entry.id)) {
+          const sourceVelocity = impact.sourceVelocity ?? [0, 0, 0];
+          const relativeSpeed = Math.hypot(
+            sourceVelocity[0] - entry.velocity[0],
+            sourceVelocity[2] - entry.velocity[1],
+          );
+          const next = beginReaction(
+            entry.reaction,
+            { ...impact, relativeSpeed },
+            t,
+            { age: entry.age },
+          );
+          if (next !== entry.reaction) {
+            entry.reaction = next;
+            entry.cooldownUntil = t + BUMP_COOLDOWN;
+            playReactionPhase(entry);
+          }
+        }
+
+        const canStand = entry.reaction.phase !== REACTION_PHASE.PRONE
+          || t < entry.reaction.proneUntil
+          || !world.intersectionWithShape(
+            { x, y: entry.wrapper.position.y + STANDING_COLLIDER.y, z },
+            { x: 0, y: 0, z: 0, w: 1 },
+            standingShape,
+            undefined,
+            undefined,
+            entry.refs.standingCollider,
+            body,
+          );
+        const stepped = stepReaction(entry.reaction, t, { canStand });
+        if (stepped !== entry.reaction) {
+          entry.reaction = stepped;
+          playReactionPhase(entry);
+        }
+      }
+
+      // Preserve the forgiving proximity trigger from the original reaction:
+      // Rapier contacts are precise, but the character controller may stop a
+      // fraction before two kinematic capsules technically overlap.
       if (!entry.poser) {
         const player = gameDebug.player.position;
-        const t = state.clock.elapsedTime;
-        const bumped =
-          (x - player[0]) ** 2 + (z - player[2]) ** 2 < BUMP_DISTANCE * BUMP_DISTANCE;
-        if (!entry.reacting && bumped && t > entry.cooldownUntil) {
-          entry.reacting = true;
-          entry.reactEnd = t + entry.react.getClip().duration - 0.25;
-          entry.base.fadeOut(0.15);
-          entry.react.reset().fadeIn(0.12).play();
-          applyPlayerEvent(npcStartleEffect(`pedestrian-${index}`));
-        } else if (entry.reacting && t > entry.reactEnd) {
-          entry.reacting = false;
-          entry.cooldownUntil = t + BUMP_COOLDOWN;
-          entry.react.fadeOut(0.3);
-          entry.base.reset().fadeIn(0.3).play();
+        const separation2 = (x - player[0]) ** 2 + (z - player[2]) ** 2;
+        const bumped = separation2 < BUMP_DISTANCE * BUMP_DISTANCE;
+        if (!entry.playerNear && bumped && t > entry.cooldownUntil) {
+          entry.playerNear = true;
+          const playerVelocity = gameDebug.player.velocity;
+          const relativeSpeed = Math.hypot(
+            playerVelocity[0] - entry.velocity[0],
+            playerVelocity[2] - entry.velocity[1],
+          );
+          const next = beginReaction(
+            entry.reaction,
+            {
+              cause: 'player-body',
+              relativeSpeed,
+              running: gameDebug.player.running,
+              direction: [playerVelocity[0], playerVelocity[2]],
+            },
+            t,
+            { age: entry.age },
+          );
+          if (next !== entry.reaction) {
+            entry.reaction = next;
+            entry.cooldownUntil = t + BUMP_COOLDOWN;
+            playReactionPhase(entry);
+            applyPlayerEvent(npcStartleEffect(entry.id));
+          }
+        } else if (separation2 > BUMP_RELEASE_DISTANCE * BUMP_RELEASE_DISTANCE) {
+          entry.playerNear = false;
         }
       }
     }
 
     for (const walker of walkers) {
-      // A startled walker stands their ground until the moment passes.
-      if (walker.reacting) continue;
+      // Any full-body reaction owns the route until its standing pose returns.
+      if (walker.reaction.phase !== REACTION_PHASE.NORMAL) {
+        walker.velocity[0] = 0;
+        walker.velocity[1] = 0;
+        continue;
+      }
       walker.dist += WALK_SPEED * delta * walker.dir * walker.speed;
       if (walker.dist > walker.length) {
         walker.dist = walker.length;
@@ -324,12 +461,18 @@ export default function Pedestrians() {
       const y = walker.route.onTerrain ? terrainHeight(x, z) : WALK_TOP;
       walker.wrapper.position.set(x, y, z);
       walker.wrapper.rotation.y = Math.atan2(dx * walker.dir, dz * walker.dir);
+      const length = Math.hypot(dx, dz) || 1;
+      walker.velocity[0] = (dx / length) * WALK_SPEED * walker.dir * walker.speed;
+      walker.velocity[1] = (dz / length) * WALK_SPEED * walker.dir * walker.speed;
     }
   });
 
   useEffect(
     () => () => {
-      figures.forEach((_, index) => removeAgent(`pedestrian-${index}`));
+      figures.forEach((entry) => {
+        removeAgent(entry.id);
+        clearActorImpacts(entry.id);
+      });
       for (const entry of figures) {
         for (const mesh of entry.meshes) mesh.material?.dispose?.();
       }
@@ -342,24 +485,47 @@ export default function Pedestrians() {
       <primitive object={group} />
       {figures.map((entry, index) => (
         <RigidBody
-          key={index}
+          key={entry.id}
           ref={(node) => (entry.refs.body = node)}
           type="kinematicPosition"
           colliders={false}
           position={[0, -30 - index * 3, 0]}
+          userData={{ gameKind: 'pedestrian', actorId: entry.id }}
+          onCollisionEnter={({ other }) => {
+            if (entry.poser || other.rigidBodyObject?.userData?.gameKind !== 'player') return;
+            const velocity = gameDebug.player.velocity;
+            queueActorImpact(entry.id, {
+              cause: 'player-body',
+              running: gameDebug.player.running,
+              sourceVelocity: [...velocity],
+              direction: [velocity[0], velocity[2]],
+            });
+          }}
         >
           {entry.poser ? (
             <CylinderCollider
-              ref={(node) => (entry.refs.collider = node)}
+              ref={(node) => (entry.refs.restingCollider = node)}
               args={[0.25, 0.45]}
               position={[0, 0.3, 0]}
             />
           ) : (
-            <CapsuleCollider
-              ref={(node) => (entry.refs.collider = node)}
-              args={[0.55, 0.28]}
-              position={[0, 0.88, 0]}
-            />
+            <>
+              <CapsuleCollider
+                ref={(node) => (entry.refs.standingCollider = node)}
+                args={[STANDING_COLLIDER.halfHeight, STANDING_COLLIDER.radius]}
+                position={[0, STANDING_COLLIDER.y, 0]}
+                activeCollisionTypes={rapier.ActiveCollisionTypes.ALL}
+              />
+              <CapsuleCollider
+                ref={(node) => {
+                  entry.refs.proneCollider = node;
+                  node?.setEnabled(false);
+                }}
+                args={[0.12, 0.34]}
+                position={[0, 0.36, 0]}
+                activeCollisionTypes={rapier.ActiveCollisionTypes.ALL}
+              />
+            </>
           )}
         </RigidBody>
       ))}

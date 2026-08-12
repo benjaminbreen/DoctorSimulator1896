@@ -2,11 +2,17 @@ import { useEffect, useMemo, useState } from 'react';
 import * as THREE from 'three';
 import { useLoader } from '@react-three/fiber';
 import { RigidBody, CuboidCollider, CylinderCollider } from '@react-three/rapier';
-import { buildingFacade } from './textures.js';
 import { itemBoxes, boxDensity, rotateOffset } from '../physics/propBodies.js';
 import PropShape from './PropShape.jsx';
 import PropMaterial from './PropMaterial.jsx';
+import MetropolitanClub from './MetropolitanClub.jsx';
 import { getInteraction, subscribe } from '../world/interaction.js';
+import { notice } from '../world/notices.js';
+import {
+  createFacadeMaterial,
+  FACADE_TEXTURE_URLS,
+  prepareFacadeTextures,
+} from './facadeMaterials.js';
 
 // While an instrument is in use, InstrumentStage draws a working copy of it
 // over the top. Take the room's copy down for the duration or the two models
@@ -30,16 +36,44 @@ function idHash(id) {
 
 // Street buildings: facade sized to the massing, roof cap, chimneys, and a
 // water tank on the taller blocks — the 1890s skyline furniture.
-function Backdrop({ item }) {
+function Backdrop({ item, facadeTextures }) {
   const seed = idHash(item.id);
-  const map = buildingFacade(item.facadeStyle ?? seed % 4, seed % 97, item.size[0], item.size[1]);
+  const facadeMaterial = useMemo(
+    () => createFacadeMaterial(
+      facadeTextures,
+      item.facadeStyle ?? seed % 4,
+      seed,
+      false,
+      item.size[1],
+      item.facadeTone,
+    ),
+    [facadeTextures, item.facadeStyle, item.facadeTone, item.size, seed],
+  );
+  useEffect(() => () => facadeMaterial.dispose(), [facadeMaterial]);
   const capY = item.size[1] / 2 + 0.25;
   const chimneys = 1 + (seed % 3);
+  const identify = item.landmarkLabel
+    ? (event) => {
+        // React Three Fiber measures pointer travel between down and up. A
+        // camera-turn drag can end on a building, but is not an identification.
+        if ((event.delta ?? 0) > 5) return;
+        event.stopPropagation();
+        notice(item.landmarkLabel, {
+          key: 'building-identification',
+          seconds: 4,
+          detail: 'Landmark',
+        });
+      }
+    : undefined;
   return (
-    <group position={item.position} rotation={[0, item.yaw ?? 0, 0]}>
+    <group
+      position={item.position}
+      rotation={[0, item.yaw ?? 0, 0]}
+      onClick={identify}
+    >
       <mesh castShadow receiveShadow>
         <boxGeometry args={item.size} />
-        <meshStandardMaterial map={map} roughness={0.9} />
+        <primitive attach="material" object={facadeMaterial} />
       </mesh>
       <mesh position={[0, capY, 0]} castShadow receiveShadow>
         <boxGeometry args={[item.size[0] + 0.5, 0.5, item.size[2] + 0.5]} />
@@ -175,11 +209,12 @@ function DynamicItem({ item, material }) {
 // marks a piece loose enough to push around.
 export default function Furniture({ items }) {
   const hiddenGroup = useHiddenGroup();
-  const [barkCol, barkNrm, brickCol, pavingCol] = useLoader(THREE.TextureLoader, [
+  const [barkCol, barkNrm, brickCol, pavingCol, ...facadeSources] = useLoader(THREE.TextureLoader, [
     '/textures/bark_col.webp',
     '/textures/bark_nrm.webp',
     '/textures/brick_col.webp',
     '/textures/paving_col.webp',
+    ...FACADE_TEXTURE_URLS,
   ]);
   const maps = useMemo(() => {
     for (const texture of [barkCol, brickCol, pavingCol, barkNrm]) {
@@ -189,8 +224,9 @@ export default function Furniture({ items }) {
     barkCol.colorSpace = THREE.SRGBColorSpace;
     brickCol.colorSpace = THREE.SRGBColorSpace;
     pavingCol.colorSpace = THREE.SRGBColorSpace;
-    return { bark: barkCol, barkNormal: barkNrm, brick: brickCol, paving: pavingCol };
-  }, [barkCol, barkNrm, brickCol, pavingCol]);
+    const facades = prepareFacadeTextures(facadeSources);
+    return { bark: barkCol, barkNormal: barkNrm, brick: brickCol, paving: pavingCol, facades };
+  }, [barkCol, barkNrm, brickCol, pavingCol, ...facadeSources]);
 
   // Dynamic pieces carry their own body, so they stay out of the shared
   // fixed one; the catalog models among them belong to VictorianProps.
@@ -260,7 +296,12 @@ export default function Furniture({ items }) {
       })}
       {items.map((item) => {
         if (hiddenGroup && item.id.startsWith(`${hiddenGroup}-`)) return null;
-        if (item.kind === 'backdrop') return <Backdrop key={item.id} item={item} />;
+        if (item.kind === 'backdrop') {
+          if (item.landmarkModel === 'metropolitan-club') {
+            return <MetropolitanClub key={item.id} item={item} />;
+          }
+          return <Backdrop key={item.id} item={item} facadeTextures={maps.facades} />;
+        }
         // Trees render through the instanced TreeField, catalog pieces
         // through PropModels, framed pictures through WallArt; all still
         // take their colliders here. `render: false` marks collider-only

@@ -50,7 +50,7 @@ All paths below are relative to `../Darwin-Game v1/`.
 
 - **Terrain-as-structure**: the Beagle deck region proves a region need not
   be a landscape — terrain IS the deck there. The NYC block (sidewalk,
-  facades, shopfront) is the same trick. No city pipeline needed for M1.
+  facades, shopfront) is the same trick. No general city pipeline is needed yet.
 - **JS↔GLSL mask sync rule** (Watkins, Wetlands): any authored-region mask
   must stay synced between JS and shader copies.
 
@@ -59,7 +59,7 @@ All paths below are relative to `../Darwin-Game v1/`.
 1. **Victorian human NPCs** — Renderer C now provides two reusable cohort
    masters with sixteen curated face anchors, 52 named face units, fitted
    facial parts, ten seated, standing, and walking clips, a shared game/lab
-   runtime, and bounded complexion and eye palettes. The remaining M1 work is
+   runtime, and bounded complexion and eye palettes. The remaining work is
    three approved patient outfits and the playable consultations. Broader
    wardrobe families and crowd LODs are later asset work.
 2. **Interior asset set** — Victorian furniture, instruments, bottles.

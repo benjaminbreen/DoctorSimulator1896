@@ -25,6 +25,18 @@ def arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("--source-dir", required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument(
+        "--clip",
+        action="append",
+        default=[],
+        metavar="FILE=NAME",
+        help="Override the consultation clip list with one repeatable source/name pair",
+    )
+    parser.add_argument(
+        "--in-place",
+        action="store_true",
+        help="Remove net horizontal hips travel while preserving vertical motion",
+    )
     argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
     return parser.parse_args(argv)
 
@@ -93,17 +105,67 @@ def stash_actions(armature, actions):
         strip.action_frame_end = action.frame_range[1]
 
 
+def parse_clips(values):
+    if not values:
+        return CLIPS
+    clips = []
+    for value in values:
+        filename, separator, name = value.partition("=")
+        if not separator or not filename.strip() or not name.strip():
+            raise RuntimeError(f"Invalid --clip value {value!r}; expected FILE=NAME")
+        clips.append((filename.strip(), name.strip()))
+    return tuple(clips)
+
+
+def remove_planar_drift(armature, action):
+    """Make a Mixamo action end at its starting x/y root position.
+
+    Imported Mixamo armatures are rotated into Blender, so hips x/y are the
+    ground plane and z is vertical. Removing only the linear net drift keeps
+    the fall and rise intact while allowing separate clips to share one actor
+    anchor without a metre-wide snap between them.
+    """
+    hips = next(
+        (bone for bone in armature.pose.bones if bone.name.lower().endswith("hips")),
+        None,
+    )
+    if not hips:
+        raise RuntimeError(f"{action.name} has no Mixamo hips bone")
+    armature.animation_data_create()
+    armature.animation_data.action = action
+    start, end = map(int, action.frame_range)
+    bpy.context.scene.frame_set(start)
+    bpy.context.view_layer.update()
+    start_location = hips.location.copy()
+    bpy.context.scene.frame_set(end)
+    bpy.context.view_layer.update()
+    drift = hips.location - start_location
+    drift.z = 0.0
+    span = max(1, end - start)
+    for frame in range(start, end + 1):
+        bpy.context.scene.frame_set(frame)
+        bpy.context.view_layer.update()
+        hips.location -= drift * ((frame - start) / span)
+        hips.keyframe_insert("location", frame=frame, group=hips.name)
+    armature.animation_data.action = None
+    print(
+        f"MIXAMO_IN_PLACE name={action.name} "
+        f"drift={tuple(round(value, 5) for value in drift)}"
+    )
+
+
 def main():
     args = arguments()
     source_dir = os.path.abspath(args.source_dir)
     output = os.path.abspath(args.output)
+    clips = parse_clips(args.clip)
     os.makedirs(os.path.dirname(output), exist_ok=True)
     clear_scene()
 
     primary = None
     bone_names = None
     actions = []
-    for filename, clip_name in CLIPS:
+    for filename, clip_name in clips:
         path = os.path.join(source_dir, filename)
         if not os.path.exists(path):
             raise RuntimeError(f"Missing Mixamo source: {path}")
@@ -116,7 +178,11 @@ def main():
         else:
             if current_bones != bone_names:
                 raise RuntimeError(f"{filename} uses a different Mixamo skeleton")
+            if args.in_place:
+                remove_planar_drift(armature, action)
             remove_imported_objects(imported)
+        if primary is armature and args.in_place:
+            remove_planar_drift(armature, action)
         actions.append(action)
 
     primary.animation_data_clear()
