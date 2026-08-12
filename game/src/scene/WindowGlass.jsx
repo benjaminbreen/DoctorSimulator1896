@@ -103,7 +103,7 @@ export default function WindowGlass({ holes, runtime }) {
 
   useFrame(() => {
     const values = runtime.values;
-    const { daylight } = solarRamps(values.timeOfDay);
+    const { daylight } = solarRamps(values.timeOfDay, values.dayOfYear);
     const uniforms = sheenMaterial.uniforms;
 
     // By day the pane picks up the room's own daylight; after dark the only

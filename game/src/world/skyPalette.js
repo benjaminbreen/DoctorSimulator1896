@@ -15,8 +15,8 @@ const HORIZON = { night: [0.02, 0.03, 0.06], day: [0.52, 0.62, 0.78], golden: [0
 // faces in shade the way a real lawn does.
 const GROUND = { night: [0.006, 0.008, 0.012], day: [0.30, 0.32, 0.20], golden: [0.22, 0.14, 0.09] };
 
-export function environmentPalette(timeOfDay) {
-  const { daylight, golden, night } = solarRamps(timeOfDay);
+export function environmentPalette(timeOfDay, dayOfYear) {
+  const { daylight, golden, night } = solarRamps(timeOfDay, dayOfYear);
   return {
     top: mix(mix(TOP.night, TOP.day, daylight), TOP.golden, golden),
     horizon: mix(mix(HORIZON.night, HORIZON.day, daylight), HORIZON.golden, golden),

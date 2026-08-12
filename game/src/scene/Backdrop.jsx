@@ -166,7 +166,7 @@ export default function Backdrop({ runtime }) {
 
   // Unlit flats would glow at night; follow the sun instead.
   useFrame(() => {
-    const { daylight } = solarRamps(runtime.values.timeOfDay);
+    const { daylight } = solarRamps(runtime.values.timeOfDay, runtime.values.dayOfYear);
     const level = 0.3 + 0.7 * daylight;
     for (const material of materials) material.color.setScalar(level);
   });

@@ -252,9 +252,12 @@ export default function Furniture({ items }) {
           <ItemCollider key={item.id} item={item} />
         ))}
       </RigidBody>
-      {loose.map((item) => (
-        <DynamicItem key={item.id} item={item} material={materialFor(item)} />
-      ))}
+      {loose.map((item) => {
+        // Loose pieces hide with their group too: the pipe leaves the table
+        // while the ritual's working copy is in the player's hand.
+        if (hiddenGroup && item.id.startsWith(`${hiddenGroup}-`)) return null;
+        return <DynamicItem key={item.id} item={item} material={materialFor(item)} />;
+      })}
       {items.map((item) => {
         if (hiddenGroup && item.id.startsWith(`${hiddenGroup}-`)) return null;
         if (item.kind === 'backdrop') return <Backdrop key={item.id} item={item} />;

@@ -17,10 +17,13 @@ export function movementStep({ input, lookYaw, state, dt, tunables }) {
   let targetZ = 0;
   if (moving) {
     const length = Math.hypot(input.x, input.z);
+    // Keyboard diagonals remain capped at full speed, while an analogue
+    // joystick can use its distance from centre for a slower walk.
+    const magnitude = Math.min(1, length);
     const sin = Math.sin(lookYaw);
     const cos = Math.cos(lookYaw);
-    targetX = ((-sin * input.z + cos * input.x) / length) * speed;
-    targetZ = ((-cos * input.z - sin * input.x) / length) * speed;
+    targetX = ((-sin * input.z + cos * input.x) / length) * speed * magnitude;
+    targetZ = ((-cos * input.z - sin * input.x) / length) * speed * magnitude;
   }
 
   const lambda = moving ? tunables.groundAcceleration : tunables.groundDeceleration;

@@ -3,6 +3,7 @@
 // axis on x and its base at y=0; modelPacks resolves where it loads from.
 
 import { modelSize } from './modelPacks.js';
+import { withSeatAffordance } from './seating.js';
 
 // The gas lamp, shared by the park walks and the street grid. Its origin is
 // the foot of the post; the lantern hangs off an arm, so its burner is offset
@@ -60,5 +61,5 @@ export function parkProp(id, model, x, z, yaw = 0, options = {}) {
   if (options.collider === false) item.collider = false;
   else if (options.collider) item.colliderSize = options.collider;
   if (options.absoluteY) item.absoluteY = true;
-  return item;
+  return withSeatAffordance(item);
 }

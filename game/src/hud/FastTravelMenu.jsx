@@ -2,12 +2,13 @@ import { notice } from '../world/notices.js';
 import {
   availableFastTravelDestinations,
   requestFastTravel,
+  travelMinutesBetween,
 } from '../world/travel.js';
 import { EyebrowArrow } from './chrome.jsx';
 import { useDismissableOverlay } from './useDismissableOverlay.js';
 import { markFastTravelUsed } from './onboardingProgress.js';
 
-export default function FastTravelMenu({ open, onClose, runtime }) {
+export default function FastTravelMenu({ open, onClose, runtime, worldClock }) {
   const containerRef = useDismissableOverlay(open, onClose);
 
   if (!open) return null;
@@ -16,8 +17,12 @@ export default function FastTravelMenu({ open, onClose, runtime }) {
 
   const travel = (destinationId) => {
     if (runtime.values.zone === destinationId) return;
+    const originId = runtime.values.zone;
     const destination = requestFastTravel(runtime, destinationId);
     if (!destination) return;
+    worldClock.advanceMinutes(travelMinutesBetween(originId, destinationId), {
+      reason: 'travel',
+    });
     markFastTravelUsed();
     onClose();
     notice(`You make your way to ${destination.noticeLabel}.`, { key: 'travel' });

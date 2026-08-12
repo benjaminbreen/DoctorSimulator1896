@@ -294,6 +294,23 @@ The proposed Tripo and Mixamo crowd trial is deferred until after M1. Crowd
 figures do not need facial morphs, but each generated model must pass polygon,
 material, rig, walk-cycle, and long-garment deformation checks before use.
 
+## 2026-08-11 — Civil time
+
+The game has one deterministic civil clock beginning at 9:30 a.m. on 3 August
+1896. It advances at four game seconds per real second, while authored actions
+also consume explicit time: speech costs five minutes and examinations cost
+three. Interpretation remains free. Rest and fast travel advance the same
+clock, and passing midnight advances both the date and the solar day.
+
+Action costs take effect in simulation immediately, but the displayed clock
+and lighting wind forward over a short transition. The HUD clock hands, sun,
+sky, windows, water and interior light all read that visual time. Animation,
+camera and short physical timers remain real-time concerns and do not speed up
+with the civil clock.
+
+M1 owns the working-day clock, pause, action costs and overnight rollover. The
+appointment schedule, newspaper delivery and weekly social tick remain M2.
+
 ## Still open
 
 - **Title**: does sharing the book's exact title help (promotion) or hurt

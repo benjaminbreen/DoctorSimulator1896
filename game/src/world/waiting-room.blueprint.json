@@ -208,7 +208,7 @@
     },
     {
       "id": "to-foyer",
-      "label": "Out to the foyer",
+      "label": "Out to the office lobby",
       "position": [
         2.4,
         4.6
@@ -217,13 +217,13 @@
       "to": {
         "zone": "foyer",
         "spawn": [
+          -2.2,
           0,
-          0,
-          6.5
+          -1.4
         ],
         "facing": [
-          0,
-          -1
+          1,
+          0
         ]
       }
     }

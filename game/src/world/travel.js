@@ -3,6 +3,16 @@
 
 let pending = null;
 
+const PRACTICE_ZONES = new Set(['consulting-office', 'waiting-room', 'foyer']);
+
+// Fast travel represents the omitted walk or carriage ride. Moving between
+// rooms in the practice is brief; crossing the city consumes part of the day.
+export function travelMinutesBetween(fromZone, toZone) {
+  if (!fromZone || !toZone || fromZone === toZone) return 0;
+  if (PRACTICE_ZONES.has(fromZone) && PRACTICE_ZONES.has(toZone)) return 2;
+  return 20;
+}
+
 // Fast travel uses the same one-shot arrival contract as doors. Keeping the
 // destinations here makes the simulation path testable without mounting HUD.
 export const FAST_TRAVEL_DESTINATIONS = Object.freeze([

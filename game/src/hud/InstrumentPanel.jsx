@@ -4,6 +4,7 @@ import { instrumentBus } from '../instruments/bus.js';
 import { exposureFor, LIMITS } from '../instruments/tachistoscope.js';
 import { agreement } from '../instruments/colourWheel.js';
 import { LIMITS as COIL_LIMITS, shockCurrent, sparkReach } from '../instruments/inductionCoil.js';
+import { TARGET_SECONDS } from '../instruments/secondsPendulum.js';
 import { ink, surface, surfaceStyle, label, keycap, keycapStyle, readout } from './theme.js';
 
 // The chrome for instrument mode: a console along the foot of the screen, the
@@ -49,7 +50,7 @@ function Dial({ name, value, display, min, max, step, onChange }) {
 
 function Hint({ children, keys }) {
   return (
-    <span className="flex items-center gap-1.5 text-[11px]" style={{ color: ink.faint }}>
+    <span className="instrument-key-hint flex items-center gap-1.5 text-[11px]" style={{ color: ink.faint }}>
       <span className={keycap} style={keycapStyle}>
         {keys}
       </span>
@@ -409,10 +410,66 @@ function inductionCoilNote(state) {
 
 // ---------------------------------------------------------------------------
 
+function SecondsPendulum({ state }) {
+  const result = state.result;
+  const resultLabel = result?.error < 0 ? 'early' : 'late';
+  const mean = state.trials > 0 ? state.totalAbsoluteError / state.trials : null;
+
+  return (
+    <>
+      <div className="mb-4 flex flex-col items-center gap-1 text-center">
+        <span className={label} style={{ color: ink.muted }}>
+          {state.phase === 'reference' ? 'Reference swing' : state.phase === 'timing' ? 'Pendulum caught' : 'Judgment recorded'}
+        </span>
+        <span
+          className={`${readout} text-2xl sm:text-3xl`}
+          style={{ color: state.phase === 'timing' ? ink.ivory : ink.live }}
+        >
+          {state.phase === 'reference' && 'ONE SECOND · ONE SECOND'}
+          {state.phase === 'timing' && 'JUDGE TEN SECONDS IN SILENCE'}
+          {state.phase === 'result' && `${result.elapsed.toFixed(2)} SECONDS`}
+        </span>
+      </div>
+
+      <div className="flex flex-wrap items-end justify-center gap-x-7 gap-y-4">
+        <Reading name="Half-swing" value="1.000" unit="s" under="reference interval" />
+        <Reading
+          name={state.phase === 'result' ? 'Error' : 'Target'}
+          value={state.phase === 'result' ? result.absoluteError.toFixed(2) : TARGET_SECONDS.toFixed(2)}
+          unit="s"
+          under={state.phase === 'result' ? resultLabel : 'no clock shown'}
+        />
+        <Reading
+          name="Trials"
+          value={String(state.trials)}
+          under={mean == null ? 'first judgment ahead' : `${mean.toFixed(2)} s mean error`}
+        />
+        {state.bestAbsoluteError != null && (
+          <Reading name="Best" value={state.bestAbsoluteError.toFixed(2)} unit="s" under="absolute error" />
+        )}
+      </div>
+    </>
+  );
+}
+
+function secondsPendulumNote(state) {
+  if (state.phase === 'timing') {
+    return 'The pendulum is caught and the clock is hidden. Press Space when ten seconds seems to have passed.';
+  }
+  if (state.phase === 'result' && state.result) {
+    const direction = state.result.error < 0 ? 'early' : 'late';
+    return `You marked ten seconds ${state.result.absoluteError.toFixed(2)} seconds ${direction}. Swing it again for another trial.`;
+  }
+  return 'Watch the reference: each passage from one side to the other takes one second. Space catches it and begins the silent interval.';
+}
+
+// ---------------------------------------------------------------------------
+
 const TITLES = {
   tachistoscope: ['Tachistoscope', 'Fall-screen exposure apparatus'],
   'colour-wheel': ['Colour wheel', 'Rotating disc colour mixer'],
   'induction-coil': ['Induction coil', 'du Bois-Reymond sledge coil'],
+  'seconds-pendulum': ['Seconds pendulum', 'Judgment of ten seconds'],
 };
 
 export default function InstrumentPanel() {
@@ -476,6 +533,10 @@ export default function InstrumentPanel() {
         instrumentBus.push({ key: true });
         return;
       }
+      if (kind === 'seconds-pendulum') {
+        instrumentBus.push({ toggle: true });
+        return;
+      }
       instrumentBus.push(
         usingRef.current.runtime?.state.phase === 'set'
           ? { release: true, seed: Math.floor(Math.random() * 1e9) }
@@ -510,10 +571,32 @@ export default function InstrumentPanel() {
   const wheel = kind === 'colour-wheel';
   const coil = kind === 'induction-coil';
 
+  const releaseHeldControl = (event) => {
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    if (wheel) instrumentBus.push({ cranking: false });
+    if (coil) instrumentBus.push({ key: false });
+  };
+
+  const pressInstrumentControl = () => {
+    if (wheel) instrumentBus.push({ cranking: true });
+    else if (coil) instrumentBus.push({ key: true });
+    else if (pendulum) instrumentBus.push({ toggle: true });
+    else {
+      instrumentBus.push(
+        state.phase === 'set'
+          ? { release: true, seed: Math.floor(Math.random() * 1e9) }
+          : { cock: true },
+      );
+    }
+  };
+  const pendulum = kind === 'seconds-pendulum';
+
   return (
     <>
       {/* Title, top centre, out of the way of the apparatus. */}
-      <div className="pointer-events-none absolute left-1/2 top-6 -translate-x-1/2 text-center">
+      <div className="instrument-title pointer-events-none absolute left-1/2 top-6 -translate-x-1/2 text-center">
         <p className={label} style={{ color: ink.brass }}>
           {title}
         </p>
@@ -524,18 +607,25 @@ export default function InstrumentPanel() {
 
       {/* The console. Bottom-anchored, centred, and it wraps rather than
           shrinking its type when the window is narrow. */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-center p-4 sm:p-6">
-        <div className={`${surface} pointer-events-auto w-full max-w-3xl px-4 py-3 sm:px-5`} style={surfaceStyle}>
+      <div className="instrument-console-shell pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-center p-4 sm:p-6">
+        <div className={`${surface} instrument-console pointer-events-auto w-full max-w-3xl px-4 py-3 sm:px-5`} style={surfaceStyle}>
           {coil && <InductionCoil state={state} />}
           {wheel && <ColourWheel state={state} names={using.runtime?.names ?? []} />}
-          {!coil && !wheel && <Tachistoscope state={state} answerRef={answerRef} />}
+          {pendulum && <SecondsPendulum state={state} />}
+          {!coil && !wheel && !pendulum && <Tachistoscope state={state} answerRef={answerRef} />}
 
           <div
             className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t pt-2.5"
             style={{ borderColor: ink.hair }}
           >
             <p className="max-w-lg text-[11px] leading-relaxed" style={{ color: ink.muted }}>
-              {coil ? inductionCoilNote(state) : wheel ? colourWheelNote(state) : tachistoscopeNote(state)}
+              {coil
+                ? inductionCoilNote(state)
+                : wheel
+                  ? colourWheelNote(state)
+                  : pendulum
+                    ? secondsPendulumNote(state)
+                    : tachistoscopeNote(state)}
             </p>
             <div className="flex items-center gap-4">
               {coil && (
@@ -550,11 +640,52 @@ export default function InstrumentPanel() {
                   <Hint keys="Enter">record</Hint>
                 </>
               )}
-              {!coil && !wheel && (
+              {pendulum && (
+                <Hint keys="Space">
+                  {state.phase === 'reference' ? 'catch and begin' : state.phase === 'timing' ? 'mark ten seconds' : 'swing again'}
+                </Hint>
+              )}
+              {!coil && !wheel && !pendulum && (
                 <Hint keys="Space">{state.phase === 'set' ? 'release shutter' : 'set again'}</Hint>
               )}
               <Hint keys="Esc">step away</Hint>
             </div>
+          </div>
+
+          <div className="instrument-mobile-actions" aria-label="Instrument touch controls">
+            <button type="button" onClick={stopUsing}>Step away</button>
+            {wheel && (
+              <button type="button" onClick={() => instrumentBus.push({ record: true })}>Record</button>
+            )}
+            <button
+              type="button"
+              disabled={!wheel && !coil && state.phase === 'falling'}
+              onPointerDown={(event) => {
+                event.preventDefault();
+                event.currentTarget.setPointerCapture?.(event.pointerId);
+                pressInstrumentControl();
+              }}
+              onPointerUp={releaseHeldControl}
+              onPointerCancel={releaseHeldControl}
+              onLostPointerCapture={() => {
+                if (wheel) instrumentBus.push({ cranking: false });
+                if (coil) instrumentBus.push({ key: false });
+              }}
+            >
+              {wheel
+                ? 'Hold to crank'
+                : coil
+                  ? 'Hold the key'
+                  : pendulum
+                    ? state.phase === 'reference'
+                      ? 'Catch and begin'
+                      : state.phase === 'timing'
+                        ? 'Mark ten seconds'
+                        : 'Swing again'
+                    : state.phase === 'set'
+                      ? 'Release shutter'
+                      : 'Set shutter'}
+            </button>
           </div>
         </div>
       </div>

@@ -5,6 +5,8 @@ import { RigidBody, BallCollider, CuboidCollider, CylinderCollider } from '@reac
 import PropShape from './PropShape.jsx';
 import PropMaterial from './PropMaterial.jsx';
 import { PUSHCART_SPECS } from '../world/pushcarts.js';
+import { gameDebug } from '../debug.js';
+import { getPlayer, harm, pushcartImpactEffect } from '../world/player.js';
 
 // Dynamic vendor carts. Each is one rigid body: the player can shove it and
 // a carriage's kinematic collider can knock it over. The wheels only grip
@@ -87,7 +89,26 @@ function spillPieces(spec, rb) {
 function Pushcart({ spec }) {
   const body = useRef(null);
   const wheelRefs = useRef([]);
+  const lastPlayerImpact = useRef(-Infinity);
   const [spilled, setSpilled] = useState(null);
+
+  const onCollisionEnter = ({ other }) => {
+    if (other.rigidBodyObject?.userData?.gameKind !== 'player') return;
+    const rb = body.current;
+    if (!rb) return;
+    const cartVelocity = rb.linvel();
+    const playerVelocity = gameDebug.player.velocity;
+    const relativeSpeed = Math.hypot(
+      cartVelocity.x - playerVelocity[0],
+      cartVelocity.y - playerVelocity[1],
+      cartVelocity.z - playerVelocity[2],
+    );
+    const effect = pushcartImpactEffect(relativeSpeed);
+    const now = getPlayer().clock;
+    if (!effect || now - lastPlayerImpact.current < 2) return;
+    lastPlayerImpact.current = now;
+    harm(effect);
+  };
 
   useFrame((_, delta) => {
     const rb = body.current;
@@ -129,6 +150,7 @@ function Pushcart({ spec }) {
         rotation={[0, spec.yaw, 0]}
         linearDamping={0.35}
         angularDamping={1.4}
+        onCollisionEnter={onCollisionEnter}
       >
         <CuboidCollider args={tray.half} position={tray.position} friction={0.5} density={110} />
         {/* Legs slide rather than grip: a real cart is walked, not dragged. */}

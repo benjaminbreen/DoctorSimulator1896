@@ -166,6 +166,70 @@
   }
 }
 
+.instrument-mobile-actions { display: none; }
+
+@media (max-width: 760px), (hover: none) and (pointer: coarse) {
+  html,
+  body,
+  #root { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; }
+
+  body { touch-action: manipulation; }
+
+  button,
+  input,
+  select,
+  textarea { font-size: max(16px, 1em); }
+
+  .park-intro__title-card { padding: 2rem 1.2rem; }
+  .park-intro__premise { margin-top: 1.6rem; }
+  .park-intro__credit { margin-top: 1.4rem; }
+
+  .instrument-title {
+    top: calc(110px + env(safe-area-inset-top, 0px)) !important;
+    width: calc(100% - 24px);
+  }
+
+  .instrument-console-shell {
+    max-height: calc(68dvh - env(safe-area-inset-bottom, 0px));
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .instrument-console {
+    max-height: 100%;
+    overflow-y: auto;
+    padding: 12px !important;
+  }
+
+  .instrument-key-hint { display: none !important; }
+
+  .instrument-mobile-actions {
+    display: flex;
+    position: sticky;
+    bottom: 0;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 10px;
+    padding-top: 9px;
+    border-top: 1px solid rgba(168, 134, 63, 0.28);
+    background: rgba(10, 17, 14, 0.95);
+  }
+
+  .instrument-mobile-actions button {
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid rgba(168, 134, 63, 0.55);
+    border-radius: 5px;
+    background: rgba(168, 134, 63, 0.08);
+    color: #d2b66f;
+    font-family: 'Cormorant SC', 'Cormorant', Georgia, serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+  }
+
+  .instrument-mobile-actions button:disabled { opacity: 0.4; }
+}
+
 /* Panel controls; everything else is Tailwind utilities. */
 .panel-row input[type='range'] {
   width: 100%;

@@ -63,6 +63,25 @@
       "decay": 2,
       "flicker": 0.08,
       "castShadow": false
+    },
+    {
+      "propId": "gaslight-study-lamp",
+      "color": "#ffc57a",
+      "intensity": 3.6,
+      "distance": 6.0,
+      "decay": 2,
+      "flicker": 0.09,
+      "castShadow": true,
+      "coneAngle": 1.35
+    },
+    {
+      "propId": "gaslight-study-sconce",
+      "color": "#ffb45e",
+      "intensity": 2.2,
+      "distance": 4.5,
+      "decay": 2,
+      "flicker": 0.12,
+      "castShadow": false
     }
   ],
   "exposureBase": 1.0,

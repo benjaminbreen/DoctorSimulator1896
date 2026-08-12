@@ -15,28 +15,27 @@
 const listeners = new Set();
 
 export const MAX = 100;
+export const STARTING_NEURASTHENIA = 65;
 export const PLAYER_EVENT_HISTORY = 40;
+export const SEAT_REST_SECONDS = 8;
+export const SEAT_COOLDOWN_SECONDS = 120;
 
 const clamp = (value) => Math.min(MAX, Math.max(0, value));
-
-// Recovery per minute of game time, when nothing is making it worse. Slow
-// enough that an afternoon of taking shocks is felt for the rest of the day.
-const HEALTH_PER_MINUTE = 1.4;
-const FATIGUE_PER_MINUTE = 3.5;
 
 let state = fresh();
 
 function fresh() {
   return {
     health: MAX,
-    neurasthenia: 0,
-    fatigue: 0,
+    neurasthenia: STARTING_NEURASTHENIA,
+    fatigue: STARTING_NEURASTHENIA,
     // Everything that has happened, newest last. Short: this is a record of
     // the day, not a save file.
     log: [],
     // Set while the player is unable to act — knocked down, and coming round.
     downUntil: 0,
     clock: 0,
+    seatCooldowns: {},
   };
 }
 
@@ -84,7 +83,7 @@ export function healthCondition(value = state.health) {
 
 export function neurastheniaCondition(value = state.neurasthenia) {
   if (value >= 80) return 'severe nervous exhaustion';
-  if (value >= 60) return 'pronounced nervous strain';
+  if (value >= 60) return 'frazzled';
   if (value >= 35) return 'strained';
   if (value > 0) return 'slightly unsettled';
   return 'settled';
@@ -180,23 +179,118 @@ export function recover(options = {}) {
   return state;
 }
 
+/** Deterministic recovery for the existing Rest / Pass Time action. */
+export function restEffect(hours) {
+  const duration = Math.max(0, Math.min(8, Number(hours) || 0));
+  return {
+    health: Math.min(12, Math.round(duration * 2)),
+    neurasthenia: Math.min(45, Math.round(duration * 10)),
+  };
+}
+
+/** A brief, deliberately chosen rest on one chair or bench. */
+export function seatRestEffect(seconds) {
+  if ((Number(seconds) || 0) < SEAT_REST_SECONDS) {
+    return { health: 0, neurasthenia: 0 };
+  }
+  return { health: 1, neurasthenia: 4 };
+}
+
+/** Apply one seat's rest if it is ready; seats cannot be farmed repeatedly. */
+export function recoverFromSeat({ seatId, seconds, label = 'Sat down to rest' }) {
+  const effect = seatRestEffect(seconds);
+  if (!effect.health && !effect.neurasthenia) {
+    return { event: null, state, reason: 'too-short' };
+  }
+  const lastRest = state.seatCooldowns[seatId];
+  if (Number.isFinite(lastRest) && state.clock - lastRest < SEAT_COOLDOWN_SECONDS) {
+    return {
+      event: null,
+      state,
+      reason: 'cooldown',
+      remaining: SEAT_COOLDOWN_SECONDS - (state.clock - lastRest),
+    };
+  }
+  const healthChange = Math.min(effect.health, MAX - state.health);
+  const nervousChange = Math.min(effect.neurasthenia, state.neurasthenia);
+  if (!healthChange && !nervousChange) {
+    return { event: null, state, reason: 'at-bounds' };
+  }
+  state = {
+    ...state,
+    seatCooldowns: { ...state.seatCooldowns, [seatId]: state.clock },
+  };
+  return applyPlayerEvent({
+    source: `seat:${seatId}`,
+    label,
+    changes: { health: healthChange, neurasthenia: -nervousChange },
+  });
+}
+
+/** Health and nervous strain from landing with a given downward speed. */
+export function fallEffect(impactSpeed) {
+  const speed = Math.max(0, Number(impactSpeed) || 0);
+  if (speed < 8) return null;
+  if (speed < 11) {
+    return { amount: 4, neurasthenia: 3, source: 'fall', label: 'Landed hard' };
+  }
+  if (speed < 15) {
+    return { amount: 10, neurasthenia: 6, down: 1, source: 'fall', label: 'Took a bad fall' };
+  }
+  return { amount: 22, neurasthenia: 12, down: 3, source: 'fall', label: 'Suffered a severe fall' };
+}
+
+/** Health and nervous strain from a relative-speed pushcart impact. */
+export function pushcartImpactEffect(impactSpeed) {
+  const speed = Math.max(0, Number(impactSpeed) || 0);
+  if (speed < 4.75) return null;
+  if (speed < 7.5) {
+    return { amount: 3, neurasthenia: 2, source: 'pushcart', label: 'Struck a pushcart' };
+  }
+  if (speed < 11.5) {
+    return { amount: 7, neurasthenia: 5, down: 0.6, source: 'pushcart', label: 'Collided with a pushcart' };
+  }
+  return { amount: 12, neurasthenia: 8, down: 1.5, source: 'pushcart', label: 'Hit a pushcart at speed' };
+}
+
+/** A horseless carriage is heavy enough that even its street pace is grave. */
+export function carriageImpactEffect(impactSpeed) {
+  const speed = Math.max(0, Number(impactSpeed) || 0);
+  if (speed < 0.8) return null;
+  if (speed < 2) {
+    return {
+      amount: 40,
+      neurasthenia: 12,
+      down: 3,
+      source: 'horseless-carriage',
+      label: 'Knocked down by a horseless carriage',
+    };
+  }
+  if (speed < 4.5) {
+    return {
+      amount: 60,
+      neurasthenia: 20,
+      down: 6,
+      source: 'horseless-carriage',
+      label: 'Run down by a horseless carriage',
+    };
+  }
+  return {
+    amount: 75,
+    neurasthenia: 28,
+    down: 9,
+    source: 'horseless-carriage',
+    label: 'Struck hard by a horseless carriage',
+  };
+}
+
 /**
- * Advance the clock. `seconds` is game time, and the drift back toward well is
- * applied here rather than by whoever hurt you — so a shock does not have to
- * know anything about how long it takes to wear off.
+ * Advance the player clock. Time alone never restores either meter: recovery
+ * must come from an explicit action such as resting, eating, or sitting.
  */
 export function tickPlayer(seconds) {
   if (seconds <= 0) return state;
-  const minutes = seconds / 60;
-  const health = clamp(state.health + HEALTH_PER_MINUTE * minutes);
-  const neurasthenia = clamp(state.neurasthenia - FATIGUE_PER_MINUTE * minutes);
-  const clock = state.clock + seconds;
-  // Only notify when something a reader would notice actually moved. This is
-  // called every frame.
-  const moved = Math.round(health) !== Math.round(state.health)
-    || Math.round(neurasthenia) !== Math.round(state.neurasthenia);
-  state = { ...state, health, neurasthenia, fatigue: neurasthenia, clock };
-  if (moved) notify();
+  state = { ...state, clock: state.clock + seconds };
   return state;
 }
 

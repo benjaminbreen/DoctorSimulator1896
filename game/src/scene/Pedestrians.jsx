@@ -7,14 +7,25 @@ import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { RigidBody, CapsuleCollider, CylinderCollider, useRapier } from '@react-three/rapier';
 import { handlesAlive } from '../physics/useCharacterController.js';
 import { terrainHeight } from '../world/terrain.js';
+import { parkItems } from '../world/centralPark.js';
 import { reportAgent, removeAgent } from '../world/agents.js';
 import { gameDebug } from '../debug.js';
+import {
+  PEDESTRIAN_ARCHETYPES,
+  PEDESTRIAN_BENCH_SITTERS as BENCH_SITTERS,
+  PEDESTRIAN_MAN_CLIP_FILES as MAN_CLIP_FILES,
+  PEDESTRIAN_POSERS as POSERS,
+  PEDESTRIAN_REACTION_FILE,
+  PEDESTRIAN_ROUTES as ROUTES,
+  PEDESTRIAN_SHARED_CLIPS as SHARED_CLIPS,
+  PEDESTRIAN_STANDERS as STANDERS,
+  PEDESTRIAN_WOMAN_CLIP_FILES as WOMAN_CLIP_FILES,
+} from '../world/pedestrianCatalog.js';
 
 // Background pedestrians: the bowler-hat man (pedestrian-b.glb) and the
-// working-class woman (pedestrian-c.glb), cloned half and half. Walkers
-// follow sidewalk routes on real walk cycles; standers loiter, a couple of
-// men with briefcases; in the park a few sit or stretch out on the grass.
-// Clips retarget across the two figures — same Mixamo skeleton.
+// four women (pedestrian-c/d/e/f.glb). Walkers follow sidewalk routes on real
+// walk cycles; standers loiter; in the park a few rest on the grass or sit on
+// a bench. Clips retarget across figures that share the same Mixamo skeleton.
 const WALK_TOP = 1.29;
 const WALK_SPEED = 1.35;
 // How close a figure has to be before it is worth casting a shadow.
@@ -28,46 +39,19 @@ const ANIM_FREEZE = 60;
 const NPC_SCALE = 1.62;
 const POSE_PADDING = 1.7;
 
-// Animation clips ship one per file (the Darwin pipeline: every FBX
-// converts alone, so character and clips share one convention). The ground
-// and seat clips are shared across both figures; walks and idles are per
-// figure so the gaits differ.
-const MAN_CLIP_FILES = [
-  '/models/ped-anim-walk.glb',
-  '/models/ped-anim-briefcase.glb',
-  '/models/ped-anim-sit-ground.glb',
-  '/models/ped-anim-lie.glb',
-  '/models/ped-anim-sit.glb',
-];
-const WOMAN_CLIP_FILES = ['/models/pedc-anim-walk.glb'];
-const SHARED_CLIPS = ['Sit Ground', 'Lie Down', 'Sit'];
-
 // Bumping into a figure: kinematic capsules make them solid, and standers
 // and walkers play a startle clip when the player presses in.
 const BUMP_DISTANCE = 0.85;
 const BUMP_COOLDOWN = 4;
 
-// A sparse cast, half women. [x, z, yaw, onTerrain, clip, who]
-// 'm' bowler-hat man, 'w' working-class woman, 'd' summer-dress woman.
-const STANDERS = [
-  [108.4, 20, -1.6, false, 'Briefcase Idle', 'm'],
-  [-8, 88.4, 3.0, false, 'Idle', 'w'],
-  [78, 64, -0.6, true, 'Idle', 'd'],
-];
-
-// Grass idlers, park only, men only, and only on actual lawn: one sitting
-// on the ground, one stretched out. The woman stays on her feet.
-const POSERS = [
-  [75, 57, -0.9, 'Sit Ground', 'm'],
-  [70, 56, 0.6, 'Lie Down', 'm'],
-];
-
-// Routes are ping-ponged; onTerrain routes sample the park terrain.
-const ROUTES = [
-  { points: [[104, 60], [104.5, 20], [105, -20]], onTerrain: false, who: 'd' },
-  { points: [[40, 97.6], [0, 97.6], [-44, 97.6]], onTerrain: false, who: 'm' },
-  { points: [[84, 72], [60, 71], [34, 76], [8, 80]], onTerrain: true, who: 'w' },
-];
+function benchSitterPose({ benchId, along }) {
+  const bench = parkItems.find((item) => item.id === benchId);
+  if (!bench) throw new Error(`Pedestrian bench not found: ${benchId}`);
+  const yaw = bench.yaw ?? 0;
+  const x = bench.position[0] + Math.cos(yaw) * along;
+  const z = bench.position[2] - Math.sin(yaw) * along;
+  return { x, z, yaw };
+}
 
 function hash01(seed) {
   const value = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
@@ -133,12 +117,14 @@ function routeLength(points) {
 export default function Pedestrians() {
   // All pedestrian GLBs are meshopt-compressed.
   const withMeshopt = (loader) => loader.setMeshoptDecoder(MeshoptDecoder);
-  const manGltf = useLoader(GLTFLoader, '/models/pedestrian-b.glb', withMeshopt);
-  const womanGltf = useLoader(GLTFLoader, '/models/pedestrian-c.glb', withMeshopt);
-  const dressGltf = useLoader(GLTFLoader, '/models/pedestrian-d.glb', withMeshopt);
+  const manGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.m.modelPath, withMeshopt);
+  const womanGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.w.modelPath, withMeshopt);
+  const dressGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.d.modelPath, withMeshopt);
+  const somberGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.s.modelPath, withMeshopt);
+  const fortiesGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.f.modelPath, withMeshopt);
   const manClipGltfs = useLoader(GLTFLoader, MAN_CLIP_FILES, withMeshopt);
   const womanClipGltfs = useLoader(GLTFLoader, WOMAN_CLIP_FILES, withMeshopt);
-  const reactGltf = useLoader(GLTFLoader, '/models/ped-anim-react.glb', withMeshopt);
+  const reactGltf = useLoader(GLTFLoader, PEDESTRIAN_REACTION_FILE, withMeshopt);
   const { world } = useRapier();
 
   const { group, walkers, figures } = useMemo(() => {
@@ -155,6 +141,10 @@ export default function Pedestrians() {
       // The summer-dress woman walks and stands only; she shares the
       // working-class woman's gait.
       d: { source: dressGltf.scene, clips: [...dressGltf.animations, ...womanWalk, reactClip] },
+      // This figure carries its own long seated loop. The matching full
+      // Mixamo rig also leaves walking clips available if she is reused later.
+      s: { source: somberGltf.scene, clips: somberGltf.animations },
+      f: { source: fortiesGltf.scene, clips: [...fortiesGltf.animations, reactClip] },
     };
     const findClip = (who, name) =>
       cast[who].clips.find((clip) => clip.name === name) ?? cast[who].clips[0];
@@ -242,6 +232,14 @@ export default function Pedestrians() {
       entry.poser = true;
     });
 
+    BENCH_SITTERS.forEach((sitter, index) => {
+      const { x, z, yaw } = benchSitterPose(sitter);
+      const entry = spawn(index + 30, sitter.clip, sitter.who);
+      entry.wrapper.position.set(x, terrainHeight(x, z), z);
+      entry.wrapper.rotation.y = yaw;
+      entry.poser = true;
+    });
+
     ROUTES.forEach((route, index) => {
       const entry = spawn(index + 40, 'Walk', route.who);
       // Same object in both lists, so the bump state is shared.
@@ -254,7 +252,7 @@ export default function Pedestrians() {
     });
 
     return { group: root, walkers: walking, figures: all };
-  }, [manGltf, womanGltf, dressGltf, manClipGltfs, womanClipGltfs, reactGltf]);
+  }, [manGltf, womanGltf, dressGltf, somberGltf, fortiesGltf, manClipGltfs, womanClipGltfs, reactGltf]);
 
   const frameCount = useRef(0);
   useFrame((state, delta) => {

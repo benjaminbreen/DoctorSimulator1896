@@ -2,6 +2,8 @@
 // module derives the boxes that meshes, physics colliders, and the camera
 // occlusion ray all share. Never author colliders separately.
 
+import { withSeatAffordance } from './seating.js';
+
 const EPS = 1e-4;
 
 // Boxes are {id, position: [x,y,z] center, size: [w,h,d] full extents, yaw}.
@@ -62,6 +64,7 @@ export function deriveWallBoxes(wall) {
       height,
       thickness: wall.size[axis === 0 ? 2 : 0],
       normal: axis === 0 ? [0, 0, outward] : [outward, 0, 0],
+      portiere: opening.portiere ?? null,
     });
     cursor = right;
   }
@@ -116,17 +119,35 @@ export function deriveRoom(blueprint) {
   const centerX = exterior ? bounds.cx : 0;
   const centerZ = exterior ? bounds.cz : 0;
   if (exterior) blockerBoxes.push(...perimeterBlockers(bounds, floorY));
+  // Annexes outside the main rectangle (the consulting office's study) add
+  // their own slabs; the main floor/ceiling stay one box each.
+  const floorPatches = (blueprint.floorPatches ?? []).map((patch, index) => ({
+    id: patch.id ?? `floor-patch-${index}`,
+    position: [patch.position[0], floorY - 0.05, patch.position[1]],
+    size: [patch.size[0], 0.1, patch.size[1]],
+    yaw: 0,
+  }));
+  const ceilingPatches = exterior
+    ? []
+    : (blueprint.ceilingPatches ?? []).map((patch, index) => ({
+        id: patch.id ?? `ceiling-patch-${index}`,
+        position: [patch.position[0], floorY + ceiling + 0.05, patch.position[1]],
+        size: [patch.size[0], 0.1, patch.size[1]],
+        yaw: 0,
+      }));
   return {
     exterior,
     floor: { id: 'floor', position: [centerX, floorY - 0.05, centerZ], size: [width, 0.1, depth], yaw: 0 },
     ceiling: exterior
       ? null
       : { id: 'ceiling', position: [0, floorY + ceiling + 0.05, 0], size: [width, 0.1, depth], yaw: 0 },
+    floorPatches,
+    ceilingPatches,
     wallBoxes,
     blockerBoxes,
     openingHoles: windowHoles,
     windowHoles: windowHoles.filter((hole) => hole.type === 'window'),
-    furnitureBoxes: blueprint.furniture,
+    furnitureBoxes: blueprint.furniture.map(withSeatAffordance),
     lightMarkers: (blueprint.props ?? []).filter((prop) => prop.kind === 'lightMarker'),
     // Visible burner glows, separate from the lights themselves: a fixture
     // may show six flames while pooling its output into one source.

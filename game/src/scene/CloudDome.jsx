@@ -118,7 +118,7 @@ export default function CloudDome({ config, runtime }) {
 
   useFrame((state) => {
     const values = runtime.values;
-    const ramps = solarRamps(values.timeOfDay);
+    const ramps = solarRamps(values.timeOfDay, values.dayOfYear);
     const uniforms = material.uniforms;
     uniforms.uTime.value = state.clock.elapsedTime * values.cloudSpeed;
     uniforms.uCover.value = values.cloudCover;

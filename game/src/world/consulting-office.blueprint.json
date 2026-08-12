@@ -108,6 +108,22 @@
           ],
           "sillHeight": 0,
           "blocked": true
+        },
+        {
+          "id": "door-study",
+          "type": "door",
+          "center": [
+            -3.0,
+            1.2
+          ],
+          "size": [
+            1.1,
+            2.4
+          ],
+          "sillHeight": 0,
+          "portiere": {
+            "color": "#4a6152"
+          }
         }
       ]
     },
@@ -155,6 +171,85 @@
       ],
       "yaw": 0,
       "openings": []
+    },
+    {
+      "id": "study-west-wall",
+      "position": [
+        -4.0,
+        2.0,
+        7.35
+      ],
+      "size": [
+        0.3,
+        4.0,
+        4.2
+      ],
+      "yaw": 0,
+      "openings": []
+    },
+    {
+      "id": "study-south-wall",
+      "position": [
+        -2.0,
+        2.0,
+        9.45
+      ],
+      "size": [
+        4.3,
+        4.0,
+        0.3
+      ],
+      "yaw": 0,
+      "roomCentre": [
+        -2.0,
+        7.4
+      ],
+      "openings": []
+    },
+    {
+      "id": "study-east-wall",
+      "position": [
+        0.0,
+        2.0,
+        7.4
+      ],
+      "size": [
+        0.3,
+        4.0,
+        4.1
+      ],
+      "yaw": 0,
+      "roomCentre": [
+        -2.0,
+        7.4
+      ],
+      "openings": []
+    }
+  ],
+  "floorPatches": [
+    {
+      "id": "study-floor",
+      "position": [
+        -2.0,
+        7.4
+      ],
+      "size": [
+        4.3,
+        4.4
+      ]
+    }
+  ],
+  "ceilingPatches": [
+    {
+      "id": "study-ceiling",
+      "position": [
+        -2.0,
+        7.4
+      ],
+      "size": [
+        4.3,
+        4.4
+      ]
     }
   ],
   "transitions": [
@@ -516,6 +611,142 @@
       "moulding": "walnut",
       "railY": 3.5,
       "collider": false
+    },
+    {
+      "id": "study-carpet",
+      "kind": "furniture",
+      "model": "game_ready_carpet",
+      "modelScale": 0.62,
+      "position": [
+        -2.1,
+        0,
+        7.3
+      ],
+      "size": [
+        2.6024,
+        0.0073,
+        1.695
+      ],
+      "yaw": 1.5708,
+      "collider": false
+    },
+    {
+      "id": "study-day-bed",
+      "kind": "furniture",
+      "model": "vintage_day_bed",
+      "position": [
+        -3.4,
+        0,
+        8.2
+      ],
+      "size": [
+        1.9726,
+        1.1273,
+        0.8548
+      ],
+      "yaw": 1.5708
+    },
+    {
+      "id": "study-cabinet",
+      "kind": "furniture",
+      "model": "Bedside_Cabinet",
+      "position": [
+        -3.48,
+        0,
+        5.72
+      ],
+      "size": [
+        0.7728,
+        0.828,
+        0.7063
+      ],
+      "yaw": 1.5708
+    },
+    {
+      "id": "study-lamp",
+      "kind": "furniture",
+      "model": "OilLamp",
+      "position": [
+        -3.5,
+        0.828,
+        5.72
+      ],
+      "size": [
+        0.3298,
+        0.5699,
+        0.3298
+      ],
+      "yaw": 0,
+      "collider": false
+    },
+    {
+      "id": "study-side-table",
+      "kind": "furniture",
+      "model": "Table_02",
+      "position": [
+        -0.55,
+        0,
+        6.2
+      ],
+      "size": [
+        1.1225,
+        1.0588,
+        0.7619
+      ],
+      "yaw": 1.5708
+    },
+    {
+      "id": "study-chemistry",
+      "kind": "furniture",
+      "model": "chemistry_set",
+      "position": [
+        -2.2,
+        0.9,
+        9.0
+      ],
+      "size": [
+        1.0784,
+        0.429,
+        0.3539
+      ],
+      "yaw": 0,
+      "collider": false
+    },
+    {
+      "id": "study-sconce",
+      "kind": "furniture",
+      "model": "Sconce",
+      "position": [
+        -1.7,
+        1.692,
+        8.82
+      ],
+      "size": [
+        0.7618,
+        0.5782,
+        0.3609
+      ],
+      "yaw": 3.1416,
+      "collider": false
+    },
+    {
+      "id": "study-print",
+      "kind": "wallArt",
+      "art": "engraving",
+      "position": [
+        -3.8,
+        2.3,
+        6.6
+      ],
+      "size": [
+        0.74,
+        0.58,
+        0.06
+      ],
+      "yaw": 1.5708,
+      "seed": 23,
+      "moulding": "walnut",
+      "collider": false
     }
   ],
   "props": [
@@ -553,6 +784,24 @@
         -1.05,
         1.28,
         -2.95
+      ]
+    },
+    {
+      "id": "gaslight-study-lamp",
+      "kind": "lightMarker",
+      "position": [
+        -3.5,
+        1.23,
+        5.72
+      ]
+    },
+    {
+      "id": "gaslight-study-sconce",
+      "kind": "lightMarker",
+      "position": [
+        -1.7,
+        2.05,
+        8.7
       ]
     }
   ]

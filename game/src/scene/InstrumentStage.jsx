@@ -5,14 +5,17 @@ import { getInteraction, subscribe, useInstrument } from '../world/interaction.j
 import { createTachistoscope, step as stepTachistoscope } from '../instruments/tachistoscope.js';
 import { createColourWheel, step as stepColourWheel } from '../instruments/colourWheel.js';
 import { createInductionCoil, step as stepInductionCoil, shockCurrent } from '../instruments/inductionCoil.js';
+import { createSecondsPendulum, stepSecondsPendulum } from '../instruments/secondsPendulum.js';
 import { instrumentBus } from '../instruments/bus.js';
 import {
   tachistoscope as buildTachistoscope,
   colourWheel as buildColourWheel,
   inductionCoil as buildInductionCoil,
+  secondsPendulum as buildSecondsPendulum,
   TACHISTOSCOPE_FRAME,
   COLOUR_WHEEL_FRAME,
   COIL_FRAME,
+  SECONDS_PENDULUM_FRAME,
 } from '../world/instruments.js';
 import PropShape from './PropShape.jsx';
 import PropMaterial from './PropMaterial.jsx';
@@ -36,23 +39,31 @@ const BUILDERS = {
   tachistoscope: createTachistoscope,
   'colour-wheel': createColourWheel,
   'induction-coil': createInductionCoil,
+  'seconds-pendulum': createSecondsPendulum,
 };
 
 const STEP = {
   tachistoscope: stepTachistoscope,
   'colour-wheel': stepColourWheel,
   'induction-coil': stepInductionCoil,
+  'seconds-pendulum': stepSecondsPendulum,
 };
 
 const GEOMETRY = {
   tachistoscope: (id) => buildTachistoscope(id, 0, 0, 0, 0),
   'colour-wheel': (id) => buildColourWheel(id, 0, 0, 0, 0),
   'induction-coil': (id) => buildInductionCoil(id, 0, 0, 0, 0),
+  'seconds-pendulum': (id) => buildSecondsPendulum(id, 0, 0, 0, 0),
 };
 
 // How much of the model to draw the working copy at. The tachistoscope is
 // stood in front of; the colour wheel is leaned over, so it needs less.
-const SCALE = { tachistoscope: 1.6, 'colour-wheel': 1.35, 'induction-coil': 1.5 };
+const SCALE = {
+  tachistoscope: 1.6,
+  'colour-wheel': 1.35,
+  'induction-coil': 1.5,
+  'seconds-pendulum': 1.08,
+};
 
 // Split a built instrument into its static parts and its moving channels.
 function byChannel(parts) {
@@ -221,6 +232,33 @@ function ColourWheel({ groups, instrument }) {
       {(groups.get('chip') ?? []).map((item) => (
         <Chip key={item.id} item={item} instrument={instrument} />
       ))}
+    </>
+  );
+}
+
+function SecondsPendulum({ groups, instrument }) {
+  const pendulum = useRef();
+  const catchLever = useRef();
+
+  useFrame(() => {
+    if (pendulum.current) pendulum.current.rotation.z = instrument.state.angle;
+    if (catchLever.current) {
+      catchLever.current.rotation.z = instrument.state.phase === 'reference' ? -0.12 : 0.18;
+    }
+  });
+
+  return (
+    <>
+      <Channel
+        items={groups.get('pendulum') ?? []}
+        pivot={SECONDS_PENDULUM_FRAME.pivot}
+        groupRef={pendulum}
+      />
+      <Channel
+        items={groups.get('catch') ?? []}
+        pivot={SECONDS_PENDULUM_FRAME.catchPivot}
+        groupRef={catchLever}
+      />
     </>
   );
 }
@@ -419,6 +457,7 @@ function BuiltInstrument({ kind, instrument }) {
       {kind === 'tachistoscope' && <Tachistoscope groups={groups} instrument={instrument} />}
       {kind === 'colour-wheel' && <ColourWheel groups={groups} instrument={instrument} />}
       {kind === 'induction-coil' && <InductionCoil groups={groups} instrument={instrument} />}
+      {kind === 'seconds-pendulum' && <SecondsPendulum groups={groups} instrument={instrument} />}
     </group>
   );
 }

@@ -74,7 +74,7 @@ export default function InteriorEnvironment({ lighting, runtime }) {
 
   useFrame(() => {
     const values = runtime.values;
-    const { daylight } = solarRamps(values.timeOfDay);
+    const { daylight } = solarRamps(values.timeOfDay, values.dayOfYear);
     scene.environmentIntensity = values.interiorEnvIntensity * (0.3 + 0.7 * daylight);
   });
 

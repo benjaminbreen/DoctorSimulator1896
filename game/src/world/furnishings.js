@@ -464,6 +464,101 @@ export function labeledBottle(id, x, y, z, options = {}) {
   }];
 }
 
+// An opium pipe at rest on its lacquer tray: bamboo stem, brass saddle,
+// terracotta bowl. Laid flat, bowl up, as it sat between uses.
+export function opiumPipe(id, x, y, z, options = {}) {
+  const yaw = options.yaw ?? 0;
+  const stemLength = options.length ?? 0.48;
+  const stemRadius = 0.011;
+  const trayRadius = options.trayRadius ?? 0.15;
+  const totalHeight = 0.09;
+  const half = totalHeight / 2;
+  const stemY = -half + 0.016 + 0.018 + stemRadius;
+  const bowlX = stemLength * 0.24;
+  const parts = [];
+
+  // Tray: a shallow lacquer disc with a raised lip.
+  parts.push({
+    shape: 'cylinder',
+    size: [trayRadius * 2, 0.016, trayRadius * 2],
+    position: [0, -half + 0.008, 0],
+    color: options.tray ?? '#241a12',
+    roughness: 0.32,
+  });
+  parts.push({
+    shape: 'torus',
+    size: [trayRadius * 2, 0.012, trayRadius * 2],
+    position: [0, -half + 0.018, 0],
+    rotation: [Math.PI / 2, 0, 0],
+    color: options.tray ?? '#241a12',
+    roughness: 0.32,
+  });
+
+  // Stem across the tray, on a slight diagonal so it reads as laid down.
+  const lean = 0.18;
+  parts.push({
+    shape: 'cylinder',
+    size: [stemRadius * 2, stemLength, stemRadius * 2],
+    position: [0, stemY, 0],
+    rotation: [lean * 0.12, lean, Math.PI / 2],
+    color: options.stem ?? '#7a5a33',
+    roughness: 0.55,
+  });
+  // Horn end caps.
+  for (const side of [-1, 1]) {
+    parts.push({
+      shape: 'cylinder',
+      size: [stemRadius * 2.4, 0.035, stemRadius * 2.4],
+      position: [
+        round(side * (stemLength / 2 - 0.014) * Math.cos(lean)),
+        stemY,
+        round(-side * (stemLength / 2 - 0.014) * Math.sin(lean)),
+      ],
+      rotation: [lean * 0.12, lean, Math.PI / 2],
+      color: '#33261b',
+      roughness: 0.4,
+    });
+  }
+
+  // Brass saddle where the bowl mounts, off-centre along the stem.
+  parts.push({
+    shape: 'cylinder',
+    size: [stemRadius * 3, 0.05, stemRadius * 3],
+    position: [round(bowlX * Math.cos(lean)), stemY, round(-bowlX * Math.sin(lean))],
+    rotation: [lean * 0.12, lean, Math.PI / 2],
+    color: '#8a6b3a',
+    roughness: 0.35,
+    metalness: 0.5,
+  });
+  // The bowl stands up from the saddle, sunk in so it reads as a drum.
+  parts.push({
+    shape: 'sphere',
+    size: [0.062, 0.062, 0.062],
+    position: [round(bowlX * Math.cos(lean)), stemY + 0.026, round(-bowlX * Math.sin(lean))],
+    color: options.bowl ?? '#8a4a3a',
+    roughness: 0.7,
+  });
+  parts.push({
+    shape: 'cylinder',
+    size: [0.022, 0.014, 0.022],
+    position: [round(bowlX * Math.cos(lean)), stemY + 0.06, round(-bowlX * Math.sin(lean))],
+    color: '#4a2c22',
+    roughness: 0.75,
+  });
+
+  return [{
+    id: `${id}-pipe`,
+    kind: 'furniture',
+    shape: 'cylinder',
+    position: [round(x), round(y + half), round(z)],
+    size: [trayRadius * 2, totalHeight, trayRadius * 2],
+    yaw,
+    dynamic: true,
+    mass: 0.6,
+    parts,
+  }];
+}
+
 // A rack proof built from the bottle proof above. The whole assembly stays on
 // one body for now, while stable slot and part names preserve a later route to
 // individually removable bottles.

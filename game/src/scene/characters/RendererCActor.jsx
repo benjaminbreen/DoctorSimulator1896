@@ -8,7 +8,7 @@ import { BODY_CUE_CLIPS } from '../../../../shared/characters/recipe.js';
 import { applyRendererCRecipe, cloneRendererCMaterials } from './rendererCController.js';
 import { createFaceController } from './faceController.js';
 
-export default function RendererCActor({ recipe, manifest, onReady }) {
+export default function RendererCActor({ recipe, manifest, onReady, paused = false }) {
   const gltf = useLoader(GLTFLoader, recipe.asset?.path || manifest.path, (loader) => loader.setMeshoptDecoder(MeshoptDecoder));
   const actor = useMemo(() => {
     const root = cloneSkeleton(gltf.scene);
@@ -31,17 +31,19 @@ export default function RendererCActor({ recipe, manifest, onReady }) {
       || gltf.animations.find((candidate) => candidate.name === 'ClinicIdle');
     const action = clip ? actor.mixer.clipAction(clip) : null;
     action?.reset().fadeIn(0.18).play();
+    if (paused && clip) actor.mixer.setTime(clip.duration * 0.18);
     return () => {
       action?.fadeOut(0.12);
       actor.mixer.stopAllAction();
     };
-  }, [actor, gltf.animations, recipe.animation.body]);
+  }, [actor, gltf.animations, paused, recipe.animation.body]);
 
   const readyRef = useCallback((node) => {
     if (node) onReady?.(recipe.id);
   }, [onReady, recipe.id]);
 
   useFrame((_, delta) => {
+    if (paused) return;
     actor.mixer.update(Math.min(delta, 0.1));
     actor.face.update(delta, recipe.animation);
   });

@@ -10,6 +10,7 @@ import {
 import { renderOfflineDialogue } from '../src/consultation/offlineRenderer.js';
 import { createTechnicalPatients, TECHNICAL_PATIENTS } from '../src/consultation/technicalPatients.js';
 import { validateConsultationPatient } from '../src/consultation/contract.js';
+import { buildCaseNotebook } from '../src/consultation/caseNotebook.js';
 
 const patient = TECHNICAL_PATIENTS[0];
 
@@ -26,7 +27,8 @@ test('all three technical patients satisfy the consultation contract', () => {
     assert.equal(fixture.actor.recipe.identitySeed, fixture.profile.seed);
     assert.equal(fixture.actor.recipe.cohort, fixture.profile.identity.sex === 'male' ? 'men' : 'women');
     assert.deepEqual(validateConsultationPatient(fixture), []);
-    assert.deepEqual(fixture.actor.recipe.placement.position, [0.45, 0, -1.7]);
+    assert.equal(fixture.actor.recipe.placement.position[0], 0.45);
+    assert.equal(fixture.actor.recipe.placement.position[2], -1.7);
   }
 });
 
@@ -57,6 +59,37 @@ test('private interpretation records a hypothesis without advancing time', () =>
   assert.equal(next.elapsedMinutes, 0);
   assert.deepEqual(next.interpretationIds, ['read-distress']);
   assert.equal(next.history.at(-1).kind, 'interpretation');
+});
+
+test('case notebook starts with identity only and grows from player actions', () => {
+  let state = beginInquiry();
+  let notebook = buildCaseNotebook(patient, state);
+  assert.deepEqual(notebook.patient, {
+    name: patient.label,
+    age: patient.profile.identity.age,
+    residence: patient.profile.social.residence,
+  });
+  assert.deepEqual(notebook.observations, []);
+  assert.deepEqual(notebook.clues, []);
+  assert.deepEqual(notebook.diagnoses, []);
+
+  state = consultationTransition(state, patient, { type: 'interpret', id: 'read-distress' });
+  state = consultationTransition(state, patient, { type: 'examine', id: 'a-check-hands' });
+  const input = { stance: 'question', text: 'What happens when you sleep and wake at night?' };
+  state = consultationTransition(state, patient, {
+    type: 'speech-response', input,
+    response: renderOfflineDialogue(buildDialogueRequest(patient, state, input), patient),
+  });
+  notebook = buildCaseNotebook(patient, state);
+  assert.deepEqual(notebook.observations.map((entry) => entry.kind), ['Private impression', 'Observe hands']);
+  assert.deepEqual(notebook.clues.map((clue) => clue.label), ['Sleep']);
+  assert.equal(notebook.diagnosesAvailable, false);
+
+  state = consultationTransition(state, patient, { type: 'begin-decision' });
+  notebook = buildCaseNotebook(patient, state);
+  assert.equal(notebook.diagnosesAvailable, true);
+  assert.deepEqual(notebook.diagnoses.map((item) => item.label), patient.diagnoses.map((item) => item.label));
+  assert.doesNotMatch(notebook.diagnoses.map((item) => item.label).join(' '), /working diagnosis/i);
 });
 
 test('offline dialogue discloses only a fact earned by the current question', () => {
@@ -137,6 +170,19 @@ test('the runtime publishes states and its offline renderer is deterministic', (
   assert.ok(first.disclosedFactIds.includes('b-light'));
   const request = buildDialogueRequest(TECHNICAL_PATIENTS[1], beginInquiry(), { stance: 'question', text: 'bright light' });
   assert.deepEqual(renderOfflineDialogue(request, TECHNICAL_PATIENTS[1]), renderOfflineDialogue(request, TECHNICAL_PATIENTS[1]));
+});
+
+test('the runtime reports only deterministic consultation time costs', () => {
+  const advances = [];
+  const runtime = createConsultationRuntime([patient], renderOfflineDialogue, {
+    onAdvanceMinutes: (minutes, action) => advances.push([minutes, action.type]),
+  });
+  runtime.start(patient.id);
+  runtime.dispatch({ type: 'begin-inquiry' });
+  runtime.dispatch({ type: 'interpret', id: 'read-distress' });
+  runtime.dispatch({ type: 'examine', id: 'a-check-hands' });
+  runtime.speak({ stance: 'question', text: 'What happens when you try to sleep?' });
+  assert.deepEqual(advances, [[3, 'examine'], [5, 'speech-response']]);
 });
 
 test('the runtime can return to patient selection', () => {

@@ -78,10 +78,10 @@ export default function ControlHelper({ hidden = false }) {
 
       {!fastTravelUsed && (
         <p className="control-helper__travel">
-          Click{' '}
+          Use{' '}
           <button type="button" onClick={() => requestHudOverlay('travel')}>Fast Travel</button>
-          {' '}to return to your <strong>waiting room</strong>, see a <strong>patient</strong>, or
-          visit your old mentor at Columbia’s <strong>psychology lab</strong> uptown.
+          {' '}to reach the <strong>waiting room</strong>, <strong>consulting room</strong>, or
+          Columbia <strong>psychology lab</strong>.
         </p>
       )}
 
@@ -89,8 +89,7 @@ export default function ControlHelper({ hidden = false }) {
         <span><kbd>Shift</kbd> run</span>
         <span><kbd>Space</kbd> jump</span>
         <span><kbd>E</kbd> use</span>
-        <span><kbd>Shift</kbd>+<kbd>1</kbd> props</span>
-        <span><kbd>Shift</kbd>+<kbd>`</kbd> panel</span>
+        <span><kbd>P</kbd> pause</span>
       </p>
     </aside>
   );

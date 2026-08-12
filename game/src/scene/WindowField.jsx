@@ -606,7 +606,7 @@ export default function WindowField({ items, runtime }) {
 
   useFrame((state) => {
     if (runtime) {
-      const { night } = solarRamps(runtime.values.timeOfDay);
+      const { night } = solarRamps(runtime.values.timeOfDay, runtime.values.dayOfYear);
       meshes.litMaterial.emissiveIntensity = night * 1.3;
     }
     // Breeze: small pitch/tilt wobble on canvas and cloth instances.

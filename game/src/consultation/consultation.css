@@ -1,7 +1,8 @@
-/* Consultation chrome, built to the introspection mockups: a framed navy
+/* Consultation chrome, built to the patient-mode mockups: a framed navy
    stage at the foot of the screen for the patient's words and the player's
-   choices, and a consultation rail on the right. Antique gold on lamp-lit
-   ink; the one green accent marks the thought being weighed. */
+   choices, and a consultation rail on the right. Idle chrome is faint gold
+   hairlines with calligraphic corners; the chosen card burns — amber neon
+   for speech, radium green for a weighed thought. */
 
 .gcon {
   position: absolute;
@@ -9,23 +10,30 @@
   z-index: 45;
   pointer-events: none;
   container-type: inline-size;
-  font-family: 'Cormorant', Georgia, serif;
+  font-family: 'Libre Caslon Text', 'Cormorant', Georgia, serif;
 
-  --gc-ink-0: rgba(7, 12, 20, 0.94);
-  --gc-ink-1: rgba(13, 21, 33, 0.94);
-  --gc-line: rgba(201, 166, 90, 0.34);
-  --gc-line-soft: rgba(201, 166, 90, 0.2);
-  --gc-line-strong: rgba(228, 191, 112, 0.8);
-  --gc-cream: #e9dcba;
-  --gc-cream-hi: #f5ecd2;
-  --gc-cream-dim: rgba(233, 220, 186, 0.6);
-  --gc-cream-faint: rgba(233, 220, 186, 0.38);
-  --gc-gold: #d9ad55;
+  --gc-ink-0: rgba(6, 10, 17, 0.94);
+  --gc-ink-1: rgba(13, 20, 31, 0.94);
+  --gc-line: rgba(203, 168, 92, 0.3);
+  --gc-line-soft: rgba(203, 168, 92, 0.15);
+  --gc-line-strong: rgba(240, 199, 116, 0.9);
+  --gc-cream: #ecdfbe;
+  --gc-cream-hi: #f7efd7;
+  --gc-cream-dim: rgba(236, 223, 190, 0.62);
+  --gc-cream-faint: rgba(236, 223, 190, 0.36);
+  --gc-gold: #e3aa4e;
   --gc-gold-soft: #c9a45a;
-  --gc-gold-glow: rgba(224, 178, 96, 0.32);
-  --gc-sage: #b9e2c4;
-  --gc-sage-line: rgba(167, 226, 183, 0.8);
-  --gc-sage-glow: rgba(112, 206, 146, 0.32);
+  --gc-green-line: rgba(190, 240, 202, 0.9);
+  --gc-serif: 'Libre Caslon Text', 'Cormorant', Georgia, serif;
+  --gc-sc: 'Cormorant SC', 'Cormorant', serif;
+
+  /* corner flourishes, drawn once and masked so states can re-ink them */
+  --gc-ctl: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'%3E%3Cg fill='none' stroke='%23fff' stroke-width='1.2' stroke-linecap='round'%3E%3Cpath d='M25 3.5H12C7 3.5 4.8 5.4 5.5 8.2c.5 1.9 2.9 2.3 3.8.8C10 7.8 9.2 6.4 7.8 6.6'/%3E%3Cpath d='M3.5 25V12C3.5 7 5.4 4.8 8.2 5.5c1.9.5 2.3 2.9.8 3.8-1.2.9-2.6.1-2.4-1.3'/%3E%3C/g%3E%3C/svg%3E");
+  --gc-ctr: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'%3E%3Cg fill='none' stroke='%23fff' stroke-width='1.2' stroke-linecap='round' transform='translate(26 0) scale(-1 1)'%3E%3Cpath d='M25 3.5H12C7 3.5 4.8 5.4 5.5 8.2c.5 1.9 2.9 2.3 3.8.8C10 7.8 9.2 6.4 7.8 6.6'/%3E%3Cpath d='M3.5 25V12C3.5 7 5.4 4.8 8.2 5.5c1.9.5 2.3 2.9.8 3.8-1.2.9-2.6.1-2.4-1.3'/%3E%3C/g%3E%3C/svg%3E");
+  --gc-cbl: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'%3E%3Cg fill='none' stroke='%23fff' stroke-width='1.2' stroke-linecap='round' transform='translate(0 26) scale(1 -1)'%3E%3Cpath d='M25 3.5H12C7 3.5 4.8 5.4 5.5 8.2c.5 1.9 2.9 2.3 3.8.8C10 7.8 9.2 6.4 7.8 6.6'/%3E%3Cpath d='M3.5 25V12C3.5 7 5.4 4.8 8.2 5.5c1.9.5 2.3 2.9.8 3.8-1.2.9-2.6.1-2.4-1.3'/%3E%3C/g%3E%3C/svg%3E");
+  --gc-cbr: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'%3E%3Cg fill='none' stroke='%23fff' stroke-width='1.2' stroke-linecap='round' transform='rotate(180 13 13)'%3E%3Cpath d='M25 3.5H12C7 3.5 4.8 5.4 5.5 8.2c.5 1.9 2.9 2.3 3.8.8C10 7.8 9.2 6.4 7.8 6.6'/%3E%3Cpath d='M3.5 25V12C3.5 7 5.4 4.8 8.2 5.5c1.9.5 2.3 2.9.8 3.8-1.2.9-2.6.1-2.4-1.3'/%3E%3C/g%3E%3C/svg%3E");
+  /* warm paper grain, tiled at 4% alpha over the panels */
+  --gc-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.94 0 0 0 0 0.87 0 0 0 0 0.70 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 /* ---------------- shared frame ---------------- */
@@ -33,40 +41,63 @@
 .gcon-frame {
   position: relative;
   border: 1px solid var(--gc-line);
-  border-radius: 4px;
+  border-radius: 9px;
   background:
-    linear-gradient(180deg, var(--gc-ink-1) 0%, var(--gc-ink-0) 78%);
+    radial-gradient(140% 90% at 50% 0%, rgba(40, 56, 76, 0.22), transparent 58%),
+    linear-gradient(180deg, var(--gc-ink-1) 0%, var(--gc-ink-0) 80%);
   box-shadow:
-    0 14px 44px rgba(2, 5, 10, 0.6),
-    inset 0 0 0 1px rgba(6, 10, 16, 0.8),
-    inset 0 0 34px rgba(2, 5, 10, 0.5);
+    0 16px 46px rgba(1, 3, 7, 0.62),
+    0 2px 10px rgba(1, 3, 7, 0.5),
+    inset 0 0 0 1px rgba(4, 7, 12, 0.85),
+    inset 0 0 42px rgba(1, 4, 8, 0.5);
 }
 
-/* fine corner brackets, drawn just inside the frame */
-.gcon-frame::before {
+/* inner hairline and paper grain: the double frame of the mockup panels */
+.gcon-frame::after {
   content: '';
   position: absolute;
-  inset: 5px;
+  inset: 6px;
   pointer-events: none;
-  background:
-    linear-gradient(var(--gc-line-strong), var(--gc-line-strong)) 0 0 / 13px 1px,
-    linear-gradient(var(--gc-line-strong), var(--gc-line-strong)) 0 0 / 1px 13px,
-    linear-gradient(var(--gc-line-strong), var(--gc-line-strong)) 100% 0 / 13px 1px,
-    linear-gradient(var(--gc-line-strong), var(--gc-line-strong)) 100% 0 / 1px 13px,
-    linear-gradient(var(--gc-line-strong), var(--gc-line-strong)) 0 100% / 13px 1px,
-    linear-gradient(var(--gc-line-strong), var(--gc-line-strong)) 0 100% / 1px 13px,
-    linear-gradient(var(--gc-line-strong), var(--gc-line-strong)) 100% 100% / 13px 1px,
-    linear-gradient(var(--gc-line-strong), var(--gc-line-strong)) 100% 100% / 1px 13px;
-  background-repeat: no-repeat;
-  opacity: 0.85;
+  border: 1px solid var(--gc-line-soft);
+  border-radius: 5px;
+  background: var(--gc-grain) repeat 0 0 / 140px 140px;
 }
 
-/* rule—diamond—rule ornament */
+/* calligraphic corner flourishes on panels and cards, inked via mask so the
+   glowing states can recolor them without more artwork */
+.gcon-frame::before,
+.gcon-card::before,
+.gcon-rail-item::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  pointer-events: none;
+  background: var(--gc-corner-ink, rgba(203, 168, 92, 0.45));
+  -webkit-mask:
+    var(--gc-ctl) 0 0 / var(--gc-corner, 16px) var(--gc-corner, 16px) no-repeat,
+    var(--gc-ctr) 100% 0 / var(--gc-corner, 16px) var(--gc-corner, 16px) no-repeat,
+    var(--gc-cbl) 0 100% / var(--gc-corner, 16px) var(--gc-corner, 16px) no-repeat,
+    var(--gc-cbr) 100% 100% / var(--gc-corner, 16px) var(--gc-corner, 16px) no-repeat;
+  mask:
+    var(--gc-ctl) 0 0 / var(--gc-corner, 16px) var(--gc-corner, 16px) no-repeat,
+    var(--gc-ctr) 100% 0 / var(--gc-corner, 16px) var(--gc-corner, 16px) no-repeat,
+    var(--gc-cbl) 0 100% / var(--gc-corner, 16px) var(--gc-corner, 16px) no-repeat,
+    var(--gc-cbr) 100% 100% / var(--gc-corner, 16px) var(--gc-corner, 16px) no-repeat;
+  transition: background-color 0.18s ease;
+}
+
+.gcon-frame::before {
+  inset: 6px;
+  --gc-corner: 22px;
+  --gc-corner-ink: rgba(216, 180, 104, 0.5);
+}
+
+/* rule—knot—rule ornament */
 .gcon-ornament {
   display: flex;
   align-items: center;
-  gap: 10px;
-  color: var(--gc-gold-soft);
+  gap: 12px;
+  color: #cfa75f;
 }
 
 .gcon-ornament::before,
@@ -74,7 +105,7 @@
   content: '';
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--gc-line) 18%, var(--gc-line) 82%, transparent);
+  background: linear-gradient(90deg, transparent, var(--gc-line) 16%, var(--gc-line) 84%, transparent);
 }
 
 .gcon-ornament svg {
@@ -87,54 +118,100 @@
 .gcon-stage {
   position: absolute;
   left: 50%;
-  bottom: 22px;
+  bottom: 24px;
   transform: translateX(-50%);
-  width: min(880px, calc(100cqw - 44px));
-  padding: 20px 34px 14px;
+  width: min(900px, calc(100cqw - 44px));
+  padding: 20px 34px 18px;
   pointer-events: auto;
+  transition: left 0.3s ease, width 0.3s ease;
 }
 
-/* leave room for the rail once it fits beside the stage */
+/* the interview's question grid runs wider, like the dialogue mockup */
+.gcon-stage--wide { width: min(1150px, calc(100cqw - 44px)); }
+
+/* beside the expanded rail the stage stays truly centered; only its width
+   gives way, so both margins always clear the rail */
 @container (min-width: 1180px) {
-  .gcon-stage { width: min(880px, calc(100cqw - 640px)); }
+  .gcon-stage { width: min(900px, calc(100cqw - 680px)); }
+
+  .gcon-stage.gcon-stage--wide { width: min(1150px, calc(100cqw - 680px)); }
+
+  /* the open notebook takes the left floor: the stage slides into the gap
+     between book and rail rather than hiding under either */
+  .gcon--book .gcon-stage,
+  .gcon--book .gcon-stage.gcon-stage--wide {
+    left: calc(50% + 55px);
+    width: min(880px, calc(100cqw - 820px));
+  }
 }
+
+/* A discreet way out of the queue or an active consultation (also Esc). */
+.gcon-close {
+  position: absolute;
+  z-index: 2;
+  top: 9px;
+  right: 9px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--gc-line);
+  border-radius: 50%;
+  background: rgba(6, 10, 17, 0.5);
+  padding: 0 0 2px;
+  font-family: Georgia, serif;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--gc-cream-dim);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.gcon-close:hover {
+  color: var(--gc-cream-hi);
+  border-color: rgba(240, 199, 116, 0.7);
+  box-shadow: 0 0 8px rgba(255, 180, 80, 0.25);
+}
+
+.gcon-close:focus-visible { outline: 1px solid var(--gc-line-strong); outline-offset: 2px; }
 
 .gcon-quote {
-  margin: 2px 10px 0;
+  margin: 0 10px 0;
   text-align: center;
-  font-size: clamp(19px, 1.7cqw, 27px);
-  font-weight: 600;
-  line-height: 1.42;
-  letter-spacing: 0.01em;
+  font-family: var(--gc-serif);
+  font-size: clamp(14px, 1.2cqw, 20px);
+  font-weight: 400;
+  line-height: 1.55;
+  letter-spacing: 0.005em;
   color: var(--gc-cream);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 0 16px rgba(0, 0, 0, 0.65), 0 1px 2px rgba(0, 0, 0, 0.7);
   text-wrap: balance;
 }
 
 .gcon-quote--observation {
   font-style: italic;
-  font-weight: 500;
   color: var(--gc-cream-dim);
 }
 
 .gcon-mark {
   font-style: normal;
   color: var(--gc-gold);
+  text-shadow: 0 0 14px rgba(227, 170, 78, 0.35);
 }
 
 .gcon-stage .gcon-ornament {
-  margin: 13px 6px 15px;
+  margin: 12px 6px 14px;
 }
 
 /* section eyebrow inside the stage (decision rows, case note) */
 .gcon-eyebrow {
-  margin: 0 0 8px;
+  margin: 0 0 9px;
   text-align: center;
-  font-family: 'Cormorant SC', 'Cormorant', serif;
-  font-size: 12px;
+  font-family: var(--gc-sc);
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.24em;
-  color: var(--gc-gold-soft);
+  letter-spacing: 0.3em;
+  color: #d9ab5f;
 }
 
 /* ---------------- option cards ---------------- */
@@ -145,11 +222,11 @@
   animation: gcon-in 0.2s ease-out both;
 }
 
-.gcon-options--thoughts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.gcon-options--speech { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; }
-.gcon-options--exams { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; }
-.gcon-options--row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; }
-.gcon-options--queue { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.gcon-options--thoughts { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-bottom: 26px; }
+.gcon-options--speech { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.gcon-options--exams { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.gcon-options--row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.gcon-options--queue { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-bottom: 26px; }
 
 .gcon-card {
   position: relative;
@@ -159,18 +236,20 @@
   justify-content: center;
   gap: 3px;
   border: 1px solid var(--gc-line);
-  border-radius: 3px;
-  background: rgba(10, 16, 25, 0.72);
-  padding: 15px 18px;
-  font-family: inherit;
-  font-size: 17px;
-  font-weight: 500;
-  line-height: 1.3;
-  letter-spacing: 0.01em;
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(11, 17, 26, 0.5), rgba(7, 11, 18, 0.62));
+  padding: 12px 18px;
+  font-family: var(--gc-serif);
+  font-size: clamp(12px, 0.95cqw, 16px);
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0.005em;
   text-align: center;
   color: var(--gc-cream);
   cursor: pointer;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, padding 0.15s ease;
+  transition:
+    border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease,
+    color 0.18s ease;
 }
 
 /* inner hairline, the double frame of the mockup cards */
@@ -180,17 +259,16 @@
   inset: 3px;
   pointer-events: none;
   border: 1px solid var(--gc-line-soft);
-  border-radius: 2px;
-  transition: border-color 0.15s ease;
+  border-radius: 3px;
+  transition: border-color 0.18s ease;
 }
 
 /* -- thought cards: taller, with the resting dots and the hanging eye -- */
 
 .gcon-card--thought {
-  min-height: 86px;
-  padding: 16px 18px 26px;
-  font-size: 18px;
-  font-weight: 600;
+  min-height: 72px;
+  padding: 13px 16px 24px;
+  font-size: clamp(12.5px, 1cqw, 17px);
 }
 
 .gcon-dots {
@@ -201,92 +279,109 @@
   text-align: center;
   font-size: 13px;
   line-height: 1;
-  letter-spacing: 7px;
-  text-indent: 7px;
+  letter-spacing: 9px;
+  text-indent: 9px;
   color: var(--gc-cream-faint);
   pointer-events: none;
+  transition: opacity 0.15s ease;
 }
 
 .gcon-eye {
   position: absolute;
   left: 50%;
   bottom: 0;
-  transform: translate(-50%, 62%) scale(0.85);
-  width: 35px;
-  height: 35px;
+  transform: translate(-50%, 58%) scale(0.8);
+  width: 42px;
+  height: 42px;
   display: grid;
   place-items: center;
-  border-radius: 50%;
-  border: 1px solid var(--gc-sage-line);
-  background: radial-gradient(circle at 42% 32%, #17291f, #0a1510 72%);
-  box-shadow:
-    0 0 16px var(--gc-sage-glow),
-    0 2px 8px rgba(0, 0, 0, 0.6),
-    inset 0 0 7px rgba(112, 206, 146, 0.28);
-  color: #d3f0dd;
+  background: radial-gradient(circle at 50% 56%, rgba(5, 12, 8, 0.95) 0 56%, rgba(5, 12, 8, 0) 72%);
   opacity: 0;
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity 0.18s ease, transform 0.18s ease;
   pointer-events: none;
 }
 
+.gcon-eye svg {
+  width: 42px;
+  height: 42px;
+  filter:
+    drop-shadow(0 0 4px rgba(120, 225, 150, 0.6))
+    drop-shadow(0 0 11px rgba(90, 205, 125, 0.32));
+  animation: gcon-eye-breathe 3.4s ease-in-out infinite;
+}
+
+.gcon-eye-ring { stroke: var(--gc-green-line); }
+.gcon-eye-iris { stroke: #eeddaa; }
+.gcon-eye-spark { fill: #f6ecc8; }
+
 .gcon-card--thought.is-hot .gcon-eye {
   opacity: 1;
-  transform: translate(-50%, 62%) scale(1);
+  transform: translate(-50%, 58%) scale(1);
 }
 
-/* the green aura of the weighed thought */
+/* the radium aura of the weighed thought: bright core line, tight halo */
 .gcon-card--thought.is-hot {
-  border-color: var(--gc-sage-line);
-  background: linear-gradient(180deg, rgba(19, 34, 27, 0.9), rgba(10, 20, 15, 0.92));
-  color: var(--gc-cream-hi);
+  border-color: var(--gc-green-line);
+  background:
+    radial-gradient(120% 150% at 50% 45%, rgba(110, 215, 145, 0.035), transparent 60%),
+    linear-gradient(180deg, rgba(10, 19, 15, 0.88), rgba(6, 11, 8, 0.92));
+  color: #f2f4e0;
   box-shadow:
-    0 0 0 1px rgba(140, 214, 165, 0.22),
-    0 0 24px var(--gc-sage-glow),
-    inset 0 0 20px rgba(112, 206, 146, 0.1);
+    0 0 1px rgba(214, 246, 224, 0.9),
+    0 0 9px rgba(120, 222, 150, 0.38),
+    0 0 24px rgba(92, 206, 126, 0.2),
+    0 0 52px rgba(72, 190, 110, 0.09),
+    inset 0 0 18px rgba(120, 222, 150, 0.06);
+  --gc-corner-ink: rgba(198, 242, 210, 0.8);
 }
 
-.gcon-card--thought.is-hot::after { border-color: rgba(167, 226, 183, 0.45); }
-.gcon-card--thought.is-hot .gcon-dots { color: rgba(211, 240, 221, 0.65); }
+.gcon-card--thought.is-hot::after { border-color: rgba(186, 240, 200, 0.35); }
+/* the emblem's rays take the dots' place */
+.gcon-card--thought.is-hot .gcon-dots { opacity: 0; }
 
-/* -- speech and examination cards: shorter, warm highlight, side roundel -- */
+/* -- speech and examination cards: shorter, amber neon, glowing bubble -- */
 
+/* the icon column is reserved on both sides from the start, so the glowing
+   bubble appears without rewrapping a single line */
 .gcon-card--speech {
-  min-height: 60px;
-  padding: 13px 20px;
-  font-size: 16.5px;
+  min-height: 58px;
+  padding: 12px 44px;
 }
 
 .gcon-roundel {
   position: absolute;
-  left: 11px;
+  left: 12px;
   top: 50%;
-  transform: translateY(-50%) scale(0.8);
-  width: 31px;
-  height: 31px;
+  transform: translateY(-50%) scale(0.7);
+  width: 28px;
+  height: 28px;
   display: grid;
   place-items: center;
-  border-radius: 50%;
-  border: 1px solid rgba(228, 191, 112, 0.85);
-  background: radial-gradient(circle at 42% 32%, #2a2213, #14100a 74%);
-  box-shadow: 0 0 12px var(--gc-gold-glow), inset 0 0 6px rgba(224, 178, 96, 0.25);
-  color: #ecd39a;
+  color: #ffc46a;
+  filter:
+    drop-shadow(0 0 4px rgba(255, 180, 80, 0.9))
+    drop-shadow(0 0 11px rgba(255, 160, 50, 0.5));
   opacity: 0;
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity 0.18s ease, transform 0.18s ease;
   pointer-events: none;
 }
 
 .gcon-card--speech.is-hot {
-  border-color: var(--gc-line-strong);
-  background: linear-gradient(180deg, rgba(26, 24, 15, 0.88), rgba(14, 13, 9, 0.92));
+  border-color: rgba(255, 196, 106, 0.95);
+  background:
+    radial-gradient(130% 160% at 10% 50%, rgba(255, 172, 70, 0.08), transparent 55%),
+    linear-gradient(180deg, rgba(22, 19, 12, 0.8), rgba(11, 10, 7, 0.86));
   color: var(--gc-cream-hi);
-  padding-left: 52px;
   box-shadow:
-    0 0 0 1px rgba(228, 191, 112, 0.22),
-    0 0 20px var(--gc-gold-glow),
-    inset 0 0 16px rgba(224, 178, 96, 0.08);
+    0 0 1px rgba(255, 214, 140, 0.9),
+    0 0 8px rgba(255, 175, 70, 0.4),
+    0 0 20px rgba(255, 160, 50, 0.22),
+    0 0 46px rgba(255, 150, 40, 0.1),
+    inset 0 0 14px rgba(255, 180, 90, 0.07);
+  --gc-corner-ink: rgba(255, 205, 130, 0.85);
 }
 
-.gcon-card--speech.is-hot::after { border-color: rgba(228, 191, 112, 0.4); }
+.gcon-card--speech.is-hot::after { border-color: rgba(255, 205, 130, 0.35); }
 
 .gcon-card--speech.is-hot .gcon-roundel {
   opacity: 1;
@@ -294,8 +389,8 @@
 }
 
 .gcon-card-sub {
-  font-size: 12.5px;
-  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 11px;
+  font-family: var(--gc-sc);
   font-weight: 600;
   letter-spacing: 0.12em;
   color: var(--gc-cream-dim);
@@ -303,13 +398,13 @@
 
 /* spent choices: noted impressions, questions already asked */
 .gcon-card.is-done {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: default;
 }
 
 .gcon-check {
   position: absolute;
-  bottom: 7px;
+  bottom: 8px;
   left: 0;
   right: 0;
   text-align: center;
@@ -321,10 +416,14 @@
 
 /* persistent selection (diagnosis and treatment) */
 .gcon-card.is-chosen {
-  border-color: var(--gc-line-strong);
-  background: linear-gradient(180deg, rgba(26, 24, 15, 0.88), rgba(14, 13, 9, 0.92));
+  border-color: rgba(255, 196, 106, 0.95);
+  background: linear-gradient(180deg, rgba(22, 19, 12, 0.8), rgba(11, 10, 7, 0.86));
   color: var(--gc-cream-hi);
-  box-shadow: 0 0 0 1px rgba(228, 191, 112, 0.22), 0 0 14px var(--gc-gold-glow);
+  box-shadow:
+    0 0 1px rgba(255, 214, 140, 0.9),
+    0 0 8px rgba(255, 175, 70, 0.38),
+    0 0 20px rgba(255, 160, 50, 0.18);
+  --gc-corner-ink: rgba(255, 205, 130, 0.85);
 }
 
 .gcon-card:focus-visible {
@@ -338,20 +437,24 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  margin-top: 14px;
-  font-size: 15.5px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  color: var(--gc-gold-soft);
+  gap: 13px;
+  margin-top: 12px;
+  font-family: var(--gc-serif);
+  font-size: clamp(11.5px, 0.85cqw, 14px);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: #d9ab5f;
 }
+
+.gcon-options--thoughts + .gcon-hint,
+.gcon-options--queue + .gcon-hint { margin-top: 0; }
 
 .gcon-hint::before,
 .gcon-hint::after {
   content: '';
-  width: 34px;
+  width: clamp(30px, 4cqw, 60px);
   height: 1px;
-  background: var(--gc-line);
+  background: rgba(203, 168, 92, 0.5);
 }
 
 .gcon-hint-link {
@@ -362,7 +465,7 @@
   color: inherit;
   cursor: pointer;
   text-decoration: underline;
-  text-decoration-color: rgba(201, 166, 90, 0.45);
+  text-decoration-color: rgba(203, 168, 92, 0.45);
   text-underline-offset: 3px;
 }
 
@@ -375,7 +478,7 @@
 }
 
 .gcon-hint-note {
-  font-size: 13px;
+  font-size: 12.5px;
   font-style: italic;
   color: var(--gc-cream-dim);
 }
@@ -383,7 +486,7 @@
 .gcon-error {
   margin: 8px 0 0;
   text-align: center;
-  font-size: 13.5px;
+  font-size: 13px;
   font-style: italic;
   color: #d99a72;
 }
@@ -396,11 +499,11 @@
   resize: vertical;
   padding: 12px 14px;
   border: 1px solid var(--gc-line);
-  border-radius: 3px;
+  border-radius: 4px;
   background: rgba(6, 10, 17, 0.7);
-  font-family: 'Cormorant', Georgia, serif;
-  font-size: 16.5px;
-  line-height: 1.5;
+  font-family: var(--gc-serif);
+  font-size: 14px;
+  line-height: 1.55;
   color: var(--gc-cream);
 }
 
@@ -413,7 +516,7 @@
 .gcon-figures {
   display: flex;
   justify-content: center;
-  gap: 46px;
+  gap: 42px;
   padding: 4px 0 2px;
 }
 
@@ -425,18 +528,18 @@
 }
 
 .gcon-figure strong {
-  font-size: 30px;
-  font-weight: 600;
-  line-height: 1.1;
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1.15;
   color: var(--gc-cream-hi);
   font-variant-numeric: tabular-nums;
 }
 
 .gcon-figure span {
-  font-family: 'Cormorant SC', 'Cormorant', serif;
-  font-size: 11px;
+  font-family: var(--gc-sc);
+  font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.2em;
   color: var(--gc-gold-soft);
 }
 
@@ -444,102 +547,126 @@
 
 .gcon-rail {
   position: absolute;
-  top: 92px;
-  right: 16px;
-  width: clamp(256px, 20cqw, 300px);
-  padding: 16px 15px 12px;
+  top: 96px;
+  right: 18px;
+  width: clamp(240px, 17cqw, 286px);
+  padding: 15px 13px 11px;
   pointer-events: auto;
   display: flex;
   flex-direction: column;
 }
 
 .gcon-rail-title {
-  margin: 2px 2px 0;
-  font-family: 'Cormorant SC', 'Cormorant', serif;
-  font-size: 16px;
+  margin: 2px 4px 0;
+  font-family: var(--gc-sc);
+  font-size: 14.5px;
   font-weight: 600;
-  letter-spacing: 0.22em;
-  color: #dfc188;
+  letter-spacing: 0.28em;
+  color: #e5c584;
 }
 
-.gcon-rail .gcon-ornament { margin: 10px 2px 14px; }
-.gcon-rail-divider { margin: 4px 2px 12px; }
+.gcon-rail .gcon-ornament { margin: 10px 2px 13px; }
+.gcon-rail-divider { margin: 3px 2px 11px; }
 
 .gcon-rail-item {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 13px;
   width: 100%;
-  margin-bottom: 10px;
-  padding: 10px 12px;
+  margin-bottom: 9px;
+  padding: 11px 13px;
   border: 1px solid var(--gc-line);
-  border-radius: 5px;
-  background: rgba(255, 252, 240, 0.02);
+  border-radius: 6px;
+  background: rgba(255, 250, 235, 0.015);
   font-family: inherit;
   text-align: left;
   color: var(--gc-cream);
   cursor: pointer;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+/* the rail cards carry the same inner hairline as the stage cards */
+.gcon-rail-item::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  pointer-events: none;
+  border: 1px solid var(--gc-line-soft);
+  border-radius: 3px;
+  transition: border-color 0.18s ease;
 }
 
 .gcon-rail-item:hover:not(:disabled) {
-  border-color: rgba(228, 191, 112, 0.55);
-  background: rgba(255, 252, 240, 0.045);
+  border-color: rgba(240, 199, 116, 0.55);
+  background: rgba(255, 250, 235, 0.04);
 }
 
 .gcon-rail-item:focus-visible { outline: 1px solid var(--gc-line-strong); outline-offset: 2px; }
 
 .gcon-rail-item:disabled {
-  opacity: 0.42;
+  opacity: 0.4;
   cursor: default;
 }
 
 .gcon-rail-item.is-active {
-  border-color: var(--gc-line-strong);
-  background: linear-gradient(180deg, rgba(26, 24, 15, 0.82), rgba(14, 13, 9, 0.86));
-  box-shadow: 0 0 0 1px rgba(228, 191, 112, 0.2), 0 0 16px var(--gc-gold-glow);
+  border-color: rgba(255, 196, 106, 0.95);
+  background:
+    radial-gradient(130% 160% at 10% 50%, rgba(255, 172, 70, 0.07), transparent 55%),
+    linear-gradient(180deg, rgba(22, 19, 12, 0.75), rgba(11, 10, 7, 0.8));
+  box-shadow:
+    0 0 1px rgba(255, 214, 140, 0.9),
+    0 0 8px rgba(255, 175, 70, 0.38),
+    0 0 20px rgba(255, 160, 50, 0.2),
+    0 0 44px rgba(255, 150, 40, 0.09),
+    inset 0 0 14px rgba(255, 180, 90, 0.06);
+  --gc-corner-ink: rgba(255, 205, 130, 0.85);
 }
 
+.gcon-rail-item.is-active::after { border-color: rgba(255, 205, 130, 0.32); }
+
+/* bare line-art icon, no tile behind it */
 .gcon-rail-icon {
   flex: 0 0 auto;
-  width: 35px;
-  height: 35px;
+  width: 32px;
   display: grid;
   place-items: center;
-  border: 1px solid var(--gc-line);
-  border-radius: 7px;
-  background: rgba(6, 10, 17, 0.6);
-  color: #d9bd7c;
-  transition: border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  color: #dcb873;
+  transition: color 0.18s ease, filter 0.18s ease;
 }
 
+.gcon-rail-icon svg { width: 23px; height: 23px; }
+
 .gcon-rail-item.is-active .gcon-rail-icon {
-  border-color: rgba(228, 191, 112, 0.85);
-  color: #ecd39a;
-  box-shadow: 0 0 10px var(--gc-gold-glow), inset 0 0 6px rgba(224, 178, 96, 0.22);
+  color: #ffd58a;
+  filter:
+    drop-shadow(0 0 4px rgba(255, 185, 90, 0.8))
+    drop-shadow(0 0 10px rgba(255, 165, 55, 0.4));
 }
 
 .gcon-rail-text {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   min-width: 0;
 }
 
 .gcon-rail-text strong {
-  font-size: 17.5px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-family: var(--gc-serif);
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
   color: inherit;
 }
 
 .gcon-rail-item.is-active .gcon-rail-text strong { color: var(--gc-cream-hi); }
 
 .gcon-rail-text small {
-  font-size: 12.5px;
-  font-weight: 500;
-  letter-spacing: 0.03em;
-  color: var(--gc-cream-dim);
+  font-family: var(--gc-serif);
+  font-size: 11.5px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: rgba(233, 216, 176, 0.6);
 }
 
 .gcon-rail-book {
@@ -551,10 +678,10 @@
   padding: 6px 4px;
   border: none;
   background: none;
-  font-family: 'Cormorant SC', 'Cormorant', serif;
-  font-size: 14px;
+  font-family: var(--gc-sc);
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   color: var(--gc-cream);
   cursor: pointer;
 }
@@ -564,19 +691,20 @@
 
 .gcon-key {
   flex: 0 0 auto;
-  padding: 3px 8px 2px;
-  border: 1px solid rgba(228, 191, 112, 0.65);
-  border-radius: 4px;
-  background: rgba(224, 178, 96, 0.07);
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  color: #e3cb8c;
+  padding: 3px 9px 2px;
+  border: 1px solid rgba(240, 199, 116, 0.75);
+  border-radius: 5px;
+  background: rgba(255, 190, 90, 0.05);
+  box-shadow: 0 0 8px rgba(255, 180, 80, 0.18), inset 0 0 6px rgba(255, 190, 100, 0.08);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  color: #f0d49a;
 }
 
 .gcon-rail-followup {
   margin: 7px 4px 2px;
-  font-family: 'Cormorant SC', 'Cormorant', serif;
-  font-size: 12px;
+  font-family: var(--gc-sc);
+  font-size: 11.5px;
   font-weight: 600;
   letter-spacing: 0.16em;
   color: var(--gc-cream-faint);
@@ -586,6 +714,8 @@
   border-bottom: 1px solid rgba(233, 220, 186, 0.22);
   padding-bottom: 2px;
 }
+
+.gcon-mobile-label { display: none; }
 
 /* narrow canvas: the rail folds to icons so the stage keeps the floor */
 @container (max-width: 1179px) {
@@ -600,146 +730,632 @@
   .gcon-rail-followup,
   .gcon-rail-book span:first-child { display: none; }
 
-  .gcon-rail-item { padding: 4px; justify-content: center; }
+  .gcon-rail-item { padding: 5px 4px; justify-content: center; margin-bottom: 8px; }
+  .gcon-rail-icon { width: auto; }
   .gcon-rail-book { justify-content: center; padding: 4px 0; }
   .gcon-rail-divider { margin: 2px 0 8px; }
 }
 
 /* ---------------- notebook ---------------- */
 
-.gcon-scrim {
+.gcon-book-layer {
   position: absolute;
   inset: 0;
   z-index: 5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 20px 30px;
-  background: rgba(4, 8, 13, 0.55);
-  backdrop-filter: blur(2px);
-  pointer-events: auto;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(3, 5, 8, 0.5), rgba(3, 5, 8, 0.12) 32%, transparent 52%);
 }
 
 .gcon-book {
-  width: min(680px, 92cqw);
-  max-height: 100%;
+  position: absolute;
+  top: 92px;
+  left: 10px;
+  width: clamp(310px, 22cqw, 375px);
+  height: calc(100% - 128px);
+  max-height: 780px;
+  min-height: 460px;
+  pointer-events: auto;
+  background-color: #2e190c;
+  background-image: var(--gcon-book-image, linear-gradient(#d1aa68, #b98242));
+  background-position: center;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  filter: drop-shadow(12px 12px 22px rgba(0, 0, 0, 0.62));
+  animation: gcon-book-slide-left 0.34s cubic-bezier(0.2, 0.72, 0.2, 1) both;
+}
+
+.gcon-book-paper {
+  position: absolute;
+  inset: 6.4% 12.7% 6.8% 11.2%;
   overflow-y: auto;
-  padding: 22px 30px 18px;
-  animation: gcon-in 0.18s ease-out both;
+  padding: 10px 9px 18px;
+  color: #342416;
+  scrollbar-color: rgba(74, 47, 25, 0.46) transparent;
+  scrollbar-width: thin;
 }
 
-.gcon-book-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
+.gcon-book-paper::-webkit-scrollbar { width: 5px; }
+.gcon-book-paper::-webkit-scrollbar-thumb {
+  border-radius: 10px;
+  background: rgba(74, 47, 25, 0.42);
 }
 
-.gcon-book-head h2 {
-  margin: 0;
-  font-family: 'Cormorant SC', 'Cormorant', serif;
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: 0.2em;
-  color: #dfc188;
-}
-
-.gcon-book-head span {
-  font-size: 17px;
-  font-weight: 600;
-  color: var(--gc-cream);
-}
-
-.gcon-book .gcon-ornament { margin: 10px 0 14px; }
-
-.gcon-book-section { margin-bottom: 14px; }
-
-.gcon-book-section h3 {
-  margin: 0 0 6px;
-  font-family: 'Cormorant SC', 'Cormorant', serif;
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  color: var(--gc-gold-soft);
-}
-
-.gcon-book-rows {
-  margin: 0;
+.gcon-book-close {
+  position: absolute;
+  z-index: 2;
+  top: 7.1%;
+  right: 14.4%;
+  width: 24px;
+  height: 24px;
   display: grid;
-  grid-template-columns: minmax(96px, auto) 1fr;
-  gap: 3px 18px;
-}
-
-.gcon-book-rows dt {
-  font-family: 'Cormorant SC', 'Cormorant', serif;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: var(--gc-cream-dim);
-}
-
-.gcon-book-rows dd {
-  margin: 0;
-  font-size: 15px;
-  color: var(--gc-cream);
-}
-
-.gcon-book-fact-note {
-  margin-left: 7px;
-  font-size: 12px;
-  font-style: italic;
-  color: var(--gc-cream-faint);
-}
-
-.gcon-book-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.gcon-book-list li {
-  font-size: 15px;
-  font-style: italic;
-  color: var(--gc-cream);
-}
-
-.gcon-book-empty {
-  margin: 0;
-  font-size: 14px;
-  font-style: italic;
-  color: var(--gc-cream-faint);
-}
-
-.gcon-book-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  margin-top: 4px;
-  padding-top: 10px;
-  border-top: 1px solid var(--gc-line-soft);
-  font-size: 13.5px;
-  font-style: italic;
-  color: var(--gc-cream-dim);
-}
-
-.gcon-book-foot button {
-  border: none;
-  background: none;
-  padding: 0;
-  font: inherit;
-  font-style: normal;
-  color: var(--gc-gold-soft);
-  text-decoration: underline;
-  text-decoration-color: rgba(201, 166, 90, 0.45);
-  text-underline-offset: 3px;
+  place-items: center;
+  border: 1px solid rgba(75, 45, 22, 0.38);
+  border-radius: 50%;
+  background: rgba(196, 157, 95, 0.2);
+  padding: 0 0 2px;
+  font-family: Georgia, serif;
+  font-size: 19px;
+  line-height: 1;
+  color: rgba(56, 37, 21, 0.74);
   cursor: pointer;
 }
 
-.gcon-book-foot button:hover { color: var(--gc-cream-hi); }
+.gcon-book-close:hover { background: rgba(111, 70, 32, 0.18); color: #2b1c10; }
+.gcon-book-close:focus-visible { outline: 2px solid rgba(68, 42, 21, 0.72); outline-offset: 2px; }
+
+.gcon-book-head {
+  position: relative;
+  padding: 2px 26px 17px;
+  text-align: center;
+}
+
+.gcon-book-head::after {
+  content: '◇';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 10px;
+  background: linear-gradient(90deg, transparent 0 4%, rgba(82, 52, 27, 0.38) 4% 44%, transparent 44% 56%, rgba(82, 52, 27, 0.38) 56% 96%, transparent 96%) center / 100% 1px no-repeat;
+  font-size: 12px;
+  color: rgba(73, 46, 23, 0.62);
+}
+
+.gcon-book-head p {
+  margin: 0 0 7px;
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.gcon-book-head h2 {
+  margin: 0 0 3px;
+  font-family: 'Libre Caslon Text', 'Old Standard TT', Georgia, serif;
+  font-size: clamp(19px, 1.35cqw, 23px);
+  font-weight: 700;
+  line-height: 1.15;
+  color: #2f1f13;
+}
+
+.gcon-book-head span {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: rgba(52, 36, 22, 0.78);
+}
+
+.gcon-book-section {
+  margin: 13px 0 0;
+  padding: 11px 2px 0;
+  border-top: 1px solid rgba(75, 48, 25, 0.28);
+  animation: gcon-book-entry-in 0.24s ease-out both;
+}
+
+.gcon-book-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #392515;
+}
+
+.gcon-book-section h3::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(75, 48, 25, 0.34);
+}
+
+.gcon-book-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.gcon-book-section-title h3 {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.gcon-book-observations {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.gcon-book-entry {
+  animation: gcon-book-entry-in 0.2s ease-out both;
+}
+
+.gcon-book-observations article {
+  padding: 0 2px 8px;
+  border-bottom: 1px solid rgba(77, 49, 25, 0.12);
+}
+
+.gcon-book-observations article:last-child { padding-bottom: 0; border-bottom: 0; }
+
+.gcon-book-observations strong {
+  display: block;
+  margin-bottom: 1px;
+  font-size: 13px;
+  font-style: italic;
+  font-weight: 700;
+  color: rgba(58, 37, 20, 0.75);
+}
+
+.gcon-book-observations p {
+  margin: 0;
+  font-family: 'Libre Caslon Text', 'Old Standard TT', Georgia, serif;
+  font-size: 14.5px;
+  line-height: 1.3;
+  color: #342416;
+}
+
+.gcon-book-clues {
+  margin: 0;
+  padding: 0 2px 0 18px;
+}
+
+.gcon-book-clues li {
+  margin: 0 0 5px;
+  padding-left: 1px;
+  font-family: 'Libre Caslon Text', 'Old Standard TT', Georgia, serif;
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.gcon-book-clues strong { font-weight: 700; }
+
+.gcon-book-section--player-notes { position: relative; }
+
+.gcon-book-add-note,
+.gcon-book-paper-add {
+  border: 0;
+  background: transparent;
+  padding: 2px 3px;
+  font-family: 'Libre Caslon Text', 'Old Standard TT', Georgia, serif;
+  font-size: 11.5px;
+  font-style: italic;
+  color: rgba(58, 37, 20, 0.62);
+  cursor: pointer;
+}
+
+.gcon-book-add-note {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: -2px;
+  white-space: nowrap;
+}
+
+.gcon-book-add-note svg { width: 12px; height: 12px; }
+.gcon-book-add-note:hover,
+.gcon-book-paper-add:hover { color: #2f1f13; }
+.gcon-book-add-note:focus-visible,
+.gcon-book-paper-add:focus-visible {
+  outline: 1px solid rgba(63, 40, 20, 0.62);
+  outline-offset: 2px;
+}
+
+.gcon-book-player-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.gcon-book-player-note {
+  position: relative;
+  min-height: 31px;
+  margin: 0 -3px;
+  padding: 4px 48px 5px 7px;
+  border-radius: 2px;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.gcon-book-player-note:hover,
+.gcon-book-player-note:focus-within {
+  background: rgba(87, 54, 27, 0.08);
+  box-shadow: inset 2px 0 rgba(75, 46, 22, 0.25);
+}
+
+.gcon-book-player-note p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: 'Tangerine', 'Cormorant', cursive;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.05;
+  color: #3d2918;
+}
+
+.gcon-book-note-actions {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transform: translateY(-50%);
+  transition: opacity 0.15s ease;
+}
+
+.gcon-book-player-note:hover .gcon-book-note-actions,
+.gcon-book-player-note:focus-within .gcon-book-note-actions {
+  opacity: 1;
+}
+
+.gcon-book-note-actions button {
+  width: 21px;
+  height: 21px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(70, 42, 19, 0.2);
+  border-radius: 50%;
+  background: rgba(218, 181, 117, 0.56);
+  padding: 0;
+  color: rgba(56, 34, 17, 0.74);
+  cursor: pointer;
+}
+
+.gcon-book-note-actions button:hover {
+  border-color: rgba(70, 42, 19, 0.42);
+  background: rgba(194, 148, 80, 0.7);
+  color: #2c1a0c;
+}
+
+.gcon-book-note-actions button:focus-visible {
+  outline: 1px solid rgba(56, 34, 17, 0.8);
+  outline-offset: 1px;
+}
+
+.gcon-book-note-actions svg { width: 12px; height: 12px; }
+
+.gcon-book-note-editor {
+  margin: 4px -2px 0;
+  padding: 7px;
+  border: 1px solid rgba(72, 45, 22, 0.25);
+  border-radius: 3px;
+  background: rgba(255, 242, 200, 0.18);
+  box-shadow: inset 0 0 15px rgba(92, 56, 22, 0.06);
+}
+
+.gcon-book-note-editor textarea {
+  display: block;
+  width: 100%;
+  min-height: 76px;
+  resize: vertical;
+  border: 0;
+  border-bottom: 1px solid rgba(72, 45, 22, 0.2);
+  background:
+    repeating-linear-gradient(transparent 0 27px, rgba(74, 46, 22, 0.13) 27px 28px);
+  padding: 1px 3px 4px;
+  font-family: 'Tangerine', 'Cormorant', cursive;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.12;
+  color: #382313;
+  caret-color: #382313;
+}
+
+.gcon-book-note-editor textarea::placeholder {
+  color: rgba(66, 41, 20, 0.44);
+}
+
+.gcon-book-note-editor textarea:focus { outline: 0; }
+
+.gcon-book-note-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+  padding-top: 6px;
+}
+
+.gcon-book-note-editor-actions button {
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  padding: 2px 3px;
+  font-family: 'Libre Caslon Text', 'Old Standard TT', Georgia, serif;
+  font-size: 11px;
+  color: rgba(55, 34, 17, 0.66);
+  cursor: pointer;
+}
+
+.gcon-book-note-editor-actions button:hover:not(:disabled) {
+  border-bottom-color: rgba(55, 34, 17, 0.48);
+  color: #2e1b0d;
+}
+
+.gcon-book-note-editor-actions button.is-primary {
+  border: 1px solid rgba(66, 39, 17, 0.34);
+  border-radius: 2px;
+  background: rgba(94, 58, 26, 0.12);
+  padding: 3px 7px;
+  color: #35200f;
+}
+
+.gcon-book-note-editor-actions button:disabled { opacity: 0.38; cursor: default; }
+.gcon-book-note-editor-actions button:focus-visible {
+  outline: 1px solid rgba(56, 34, 17, 0.8);
+  outline-offset: 1px;
+}
+
+.gcon-book-paper-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: calc(100% - 12px);
+  min-height: 38px;
+  margin: 14px 6px 0;
+  border: 1px dashed rgba(74, 46, 22, 0.22);
+  border-radius: 3px;
+  opacity: 0.48;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.gcon-book-paper-add:hover,
+.gcon-book-paper-add:focus-visible {
+  background: rgba(87, 54, 27, 0.06);
+  opacity: 1;
+}
+
+.gcon-book-paper-add svg { width: 13px; height: 13px; }
+
+.gcon-book-section--diagnoses { margin-top: 15px; }
+
+.gcon-book-diagnoses {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gcon-book-diagnoses button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 29px;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  padding: 4px 8px 4px 12px;
+  font-family: 'Libre Caslon Text', 'Old Standard TT', Georgia, serif;
+  font-size: 15px;
+  line-height: 1.15;
+  text-align: left;
+  color: #342416;
+  cursor: pointer;
+}
+
+.gcon-book-diagnoses button:hover {
+  background: rgba(90, 60, 31, 0.1);
+}
+
+.gcon-book-diagnoses button.is-selected {
+  background:
+    linear-gradient(90deg, rgba(90, 60, 31, 0.18), rgba(90, 60, 31, 0.07));
+  box-shadow: inset 0 0 0 1px rgba(72, 45, 22, 0.14);
+}
+
+.gcon-book-diagnoses button b {
+  flex: 0 0 auto;
+  width: 21px;
+  height: 21px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #42301e;
+  font-size: 10px;
+  color: #e3c279;
+}
+
+.gcon-book-diagnoses button:focus-visible {
+  outline: 2px solid rgba(63, 40, 20, 0.62);
+  outline-offset: -1px;
+}
+
+@container (max-width: 700px) {
+  .gcon-rail {
+    top: calc(106px + env(safe-area-inset-top, 0px));
+    right: 8px;
+    left: 8px;
+    width: auto;
+    height: 62px;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 4px;
+    padding: 6px;
+    overflow-x: auto;
+  }
+
+  .gcon-rail-item {
+    flex: 1 0 52px;
+    min-width: 52px;
+    min-height: 48px;
+    flex-direction: column;
+    gap: 1px;
+    margin: 0;
+    padding: 4px 2px 3px;
+  }
+
+  .gcon-rail-icon svg { width: 20px; height: 20px; }
+  .gcon-rail-text { display: flex; }
+  .gcon-desktop-label { display: none; }
+  .gcon-mobile-label { display: inline; }
+  .gcon-rail-text strong { font-size: 9px; line-height: 1; white-space: nowrap; }
+  .gcon-rail-text small { display: none; }
+  .gcon-rail-divider { display: none; }
+
+  .gcon-rail-book {
+    flex: 1 0 58px;
+    min-width: 58px;
+    min-height: 48px;
+    justify-content: center;
+    padding: 4px 2px;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-align: center;
+  }
+
+  .gcon-rail-book span:first-child { display: inline; }
+  .gcon-rail-book .gcon-key { display: none; }
+
+  .gcon-stage,
+  .gcon-stage.gcon-stage--wide,
+  .gcon--book .gcon-stage,
+  .gcon--book .gcon-stage.gcon-stage--wide {
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    left: 8px;
+    width: auto;
+    max-height: calc(100dvh - 184px - env(safe-area-inset-top, 0px));
+    overflow-y: auto;
+    transform: none;
+    padding: 14px 12px 12px;
+  }
+
+  .gcon-options--thoughts,
+  .gcon-options--speech,
+  .gcon-options--exams,
+  .gcon-options--row,
+  .gcon-options--queue {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .gcon-card,
+  .gcon-card--thought,
+  .gcon-card--speech {
+    min-height: 50px;
+    padding: 10px 38px;
+    font-size: 13.5px;
+  }
+
+  .gcon-card--thought { padding-bottom: 17px; }
+  .gcon-eye { display: none; }
+  .gcon-dots,
+  .gcon-check { bottom: 4px; }
+  .gcon-quote { margin-inline: 16px; font-size: 14px; line-height: 1.42; }
+  .gcon-stage .gcon-ornament { margin: 8px 6px 10px; }
+  .gcon-hint { flex-wrap: wrap; margin-top: 8px; text-align: center; }
+  .gcon-hint::before,
+  .gcon-hint::after { display: none; }
+  .gcon-close { width: 38px; height: 38px; top: 5px; right: 5px; }
+
+  .gcon-book-layer {
+    background: linear-gradient(0deg, rgba(3, 5, 8, 0.56), rgba(3, 5, 8, 0.12) 68%, transparent);
+  }
+
+  .gcon-book {
+    top: auto;
+    bottom: -8px;
+    left: 50%;
+    width: min(96cqw, 430px);
+    height: min(calc(100dvh - 104px - env(safe-area-inset-top, 0px)), 720px);
+    min-height: min(470px, calc(100dvh - 104px));
+    transform: translateX(-50%);
+    animation-name: gcon-book-slide-bottom;
+  }
+
+  .gcon-book-paper { padding-inline: 7px; }
+  .gcon-book-close { width: 38px; height: 38px; top: 5.8%; right: 13.2%; }
+  .gcon-book-head h2 { font-size: 19px; }
+  .gcon-book-head span { font-size: 13px; }
+  .gcon-book-section { margin-top: 11px; padding-top: 9px; }
+}
+
+@media (max-width: 900px) and (max-height: 500px) {
+  .gcon-rail {
+    top: calc(64px + env(safe-area-inset-top, 0px));
+    right: 6px;
+    left: auto;
+    width: 58px;
+    height: calc(100dvh - 72px - env(safe-area-inset-top, 0px));
+    flex-direction: column;
+    padding: 5px;
+  }
+
+  .gcon-rail-item,
+  .gcon-rail-book { flex: 1 1 42px; min-width: 46px; min-height: 40px; }
+  .gcon-rail-text,
+  .gcon-rail-book span:first-child { display: none; }
+  .gcon-rail-book .gcon-key { display: inline; padding-inline: 4px; }
+
+  .gcon-stage,
+  .gcon-stage.gcon-stage--wide,
+  .gcon--book .gcon-stage,
+  .gcon--book .gcon-stage.gcon-stage--wide {
+    right: 70px;
+    bottom: 6px;
+    left: 8px;
+    width: auto;
+    max-height: calc(100dvh - 72px);
+    padding: 10px 13px;
+  }
+
+  .gcon-options--thoughts,
+  .gcon-options--queue { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .gcon-options--speech,
+  .gcon-options--exams,
+  .gcon-options--row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  .gcon-card,
+  .gcon-card--thought,
+  .gcon-card--speech { min-height: 43px; padding-block: 7px; font-size: 11.5px; }
+  .gcon-quote { font-size: 12px; line-height: 1.3; }
+
+  .gcon-book {
+    bottom: -5px;
+    width: min(58cqw, 430px);
+    height: calc(100dvh - 62px);
+    min-height: 0;
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .gcon-book-note-actions { opacity: 0.72; }
+  .gcon-book-player-note { padding-right: 48px; }
+  .gcon-book-paper-add { opacity: 0.72; }
+}
 
 /* ---------------- shared motion ---------------- */
 
@@ -750,12 +1366,37 @@
   }
 }
 
+@keyframes gcon-eye-breathe {
+  50% {
+    filter:
+      drop-shadow(0 0 6px rgba(132, 232, 160, 0.8))
+      drop-shadow(0 0 16px rgba(94, 210, 130, 0.45));
+  }
+}
+
+@keyframes gcon-book-slide-left {
+  from { opacity: 0; transform: translateX(-105%); }
+}
+
+@keyframes gcon-book-slide-bottom {
+  from { opacity: 0; transform: translate(-50%, 105%); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@keyframes gcon-book-entry-in {
+  from { opacity: 0; transform: translateY(5px); }
+}
+
 .gcon-swap { animation: gcon-in 0.2s ease-out both; }
 
 @media (prefers-reduced-motion: reduce) {
   .gcon-options,
   .gcon-swap,
-  .gcon-book { animation: none; }
+  .gcon-book,
+  .gcon-book-section,
+  .gcon-book-entry { animation: none; }
+
+  .gcon-eye svg { animation: none; }
 
   .gcon-card,
   .gcon-eye,

@@ -8,7 +8,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RigidBody, CuboidCollider, useRapier } from '@react-three/rapier';
 import { handlesAlive } from '../physics/useCharacterController.js';
 import { createCarriageState, stepCarriage, ROUTES, RIDE_HEIGHT } from '../world/horselessCarriage.js';
-import { getPlayer, harm } from '../world/player.js';
+import { carriageImpactEffect, getPlayer, harm } from '../world/player.js';
 import { listAgents, reportAgent, removeAgent } from '../world/agents.js';
 import { gameDebug } from '../debug.js';
 
@@ -269,7 +269,7 @@ export default function HorselessCarriage() {
   const driverGltf = useLoader(GLTFLoader, '/models/carriage-driver.glb', (loader) =>
     loader.setMeshoptDecoder(MeshoptDecoder),
   );
-  const { world } = useRapier();
+  const { world, rapier } = useRapier();
 
   const obstaclesRef = useRef([]);
   const quat = useRef(new THREE.Quaternion());
@@ -318,6 +318,7 @@ export default function HorselessCarriage() {
         refs: { root: null, bodyGroup: null, wheels: [], steers: [], tiller: null, body: null, collider: null },
         shadowMeshes: [],
         shadowNear: true,
+        lastPlayerImpact: -Infinity,
       };
     });
   }, [driverGltf, shared]);
@@ -439,6 +440,22 @@ export default function HorselessCarriage() {
   ];
 
   return fleet.map((unit) => {
+    const onPlayerImpact = ({ other }) => {
+      if (other.rigidBodyObject?.userData?.gameKind !== 'player') return;
+      const state = unit.state;
+      const carriageVx = Math.sin(state.yaw) * state.speed;
+      const carriageVz = Math.cos(state.yaw) * state.speed;
+      const playerVelocity = gameDebug.player.velocity;
+      const relativeSpeed = Math.hypot(
+        carriageVx - playerVelocity[0],
+        carriageVz - playerVelocity[2],
+      );
+      const effect = carriageImpactEffect(relativeSpeed);
+      const now = getPlayer().clock;
+      if (!effect || now - unit.lastPlayerImpact < 4) return;
+      unit.lastPlayerImpact = now;
+      harm(effect);
+    };
     const wheel = (index) => (
       <group key={index} ref={(node) => (unit.refs.wheels[index] = node)}>
         <mesh geometry={index < 2 ? shared.frontWood : shared.rearWood} material={unit.materials.wood} castShadow />
@@ -486,11 +503,13 @@ export default function HorselessCarriage() {
           type="kinematicPosition"
           colliders={false}
           position={[0, -20 - unit.id * 5, 0]}
+          onCollisionEnter={onPlayerImpact}
         >
           <CuboidCollider
             ref={(node) => (unit.refs.collider = node)}
             args={[0.85, 0.85, 1.75]}
             position={[0, 0.95, 0]}
+            activeCollisionTypes={rapier.ActiveCollisionTypes.ALL}
           />
         </RigidBody>
       </group>

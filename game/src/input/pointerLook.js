@@ -21,6 +21,7 @@ export function createLook(runtime) {
   let pointerId = null;
   let lastX = 0;
   let lastY = 0;
+  let previousTouchAction = '';
 
   const onPointerDown = (event) => {
     if (event.button !== 0 || event.target !== element || pointerId !== null) return;
@@ -78,6 +79,10 @@ export function createLook(runtime) {
     },
     attach(canvas) {
       element = canvas;
+      previousTouchAction = element.style.touchAction;
+      // Pointer events then deliver an uninterrupted drag instead of the
+      // browser claiming the gesture for page scrolling on a phone.
+      element.style.touchAction = 'none';
       element.style.cursor = 'grab';
       element.addEventListener('pointerdown', onPointerDown);
       element.addEventListener('pointermove', onPointerMove);
@@ -92,6 +97,7 @@ export function createLook(runtime) {
       element.removeEventListener('pointerup', onPointerUp);
       element.removeEventListener('pointercancel', onPointerUp);
       element.removeEventListener('wheel', onWheel);
+      element.style.touchAction = previousTouchAction;
       element.style.cursor = '';
       pointerId = null;
       element = null;

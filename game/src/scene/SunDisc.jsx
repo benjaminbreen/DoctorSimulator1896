@@ -88,7 +88,7 @@ export default function SunDisc({ runtime }) {
 
   useFrame(() => {
     const values = runtime.values;
-    const { direction, daylight, golden, altitude } = solarRamps(values.timeOfDay);
+    const { direction, daylight, golden, altitude } = solarRamps(values.timeOfDay, values.dayOfYear);
     const group = groupRef.current;
     if (!group) return;
 

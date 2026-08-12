@@ -5,6 +5,12 @@ import {
   resetPlayer,
   harm,
   recover,
+  restEffect,
+  seatRestEffect,
+  recoverFromSeat,
+  fallEffect,
+  pushcartImpactEffect,
+  carriageImpactEffect,
   tickPlayer,
   condition,
   isDown,
@@ -14,23 +20,27 @@ import {
   healthCondition,
   neurastheniaCondition,
   MAX,
+  STARTING_NEURASTHENIA,
+  SEAT_REST_SECONDS,
+  SEAT_COOLDOWN_SECONDS,
 } from '../src/world/player.js';
 
 test.beforeEach(() => resetPlayer());
 
-test('a fresh player is unhurt and unwearied', () => {
+test('a fresh player is physically sound and nervously frazzled', () => {
   const player = getPlayer();
   assert.equal(player.health, MAX);
-  assert.equal(player.neurasthenia, 0);
-  assert.equal(player.fatigue, 0);
-  assert.equal(condition(player), 'well');
+  assert.equal(player.neurasthenia, STARTING_NEURASTHENIA);
+  assert.equal(player.fatigue, STARTING_NEURASTHENIA);
+  assert.equal(player.log.length, 0, 'the opening condition is not a gameplay event');
+  assert.equal(condition(player), 'tiring');
 });
 
 test('harm takes health, tires, and says where it came from', () => {
   harm({ amount: 18, tires: 12, source: 'induction-coil', note: 'a shock at 3 cm' });
   const player = getPlayer();
   assert.equal(player.health, 82);
-  assert.equal(player.fatigue, 12);
+  assert.equal(player.fatigue, STARTING_NEURASTHENIA + 12);
   assert.equal(player.log.at(-1).source, 'induction-coil');
   assert.equal(player.log.at(-1).note, 'a shock at 3 cm');
 });
@@ -59,6 +69,7 @@ test('each meter has its own readable condition', () => {
   assert.equal(healthCondition(55), 'shaken');
   assert.equal(neurastheniaCondition(0), 'settled');
   assert.equal(neurastheniaCondition(55), 'strained');
+  assert.equal(neurastheniaCondition(65), 'frazzled');
   assert.equal(neurastheniaCondition(90), 'severe nervous exhaustion');
 });
 
@@ -75,7 +86,7 @@ test('named events store their actual clamped changes', () => {
   });
   const player = getPlayer();
   assert.equal(player.health, 100);
-  assert.equal(player.neurasthenia, 12);
+  assert.equal(player.neurasthenia, STARTING_NEURASTHENIA + 12);
   assert.equal(player.log[0].changes.health, -20);
   assert.equal(player.log[1].changes.health, 20, 'the log records what fit below the cap');
 });
@@ -98,17 +109,71 @@ test('recent meter history is filtered, capped, and newest first', () => {
 });
 
 test('events that hit an existing bound do not claim to change it', () => {
-  recover({ health: 10, fatigue: 10, source: 'rest', label: 'Rested' });
+  recover({ health: 10, source: 'rest', label: 'Rested' });
   assert.equal(getPlayer().log.length, 0);
   assert.equal(recentMeterEvents('health').length, 0);
 });
 
-test('time heals slowly and eases nervous strain faster', () => {
-  harm({ amount: 20, tires: 40 });
+test('time alone does not restore health or ease nervous strain', () => {
+  harm({ amount: 20, tires: 20 });
+  const before = getPlayer();
   tickPlayer(600);
   const player = getPlayer();
-  assert.ok(player.health > 80 && player.health < 100, `${player.health} after ten minutes`);
-  assert.equal(player.neurasthenia, 5, 'ten minutes should ease thirty-five points');
+  assert.equal(player.health, before.health);
+  assert.equal(player.neurasthenia, before.neurasthenia);
+  assert.equal(player.clock, 600);
+});
+
+test('rest recovery scales with duration and is capped', () => {
+  assert.deepEqual(restEffect(0.5), { health: 1, neurasthenia: 5 });
+  assert.deepEqual(restEffect(3), { health: 6, neurasthenia: 30 });
+  assert.deepEqual(restEffect(24), { health: 12, neurasthenia: 45 });
+});
+
+test('sitting briefly gives a modest recovery with a per-seat cooldown', () => {
+  assert.deepEqual(seatRestEffect(SEAT_REST_SECONDS - 0.01), { health: 0, neurasthenia: 0 });
+  assert.deepEqual(seatRestEffect(SEAT_REST_SECONDS), { health: 1, neurasthenia: 4 });
+
+  const first = recoverFromSeat({ seatId: 'park-bench', seconds: SEAT_REST_SECONDS });
+  assert.ok(first.event);
+  assert.equal(getPlayer().neurasthenia, STARTING_NEURASTHENIA - 4);
+
+  harm({ amount: 5 });
+  const blocked = recoverFromSeat({ seatId: 'park-bench', seconds: SEAT_REST_SECONDS });
+  assert.equal(blocked.reason, 'cooldown');
+  assert.equal(getPlayer().health, 95);
+
+  tickPlayer(SEAT_COOLDOWN_SECONDS + 1);
+  recoverFromSeat({ seatId: 'park-bench', seconds: SEAT_REST_SECONDS });
+  assert.equal(getPlayer().health, 96);
+});
+
+test('falls and pushcart impacts use deterministic severity thresholds', () => {
+  assert.equal(fallEffect(7.99), null);
+  assert.deepEqual(fallEffect(8), {
+    amount: 4,
+    neurasthenia: 3,
+    source: 'fall',
+    label: 'Landed hard',
+  });
+  assert.equal(fallEffect(16).amount, 22);
+
+  assert.equal(pushcartImpactEffect(4.74), null);
+  assert.equal(pushcartImpactEffect(5).amount, 3);
+  assert.equal(pushcartImpactEffect(12).amount, 12);
+});
+
+test('a carriage hit removes most health at ordinary street speed', () => {
+  assert.equal(carriageImpactEffect(0.79), null);
+  assert.equal(carriageImpactEffect(1.5).amount, 40);
+  assert.deepEqual(carriageImpactEffect(4), {
+    amount: 60,
+    neurasthenia: 20,
+    down: 6,
+    source: 'horseless-carriage',
+    label: 'Run down by a horseless carriage',
+  });
+  assert.equal(carriageImpactEffect(5).amount, 75);
 });
 
 test('a hard shock puts the player down for a while', () => {

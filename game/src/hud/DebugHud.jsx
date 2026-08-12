@@ -40,8 +40,8 @@ export default function DebugHud({ showStats = false }) {
         </div>
       )}
       {snapshot.prompt && (
-        <div className="pointer-events-none absolute bottom-32 left-1/2 -translate-x-1/2 rounded border border-amber-300/40 bg-black/70 px-4 py-2 text-sm text-amber-100">
-          <span className="mr-2 rounded border border-amber-300/60 px-1.5 font-mono text-xs">E</span>
+        <div className="debug-prompt pointer-events-none absolute bottom-32 left-1/2 -translate-x-1/2 rounded border border-amber-300/40 bg-black/70 px-4 py-2 text-sm text-amber-100">
+          <span className="debug-prompt-key mr-2 rounded border border-amber-300/60 px-1.5 font-mono text-xs">E</span>
           {snapshot.prompt}
         </div>
       )}

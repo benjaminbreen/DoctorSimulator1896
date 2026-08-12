@@ -15,8 +15,10 @@ import { parkItems, POND_OUTLINE, WATER_LEVEL } from './centralPark.js';
 import { groundCoverItems, buildGroundCover } from './groundCover.js';
 import { streetItems, INTERIOR_BUILDINGS } from './streetGrid.js';
 import { generateInterior, interiorEntryTransitions, interiorZoneId } from './interiors.js';
-import { bookcase, vaseOfFlowers } from './furnishings.js';
+import { bookcase, vaseOfFlowers, labeledBottle, reagentBottleRack, opiumPipe } from './furnishings.js';
+import { labBench } from './instruments.js';
 import { cattellLabItems } from './cattellLab.js';
+import { lobbyItems } from './lobby.js';
 import { blueprintMouldings, friezeBand, ceilingPanel } from './mouldings.js';
 
 export const zones = {
@@ -32,6 +34,20 @@ export const zones = {
     // south of the chimney breast.
     extraItems: [
       ...bookcase('bookcase-west', -3.65, 3.1, Math.PI / 2, { height: 2.4, width: 2.2, depth: 0.4 }),
+      // The study behind the portière: a working bench under the sconce with
+      // the dispensary glass turned label-out, shelving on the party wall,
+      // and the pipe on the side table by the east wall.
+      ...labBench('study-bench', -1.7, 8.9, 0, { length: 2.4 }),
+      ...bookcase('bookcase-study', -0.33, 7.7, -Math.PI / 2, { height: 2.1, width: 1.7, depth: 0.35, seed: 7 }),
+      ...reagentBottleRack('study-rack', -1.1, 0.9, 9.05, { columns: 5, seed: 23 }).map((item) => ({ ...item, yaw: Math.PI })),
+      ...labeledBottle('study-bottle-a', -0.75, 0.9, 8.8, { labelText: 'LAUDANUM', liquid: '#5a2f14', height: 0.16 }).map((item) => ({ ...item, yaw: Math.PI })),
+      ...labeledBottle('study-bottle-b', -1.55, 0.9, 8.75, { labelText: 'TINCTURE', liquid: '#7a6b3a', height: 0.13 }).map((item) => ({ ...item, yaw: Math.PI })),
+      ...opiumPipe('study-pipe', -0.55, 1.059, 6.2, { yaw: -1.0 }).map((item) => ({
+        ...item,
+        // `group` lets the room copy hide while the ritual's working copy is
+        // in the player's hand (the same trick the instruments use).
+        affordance: { kind: 'act', verb: 'Smoke', name: 'the opium pipe', group: 'study-pipe' },
+      })),
       ...blueprintMouldings(consultingBlueprint, {
         trim: consultingLighting.materials.trim,
         ceiling: consultingLighting.materials.ceiling,
@@ -64,25 +80,12 @@ export const zones = {
       ...ceilingPanel(waitingBlueprint, { ceiling: waitingLighting.materials.ceiling, inset: 1.4 }),
     ],
   },
-  // The old waiting room, kept as authored. It is far larger than a row
-  // house room can be, which is what makes it read as a hall rather than a
-  // parlor — so it stands as the entrance foyer instead of being retired.
+  // The shared office-building lobby: a street vestibule, porter station,
+  // stone dado and rear elevator bank. It has no domestic window dressing.
   foyer: {
     blueprint: foyerBlueprint,
     lighting: foyerLighting,
-    interior: { wealth: 'grand', role: 'parlor', seed: 17 },
-    extraItems: [
-      ...blueprintMouldings(foyerBlueprint, {
-        trim: foyerLighting.materials.trim,
-        ceiling: foyerLighting.materials.ceiling,
-        dado: true,
-      }),
-      ...friezeBand(foyerBlueprint, {
-        wall: foyerLighting.materials.wall,
-        ceiling: foyerLighting.materials.ceiling,
-      }),
-      ...ceilingPanel(foyerBlueprint, { ceiling: foyerLighting.materials.ceiling, inset: 2.2 }),
-    ],
+    extraItems: lobbyItems(foyerBlueprint),
   },
   // Cattell's laboratory. A working room, so the windows take plain shades
   // and nothing else, and the walls are distempered plaster rather than

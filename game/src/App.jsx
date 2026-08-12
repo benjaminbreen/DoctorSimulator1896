@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import GameCanvas from './scene/GameCanvas.jsx';
 import Toasts from './hud/Toasts.jsx';
@@ -7,6 +7,7 @@ import DebugHud from './hud/DebugHud.jsx';
 import GameHud from './hud/GameHud.jsx';
 import ParkIntro from './hud/ParkIntro.jsx';
 import ControlHelper from './hud/ControlHelper.jsx';
+import MobileControls from './hud/MobileControls.jsx';
 import { settingsSchema } from './tuning/settingsSchema.js';
 import { applyGameStart, createTuningRuntime } from './tuning/runtime.js';
 import { createKeyboard } from './input/keyboard.js';
@@ -19,16 +20,19 @@ import { createActorRuntime } from './world/characters/actors.js';
 import { phase1Cast } from './content/clinic1896/phase1Cast.js';
 import { actorCueForConsultation, createConsultationRuntime } from './consultation/engine.js';
 import { renderOfflineDialogue } from './consultation/offlineRenderer.js';
-import { setConsultationMode } from './input/uiMode.js';
+import { setConsultationMode, setGamePaused } from './input/uiMode.js';
 import { seatFramingForPatient, setConsultationSeat } from './consultation/seatFraming.js';
 import {
   createTechnicalPatients,
   DEFAULT_TECHNICAL_PATIENT_SEEDS,
 } from './consultation/technicalPatients.js';
 import { nextSeed } from '../../shared/patients/index.js';
+import { createWorldClock } from './world/clock.js';
+import { notice } from './world/notices.js';
 
 const TuningPanel = lazy(() => import('./panel/TuningPanel.jsx'));
 const PropsPanel = lazy(() => import('./panel/PropsPanel.jsx'));
+const NpcPanel = lazy(() => import('./panel/NpcPanel.jsx'));
 const ShotBar = lazy(() => import('./shots/ShotBar.jsx'));
 const ConsultationDevPanel = lazy(() => import('./consultation/ConsultationDevPanel.jsx'));
 const ConsultationView = lazy(() => import('./consultation/ConsultationView.jsx'));
@@ -42,15 +46,26 @@ const devConsult =
   typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('devconsult');
 
 export default function App() {
-  const runtime = useMemo(() => applyGameStart(createTuningRuntime(settingsSchema)), []);
+  const worldClock = useMemo(() => createWorldClock(), []);
+  const runtime = useMemo(() => {
+    const next = applyGameStart(createTuningRuntime(settingsSchema));
+    const time = worldClock.getSnapshot();
+    next.values.timeOfDay = time.hours;
+    next.values.dayOfYear = time.dayOfYear;
+    return next;
+  }, [worldClock]);
   const keyboard = useMemo(() => createKeyboard(), []);
   const look = useMemo(() => createLook(runtime), [runtime]);
   const [patientSeeds, setPatientSeeds] = useState(() => [...DEFAULT_TECHNICAL_PATIENT_SEEDS]);
   const technicalPatients = useMemo(() => createTechnicalPatients(patientSeeds), [patientSeeds]);
   const actorRuntime = useMemo(() => createActorRuntime([technicalPatients[0].actor]), []);
   const consultationRuntime = useMemo(
-    () => createConsultationRuntime(technicalPatients, renderOfflineDialogue),
-    [technicalPatients],
+    () => createConsultationRuntime(technicalPatients, renderOfflineDialogue, {
+      onAdvanceMinutes: (minutes) => worldClock.advanceMinutes(minutes, {
+        reason: 'consultation',
+      }),
+    }),
+    [technicalPatients, worldClock],
   );
   const [actors, setActors] = useState(() => actorRuntime.get());
   const [zone, setZone] = useState(runtime.values.zone);
@@ -63,6 +78,7 @@ export default function App() {
   const [propsOpen, setPropsOpen] = useState(
     () => new URLSearchParams(window.location.search).has('prop'),
   );
+  const [npcOpen, setNpcOpen] = useState(false);
   // The tuning rail is a development tool, not part of the game. Keep it out
   // of the default presentation; Shift+` opens it and its performance readout.
   const [tuningOpen, setTuningOpen] = useState(false);
@@ -72,12 +88,24 @@ export default function App() {
   const [usingInstrument, setUsingInstrument] = useState(false);
   // A live consultation owns the foot of the screen; the HUD verbs yield it.
   const [consultActive, setConsultActive] = useState(false);
+  const [paused, setPaused] = useState(false);
   useEffect(() => subscribe((state) => setUsingInstrument(Boolean(state.using))), []);
   useEffect(() => actorRuntime.subscribe(setActors), [actorRuntime]);
   useEffect(() => actorRuntime.setSingle(technicalPatients[0].actor), [actorRuntime, technicalPatients]);
   useEffect(() => runtime.onChange((id, value) => {
     if (id === 'zone') setZone(value);
-  }), [runtime]);
+    if (id === 'timeOfDay') worldClock.setTimeOfDay(value);
+  }), [runtime, worldClock]);
+
+  const togglePause = useCallback(() => {
+    setPaused((current) => {
+      const next = !current;
+      setGamePaused(next);
+      worldClock.setPaused(next);
+      notice(next ? 'Paused.' : 'Time resumes.', { key: 'pause' });
+      return next;
+    });
+  }, [worldClock]);
   useEffect(() => consultationRuntime.subscribe((state) => {
     setConsultActive(Boolean(state));
     if (!state) return;
@@ -122,11 +150,26 @@ export default function App() {
     const onKey = (event) => {
       if (event.shiftKey && event.code === 'Digit1') {
         event.preventDefault();
+        setNpcOpen(false);
         setPropsOpen((open) => !open);
+      }
+      if (event.shiftKey && event.code === 'Digit2') {
+        event.preventDefault();
+        setPropsOpen(false);
+        setNpcOpen((open) => !open);
       }
       if (event.shiftKey && event.code === 'Backquote') {
         event.preventDefault();
         setTuningOpen((open) => !open);
+      }
+      if (
+        event.code === 'KeyP'
+        && !event.repeat
+        && !['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA'].includes(event.target?.tagName)
+        && !event.target?.isContentEditable
+      ) {
+        event.preventDefault();
+        togglePause();
       }
     };
     window.addEventListener('keydown', onKey);
@@ -141,9 +184,10 @@ export default function App() {
     return () => {
       window.removeEventListener('keydown', onKey);
       keyboard.detach();
+      setGamePaused(false);
       offRebuild();
     };
-  }, [runtime, keyboard, look]);
+  }, [runtime, keyboard, look, togglePause]);
 
   return (
     <>
@@ -153,6 +197,7 @@ export default function App() {
         <GameCanvas
           rebuildVersion={rebuildVersion}
           runtime={runtime}
+          worldClock={worldClock}
           keyboard={keyboard}
           look={look}
           actors={actors}
@@ -161,7 +206,11 @@ export default function App() {
         {!shotMode && (
           <>
             {!usingInstrument && (
-              <GameHud runtime={runtime} quiet={!devConsult && zone === 'consulting-office' && consultActive} />
+              <GameHud
+                runtime={runtime}
+                worldClock={worldClock}
+                quiet={!devConsult && zone === 'consulting-office' && consultActive}
+              />
             )}
             {!usingInstrument && zone === 'consulting-office' && (
               <Suspense fallback={null}>
@@ -174,6 +223,7 @@ export default function App() {
                   <ConsultationView
                     runtime={consultationRuntime}
                     onRegenerate={() => setPatientSeeds((current) => current.map(nextSeed))}
+                    onDismissPatient={() => actorRuntime.setSingle(null)}
                   />
                 )}
               </Suspense>
@@ -188,7 +238,15 @@ export default function App() {
                 <ShotBar runtime={runtime} />
               </Suspense>
             )}
-            <ControlHelper hidden={usingInstrument} />
+            <ControlHelper hidden={usingInstrument || zone === 'consulting-office'} />
+            <MobileControls keyboard={keyboard} hidden={usingInstrument || zone === 'consulting-office'} />
+            {paused && (
+              <div className="pointer-events-none absolute inset-0 z-50 grid place-items-center bg-black/20">
+                <div className="border border-amber-100/40 bg-neutral-950/90 px-8 py-4 font-serif text-2xl tracking-[0.22em] text-amber-50 shadow-2xl">
+                  PAUSED
+                </div>
+              </div>
+            )}
           </>
         )}
         {showParkIntro && <ParkIntro ready={parkReady} />}
@@ -201,6 +259,11 @@ export default function App() {
       {propsOpen && (
         <Suspense fallback={null}>
           <PropsPanel onClose={() => setPropsOpen(false)} />
+        </Suspense>
+      )}
+      {!shotMode && npcOpen && (
+        <Suspense fallback={null}>
+          <NpcPanel patients={technicalPatients} onClose={() => setNpcOpen(false)} />
         </Suspense>
       )}
       </div>

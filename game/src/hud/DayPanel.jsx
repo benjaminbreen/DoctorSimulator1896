@@ -4,12 +4,11 @@
 // until the weekly newspaper system exists, and the front page image will be
 // a real archive scan at public/newspapers/<year-month-day>.jpg.
 //
-// Until a calendar system owns the day, "Until Morning" only winds the dial
-// to seven o'clock; the date does not advance.
-
 import { useState } from 'react';
-import { day, weekdayName, monthName, dayNews } from './hudState.js';
+import { weekdayName, monthName, dayNews } from './hudState.js';
 import { notice } from '../world/notices.js';
+import { recover, restEffect } from '../world/player.js';
+import { travelMinutesBetween } from '../world/travel.js';
 import { useDismissableOverlay } from './useDismissableOverlay.js';
 import { QuatrefoilIcon, EyebrowArrow } from './chrome.jsx';
 
@@ -17,7 +16,7 @@ const DESTINATIONS = [
   { id: 'central-park', label: 'Central Park — Southeast Corner' },
   { id: 'consulting-office', label: 'Consulting Office' },
   { id: 'waiting-room', label: 'Waiting Room' },
-  { id: 'foyer', label: 'Foyer' },
+  { id: 'foyer', label: 'Office Lobby' },
   { id: 'cattell-lab', label: 'Cattell’s Laboratory' },
 ];
 
@@ -37,9 +36,7 @@ function spoken(hours) {
   return minutes === 0 ? `${h12} o'clock ${period}` : `${h12}:${String(minutes).padStart(2, '0')} ${period}`;
 }
 
-const NEWSPAPER_SRC = `/newspapers/${day.year}-${String(day.month).padStart(2, '0')}-${String(day.date).padStart(2, '0')}.jpg`;
-
-export default function DayPanel({ open, onClose, runtime }) {
+export default function DayPanel({ open, onClose, runtime, worldClock, day }) {
   const [restId, setRestId] = useState('1h');
   const [paperOk, setPaperOk] = useState(true);
   const containerRef = useDismissableOverlay(open, onClose);
@@ -47,10 +44,14 @@ export default function DayPanel({ open, onClose, runtime }) {
   if (!open) return null;
 
   const dateLine = `${weekdayName(day)}, ${monthName(day)} ${day.date}, ${day.year}`;
+  const newspaperSrc = `/newspapers/${day.year}-${String(day.month).padStart(2, '0')}-${String(day.date).padStart(2, '0')}.jpg`;
 
   const travel = (zoneId) => {
     const destination = DESTINATIONS.find((entry) => entry.id === zoneId);
     if (!destination || runtime.values.zone === zoneId) return;
+    worldClock.advanceMinutes(travelMinutesBetween(runtime.values.zone, zoneId), {
+      reason: 'travel',
+    });
     runtime.set('zone', zoneId);
     onClose();
     notice(`You make your way to the ${destination.label.split(' — ')[0]}.`, { key: 'travel' });
@@ -58,11 +59,16 @@ export default function DayPanel({ open, onClose, runtime }) {
 
   const passTime = () => {
     const choice = REST_CHOICES.find((entry) => entry.id === restId);
-    const now = runtime.values.timeOfDay;
-    const target = choice.until !== undefined
-      ? choice.until
-      : Math.min(21, Math.max(5, now + choice.hours));
-    runtime.set('timeOfDay', target);
+    const elapsedMinutes = choice.until !== undefined
+      ? worldClock.advanceToHour(choice.until, { reason: 'rest' })
+      : worldClock.advanceMinutes(choice.hours * 60, { reason: 'rest' });
+    const target = worldClock.getSnapshot().logical.hours;
+    const elapsedHours = elapsedMinutes / 60;
+    recover({
+      ...restEffect(elapsedHours),
+      source: 'rest',
+      label: choice.until !== undefined ? `Rested ${choice.label.toLowerCase()}` : `Rested for ${choice.label.toLowerCase()}`,
+    });
     onClose();
     notice(`Time passes. It is ${spoken(target)}.`, { key: 'rest' });
   };
@@ -91,7 +97,7 @@ export default function DayPanel({ open, onClose, runtime }) {
           <div className="ghud-day-paper">
             {paperOk ? (
               <img
-                src={NEWSPAPER_SRC}
+                src={newspaperSrc}
                 alt={`Front page, ${dateLine}`}
                 draggable={false}
                 onError={() => setPaperOk(false)}

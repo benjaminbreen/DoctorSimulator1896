@@ -47,6 +47,63 @@ export function woodTexture(base) {
   return texture;
 }
 
+// Small octagonal tiles with dark corner dots, a durable entrance-hall floor
+// rather than parquet stretched across a public lobby. One repeat is roughly
+// a metre square; the pattern is seamless at every edge.
+export function lobbyMosaicTexture() {
+  const key = 'lobby-mosaic';
+  if (cache.has(key)) return cache.get(key);
+  const size = 256;
+  const cell = 32;
+  const cut = 7;
+  const canvas = makeCanvas(size);
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#343a38';
+  context.fillRect(0, 0, size, size);
+
+  for (let row = 0; row < size / cell; row += 1) {
+    for (let column = 0; column < size / cell; column += 1) {
+      const x = column * cell;
+      const y = row * cell;
+      const even = (row + column) % 2 === 0;
+      context.fillStyle = even ? '#b6aa90' : '#9fa08e';
+      context.beginPath();
+      context.moveTo(x + cut, y + 2);
+      context.lineTo(x + cell - cut, y + 2);
+      context.lineTo(x + cell - 2, y + cut);
+      context.lineTo(x + cell - 2, y + cell - cut);
+      context.lineTo(x + cell - cut, y + cell - 2);
+      context.lineTo(x + cut, y + cell - 2);
+      context.lineTo(x + 2, y + cell - cut);
+      context.lineTo(x + 2, y + cut);
+      context.closePath();
+      context.fill();
+      // Hand-laid tiles are not one digital colour. A faint wash breaks the
+      // repetition without turning a scrubbed public floor into dirt.
+      const haze = Math.abs(Math.sin((row * 11 + column * 17) * 2.37)) * 0.045;
+      context.fillStyle = `rgba(86,62,43,${haze})`;
+      context.fill();
+    }
+  }
+
+  // The square voids where four cut corners meet take muted red inserts.
+  context.fillStyle = '#814d3e';
+  for (let y = 0; y < size; y += cell) {
+    for (let x = 0; x < size; x += cell) {
+      context.save();
+      context.translate(x, y);
+      context.rotate(Math.PI / 4);
+      context.fillRect(-4, -4, 8, 8);
+      context.restore();
+    }
+  }
+
+  const texture = finish(canvas);
+  texture.anisotropy = 8;
+  cache.set(key, texture);
+  return texture;
+}
+
 const FACADE_STYLES = [
   { base: '#6b5648', trim: '#57453a' },
   { base: '#7d4f3e', trim: '#5e3b2e' },
@@ -350,6 +407,36 @@ export function printTexture(kind, seed = 0) {
   canvas.height = height;
   const context = canvas.getContext('2d');
   const rand = (n) => Math.abs(Math.sin((seed + n) * 127.1) * 43758.5453) % 1;
+
+  if (kind === 'directory') {
+    context.fillStyle = '#2a2a25';
+    context.fillRect(0, 0, width, height);
+    context.strokeStyle = '#a98a4d';
+    context.lineWidth = 4;
+    context.strokeRect(10, 10, width - 20, height - 20);
+    context.lineWidth = 1;
+    context.strokeRect(17, 17, width - 34, height - 34);
+    context.fillStyle = '#d6c99d';
+    context.textAlign = 'center';
+    context.font = '700 22px Georgia, serif';
+    context.fillText('DIRECTORY', width / 2, 48);
+    context.fillStyle = '#a98a4d';
+    context.fillRect(34, 60, width - 68, 2);
+    context.textAlign = 'left';
+    context.font = '600 10px Georgia, serif';
+    for (let row = 0; row < 12; row += 1) {
+      const y = 82 + row * 13;
+      context.fillStyle = row % 3 === 0 ? '#d8c99a' : '#c0b58e';
+      context.fillText(`${String(row + 2).padStart(2, '0')}  ·`, 36, y);
+      context.fillRect(72, y - 7, 112 - (row % 4) * 11, 2);
+      context.fillStyle = '#8f7b4b';
+      context.fillText(`${200 + row * 3}`, 194, y);
+    }
+    const texture = finish(canvas);
+    texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+    cache.set(key, texture);
+    return texture;
+  }
 
   if (kind === 'newspaper') {
     context.fillStyle = '#ded7c4';

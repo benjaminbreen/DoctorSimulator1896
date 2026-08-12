@@ -179,7 +179,7 @@ export default function LightShafts({ room, runtime, dressing }) {
 
   useFrame((state) => {
     const values = runtime.values;
-    const { daylight, golden } = solarRamps(values.timeOfDay);
+    const { daylight, golden } = solarRamps(values.timeOfDay, values.dayOfYear);
     const strength = daylight * values.windowIntensity;
     const visible = strength > 0.02;
     // Lit air always reads warmer than the light that made it — scattering

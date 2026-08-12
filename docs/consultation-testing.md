@@ -7,10 +7,10 @@ The consultation follows one deterministic sequence:
    examination mode.
 3. Private interpretations record the physician's working ideas and cost no
    time.
-4. Spoken questions advance the clock by five minutes. The dialogue renderer
+4. Spoken questions advance the world clock by five minutes. The dialogue renderer
    may phrase a response, but the simulation decides which recorded facts may
    be disclosed.
-5. Examinations advance the clock by three minutes and return a deterministic
+5. Examinations advance the world clock by three minutes and return a deterministic
    observation and fact.
 6. The player selects a diagnosis and treatment.
 7. The player writes a case note. The test fixtures require at least twelve
@@ -59,6 +59,8 @@ For each technical patient, test these paths:
    treatment, write a complete note, and reach both ledgers.
 2. Ask an unrelated question and confirm that no hidden fact is disclosed.
 3. Interpret several cards and confirm that the clock does not advance.
+   Then ask a question and confirm that both the numeric time and the hands on
+   the dial wind forward together.
 4. Try to proceed without inquiry, without a diagnosis, without a treatment,
    and with a short case note. Each attempt should be rejected without losing
    state.

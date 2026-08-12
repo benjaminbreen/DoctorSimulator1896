@@ -4,7 +4,16 @@
 // The engine still decides everything; this component only asks and shows.
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { patientProfileRows } from '../../../shared/patients/profile.js';
+import { buildCaseNotebook } from './caseNotebook.js';
+import {
+  addPatientNote,
+  deletePatientNote,
+  editPatientNote,
+  loadPatientNotes,
+  savePatientNotes,
+} from './patientNotes.js';
+import { notice } from '../world/notices.js';
+import notebookBackgroundUrl from './assets/case-notebook-background.webp';
 import './consultation.css';
 
 /* ---------------- icons ---------------- */
@@ -49,19 +58,51 @@ function BottleIcon({ size = 17 }) {
   );
 }
 
-function EyeGlyph({ size = 16 }) {
+function PencilIcon({ size = 15 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M2.6 11S6 5.9 11 5.9 19.4 11 19.4 11 16 16.1 11 16.1 2.6 11 2.6 11Z" />
-      <circle cx="11" cy="11" r="2.3" />
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m4 14.8.7-3.4L13 3.1a1.7 1.7 0 0 1 2.4 0l1.5 1.5a1.7 1.7 0 0 1 0 2.4l-8.3 8.3-3.4.7Z" />
+      <path d="m12 4.1 3.9 3.9M4.7 11.4l3.9 3.9" />
     </svg>
   );
 }
 
-function Diamond() {
+function TrashIcon({ size = 15 }) {
   return (
-    <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true">
-      <path d="M5 0.8 9.2 5 5 9.2 0.8 5Z" fill="none" stroke="currentColor" strokeWidth="1" />
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3.5 5.4h13M7.3 5.4V3.1h5.4v2.3M5.5 5.4l.7 11.1h7.6l.7-11.1" />
+      <path d="M8.2 8.2v5.5M11.8 8.2v5.5" />
+    </svg>
+  );
+}
+
+// The ringed eye that hangs beneath a weighed thought: a circle with three
+// rays at the crown, the eye itself in gold within.
+function EyeEmblem() {
+  return (
+    <svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">
+      <g className="gcon-eye-ring" fill="none" strokeWidth="1.3" strokeLinecap="round">
+        <circle cx="26" cy="29" r="17" />
+        <path d="M26 10V5M15.1 13.4 12.2 9.3M36.9 13.4 39.8 9.3" />
+      </g>
+      <g className="gcon-eye-iris" fill="none" strokeWidth="1.3" strokeLinejoin="round">
+        <path d="M14.5 29c4.4-6.2 18.6-6.2 23 0-4.4 6.2-18.6 6.2-23 0Z" />
+        <circle cx="26" cy="29" r="4" />
+      </g>
+      <circle className="gcon-eye-spark" cx="24.4" cy="27.6" r="1.2" stroke="none" />
+    </svg>
+  );
+}
+
+// Two leaves meeting at a diamond: the knot that sits on every divider.
+function Knot() {
+  return (
+    <svg width="38" height="12" viewBox="0 0 38 12" aria-hidden="true">
+      <g fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round">
+        <path d="M1 6c5.5-3.8 9.5-3.8 13 0-3.5 3.8-7.5 3.8-13 0Z" opacity="0.7" />
+        <path d="M37 6c-5.5-3.8-9.5-3.8-13 0 3.5 3.8 7.5 3.8 13 0Z" opacity="0.7" />
+      </g>
+      <path d="M19 2.6 21.9 6 19 9.4 16.1 6Z" fill="none" stroke="currentColor" strokeWidth="1" />
     </svg>
   );
 }
@@ -69,7 +110,7 @@ function Diamond() {
 function Ornament() {
   return (
     <div className="gcon-ornament" aria-hidden="true">
-      <Diamond />
+      <Knot />
     </div>
   );
 }
@@ -96,14 +137,6 @@ function markedQuote(text, tokens) {
     const marked = word.length > 2 && tokens.some((token) => word.includes(token));
     return marked ? <em key={index} className="gcon-mark">{chunk}</em> : chunk;
   });
-}
-
-function trustPhrase(trust) {
-  if (trust >= 70) return 'forthcoming';
-  if (trust >= 55) return 'attentive';
-  if (trust >= 40) return 'guarded';
-  if (trust >= 25) return 'wary';
-  return 'close to leaving';
 }
 
 function possessive(profile) {
@@ -137,7 +170,7 @@ function fallbackPrompts(patient) {
 
 const RAIL_ICONS = { interview: SpeechIcon, examine: StethoscopeIcon, notes: NotesIcon, treatment: BottleIcon };
 
-export default function ConsultationView({ runtime, onRegenerate }) {
+export default function ConsultationView({ runtime, onRegenerate, onDismissPatient }) {
   const state = useSyncExternalStore(runtime.subscribe, runtime.get, runtime.get);
   const patients = runtime.patients();
   const patient = patients.find((candidate) => candidate.id === state?.patientId) || null;
@@ -146,8 +179,12 @@ export default function ConsultationView({ runtime, onRegenerate }) {
   const [phase, setPhase] = useState('thought');
   const [cursor, setCursor] = useState(-1);
   const [bookOpen, setBookOpen] = useState(false);
+  const [playerNotes, setPlayerNotes] = useState([]);
+  const [noteEditor, setNoteEditor] = useState(null);
   const [errorNote, setErrorNote] = useState('');
+  const [queueDismissed, setQueueDismissed] = useState(false);
   const errorTimer = useRef(null);
+  const noteInput = useRef(null);
 
   const stage = state?.stage ?? null;
   const history = state?.history ?? [];
@@ -164,7 +201,15 @@ export default function ConsultationView({ runtime, onRegenerate }) {
   useEffect(() => {
     setPhase('thought');
     setBookOpen(false);
-  }, [state?.patientId]);
+    setPlayerNotes(patient ? loadPatientNotes(patient) : []);
+    setNoteEditor(null);
+  }, [state?.patientId, patient?.profile?.seed]);
+
+  useEffect(() => {
+    if (!noteEditor) return;
+    noteInput.current?.focus();
+    noteInput.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [noteEditor]);
 
   useEffect(() => setCursor(-1), [phase, stage, state?.mode, state?.patientId]);
 
@@ -234,13 +279,72 @@ export default function ConsultationView({ runtime, onRegenerate }) {
   };
 
   const toDecision = () => {
-    if (stage === 'inquiry') runtime.dispatch({ type: 'begin-decision' });
+    if (stage === 'inquiry') {
+      runtime.dispatch({ type: 'begin-decision' });
+      if (runtime.get()?.stage === 'decision') setBookOpen(true);
+    }
+  };
+
+  const beginNote = (note = null) => {
+    setNoteEditor({ id: note?.id ?? null, text: note?.text ?? '' });
+  };
+
+  const persistNotes = (notes) => {
+    setPlayerNotes(notes);
+    if (patient) savePatientNotes(patient, notes);
+  };
+
+  const commitNote = () => {
+    if (!noteEditor || !noteEditor.text.trim()) return;
+    const notes = noteEditor.id
+      ? editPatientNote(playerNotes, noteEditor.id, noteEditor.text)
+      : addPatientNote(playerNotes, noteEditor.text);
+    persistNotes(notes);
+    setNoteEditor(null);
+  };
+
+  const removeNote = (id) => {
+    persistNotes(deletePatientNote(playerNotes, id));
+    if (noteEditor?.id === id) setNoteEditor(null);
+  };
+
+  const noteKeyDown = (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setNoteEditor(null);
+    } else if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      commitNote();
+    }
+  };
+
+  const queueVisible = (!state || !patient) && !queueDismissed;
+
+  const dismissQueue = () => {
+    setQueueDismissed(true);
+    onDismissPatient?.();
+  };
+
+  // Whether the consultation can still be broken off by the doctor.
+  const canEnd = Boolean(patient) && (stage === 'opening' || stage === 'inquiry' || stage === 'decision' || stage === 'case-note');
+
+  const endEarly = () => {
+    if (!canEnd) return;
+    const name = patient.label;
+    runtime.reset();
+    setQueueDismissed(true);
+    onDismissPatient?.();
+    notice('You press a hand to your brow and beg pardon; feeling indisposed, you bring the consultation to an early close.', {
+      tone: 'plain',
+      seconds: 7,
+      detail: `${name} is invited to return another day.`,
+    });
   };
 
   /* ------- the one keyboard map: arrows rove, return commits ------- */
 
   const nav = { count: 0, cols: 1, select: () => {} };
-  if (!state || !patient) {
+  if (queueVisible) {
     nav.count = patients.length;
     nav.cols = patients.length || 1;
     nav.select = (index) => runtime.start(patients[index].id);
@@ -269,7 +373,7 @@ export default function ConsultationView({ runtime, onRegenerate }) {
   }
 
   const navRef = useRef(nav);
-  navRef.current = { ...nav, cursor, bookOpen };
+  navRef.current = { ...nav, cursor, bookOpen, canEnd, endEarly, queueVisible, dismissQueue };
 
   useEffect(() => {
     const onKey = (event) => {
@@ -283,10 +387,24 @@ export default function ConsultationView({ runtime, onRegenerate }) {
         setBookOpen((open) => !open);
         return;
       }
-      if (event.code === 'Escape' && current.bookOpen) {
-        event.preventDefault();
-        setBookOpen(false);
-        return;
+      if (event.code === 'Escape') {
+        if (current.bookOpen) {
+          event.preventDefault();
+          setBookOpen(false);
+          return;
+        }
+        if (current.canEnd) {
+          event.preventDefault();
+          event.stopPropagation();
+          current.endEarly();
+          return;
+        }
+        if (current.queueVisible) {
+          event.preventDefault();
+          event.stopPropagation();
+          current.dismissQueue();
+          return;
+        }
       }
       if (current.bookOpen || !current.count) return;
 
@@ -317,6 +435,7 @@ export default function ConsultationView({ runtime, onRegenerate }) {
   /* ------- pieces ------- */
 
   const utterance = latestUtterance(history);
+  const notebook = patient && state ? buildCaseNotebook(patient, state) : null;
 
   const railItems = patient && state ? [
     {
@@ -376,15 +495,17 @@ export default function ConsultationView({ runtime, onRegenerate }) {
                 <span className="gcon-card-sub">
                   Aged {candidate.profile.identity.age} · {candidate.profile.social.occupation || candidate.profile.social.householdPosition}
                 </span>
-                <span className="gcon-eye" aria-hidden="true"><EyeGlyph /></span>
+                <span className="gcon-eye" aria-hidden="true"><EyeEmblem /></span>
               </button>
             ))}
           </div>
-          {onRegenerate && (
-            <footer className="gcon-hint">
+          <footer className="gcon-hint">
+            <span>
               <button type="button" className="gcon-hint-link" onClick={onRegenerate}>Prepare a different morning list</button>
-            </footer>
-          )}
+              {' or '}
+              <button type="button" className="gcon-hint-link" onClick={dismissQueue}>refuse to see patients</button>
+            </span>
+          </footer>
         </>
       );
     }
@@ -413,7 +534,7 @@ export default function ConsultationView({ runtime, onRegenerate }) {
                   {done
                     ? <span className="gcon-check" aria-hidden="true">✓</span>
                     : <span className="gcon-dots" aria-hidden="true">···</span>}
-                  <span className="gcon-eye" aria-hidden="true"><EyeGlyph /></span>
+                  <span className="gcon-eye" aria-hidden="true"><EyeEmblem /></span>
                 </button>
               );
             })}
@@ -446,7 +567,7 @@ export default function ConsultationView({ runtime, onRegenerate }) {
                 {...cardMouse(index)}
                 onClick={() => speakPrompt(prompt)}
               >
-                <span className="gcon-roundel" aria-hidden="true"><SpeechIcon size={15} /></span>
+                <span className="gcon-roundel" aria-hidden="true"><SpeechIcon size={24} /></span>
                 {prompt.text}
               </button>
             ))}
@@ -473,7 +594,7 @@ export default function ConsultationView({ runtime, onRegenerate }) {
                 {...cardMouse(index)}
                 onClick={() => runExam(exam)}
               >
-                <span className="gcon-roundel" aria-hidden="true"><StethoscopeIcon size={16} /></span>
+                <span className="gcon-roundel" aria-hidden="true"><StethoscopeIcon size={24} /></span>
                 {exam.label}
               </button>
             ))}
@@ -595,8 +716,14 @@ export default function ConsultationView({ runtime, onRegenerate }) {
 
   const stageKey = `${state ? stage : 'queue'}-${phase}-${state?.mode ?? ''}`;
 
+  // The interview's question grid runs wider than the interpretation row,
+  // matching the two mockups' panel widths.
+  const wideStage = (stage === 'inquiry' && (phase === 'speech' || phase === 'exam')) || stage === 'decision';
+
+  if (!patient && queueDismissed) return null;
+
   return (
-    <div className="gcon" aria-label="Consultation">
+    <div className={`gcon${bookOpen ? ' gcon--book' : ''}`} aria-label="Consultation">
       {patient && state && (
         <aside className="gcon-rail gcon-frame" aria-label="Consultation actions">
           <h2 className="gcon-rail-title">Consultation</h2>
@@ -608,93 +735,179 @@ export default function ConsultationView({ runtime, onRegenerate }) {
                 key={item.id}
                 type="button"
                 className={`gcon-rail-item${item.active ? ' is-active' : ''}`}
+                aria-label={`${item.title}. ${item.sub}`}
                 disabled={item.disabled}
                 onClick={item.act}
               >
-                <span className="gcon-rail-icon"><Icon /></span>
+                <span className="gcon-rail-icon"><Icon size={28} /></span>
                 <span className="gcon-rail-text">
-                  <strong>{item.title}</strong>
+                  <strong>
+                    <span className="gcon-desktop-label">{item.title}</span>
+                    <span className="gcon-mobile-label">
+                      {{ interview: 'Talk', examine: 'Examine', notes: 'Notes', treatment: 'Treat' }[item.id]}
+                    </span>
+                  </strong>
                   <small>{item.sub}</small>
                 </span>
               </button>
             );
           })}
           <div className="gcon-rail-divider"><Ornament /></div>
-          <button type="button" className="gcon-rail-book" onClick={() => setBookOpen((open) => !open)}>
-            <span>Case Notebook</span>
+          <button type="button" className="gcon-rail-book" aria-label="Case Notebook" onClick={() => setBookOpen((open) => !open)}>
+            <span className="gcon-desktop-label">Case Notebook</span>
+            <span className="gcon-mobile-label">Casebook</span>
             <span className="gcon-key">TAB</span>
           </button>
           <p className="gcon-rail-followup"><span>Follow-Up Unavailable</span></p>
         </aside>
       )}
 
-      <section className="gcon-stage gcon-frame" aria-label="The patient before you">
+      <section className={`gcon-stage gcon-frame${wideStage ? ' gcon-stage--wide' : ''}`} aria-label="The patient before you">
+        {(canEnd || queueVisible) && (
+          <button
+            type="button"
+            className="gcon-close"
+            aria-label={canEnd ? 'End the consultation early' : 'Close patient queue'}
+            title={canEnd ? 'End the consultation (Esc)' : 'Close patient queue (Esc)'}
+            onClick={canEnd ? endEarly : dismissQueue}
+          >
+            ×
+          </button>
+        )}
         <div key={stageKey} className="gcon-swap">
           {renderStage()}
           {errorNote && <p className="gcon-error">{errorNote}</p>}
         </div>
       </section>
 
-      {bookOpen && patient && state && (
-        <div className="gcon-scrim" onClick={() => setBookOpen(false)}>
-          <div
-            className="gcon-book gcon-frame"
-            role="dialog"
-            aria-label="Case notebook"
-            onClick={(event) => event.stopPropagation()}
+      {bookOpen && notebook && (
+        <div className="gcon-book-layer">
+          <aside
+            className="gcon-book"
+            aria-label={`Case notebook for ${notebook.patient.name}`}
+            style={{ '--gcon-book-image': `url("${notebookBackgroundUrl}")` }}
           >
-            <header className="gcon-book-head">
-              <h2>Case Notebook</h2>
-              <span>{patient.label}</span>
-            </header>
-            <Ornament />
-            <section className="gcon-book-section">
-              <h3>The Patient</h3>
-              <dl className="gcon-book-rows">
-                {patientProfileRows(patient.profile).map((row) => (
-                  <div key={row.label} style={{ display: 'contents' }}>
-                    <dt>{row.label}</dt>
-                    <dd>{row.value}</dd>
+            <button
+              type="button"
+              className="gcon-book-close"
+              aria-label="Close case notebook"
+              onClick={() => setBookOpen(false)}
+            >
+              ×
+            </button>
+            <div
+              className="gcon-book-paper"
+              onClick={(event) => {
+                if (event.target === event.currentTarget && !noteEditor) beginNote();
+              }}
+            >
+              <header className="gcon-book-head">
+                <p>Case Notebook</p>
+                <h2>{notebook.patient.name}</h2>
+                <span>Aged {notebook.patient.age} · {notebook.patient.residence}</span>
+              </header>
+
+              {notebook.observations.length > 0 && (
+                <section className="gcon-book-section">
+                  <h3>Recent Observations</h3>
+                  <div className="gcon-book-observations">
+                    {notebook.observations.map((entry) => (
+                      <article key={entry.id} className="gcon-book-entry">
+                        <strong>{entry.kind}</strong>
+                        <p>{entry.text}</p>
+                      </article>
+                    ))}
                   </div>
-                ))}
-              </dl>
-            </section>
-            <section className="gcon-book-section">
-              <h3>Particulars Recorded</h3>
-              {state.disclosedFactIds.length ? (
-                <dl className="gcon-book-rows">
-                  {state.disclosedFactIds.map((factId) => {
-                    const fact = patient.facts.find((candidate) => candidate.id === factId);
-                    if (!fact) return null;
-                    return (
-                      <div key={factId} style={{ display: 'contents' }}>
-                        <dt>{fact.label}</dt>
-                        <dd>
-                          {fact.value}
-                          {examined.has(factId) && <span className="gcon-book-fact-note">observed directly</span>}
-                        </dd>
+                </section>
+              )}
+
+              {notebook.clues.length > 0 && (
+                <section className="gcon-book-section">
+                  <h3>Clues</h3>
+                  <ul className="gcon-book-clues">
+                    {notebook.clues.map((clue) => (
+                      <li key={clue.id} className="gcon-book-entry">
+                        <strong>{clue.label}:</strong> {clue.text}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {(playerNotes.length > 0 || noteEditor) && (
+                <section className="gcon-book-section gcon-book-section--player-notes">
+                  <div className="gcon-book-section-title">
+                    <h3>Your Notes</h3>
+                    {!noteEditor && (
+                      <button type="button" className="gcon-book-add-note" onClick={() => beginNote()}>
+                        <PencilIcon />
+                        <span>Add note</span>
+                      </button>
+                    )}
+                  </div>
+                  <div className="gcon-book-player-notes">
+                    {playerNotes.map((note) => (
+                      <article key={note.id} className="gcon-book-player-note">
+                        <p>{note.text}</p>
+                        <div className="gcon-book-note-actions">
+                          <button type="button" aria-label="Edit note" title="Edit note" onClick={() => beginNote(note)}>
+                            <PencilIcon />
+                          </button>
+                          <button type="button" aria-label="Delete note" title="Delete note" onClick={() => removeNote(note.id)}>
+                            <TrashIcon />
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                  {noteEditor && (
+                    <div className="gcon-book-note-editor">
+                      <textarea
+                        ref={noteInput}
+                        aria-label={noteEditor.id ? 'Edit casebook note' : 'New casebook note'}
+                        placeholder="Write in your own hand…"
+                        maxLength={2000}
+                        value={noteEditor.text}
+                        onChange={(event) => setNoteEditor({ ...noteEditor, text: event.target.value })}
+                        onKeyDown={noteKeyDown}
+                      />
+                      <div className="gcon-book-note-editor-actions">
+                        <button type="button" onClick={() => setNoteEditor(null)}>Cancel</button>
+                        <button type="button" className="is-primary" disabled={!noteEditor.text.trim()} onClick={commitNote}>Save note</button>
                       </div>
-                    );
-                  })}
-                </dl>
-              ) : <p className="gcon-book-empty">Nothing recorded yet.</p>}
-            </section>
-            <section className="gcon-book-section">
-              <h3>Private Impressions</h3>
-              {state.interpretationIds.length ? (
-                <ul className="gcon-book-list">
-                  {state.interpretationIds.map((id) => {
-                    const item = interpretations.find((candidate) => candidate.id === id);
-                    return item ? <li key={id}>{item.text}</li> : null;
-                  })}
-                </ul>
-              ) : <p className="gcon-book-empty">No impressions set down yet.</p>}
-            </section>
-            <footer className="gcon-book-foot">
-              <span>{state.elapsedMinutes} minutes elapsed · the patient seems {trustPhrase(state.trust)}</span>
-              <button type="button" onClick={() => { setBookOpen(false); runtime.reset(); }}>Change patient</button>
-            </footer>
-          </div>
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {notebook.diagnosesAvailable && (
+                <section className="gcon-book-section gcon-book-section--diagnoses">
+                  <h3>Possible Diagnoses</h3>
+                  <div className="gcon-book-diagnoses">
+                    {notebook.diagnoses.map((diagnosis) => (
+                      <button
+                        key={diagnosis.id}
+                        type="button"
+                        className={diagnosis.selected ? 'is-selected' : ''}
+                        aria-pressed={diagnosis.selected}
+                        onClick={() => runtime.dispatch({ type: 'select-diagnosis', id: diagnosis.id })}
+                      >
+                        <span>{diagnosis.label}</span>
+                        {diagnosis.selected && <b aria-hidden="true">★</b>}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {!noteEditor && (
+                <button type="button" className="gcon-book-paper-add" onClick={() => beginNote()}>
+                  <PencilIcon />
+                  <span>Add your own note</span>
+                </button>
+              )}
+            </div>
+          </aside>
         </div>
       )}
     </div>

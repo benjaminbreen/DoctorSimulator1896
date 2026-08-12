@@ -78,7 +78,7 @@ export default function SkyRig({ config, runtime }) {
 
   useFrame((_, delta) => {
     const values = runtime.values;
-    const { direction, daylight, golden } = solarRamps(values.timeOfDay);
+    const { direction, daylight, golden } = solarRamps(values.timeOfDay, values.dayOfYear);
     gameDebug.stats.sunDir = direction;
 
     // Foliage wind. The clock runs here because this is the one component
@@ -134,7 +134,7 @@ export default function SkyRig({ config, runtime }) {
     if (scene.fog) {
       // Fog takes the sky palette's horizon colour, so dusk haze warms with
       // the sky instead of holding the daytime grey-blue.
-      const horizon = environmentPalette(values.timeOfDay).horizon;
+      const horizon = environmentPalette(values.timeOfDay, values.dayOfYear).horizon;
       scene.fog.color.setRGB(horizon[0], horizon[1], horizon[2]);
       // Fade fog out as the camera climbs, so a zoomed-out overhead reads
       // like a map instead of a haze. Untouched below 45m.

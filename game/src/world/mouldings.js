@@ -62,15 +62,18 @@ function spansFor(wall, length, low, high) {
 }
 
 // Which way a wall runs, and which of its two faces is the room side.
+// A wall enclosing an annex faces away from the outline's centre; it names
+// its own room side with `roomCentre: [x, z]`.
 function frameOf(wall, centre) {
   const alongX = wall.size[0] >= wall.size[2];
   const wallAt = wall.position[alongX ? 2 : 0];
+  const facing = wall.roomCentre ? { x: wall.roomCentre[0], z: wall.roomCentre[1] } : centre;
   return {
     alongX,
     wallAt,
     length: alongX ? wall.size[0] : wall.size[2],
     halfThickness: (alongX ? wall.size[2] : wall.size[0]) / 2,
-    inward: Math.sign((alongX ? centre.z : centre.x) - wallAt) || 1,
+    inward: Math.sign((alongX ? facing.z : facing.x) - wallAt) || 1,
     offset: alongX ? wall.position[0] : wall.position[2],
   };
 }

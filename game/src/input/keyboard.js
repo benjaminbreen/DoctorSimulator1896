@@ -18,7 +18,34 @@ const FORM_TAGS = new Set(['INPUT', 'SELECT', 'BUTTON', 'TEXTAREA']);
 const MOVEMENT_ACTIONS = new Set(['forward', 'back', 'left', 'right']);
 
 export function createKeyboard() {
-  const state = { forward: false, back: false, left: false, right: false, run: false, interact: false };
+  const physical = {
+    forward: false,
+    back: false,
+    left: false,
+    right: false,
+    run: false,
+    jump: false,
+    interact: false,
+    cycleCamera: false,
+  };
+  const virtual = {
+    x: 0,
+    z: 0,
+    run: false,
+    jump: false,
+    interact: false,
+    cycleCamera: false,
+  };
+  // PlayerRig and CameraRig already poll `state`. Getters let touch and
+  // keyboard controls share that contract without either one releasing the
+  // other's held action.
+  const state = {};
+  for (const action of ['run', 'jump', 'interact', 'cycleCamera']) {
+    Object.defineProperty(state, action, {
+      enumerable: true,
+      get: () => Boolean(physical[action] || virtual[action]),
+    });
+  }
 
   function onKey(event, pressed) {
     const action = BINDINGS[event.code];
@@ -38,22 +65,45 @@ export function createKeyboard() {
     }
     if (pressed && MOVEMENT_ACTIONS.has(action)) event.preventDefault();
     if (event.code === 'Space' && pressed) event.preventDefault();
-    state[action] = pressed;
+    physical[action] = pressed;
   }
 
   const onKeyDown = (event) => onKey(event, true);
   const onKeyUp = (event) => onKey(event, false);
+  const clearVirtualInput = () => {
+    virtual.x = 0;
+    virtual.z = 0;
+    virtual.run = false;
+    virtual.jump = false;
+    virtual.interact = false;
+    virtual.cycleCamera = false;
+  };
 
   return {
     state,
     moveInput() {
+      if (isGameplayInputBlocked()) {
+        return { x: 0, z: 0, run: false, jump: false };
+      }
       return {
-        x: (state.right ? 1 : 0) - (state.left ? 1 : 0),
-        z: (state.forward ? 1 : 0) - (state.back ? 1 : 0),
+        x: ((physical.right ? 1 : 0) - (physical.left ? 1 : 0)) + virtual.x,
+        z: ((physical.forward ? 1 : 0) - (physical.back ? 1 : 0)) + virtual.z,
         run: state.run,
         jump: state.jump,
       };
     },
+    setVirtualMove(x, z, run = false) {
+      virtual.x = Math.max(-1, Math.min(1, Number(x) || 0));
+      virtual.z = Math.max(-1, Math.min(1, Number(z) || 0));
+      virtual.run = Boolean(run);
+    },
+    setVirtualAction(action, pressed) {
+      if (pressed && isGameplayInputBlocked()) return;
+      if (action in virtual && action !== 'x' && action !== 'z' && action !== 'run') {
+        virtual[action] = Boolean(pressed);
+      }
+    },
+    clearVirtualInput,
     attach() {
       window.addEventListener('keydown', onKeyDown);
       window.addEventListener('keyup', onKeyUp);
@@ -61,7 +111,8 @@ export function createKeyboard() {
     detach() {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
-      for (const key of Object.keys(state)) state[key] = false;
+      for (const key of Object.keys(physical)) physical[key] = false;
+      clearVirtualInput();
     },
   };
 }

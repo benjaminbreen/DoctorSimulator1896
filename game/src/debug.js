@@ -32,6 +32,13 @@ export const gameDebug = {
   carriages: [],
   // Set by PlayerRig so the debug handle can enter instrument mode directly.
   enterInstrument: null,
+  // Present while the mobile controls are mounted; the screenshot harness
+  // can drive the same virtual input that pointer gestures use.
+  mobileInput: null,
+  // Set by PlayerAvatar: the rigged figure's root and the smoking clip's
+  // action, so the opium ritual can reach bones and pace smoke to the loop.
+  avatarRoot: null,
+  smokingAction: null,
 };
 
 // Enter instrument mode on the first piece in the room offering the named

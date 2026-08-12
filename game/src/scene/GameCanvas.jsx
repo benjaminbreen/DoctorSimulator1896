@@ -18,6 +18,7 @@ import SunDisc from './SunDisc.jsx';
 import CloudDome from './CloudDome.jsx';
 import Terrain from './Terrain.jsx';
 import PlayerStateStep from './PlayerStateStep.jsx';
+import WorldClockStep from './WorldClockStep.jsx';
 import { zones, getZone } from '../world/zones.js';
 import { takeArrival } from '../world/travel.js';
 import { terrainHeight } from '../world/terrain.js';
@@ -44,6 +45,8 @@ const ColliderDebug = lazy(() => import('./ColliderDebug.jsx'));
 // Interior and consultation code does not belong on the park boot path.
 const LightingRig = lazy(() => import('./LightingRig.jsx'));
 const Curtains = lazy(() => import('./Curtains.jsx'));
+const Portiere = lazy(() => import('./Portiere.jsx'));
+const OpiumRitual = lazy(() => import('./OpiumRitual.jsx'));
 const WindowView = lazy(() => import('./WindowView.jsx'));
 const WindowSky = lazy(() => import('./WindowSky.jsx'));
 const WindowGlass = lazy(() => import('./WindowGlass.jsx'));
@@ -167,7 +170,9 @@ function FrameSettings({ runtime, look, exposureBase, exterior }) {
     const values = runtime.values;
     // Outdoors the stop follows the sun, so noon and dusk are not graded the
     // same. Interiors are gaslit and keep whatever the zone asked for.
-    const { daylight, golden } = exterior ? solarRamps(values.timeOfDay) : { daylight: 0, golden: 0 };
+    const { daylight, golden } = exterior
+      ? solarRamps(values.timeOfDay, values.dayOfYear)
+      : { daylight: 0, golden: 0 };
     const grade = exterior ? 1 + daylight * 0.19 + golden * 0.05 : 1;
     const exposure = exposureBase * values.exposure * grade;
     if (gl.toneMappingExposure !== exposure) gl.toneMappingExposure = exposure;
@@ -196,6 +201,7 @@ function FrameSettings({ runtime, look, exposureBase, exterior }) {
 // zone-dependent lives in SceneContents, remounted per rebuild.
 export default function GameCanvas({
   runtime,
+  worldClock,
   keyboard,
   look,
   actors = [],
@@ -223,6 +229,7 @@ export default function GameCanvas({
       <SceneContents
         key={rebuildVersion}
         runtime={runtime}
+        worldClock={worldClock}
         keyboard={keyboard}
         look={look}
         actors={actors}
@@ -242,7 +249,7 @@ function RendererZoneSettings({ runtime }) {
   return null;
 }
 
-function SceneContents({ runtime, keyboard, look, actors, onReadyForReveal }) {
+function SceneContents({ runtime, worldClock, keyboard, look, actors, onReadyForReveal }) {
   // Rebuild params (zone included) are read once per mount; App remounts
   // these contents on change.
   const values = runtime.values;
@@ -385,6 +392,7 @@ function SceneContents({ runtime, keyboard, look, actors, onReadyForReveal }) {
   return (
     <>
       <RendererZoneSettings runtime={runtime} />
+      <WorldClockStep clock={worldClock} runtime={runtime} />
       <FrameSettings
         runtime={runtime}
         look={look}
@@ -504,6 +512,8 @@ function SceneContents({ runtime, keyboard, look, actors, onReadyForReveal }) {
               {/* Glass over the view, curtains over the glass. */}
               <WindowGlass holes={room.windowHoles} runtime={runtime} />
               {dressing && <Curtains holes={room.windowHoles} dressing={dressing} />}
+              <Portiere holes={room.openingHoles} />
+
               <LightShafts room={room} runtime={runtime} dressing={dressing} />
             </>
             <PlayerRig
@@ -518,6 +528,7 @@ function SceneContents({ runtime, keyboard, look, actors, onReadyForReveal }) {
             <CameraRig room={room} runtime={runtime} look={look} keyboard={keyboard} heightAt={null} />
             <ColliderDebug room={room} runtime={runtime} />
             <InstrumentStage />
+            {blueprint.id === 'CONSULTING_OFFICE' && <OpiumRitual />}
             {blueprint.id === 'CONSULTING_OFFICE' && actors.length > 0 && (
               <ActorLayer actors={actors} />
             )}

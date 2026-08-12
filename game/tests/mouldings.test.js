@@ -58,19 +58,22 @@ test('the picture rail is hung above the window heads', () => {
 test('skirting clears a window with a raised sill but not a door', () => {
   const items = blueprintMouldings(consulting);
   const south = consulting.walls.find((wall) => wall.id === 'south-wall');
-  const door = south.openings.find((opening) => opening.type === 'door');
+  const doors = south.openings.filter((opening) => opening.type === 'door');
   const skirting = items.filter((item) => item.id.startsWith('skirting-south-wall'));
   // The window's sill is at 0.8m, well above the skirting, so the run is
-  // unbroken there; the door reaches the floor and must break it.
+  // unbroken there; a door reaches the floor and must break it.
   for (const board of skirting) {
     const left = board.position[0] - board.size[0] / 2;
     const right = board.position[0] + board.size[0] / 2;
-    assert.ok(
-      right <= door.center[0] - door.size[0] / 2 + 1e-6 || left >= door.center[0] + door.size[0] / 2 - 1e-6,
-      'skirting runs through the door',
-    );
+    for (const door of doors) {
+      assert.ok(
+        right <= door.center[0] - door.size[0] / 2 + 1e-6 || left >= door.center[0] + door.size[0] / 2 - 1e-6,
+        'skirting runs through the door',
+      );
+    }
   }
-  assert.equal(skirting.length, 2);
+  // Two doors — waiting room and study — cut the wall into three runs.
+  assert.equal(skirting.length, doors.length + 1);
 });
 
 test('trim stands inside the room, not inside the wall', () => {

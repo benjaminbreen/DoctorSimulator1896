@@ -4,6 +4,7 @@ import {
   availableFastTravelDestinations,
   FAST_TRAVEL_DESTINATIONS,
   requestFastTravel,
+  travelMinutesBetween,
   requestTravel,
   takeArrival,
 } from '../src/world/travel.js';
@@ -25,6 +26,12 @@ test('travel sets the zone and stores the arrival once', () => {
   const arrival = takeArrival('central-park');
   assert.deepEqual(arrival.spawn, [0, 0, 24.5]);
   assert.equal(takeArrival('central-park'), null, 'consumed exactly once');
+});
+
+test('fast travel costs time without charging for staying put', () => {
+  assert.equal(travelMinutesBetween('consulting-office', 'waiting-room'), 2);
+  assert.equal(travelMinutesBetween('central-park', 'consulting-office'), 20);
+  assert.equal(travelMinutesBetween('central-park', 'central-park'), 0);
 });
 
 test('arrival for the wrong zone is not consumed', () => {

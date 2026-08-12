@@ -25,7 +25,7 @@ const WEEKDAYS = [
 ];
 
 export function weekdayName({ year, month, date }) {
-  return WEEKDAYS[new Date(year, month - 1, date).getDay()];
+  return WEEKDAYS[new Date(Date.UTC(year, month - 1, date)).getUTCDay()];
 }
 
 export function monthName({ month }) {

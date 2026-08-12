@@ -4,13 +4,14 @@ import { useFrame, useLoader } from '@react-three/fiber';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'meshoptimizer';
 import { gameDebug } from '../debug.js';
+import { getInteraction } from '../world/interaction.js';
 
 // The rigged player: a Tripo-authored figure with Mixamo idle and walk clips,
 // assembled by scripts/characters/export_tripo_player.py.
 // Mounted OUTSIDE the RigidBody — suspending a loader inside the physics
 // subtree crashed React's dev logging on the model's circular scene graph — so
 // it follows the capsule from the debug handle instead of being parented to it.
-const MODEL = '/models/tripo-victorian-player.glb?v=arm-retarget-all-clips';
+const MODEL = '/models/tripo-victorian-player.glb?v=smoking-clip';
 
 // Ground the Mixamo walk covers per second at timeScale 1. Playback scales
 // with real speed so the feet roughly keep up, but the game's walk is far
@@ -36,7 +37,7 @@ export default function PlayerAvatar({ runtime, onReady }) {
   // collider, so what you walk into is what you see.
   const capsuleHeight = 2 * (runtime.values.capsuleHalfHeight + runtime.values.capsuleRadius);
 
-  const { scene, mixer, idle, walk, run, jump, standingJump, fit } = useMemo(() => {
+  const { scene, mixer, idle, walk, run, jump, standingJump, smoking, fit } = useMemo(() => {
     // Used as loaded, not cloned: Object3D.clone leaves a SkinnedMesh bound to
     // the original bones, so the copy renders in bind pose while the clip
     // plays on bones nothing is skinned to. There is only ever one player.
@@ -66,9 +67,21 @@ export default function PlayerAvatar({ runtime, onReady }) {
       run: clip('Run'),
       jump: clip('Jump'),
       standingJump: clip('StandingJump'),
+      smoking: clip('Smoking'),
       fit: capsuleHeight / height,
     };
   }, [gltf, capsuleHeight]);
+
+  // The opium ritual needs the rig from outside: OpiumRitual hangs the pipe
+  // from the hand bone and paces its smoke to the clip's own time.
+  useEffect(() => {
+    gameDebug.avatarRoot = scene;
+    gameDebug.smokingAction = smoking;
+    return () => {
+      if (gameDebug.avatarRoot === scene) gameDebug.avatarRoot = null;
+      if (gameDebug.smokingAction === smoking) gameDebug.smokingAction = null;
+    };
+  }, [scene, smoking]);
 
   useEffect(() => {
     idle?.play();
@@ -88,10 +101,20 @@ export default function PlayerAvatar({ runtime, onReady }) {
   const last = useRef(null);
   const wasGrounded = useRef(false);
   const activeJump = useRef(null);
+  const wasSmoking = useRef(false);
   useFrame((_, delta) => {
     const group = groupRef.current;
     if (!group) return;
     const [x, y, z] = gameDebug.player.position;
+
+    // The smoking ritual owns the body while it runs: locomotion weights go
+    // to zero and the loop crossfades in and out on the transitions.
+    const ritual = getInteraction().using?.id === 'smoke-pipe';
+    if (smoking && ritual !== wasSmoking.current) {
+      wasSmoking.current = ritual;
+      if (ritual) smoking.reset().fadeIn(0.45).play();
+      else smoking.fadeOut(0.6);
+    }
 
     // Speed from the position it actually moved, so this needs nothing from
     // the physics rig beyond what the debug handle already carries.
@@ -119,9 +142,9 @@ export default function PlayerAvatar({ runtime, onReady }) {
     if (walk && idle && run) {
       // Crossfade by hand because the weights follow continuously changing
       // movement speed rather than a single state transition.
-      const idleTarget = grounded && !moving ? 1 : 0;
-      const walkTarget = grounded && moving && !running ? 1 : 0;
-      const runTarget = running ? 1 : 0;
+      const idleTarget = grounded && !moving && !ritual ? 1 : 0;
+      const walkTarget = grounded && moving && !running && !ritual ? 1 : 0;
+      const runTarget = running && !ritual ? 1 : 0;
       idle.setEffectiveWeight(
         THREE.MathUtils.damp(idle.getEffectiveWeight(), idleTarget, 12, delta),
       );

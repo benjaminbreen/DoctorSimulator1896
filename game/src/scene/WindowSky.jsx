@@ -223,7 +223,7 @@ export default function WindowSky({ holes, room, runtime }) {
 
   useFrame(() => {
     const values = runtime.values;
-    const { daylight, golden, night, altitude, direction } = solarRamps(values.timeOfDay);
+    const { daylight, golden, night, altitude, direction } = solarRamps(values.timeOfDay, values.dayOfYear);
     const uniforms = material.uniforms;
 
     // Blue overhead by day, sinking to a warm smoky band at the horizon, to

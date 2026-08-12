@@ -219,14 +219,17 @@ export function consultationTransition(state, patient, action) {
   }
 }
 
-export function createConsultationRuntime(patients, renderDialogue) {
+export function createConsultationRuntime(patients, renderDialogue, options = {}) {
   const patientMap = new Map(patients.map((patient) => [patient.id, patient]));
   let state = null;
   const listeners = new Set();
   const publish = () => listeners.forEach((listener) => listener(state));
   const dispatch = (action) => {
     if (!state) return null;
+    const elapsedBefore = state.elapsedMinutes;
     state = consultationTransition(state, patientMap.get(state.patientId), action);
+    const elapsed = state.elapsedMinutes - elapsedBefore;
+    if (elapsed > 0) options.onAdvanceMinutes?.(elapsed, action);
     publish();
     return state;
   };

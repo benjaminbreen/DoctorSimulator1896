@@ -29,9 +29,11 @@ export default function PocketClock({ hours, label }) {
             <stop offset="100%" stopColor={GOLD_DEEP} />
           </linearGradient>
         </defs>
-        <g transform={`translate(${PIVOT_X} ${PIVOT_Y})`}>
-          {/* hour, then minute: leaf-shaped, period spade style */}
-          <g className="ghud-hand" style={{ transform: `rotate(${hourAngle}deg)`, ...origin }}>
+        {/* The rotating groups stay in view-box coordinates. Translating the
+            parent as well would apply the absolute pivot twice and throw the
+            hands off the dial at almost every angle. */}
+        <g className="ghud-hand" style={{ transform: `rotate(${hourAngle}deg)`, ...origin }}>
+          <g transform={`translate(${PIVOT_X} ${PIVOT_Y})`}>
             <path
               d="M0,38 C9,30 11.5,12 11.5,-12 C11.5,-55 7,-95 0,-132 C-7,-95 -11.5,-55 -11.5,-12 C-11.5,12 -9,30 0,38 Z"
               fill="url(#ghud-hand-metal)"
@@ -39,7 +41,9 @@ export default function PocketClock({ hours, label }) {
               strokeWidth="1.5"
             />
           </g>
-          <g className="ghud-hand" style={{ transform: `rotate(${minuteAngle}deg)`, ...origin }}>
+        </g>
+        <g className="ghud-hand" style={{ transform: `rotate(${minuteAngle}deg)`, ...origin }}>
+          <g transform={`translate(${PIVOT_X} ${PIVOT_Y})`}>
             <path
               d="M0,44 C7,35 8.5,15 8.5,-18 C8.5,-80 4.5,-140 0,-186 C-4.5,-140 -8.5,-80 -8.5,-18 C-8.5,15 -7,35 0,44 Z"
               fill="url(#ghud-hand-metal)"
@@ -47,6 +51,8 @@ export default function PocketClock({ hours, label }) {
               strokeWidth="1.5"
             />
           </g>
+        </g>
+        <g transform={`translate(${PIVOT_X} ${PIVOT_Y})`}>
           <circle cx="0" cy="0" r="16" fill="url(#ghud-hand-metal)" stroke={GOLD_DEEP} strokeWidth="2" />
           <circle cx="0" cy="0" r="5.5" fill="#10241c" />
         </g>

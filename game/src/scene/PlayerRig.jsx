@@ -5,7 +5,21 @@ import { movementStep, applySlide } from '../movement/movementStep.js';
 import { useCharacterController, handlesAlive } from '../physics/useCharacterController.js';
 import { requestTravel } from '../world/travel.js';
 import { gameDebug } from '../debug.js';
-import { findReachable, setReach, useInstrument, getInteraction } from '../world/interaction.js';
+import {
+  findReachable,
+  setReach,
+  useInstrument,
+  stopUsing,
+  getInteraction,
+} from '../world/interaction.js';
+import {
+  getPlayer,
+  harm,
+  recoverFromSeat,
+  fallEffect,
+  SEAT_REST_SECONDS,
+} from '../world/player.js';
+import { seatFraming } from '../world/seating.js';
 
 const MAX_DT = 1 / 30;
 
@@ -50,9 +64,28 @@ export default function PlayerRig({ room, runtime, keyboard, look, spawn, spawnY
   }, [look, spawnYaw]);
 
   useFrame((_, delta) => {
+    const using = getInteraction().using;
+    if (using?.kind === 'seat') {
+      setReach(null);
+      gameDebug.prompt = 'Stand up';
+      if (!using.rewarded && getPlayer().clock - using.startedAt >= SEAT_REST_SECONDS) {
+        recoverFromSeat({
+          seatId: using.id,
+          seconds: getPlayer().clock - using.startedAt,
+          label: `Rested on ${using.item.affordance.name}`,
+        });
+        using.rewarded = true;
+      }
+      if (!keyboard.state.interact) interactLatch.current = false;
+      else if (!interactLatch.current) {
+        interactLatch.current = true;
+        stopUsing();
+      }
+      return;
+    }
     // Using an instrument takes the controls; the body stays put. Clear the
     // prompt on the way in, or the "E use the…" line hangs over the console.
-    if (getInteraction().using) {
+    if (using) {
       if (gameDebug.prompt) {
         gameDebug.prompt = null;
         setReach(null);
@@ -87,6 +120,8 @@ export default function PlayerRig({ room, runtime, keyboard, look, spawn, spawnY
       dt,
       tunables: runtime.values,
     });
+    const wasGrounded = state.grounded;
+    const impactSpeed = Math.max(0, -result.state.velocity[1]);
     Object.assign(state, result.state);
 
     // Ground snap fights the first frames of a jump; disable it while rising.
@@ -107,6 +142,10 @@ export default function PlayerRig({ room, runtime, keyboard, look, spawn, spawnY
     };
     body.setNextKinematicTranslation(next);
     state.grounded = controller.computedGrounded();
+    if (!wasGrounded && state.grounded) {
+      const effect = fallEffect(impactSpeed);
+      if (effect) harm(effect);
+    }
     if (state.grounded && state.velocity[1] < 0) state.velocity[1] = -0.5;
 
     for (let index = 0; index < controller.numComputedCollisions(); index += 1) {
@@ -158,12 +197,27 @@ export default function PlayerRig({ room, runtime, keyboard, look, spawn, spawnY
       if (active) requestTravel(runtime, active);
       else if (item.affordance.kind === 'instrument') {
         useInstrument({ id: item.id, item, instrument: item.affordance.instrument });
+      } else if (item.affordance.kind === 'seat') {
+        useInstrument({
+          id: item.id,
+          kind: 'seat',
+          item,
+          framing: seatFraming(item),
+          startedAt: getPlayer().clock,
+          rewarded: false,
+        });
       }
     }
   });
 
   return (
-    <RigidBody ref={bodyRef} type="kinematicPosition" colliders={false} position={spawn}>
+    <RigidBody
+      ref={bodyRef}
+      type="kinematicPosition"
+      colliders={false}
+      position={spawn}
+      userData={{ gameKind: 'player' }}
+    >
       <CapsuleCollider ref={colliderRef} args={[halfHeight, radius]} position={[0, centerY, 0]} />
       <group ref={meshRef} rotation={[0, spawnYaw, 0]}>
         <mesh position={[0, centerY, 0]} castShadow visible={!showAvatar}>

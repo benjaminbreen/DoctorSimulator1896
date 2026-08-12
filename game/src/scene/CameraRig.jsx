@@ -56,7 +56,7 @@ export default function CameraRig({ room, runtime, look, keyboard, heightAt = nu
 
   // Exposed for headless checks: with the camera you can project a known world
   // size to pixels and settle what the render is actually showing, and the
-  // scene lets a check walk the real graph instead of guessing from a frame.
+    // scene lets a check walk the real graph instead of guessing from a frame.
   useEffect(() => {
     gameDebug.camera = camera;
     gameDebug.scene = scene;
@@ -75,7 +75,7 @@ export default function CameraRig({ room, runtime, look, keyboard, heightAt = nu
     const framing = using?.framing ?? seat;
     if (framing) {
       const focus = focusRef.current;
-      const kind = seat ? 'seat' : 'instrument';
+      const kind = seat || using?.kind === 'seat' ? 'seat' : 'instrument';
       if (!focus.armed || focus.kind !== kind) {
         // Start the ease from wherever the camera already is.
         focus.armed = true;
@@ -114,14 +114,18 @@ export default function CameraRig({ room, runtime, look, keyboard, heightAt = nu
         }
       }
 
-      const fovTarget = kind === 'seat' ? seatFov() : (framing.fov ?? values.fov);
+      const fovTarget = kind === 'seat'
+        ? (using?.kind === 'seat' ? framing.fov ?? values.fov : seatFov())
+        : (framing.fov ?? values.fov);
       const nextFov = kind === 'seat' ? damp(camera.fov, fovTarget, 9, dt) : fovTarget;
       if (camera.fov !== nextFov) {
         camera.fov = nextFov;
         camera.updateProjectionMatrix();
       }
       smoothedRef.current = null;
-      gameDebug.player.visible = false;
+      // Instrument framings are first-person and hide the figure; a framing
+      // that stages the player (the smoking ritual) keeps them on screen.
+      gameDebug.player.visible = framing.showPlayer === true;
       return;
     }
     if (focusRef.current.armed) {

@@ -48,5 +48,5 @@ export function isConsultationMode() {
 }
 
 export function isGameplayInputBlocked() {
-  return typing || blockingUi || consultation;
+  return typing || blockingUi || consultation || paused;
 }

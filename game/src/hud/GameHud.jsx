@@ -2,15 +2,15 @@
 // Pure DOM over the canvas, so it stays crisp at any resolution and swaps to
 // painted assets piecemeal if we ever want them.
 //
-// Everything shown is read from somewhere real: time from the tuning runtime,
+// Everything shown is read from somewhere real: time from the civil clock,
 // place from the zone label and landmark table, the rest from hudState's
 // placeholder ground truth. This component invents nothing.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { gameDebug } from '../debug.js';
 import { parkLandmark } from './landmarks.js';
 import {
-  day, weekdayName, monthName, patientQueue, demoLetters,
+  weekdayName, monthName, patientQueue, demoLetters,
   checkWallet,
 } from './hudState.js';
 import {
@@ -52,15 +52,31 @@ function placeLine(zoneId, zoneLabel, position) {
 const METERS = {
   health: {
     label: 'Health',
-    explanation: 'Your physical condition. Injury lowers health; food, rest, and treatment can restore it.',
+    shortLabel: 'Health',
+    explanation: () => 'Your physical condition. Injury lowers health; food, rest, and treatment can restore it.',
     condition: healthCondition,
   },
   neurasthenia: {
     label: 'Neurasthenia level',
-    explanation: 'Your present nervous strain. Frights and taxing experiences raise it; restorative activities lower it.',
+    shortLabel: 'Nerves',
+    explanation: (value) => {
+      if (value >= 80) return 'Your nerves are close to exhaustion. Another fright or hard demand may be too much.';
+      if (value >= 60) return 'Your nerves are frazzled. It is too hot, and you could use a smoke.';
+      if (value >= 35) return 'Your nerves are strained. Frights and taxing experiences will make them worse.';
+      if (value > 0) return 'Your nerves are unsettled, but restorative activities are helping.';
+      return 'Your nerves are settled. Frights and taxing experiences can raise this level again.';
+    },
     condition: neurastheniaCondition,
   },
 };
+
+function helpfulChange(metric, delta) {
+  return metric === 'health' ? delta > 0 : delta < 0;
+}
+
+function signedChange(delta) {
+  return `${delta > 0 ? '+' : '−'}${Math.abs(Math.round(delta))}`;
+}
 
 function MeterTooltip({ metric, player }) {
   const definition = METERS[metric];
@@ -75,14 +91,14 @@ function MeterTooltip({ metric, player }) {
         <strong>{value}<small> / 100</small></strong>
       </div>
       <p className="ghud-meter-condition">Current state: <strong>{definition.condition(value)}</strong></p>
-      <p className="ghud-meter-explanation">{definition.explanation}</p>
+      <p className="ghud-meter-explanation">{definition.explanation(value)}</p>
       <div className="ghud-meter-history">
         <span className="ghud-meter-history-title">Last changes</span>
         {events.length > 0 ? (
           <ol>
             {events.map((event, index) => {
               const delta = event.changes[metric];
-              const helpful = metric === 'health' ? delta > 0 : delta < 0;
+              const helpful = helpfulChange(metric, delta);
               return (
                 <li key={`${event.at}-${event.source}-${index}`}>
                   <span>{event.label}</span>
@@ -102,8 +118,8 @@ function MeterTooltip({ metric, player }) {
 }
 
 // `quiet` clears the foot of the screen while a consultation panel holds it.
-export default function GameHud({ runtime, quiet = false }) {
-  const [hours, setHours] = useState(runtime.values.timeOfDay);
+export default function GameHud({ runtime, worldClock, quiet = false }) {
+  const [time, setTime] = useState(() => worldClock.getSnapshot());
   const [place, setPlace] = useState('');
   // One overlay at a time; this state is the whole registry. Escape and
   // focus restore live in useDismissableOverlay inside each modal.
@@ -113,13 +129,23 @@ export default function GameHud({ runtime, quiet = false }) {
   const [readIds, setReadIds] = useState(() => new Set());
   const [archivedIds, setArchivedIds] = useState(() => new Set());
   const [player, setPlayer] = useState(() => getPlayer());
+  const [meterFeedback, setMeterFeedback] = useState(null);
+  const lastPlayerEvent = useRef(getPlayer().log.at(-1) ?? null);
+  const feedbackSequence = useRef(0);
 
-  useEffect(() => subscribePlayer(setPlayer), []);
+  useEffect(() => subscribePlayer((next) => {
+    setPlayer(next);
+    const event = next.log.at(-1) ?? null;
+    if (event === lastPlayerEvent.current) return;
+    lastPlayerEvent.current = event;
+    if (event) {
+      feedbackSequence.current += 1;
+      setMeterFeedback({ id: feedbackSequence.current, event });
+    }
+  }), []);
   useEffect(() => subscribeHudOverlayRequests(setOverlay), []);
 
-  useEffect(() => runtime.onChange((id, value) => {
-    if (id === 'timeOfDay') setHours(value);
-  }), [runtime]);
+  useEffect(() => worldClock.subscribe(setTime), [worldClock]);
 
   // Place changes on foot speed, not frame rate: a slow poll is enough.
   useEffect(() => {
@@ -150,9 +176,26 @@ export default function GameHud({ runtime, quiet = false }) {
 
   const closeOverlay = useCallback(() => setOverlay(null), []);
 
+  const hours = time.hours;
+  const day = time.date;
   const clock = formatClock(hours);
   const remaining = patientQueue.filter((patient) => !patient.seen).length;
   const unreadLetters = demoLetters.filter((entry) => !readIds.has(entry.id)).length;
+  const feedbackEvent = meterFeedback?.event ?? null;
+  const eventDeltas = feedbackEvent
+    ? Object.entries(METERS)
+      .map(([metric, definition]) => ({
+        metric,
+        label: definition.shortLabel,
+        delta: feedbackEvent.changes?.[metric] ?? 0,
+      }))
+      .filter((entry) => entry.delta !== 0)
+    : [];
+  const meterAnnouncement = feedbackEvent
+    ? `${feedbackEvent.label}. ${eventDeltas.map(({ label, delta }) => (
+      `${label} ${delta > 0 ? 'increased' : 'decreased'} by ${Math.abs(Math.round(delta))}`
+    )).join('. ')}.`
+    : '';
 
   return (
     <div className={`ghud${overlay ? ' ghud--overlay-open' : ''}`} aria-label="Practice chrome">
@@ -247,6 +290,20 @@ export default function GameHud({ runtime, quiet = false }) {
             <span className="ghud-gauge-icon ghud-gauge-icon--body"><HeartIcon /></span>
             <span className="ghud-track ghud-track--body">
               <span className="ghud-marker" style={{ left: `${player.health}%` }} />
+              {feedbackEvent?.changes?.health ? (
+                <span
+                  key={`health-${meterFeedback.id}`}
+                  className={`ghud-meter-flash ${helpfulChange('health', feedbackEvent.changes.health) ? 'is-helpful' : 'is-harmful'}`}
+                  aria-hidden="true"
+                >
+                  <strong
+                    className="ghud-meter-delta"
+                    style={{ left: `${player.health}%` }}
+                  >
+                    {signedChange(feedbackEvent.changes.health)}
+                  </strong>
+                </span>
+              ) : null}
             </span>
             <MeterTooltip metric="health" player={player} />
           </div>
@@ -264,9 +321,45 @@ export default function GameHud({ runtime, quiet = false }) {
             <span className="ghud-gauge-icon ghud-gauge-icon--mind"><BrainIcon /></span>
             <span className="ghud-track ghud-track--mind">
               <span className="ghud-marker" style={{ left: `${player.neurasthenia}%` }} />
+              {feedbackEvent?.changes?.neurasthenia ? (
+                <span
+                  key={`neurasthenia-${meterFeedback.id}`}
+                  className={`ghud-meter-flash ${helpfulChange('neurasthenia', feedbackEvent.changes.neurasthenia) ? 'is-helpful' : 'is-harmful'}`}
+                  aria-hidden="true"
+                >
+                  <strong
+                    className="ghud-meter-delta"
+                    style={{ left: `${player.neurasthenia}%` }}
+                  >
+                    {signedChange(feedbackEvent.changes.neurasthenia)}
+                  </strong>
+                </span>
+              ) : null}
             </span>
             <MeterTooltip metric="neurasthenia" player={player} />
           </div>
+          {feedbackEvent ? (
+            <div
+              key={`event-${meterFeedback.id}`}
+              className="ghud-meter-event"
+              aria-hidden="true"
+            >
+              <span className="ghud-meter-event-label">{feedbackEvent.label}</span>
+              <span className="ghud-meter-event-deltas">
+                {eventDeltas.map(({ metric, label, delta }) => (
+                  <strong
+                    key={metric}
+                    className={helpfulChange(metric, delta) ? 'is-helpful' : 'is-harmful'}
+                  >
+                    {label} {signedChange(delta)}
+                  </strong>
+                ))}
+              </span>
+            </div>
+          ) : null}
+          <span className="ghud-meter-announcer" aria-live="polite" aria-atomic="true">
+            {meterAnnouncement}
+          </span>
         </div>
       </header>
 
@@ -286,14 +379,26 @@ export default function GameHud({ runtime, quiet = false }) {
         onArchive={markArchived}
       />
       <CasebookModal open={overlay === 'casebook'} onClose={closeOverlay} />
-      <DayPanel open={overlay === 'day'} onClose={closeOverlay} runtime={runtime} />
-      <FastTravelMenu open={overlay === 'travel'} onClose={closeOverlay} runtime={runtime} />
+      <DayPanel
+        open={overlay === 'day'}
+        onClose={closeOverlay}
+        runtime={runtime}
+        worldClock={worldClock}
+        day={day}
+      />
+      <FastTravelMenu
+        open={overlay === 'travel'}
+        onClose={closeOverlay}
+        runtime={runtime}
+        worldClock={worldClock}
+      />
 
       {!quiet && (
         <nav className="ghud-actions" aria-label="Pocket actions">
           <button
             type="button"
             className="ghud-action"
+            aria-label="Fast Travel"
             onClick={() => setOverlay(overlay === 'travel' ? null : 'travel')}
             aria-haspopup="dialog"
             aria-expanded={overlay === 'travel'}
@@ -302,12 +407,12 @@ export default function GameHud({ runtime, quiet = false }) {
             <span className="ghud-action-caption">Fast Travel</span>
           </button>
           <i className="ghud-action-rule" aria-hidden="true" />
-          <button type="button" className="ghud-action" onClick={checkWallet}>
+          <button type="button" className="ghud-action" aria-label="Check Wallet" onClick={checkWallet}>
             <img className="ghud-action-img" src="/ui/verb-wallet.png" alt="" draggable={false} />
             <span className="ghud-action-caption">Check Wallet</span>
           </button>
           <i className="ghud-action-rule" aria-hidden="true" />
-          <button type="button" className="ghud-action" onClick={() => setOverlay('casebook')}>
+          <button type="button" className="ghud-action" aria-label="Take Notes" onClick={() => setOverlay('casebook')}>
             <img className="ghud-action-img" src="/ui/verb-notebook.png" alt="" draggable={false} />
             <span className="ghud-action-caption">Take Notes</span>
           </button>

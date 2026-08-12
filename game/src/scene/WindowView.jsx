@@ -262,7 +262,7 @@ export default function WindowView({ holes, building, runtime, anchor }) {
 
   useFrame(() => {
     const time = runtime.values.timeOfDay;
-    const ramps = solarRamps(time);
+    const ramps = solarRamps(time, runtime.values.dayOfYear);
     // Recapture in half-hour steps: the view outside changes with the light,
     // but not so fast that it is worth six renders a frame.
     const bucket = Math.round(time * 2);

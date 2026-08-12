@@ -26,11 +26,12 @@ export default function WallArt({ items }) {
     frames.forEach((item, index) => {
       const [width, height] = item.size;
       const art = item.art ?? 'engraving';
-      // A diploma was framed narrow and dark; a print took a wide gilt
-      // moulding with a mount inside it.
+      // A diploma and a tenant directory were framed close to their plate; a
+      // print took a wide gilt moulding with a mount inside it.
       const diploma = art === 'diploma';
+      const closeMounted = diploma || art === 'directory';
       const rail = diploma ? 0.035 : 0.055;
-      const mount = diploma ? 0.02 : 0.06;
+      const mount = closeMounted ? 0.02 : 0.06;
       const spec = MOULDINGS[item.moulding ?? (diploma ? 'ebony' : 'gilt')];
 
       const node = new THREE.Group();

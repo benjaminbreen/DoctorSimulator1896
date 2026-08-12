@@ -597,19 +597,150 @@ export function lineBisector(id, x, y, z, yaw = 0) {
   return items;
 }
 
+export const SECONDS_PENDULUM_FRAME = {
+  pivot: [0, 1.14, 0.11],
+  catchPivot: [0.34, 1.1, 0.11],
+};
+
 // Test 9, "Judgment of 10 seconds time": a seconds pendulum, swung and
-// stopped. Nothing but a bob on a rod, which is what made it usable.
+// stopped. This is built at full scale so its one-metre pendulum is legible.
 export function secondsPendulum(id, x, y, z, yaw = 0) {
   const origin = [x, y, z];
   const items = [];
-  const box = (suffix, offset, size, color, extra) =>
+  const box = (suffix, offset, size, color, extra = {}) =>
     items.push(part(`${id}-${suffix}`, origin, offset, size, yaw, color, extra));
-  box('bracket', [0, 0.03, 0], [0.1, 0.06, 0.1], IRON, { collider: true });
-  box('post', [0, 0.34, -0.02], [0.02, 0.62, 0.02], IRON, { shape: 'cylinder' });
-  box('arm', [0.06, 0.64, -0.02], [0.14, 0.014, 0.014], BRASS);
-  // A metre from the pivot is the second; the rod is drawn a little short.
-  box('rod', [0.12, 0.38, -0.02], [0.006, 0.5, 0.006], BRASS, { shape: 'cylinder', swing: [0, 0, 1] });
-  box('bob', [0.12, 0.14, -0.02], [0.05, 0.05, 0.05], BRASS_DARK, { shape: 'sphere', swing: [0, 0, 1] });
+
+  // A broad, weighted plinth keeps the tall frame visually and physically
+  // planted on the bench.
+  box('base', [0, 0.045, 0], [0.72, 0.09, 0.36], MAHOGANY, {
+    shape: 'roundedBox',
+    finish: 'mahogany',
+    bevelRadius: 0.018,
+    bevelSegments: 3,
+    collider: true,
+  });
+  box('base-bead', [0, 0.095, 0], [0.64, 0.018, 0.3], BRASS_DARK, {
+    shape: 'roundedBox',
+    bevelRadius: 0.007,
+  });
+  box('base-inlay', [0, 0.106, 0.045], [0.46, 0.005, 0.13], IRON, {
+    shape: 'roundedBox',
+    finish: 'ebonite',
+    bevelRadius: 0.012,
+  });
+
+  for (const side of [-1, 1]) {
+    box(`foot-${side}`, [side * 0.27, 0.008, 0], [0.14, 0.025, 0.29], IRON, {
+      shape: 'roundedBox',
+      bevelRadius: 0.008,
+    });
+    box(`column-shoe-${side}`, [side * 0.28, 0.16, -0.04], [0.1, 0.11, 0.1], BRASS_DARK, {
+      shape: 'roundedBox',
+      bevelRadius: 0.012,
+    });
+    box(`column-${side}`, [side * 0.28, 0.65, -0.04], [0.07, 0.94, 0.07], MAHOGANY, {
+      shape: 'roundedBox',
+      finish: 'mahogany',
+      bevelRadius: 0.016,
+      bevelSegments: 3,
+    });
+    box(`column-inlay-${side}`, [side * 0.28, 0.66, 0.001], [0.016, 0.76, 0.008], BRASS_DARK, {
+      shape: 'roundedBox',
+      bevelRadius: 0.006,
+    });
+    box(`column-cap-${side}`, [side * 0.28, 1.14, -0.04], [0.11, 0.1, 0.11], BRASS_DARK, {
+      shape: 'roundedBox',
+      bevelRadius: 0.012,
+    });
+  }
+
+  box('lintel', [0, 1.2, -0.04], [0.68, 0.13, 0.14], MAHOGANY, {
+    shape: 'roundedBox',
+    finish: 'mahogany',
+    bevelRadius: 0.022,
+    bevelSegments: 3,
+  });
+  box('lintel-bead', [0, 1.274, -0.04], [0.6, 0.025, 0.12], BRASS_DARK, {
+    shape: 'roundedBox',
+    bevelRadius: 0.009,
+  });
+
+  // The dark circular scale makes the brass pendulum readable even from
+  // across the room. Marks are radial, with a longer centre line.
+  box('dial', [0, 1.045, 0.018], [0.49, 0.028, 0.49], IRON, {
+    shape: 'cylinder',
+    rotation: [Math.PI / 2, 0, 0],
+    finish: 'ebonite',
+  });
+  box('dial-rim', [0, 1.045, 0.04], [0.505, 0.018, 0.505], BRASS_DARK, {
+    shape: 'torus',
+    rotation: [Math.PI / 2, 0, 0],
+  });
+  for (let index = -6; index <= 6; index += 1) {
+    const angle = index * 0.048;
+    const radius = 0.19;
+    const major = index === 0 || index % 3 === 0;
+    box(`tick-${index + 6}`, [
+      round(Math.sin(angle) * radius),
+      round(SECONDS_PENDULUM_FRAME.pivot[1] - Math.cos(angle) * radius),
+      0.061,
+    ], [major ? 0.012 : 0.008, major ? 0.065 : 0.042, 0.008], major ? IVORY : BRASS, {
+      rotation: [0, 0, round(-angle)],
+    });
+  }
+
+  box('pivot-block', [0, 1.14, 0.07], [0.15, 0.1, 0.08], BRASS_DARK, {
+    shape: 'roundedBox',
+    bevelRadius: 0.015,
+  });
+  box('pivot-boss', SECONDS_PENDULUM_FRAME.pivot, [0.075, 0.038, 0.075], BRASS, {
+    shape: 'cylinder',
+    rotation: [Math.PI / 2, 0, 0],
+  });
+  box('pivot-pin', [0, 1.14, 0.136], [0.029, 0.02, 0.029], IRON, {
+    shape: 'cylinder',
+    rotation: [Math.PI / 2, 0, 0],
+  });
+
+  // The rod and bob rotate together around the knife edge. The length from
+  // the pivot to the bob centre is one seconds-pendulum metre.
+  box('rod', [0, 0.67, 0.11], [0.012, 0.94, 0.012], BRASS, {
+    shape: 'cylinder',
+    channel: 'pendulum',
+  });
+  box('bob', [0, 0.146, 0.11], [0.19, 0.055, 0.19], BRASS_DARK, {
+    shape: 'cylinder',
+    rotation: [Math.PI / 2, 0, 0],
+    channel: 'pendulum',
+  });
+  box('bob-face', [0, 0.146, 0.145], [0.154, 0.018, 0.154], BRASS, {
+    shape: 'cylinder',
+    rotation: [Math.PI / 2, 0, 0],
+    channel: 'pendulum',
+  });
+  box('bob-rim', [0, 0.146, 0.151], [0.196, 0.014, 0.196], BRASS, {
+    shape: 'torus',
+    rotation: [Math.PI / 2, 0, 0],
+    channel: 'pendulum',
+  });
+  box('bob-finial', [0, 0.035, 0.11], [0.055, 0.055, 0.055], BRASS_DARK, {
+    shape: 'sphere',
+    channel: 'pendulum',
+  });
+
+  // A side catch arrests the pendulum at the centre of its swing.
+  box('catch-boss', SECONDS_PENDULUM_FRAME.catchPivot, [0.065, 0.035, 0.065], BRASS_DARK, {
+    shape: 'cylinder',
+    rotation: [Math.PI / 2, 0, 0],
+  });
+  box('catch-lever', [0.395, 1.1, 0.11], [0.12, 0.018, 0.018], BRASS, {
+    channel: 'catch',
+  });
+  box('catch-handle', [0.455, 1.1, 0.11], [0.048, 0.048, 0.048], EBONITE, {
+    shape: 'sphere',
+    channel: 'catch',
+  });
+
   return items;
 }
 

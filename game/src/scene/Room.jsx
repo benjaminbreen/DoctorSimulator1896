@@ -2,15 +2,16 @@ import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { useLoader } from '@react-three/fiber';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
-import { woodTexture, plasterTexture } from './textures.js';
+import { lobbyMosaicTexture, woodTexture, plasterTexture } from './textures.js';
 import { surfaceUrl } from '../world/victorianCatalog.js';
 
 // Seamless wall/floor images from the Victorian pack, when a room names
 // them. Both slots always load together so the hook order stays stable.
 function useLoaderMaps(wallName, floorName) {
+  const packFloorName = floorName?.startsWith('procedural/') ? null : floorName;
   const urls = [
     wallName ? surfaceUrl(wallName) : surfaceUrl('victorian/Plaster01'),
-    floorName ? surfaceUrl(floorName) : surfaceUrl('victorian/WoodenFloor_01'),
+    packFloorName ? surfaceUrl(packFloorName) : surfaceUrl('victorian/WoodenFloor_01'),
   ];
   const [wall, floor] = useLoader(THREE.TextureLoader, urls);
   return useMemo(() => {
@@ -18,8 +19,8 @@ function useLoaderMaps(wallName, floorName) {
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
     }
-    return { wall: wallName ? wall : null, floor: floorName ? floor : null };
-  }, [wall, floor, wallName, floorName]);
+    return { wall: wallName ? wall : null, floor: packFloorName ? floor : null };
+  }, [wall, floor, wallName, packFloorName]);
 }
 
 // Joinery around an opening. Not a flat band: a period casing is a wide
@@ -99,15 +100,36 @@ export default function Room({ room, lighting }) {
   const packMaps = useLoaderMaps(colors.wallTexture, colors.floorTexture);
   const floorMap = useMemo(() => {
     if (room.exterior) return null;
-    const texture = (packMaps.floor ?? woodTexture(colors.floor)).clone();
+    const mosaic = colors.floorTexture === 'procedural/lobby-mosaic';
+    const texture = (mosaic ? lobbyMosaicTexture() : (packMaps.floor ?? woodTexture(colors.floor))).clone();
     texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
     texture.needsUpdate = true;
     // The pack's parquet tile is about 1.6m across; the canvas fallback was
     // authored for 2.4m.
-    const tile = packMaps.floor ? 1.6 : 2.4;
+    const tile = mosaic ? 1.0 : (packMaps.floor ? 1.6 : 2.4);
     texture.repeat.set(room.floor.size[0] / tile, room.floor.size[2] / tile);
     return texture;
   }, [room, colors, packMaps]);
+  // Annex slabs repeat by their own footprint, or the boards change scale
+  // at the doorway.
+  const patchFloorMaps = useMemo(() => {
+    if (room.exterior || !room.floorPatches?.length) return [];
+    const source = packMaps.floor ?? woodTexture(colors.floor);
+    const tile = packMaps.floor ? 1.6 : 2.4;
+    return room.floorPatches.map((patch) => {
+      const texture = source.clone();
+      texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(patch.size[0] / tile, patch.size[2] / tile);
+      texture.needsUpdate = true;
+      return texture;
+    });
+  }, [room, colors, packMaps]);
+  useEffect(() => {
+    if (!patchFloorMaps.length) return undefined;
+    return () => {
+      for (const texture of patchFloorMaps) texture.dispose();
+    };
+  }, [patchFloorMaps]);
   // A box's UVs run 0..1 per face whatever its size, so one shared repeat
   // count prints the paper at a different scale on every wall — a six-metre
   // wall and the pier beside a window end up with visibly different patterns
@@ -144,6 +166,8 @@ export default function Room({ room, lighting }) {
   const colliderBoxes = [
     ...(room.exterior ? [] : [room.floor]),
     ...(room.ceiling ? [room.ceiling] : []),
+    ...(room.floorPatches ?? []),
+    ...(room.ceilingPatches ?? []),
     ...room.wallBoxes,
     ...room.blockerBoxes,
   ];
@@ -176,6 +200,18 @@ export default function Room({ room, lighting }) {
           <meshStandardMaterial color={colors.ceiling} roughness={0.95} />
         </mesh>
       )}
+      {(room.floorPatches ?? []).map((patch, index) => (
+        <mesh key={patch.id} position={patch.position} receiveShadow>
+          <boxGeometry args={patch.size} />
+          <meshStandardMaterial map={patchFloorMaps[index] ?? null} roughness={0.56} />
+        </mesh>
+      ))}
+      {(room.ceilingPatches ?? []).map((patch) => (
+        <mesh key={patch.id} position={patch.position} castShadow>
+          <boxGeometry args={patch.size} />
+          <meshStandardMaterial color={colors.ceiling} roughness={0.95} />
+        </mesh>
+      ))}
       {room.wallBoxes.map((box) => (
         <mesh key={box.id} position={box.position} castShadow receiveShadow>
           <boxGeometry args={box.size} />
