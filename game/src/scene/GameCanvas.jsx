@@ -18,6 +18,7 @@ import SunDisc from './SunDisc.jsx';
 import CloudDome from './CloudDome.jsx';
 import Terrain from './Terrain.jsx';
 import PlayerStateStep from './PlayerStateStep.jsx';
+import PlayerMeterEffects from './PlayerMeterEffects.jsx';
 import WorldClockStep from './WorldClockStep.jsx';
 import { zones, getZone } from '../world/zones.js';
 import { takeArrival } from '../world/travel.js';
@@ -407,6 +408,7 @@ function SceneContents({ runtime, worldClock, keyboard, look, actors, onReadyFor
         exterior={room.exterior}
       />
       <PlayerStateStep />
+      <PlayerMeterEffects />
       {room.exterior ? (
         <>
           <Suspense fallback={null}>
@@ -423,6 +425,7 @@ function SceneContents({ runtime, worldClock, keyboard, look, actors, onReadyFor
                 look={look}
                 spawn={spawn}
                 spawnYaw={spawnYaw}
+                water={zone.water}
                 forcePlaceholder={values.showAvatarGlb && !avatarReady}
               />
               <CameraRig

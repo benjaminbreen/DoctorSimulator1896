@@ -24,6 +24,20 @@ export function clampPitch(pitch, tunables) {
   return clamp(pitch, tunables.pitchMin, tunables.pitchMax);
 }
 
+// A fixed third-person boom makes the avatar fill the centre of a narrow
+// portrait view. Ease the eye farther back and farther over one shoulder as
+// the aspect narrows; ordinary landscape and desktop framing stay unchanged.
+export function responsiveCameraBoom({ width, height, side, back }) {
+  const aspect = width / Math.max(height, 1);
+  const portrait = clamp((0.78 - aspect) / 0.32, 0, 1);
+  if (portrait === 0) return { side, back };
+  const direction = side < 0 ? -1 : 1;
+  return {
+    side: side + direction * 0.28 * portrait,
+    back: back * (1 + 0.18 * portrait),
+  };
+}
+
 // Ray vs yawed box (center position, full extents). Returns hit distance or null.
 export function rayVsBox(origin, direction, box, inflate = 0) {
   const yaw = box.yaw || 0;

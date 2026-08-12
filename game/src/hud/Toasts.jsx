@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { subscribeNotices, dismissNotice } from '../world/notices.js';
 import { ink, surface, surfaceStyle, label } from './theme.js';
+import './Toasts.css';
 
 // Notices, stacked at the top right and out of the way of both the walk
 // prompt and the instrument console. They sit above everything, including
@@ -28,7 +29,7 @@ function Toast({ item }) {
 
   return (
     <div
-      className={`${surface} w-72 border-l-2 px-3.5 py-2.5 transition-all duration-300`}
+      className={`${surface} toast-item border-l-2 transition-all duration-300`}
       style={{
         ...surfaceStyle,
         borderLeftColor: RULE[item.tone] ?? RULE.plain,
@@ -53,7 +54,7 @@ export default function Toasts() {
   useEffect(() => subscribeNotices(setItems), []);
   if (items.length === 0) return null;
   return (
-    <div className="pointer-events-none absolute right-4 top-28 z-50 flex flex-col items-end gap-2">
+    <div className="toast-stack pointer-events-none" aria-live="polite">
       {items.map((item) => (
         <Toast key={item.id} item={item} />
       ))}

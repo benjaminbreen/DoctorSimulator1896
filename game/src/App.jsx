@@ -191,7 +191,7 @@ export default function App() {
   return (
     <>
       <Analytics />
-      <div className="flex h-screen w-screen overflow-hidden bg-neutral-950 text-neutral-200">
+      <div className="game-shell flex overflow-hidden bg-neutral-950 text-neutral-200">
       <main className="relative min-w-0 flex-1">
         <GameCanvas
           rebuildVersion={rebuildVersion}

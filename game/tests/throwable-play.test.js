@@ -16,8 +16,12 @@ import {
   throwableVelocity,
 } from '../src/world/throwablePlay.js';
 import { THROWABLE_TYPES } from '../src/world/throwables.js';
+import { getPlayer, resetPlayer, STARTING_NEURASTHENIA } from '../src/world/player.js';
 
-test.afterEach(resetThrowablePlayForTests);
+test.afterEach(() => {
+  resetThrowablePlayForTests();
+  resetPlayer();
+});
 
 test('finds nearby registered objects and retains their throwable type', () => {
   reportThrowableSource('front', 'cabbage', [0.2, 1, -1.1], () => true);
@@ -43,6 +47,11 @@ test('pickup, hold, release, and delayed launch preserve object identity', () =>
   chargeThrowable(0.575);
   assert.ok(Math.abs(getThrowablePlay().charge - 0.5) < 1e-9);
   assert.equal(queueThrowableThrow([0, 0, -1]), true);
+  assert.equal(getPlayer().neurasthenia, STARTING_NEURASTHENIA + 2);
+  assert.equal(
+    getPlayer().log.at(-1).label,
+    'You threw an apple like a reckless madman!',
+  );
   assert.equal(advanceThrowableThrow(THROWABLE_RELEASE_DELAY / 2, [2, 3, 4]), null);
 
   const launch = advanceThrowableThrow(THROWABLE_RELEASE_DELAY, [2, 3, 4]);

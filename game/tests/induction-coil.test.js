@@ -46,9 +46,10 @@ test('shock consequences are deterministic and rise with the current', () => {
     down: 0,
     label: 'Tested the induction coil',
   });
-  assert.equal(effectForShock(12).health, 8);
-  assert.equal(effectForShock(35).health, 20);
-  assert.equal(effectForShock(35).down, 6);
+  assert.ok(effectForShock(12).health > effectForShock(7).health);
+  assert.ok(effectForShock(35).health > effectForShock(12).health);
+  assert.equal(effectForShock(35).down, 1.5);
+  assert.equal(effectForShock(35, 2).health, effectForShock(35).health * 2);
 });
 
 test('a spark only jumps a gap the volts can reach', () => {
@@ -78,18 +79,21 @@ test('nothing runs with the key open', () => {
 test('taking the electrodes with the key open does nothing', () => {
   const coil = createInductionCoil({ distance: 0, cells: 3 });
   step(coil, 0, { grasp: true });
-  assert.equal(coil.state.lastShock.milliamps, 0);
-  assert.equal(coil.state.lastShock.tone, 'plain');
+  assert.equal(coil.state.holding, true);
+  assert.equal(coil.state.lastShock, null);
 });
 
-test('a shock past the let-go threshold throws you off the key', () => {
+test('a sustained severe shock throws you clear after causing harm', () => {
   const coil = createInductionCoil({ distance: 0, cells: 3 });
-  step(coil, 0, { key: true });
-  assert.equal(coil.state.running, true);
   step(coil, 0, { grasp: true });
+  step(coil, 0, { key: true });
   assert.equal(coil.state.lastShock.tone, 'hurt');
-  assert.equal(coil.state.running, false, 'you do not choose to let go');
-  assert.equal(coil.state.shocks, 1);
+  assert.equal(coil.state.running, true);
+  run(coil, {}, 2.1);
+  assert.equal(coil.state.running, false, 'a sustained contraction throws the subject clear');
+  assert.equal(coil.state.holding, false);
+  assert.ok(coil.state.shocks >= 3, 'onset plus timed exposure events');
+  assert.ok(coil.state.lastShock.effect.health > 0);
 });
 
 test('a mild shock leaves the machine running', () => {
@@ -110,11 +114,11 @@ test('settings are clamped to the slide and the battery', () => {
 
 test('the worst shock taken is remembered', () => {
   const coil = createInductionCoil({ distance: 16, cells: 1 });
+  step(coil, 0, { grasp: true });
   step(coil, 0, { key: true });
-  step(coil, 0, { grasp: true });
   const mild = coil.state.worst;
-  step(coil, 0, { setDistance: 2, key: true });
-  step(coil, 0, { grasp: true });
+  step(coil, 0, { setDistance: 2 });
+  run(coil, {}, 1.1);
   assert.ok(coil.state.worst > mild);
-  assert.equal(coil.state.shocks, 2);
+  assert.ok(coil.state.shocks >= 2);
 });

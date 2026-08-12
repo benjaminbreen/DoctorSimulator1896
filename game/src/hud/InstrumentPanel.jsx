@@ -3,7 +3,13 @@ import { getInteraction, subscribe, stopUsing } from '../world/interaction.js';
 import { instrumentBus } from '../instruments/bus.js';
 import { exposureFor, LIMITS } from '../instruments/tachistoscope.js';
 import { agreement } from '../instruments/colourWheel.js';
-import { LIMITS as COIL_LIMITS, shockCurrent, sparkReach } from '../instruments/inductionCoil.js';
+import {
+  LIMITS as COIL_LIMITS,
+  bandFor,
+  secondaryVolts,
+  shockCurrent,
+  sparkReach,
+} from '../instruments/inductionCoil.js';
 import { TARGET_SECONDS } from '../instruments/secondsPendulum.js';
 import { ink, surface, surfaceStyle, label, keycap, keycapStyle, readout } from './theme.js';
 
@@ -303,9 +309,13 @@ function colourWheelNote(state) {
 // what it is about to do to you is to read them — which is exactly the
 // position the people who used it were in.
 function InductionCoil({ state }) {
-  const milliamps = state.running ? shockCurrent(state.volts) : 0;
-  const reach = sparkReach(state.volts);
+  const availableVolts = secondaryVolts(state.distance, state.cells);
+  const availableMilliamps = shockCurrent(availableVolts);
+  const milliamps = state.energized ? shockCurrent(state.volts) : availableMilliamps;
+  const reach = sparkReach(state.running ? state.volts : availableVolts);
+  const band = bandFor(milliamps);
   const hurts = milliamps >= 10;
+  const meter = Math.min(100, (milliamps / 60) * 100);
   return (
     <>
       <div className="mb-3 flex flex-wrap items-end justify-center gap-5">
@@ -314,7 +324,7 @@ function InductionCoil({ state }) {
             Secondary
           </span>
           <span className={`${readout} text-2xl`} style={{ color: state.running ? ink.live : ink.faint }}>
-            {Math.round(state.volts)}
+            {Math.round(state.running ? state.volts : availableVolts)}
             <span className="ml-1 text-[0.5em]" style={{ color: ink.muted }}>
               V
             </span>
@@ -333,7 +343,7 @@ function InductionCoil({ state }) {
         </div>
         <div className="flex flex-col items-center gap-1">
           <span className={label} style={{ color: hurts ? '#e08a6a' : ink.muted }}>
-            Through a hand
+            {state.energized ? 'Through you' : 'Expected current'}
           </span>
           <span className={`${readout} text-2xl`} style={{ color: hurts ? '#e08a6a' : ink.faint }}>
             {milliamps.toFixed(1)}
@@ -352,8 +362,30 @@ function InductionCoil({ state }) {
             background: hurts ? 'rgba(200,78,54,0.1)' : 'rgba(168,134,63,0.08)',
           }}
         >
-          Take the electrodes
+          {state.holding ? 'Put down the electrodes' : 'Take the electrodes'}
         </button>
+      </div>
+
+      <div className="mb-4">
+        <div className="mb-1 flex items-center justify-between gap-3">
+          <span className={label} style={{ color: ink.muted }}>Predicted sensation</span>
+          <span className={`${readout} text-[12px] uppercase`} style={{ color: hurts ? '#e08a6a' : ink.brass }}>
+            {band.name}
+          </span>
+        </div>
+        <div className="h-1.5 overflow-hidden rounded-full" style={{ background: 'rgba(232,227,212,0.1)' }}>
+          <div
+            className="h-full transition-[width] duration-150"
+            style={{
+              width: `${meter}%`,
+              background: 'linear-gradient(90deg, #bda965 0%, #d79a4d 42%, #db684e 72%, #f1e7d3 100%)',
+              boxShadow: state.energized ? '0 0 10px rgba(189,216,255,0.9)' : 'none',
+            }}
+          />
+        </div>
+        <div className="mt-1 flex justify-between text-[9px] uppercase tracking-[0.13em]" style={{ color: ink.faint }}>
+          <span>Barely felt</span><span>Painful</span><span>Loss of control</span><span>Severe</span>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
@@ -398,9 +430,17 @@ function InductionCoil({ state }) {
 }
 
 function inductionCoilNote(state) {
-  if (state.lastShock) return state.lastShock.text;
+  if (state.energized && state.lastShock) {
+    return `${state.lastShock.text} Exposure: ${state.exposureSeconds.toFixed(1)} s. Release Space to open the key.`;
+  }
+  if (state.holding && !state.running) {
+    return 'The electrodes are in your hands. Hold Space to close the key; release it immediately to stop the current.';
+  }
+  if (state.running && !state.holding) {
+    return 'The hammer is running, but the human circuit is open. Take the electrodes to feel the selected dose.';
+  }
   if (!state.running) {
-    return 'Close the key and the hammer breaks the primary sixty times a second. How hard the shock is depends on how far in the secondary is run — that reading is the dose.';
+    return 'Set the cells and coil distance, take the electrodes, then hold Space. Moving the secondary toward the primary increases the current continuously.';
   }
   if (state.sparking) {
     return 'The balls are snapping over. Air breaks down at about three kilovolts a millimetre, so the gap it jumps tells you the voltage.';
@@ -595,6 +635,21 @@ export default function InstrumentPanel() {
 
   return (
     <>
+      <button
+        type="button"
+        onClick={stopUsing}
+        aria-label="Close instrument"
+        className="absolute right-4 top-4 z-40 flex h-11 w-11 items-center justify-center rounded-full border text-2xl leading-none transition-colors hover:bg-white/10 focus:outline-none focus:ring-2 sm:right-6 sm:top-6"
+        style={{
+          borderColor: ink.edge,
+          color: ink.ivory,
+          background: 'rgba(25, 20, 17, 0.88)',
+          boxShadow: '0 4px 18px rgba(0,0,0,0.35)',
+        }}
+      >
+        <span aria-hidden="true">×</span>
+      </button>
+
       {/* Title, top centre, out of the way of the apparatus. */}
       <div className="instrument-title pointer-events-none absolute left-1/2 top-6 -translate-x-1/2 text-center">
         <p className={label} style={{ color: ink.brass }}>
@@ -631,7 +686,7 @@ export default function InstrumentPanel() {
               {coil && (
                 <>
                   <Hint keys="Space">hold the key down</Hint>
-                  <Hint keys="F">take the electrodes</Hint>
+                  <Hint keys="F">{state.holding ? 'put electrodes down' : 'take the electrodes'}</Hint>
                 </>
               )}
               {wheel && (

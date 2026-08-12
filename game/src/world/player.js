@@ -19,6 +19,10 @@ export const STARTING_NEURASTHENIA = 65;
 export const PLAYER_EVENT_HISTORY = 40;
 export const SEAT_REST_SECONDS = 8;
 export const SEAT_COOLDOWN_SECONDS = 120;
+export const THROW_NEURASTHENIA = 2;
+export const NPC_STARTLE_NEURASTHENIA = 3;
+export const WATER_WALK_INTERVAL_SECONDS = 2;
+export const WATER_WALK_HEALTH_LOSS = 1;
 
 const clamp = (value) => Math.min(MAX, Math.max(0, value));
 
@@ -87,6 +91,51 @@ export function neurastheniaCondition(value = state.neurasthenia) {
   if (value >= 35) return 'strained';
   if (value > 0) return 'slightly unsettled';
   return 'settled';
+}
+
+function indefiniteArticle(name) {
+  return /^[aeiou]/i.test(name) ? 'an' : 'a';
+}
+
+/** Nervous strain from committing to a throw. */
+export function throwingEffect(type, itemName = type) {
+  const name = String(itemName || 'object').trim().toLowerCase() || 'object';
+  return {
+    source: `throw:${type || name}`,
+    label: `You threw ${indefiniteArticle(name)} ${name} like a reckless madman!`,
+    changes: { neurasthenia: THROW_NEURASTHENIA },
+  };
+}
+
+/** Nervous strain when the player causes an NPC's startle reaction. */
+export function npcStartleEffect(npcId = 'unknown') {
+  return {
+    source: `npc-startle:${npcId}`,
+    label: 'You startled a passer-by.',
+    changes: { neurasthenia: NPC_STARTLE_NEURASTHENIA },
+  };
+}
+
+/**
+ * Accumulate active wading without writing a health event every frame.
+ * Leaving the water clears a partial interval.
+ */
+export function waterWalkingStep(exposure, seconds, active = true) {
+  if (!active) return { exposure: 0, damage: 0 };
+  const total = Math.max(0, Number(exposure) || 0) + Math.max(0, Number(seconds) || 0);
+  const intervals = Math.floor((total + 1e-9) / WATER_WALK_INTERVAL_SECONDS);
+  return {
+    exposure: total - intervals * WATER_WALK_INTERVAL_SECONDS,
+    damage: intervals * WATER_WALK_HEALTH_LOSS,
+  };
+}
+
+export function waterWalkingEffect(damage) {
+  return {
+    source: 'walking-in-water',
+    label: 'You waded through cold water.',
+    changes: { health: -Math.max(0, Number(damage) || 0) },
+  };
 }
 
 /**

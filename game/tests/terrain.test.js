@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { terrainHeight, pathsDistance, pondDepth, rockiness, sampleHeights } from '../src/world/terrain.js';
 import { POND_OUTLINE, WATER_LEVEL, GATE, parkItems } from '../src/world/centralPark.js';
 import { streetItems, STREET_LEVEL } from '../src/world/streetGrid.js';
+import { feetAreInWater } from '../src/world/waterContact.js';
 
 test('terrain is deterministic', () => {
   assert.equal(terrainHeight(3.7, -12.2), terrainHeight(3.7, -12.2));
@@ -20,6 +21,13 @@ test('the Pond is carved below water level and its banks stay dry', () => {
   assert.ok(terrainHeight(0, 54) < WATER_LEVEL - 0.3, 'lobe bottom sits under the surface');
   assert.ok(pondDepth(22, 30) < -0.4, 'inside the north arm');
   assert.ok(terrainHeight(70, 38) > WATER_LEVEL, 'east bank toward the gate stays dry');
+});
+
+test('water contact uses both the authored outline and the player foot height', () => {
+  const pond = { outline: POND_OUTLINE, level: WATER_LEVEL };
+  assert.equal(feetAreInWater(pond, 0, terrainHeight(0, 54), 54), true);
+  assert.equal(feetAreInWater(pond, 0, WATER_LEVEL + 1, 54), false, 'a bridge stays dry');
+  assert.equal(feetAreInWater(pond, 70, WATER_LEVEL - 1, 38), false, 'outside the Pond');
 });
 
 test('Hallett knoll rises on the peninsula', () => {

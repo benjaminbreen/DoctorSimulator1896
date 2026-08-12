@@ -30,7 +30,7 @@ const CELL_VOLTS = 1.9;
 // How fast coupling dies off along the slide. At the coil's face the pulse is
 // at full strength; a hand's breadth away it is a third of it; at the end of
 // the scale it is a prickle.
-const FALLOFF = 0.065;
+const FALLOFF = 0.05;
 
 // The secondary's own impedance. It is what keeps a four-kilovolt pulse from
 // being a fatal one: the coil can push the voltage but cannot supply the
@@ -73,24 +73,30 @@ export function sparkReach(volts) {
   return volts / BREAKDOWN_PER_MM;
 }
 
+export function shockStrength(milliamps) {
+  return Math.min(1, Math.max(0, milliamps / 60));
+}
+
 // What a shock of a given peak current does. The thresholds are the real
 // ones: perception around a milliamp, the let-go threshold — where the
 // flexors overpower the extensors and the hand shuts on whatever it is
 // holding — around ten, and serious trouble past thirty.
 export const SHOCK_BANDS = [
-  { at: 0.4, tone: 'plain', text: 'Nothing you can feel. The slide is too far out, or the cells are flat.' },
-  { at: 1.2, tone: 'plain', text: 'A faint prickling in both palms, like a limb waking up.' },
-  { at: 4, tone: 'warn', text: 'A hard buzzing in the wrists. Unpleasant, and you would not hold it long.' },
-  { at: 10, tone: 'warn', text: 'The muscles of your forearms jump with every break of the hammer.' },
+  { at: 1, tone: 'plain', name: 'imperceptible', text: 'Almost nothing: only the faintest suggestion of a prickling at the contacts.' },
+  { at: 5, tone: 'plain', name: 'perceptible', text: 'A distinct tingling spreads across both palms.' },
+  { at: 10, tone: 'warn', name: 'painful', text: 'A painful buzzing runs through the wrists and the forearms twitch.' },
+  { at: 30, tone: 'warn', name: 'loss of control', text: 'The forearm muscles contract hard with every break of the hammer.' },
   {
-    at: 30,
+    at: 50,
     tone: 'hurt',
-    text: 'Your hands close on the handles and will not open. You get free by throwing your shoulder back and tearing them off.',
+    name: 'severe',
+    text: 'Your hands clamp on the electrodes and your arms wrench against the current.',
   },
   {
     at: Infinity,
     tone: 'hurt',
-    text: 'The shock takes your whole chest. You are off the stool and on the floor before you know you have moved, and your arms will not stop shaking.',
+    name: 'extreme',
+    text: 'The shock takes your chest and throws you away from the bench. Your arms will not stop shaking.',
   },
 ];
 
@@ -100,12 +106,68 @@ export function bandFor(milliamps) {
 
 // Gameplay consequences stay beside the current calculation that decides the
 // shock. The scene reports the result; it does not invent damage numbers.
-export function effectForShock(milliamps) {
-  if (milliamps < 1.2) return { health: 0, neurasthenia: 0, down: 0, label: 'Tested the induction coil' };
-  if (milliamps < 4) return { health: 0, neurasthenia: 2, down: 0, label: 'Felt a galvanic prickle' };
-  if (milliamps < 10) return { health: 1, neurasthenia: 4, down: 0, label: 'Received a galvanic shock' };
-  if (milliamps < 30) return { health: 8, neurasthenia: 9, down: 0, label: 'Suffered a hard galvanic shock' };
-  return { health: 20, neurasthenia: 15, down: 6, label: 'Suffered a severe galvanic shock' };
+function between(value, low, high, from, to) {
+  const amount = Math.min(1, Math.max(0, (value - low) / (high - low)));
+  return from + (to - from) * amount;
+}
+
+// Damage is a rate as well as a current. The returned values apply to the
+// supplied exposure duration, so one second at 20 mA is meaningfully worse
+// than a brief touch and every setting on the slide has its own consequence.
+export function effectForShock(milliamps, seconds = 1) {
+  const current = Math.max(0, Number(milliamps) || 0);
+  const duration = Math.max(0, Number(seconds) || 0);
+  let healthRate = 0;
+  let nervousRate = 0;
+
+  if (current >= 1 && current < 5) nervousRate = between(current, 1, 5, 0.5, 2.5);
+  else if (current >= 5 && current < 10) {
+    healthRate = between(current, 5, 10, 0, 1);
+    nervousRate = between(current, 5, 10, 2.5, 4.5);
+  } else if (current >= 10 && current < 30) {
+    healthRate = between(current, 10, 30, 1, 7);
+    nervousRate = between(current, 10, 30, 4.5, 9);
+  } else if (current >= 30 && current < 50) {
+    healthRate = between(current, 30, 50, 7, 13);
+    nervousRate = between(current, 30, 50, 9, 13);
+  } else if (current >= 50) {
+    healthRate = between(current, 50, 100, 13, 24);
+    nervousRate = between(current, 50, 100, 13, 18);
+  }
+
+  const band = bandFor(current);
+  return {
+    health: Math.round(healthRate * duration * 10) / 10,
+    neurasthenia: Math.round(nervousRate * duration * 10) / 10,
+    down: current >= 50 ? 5 : current >= 30 ? 1.5 : 0,
+    label: current < 1
+      ? 'Tested the induction coil'
+      : current < 5
+        ? 'Felt a galvanic tingling'
+        : current < 10
+          ? 'Received a painful galvanic shock'
+          : current < 30
+            ? 'Lost muscle control to the induction coil'
+            : `Suffered a ${band.name} electrical shock`,
+  };
+}
+
+const SHOCK_TICK_SECONDS = 1;
+
+function recordShock(state, milliamps, seconds, onset = false) {
+  const band = bandFor(milliamps);
+  state.lastShock = {
+    milliamps,
+    tone: band.tone,
+    band: band.name,
+    text: band.text,
+    volts: state.volts,
+    seconds,
+    onset,
+    effect: effectForShock(milliamps, seconds),
+  };
+  state.shocks += 1;
+  state.worst = Math.max(state.worst, milliamps);
 }
 
 export function createInductionCoil(options = {}) {
@@ -126,6 +188,10 @@ export function createInductionCoil(options = {}) {
     volts: 0,
     // Whether the player has hold of the electrodes.
     holding: false,
+    energized: false,
+    shockIntensity: 0,
+    shockTimer: 0,
+    exposureSeconds: 0,
     lastShock: null,
     shocks: 0,
     worst: 0,
@@ -177,24 +243,42 @@ export function step(instrument, dt, input = {}) {
     s.hammer = 0;
   }
 
-  // Taking hold is a deliberate act and it is resolved at once: the shock is
-  // not something you stand in, it is something that happens to you.
-  if (input.grasp) {
-    const milliamps = s.running ? shockCurrent(s.volts) : 0;
-    const band = bandFor(milliamps);
-    const effect = effectForShock(milliamps);
-    s.lastShock = { milliamps, tone: band.tone, text: band.text, volts: s.volts, effect };
-    s.shocks += 1;
-    s.worst = Math.max(s.worst, milliamps);
-    // Past the let-go threshold you do not choose when to stop, and the
-    // simulation should not let you pretend otherwise: the key opens because
-    // you fall off the stool, not because you reached for it.
-    if (milliamps >= 30) {
+  if (input.grasp) s.holding = !s.holding;
+
+  const milliamps = s.running && s.holding ? shockCurrent(s.volts) : 0;
+  const energized = s.running && s.holding;
+  if (energized && !s.energized) {
+    s.shockTimer = 0;
+    s.exposureSeconds = 0;
+    // The onset supplies immediate sensory feedback but no instantaneous
+    // damage. Consequences accrue from the timed exposure below.
+    recordShock(s, milliamps, 0, true);
+  }
+  s.energized = energized;
+  s.shockIntensity = energized ? shockStrength(milliamps) : 0;
+
+  if (energized) {
+    s.shockTimer += dt;
+    s.exposureSeconds += dt;
+    while (s.shockTimer >= SHOCK_TICK_SECONDS) {
+      s.shockTimer -= SHOCK_TICK_SECONDS;
+      recordShock(s, milliamps, SHOCK_TICK_SECONDS);
+    }
+
+    // At the strongest settings a sustained contraction throws the subject
+    // clear. This caps a single accidental hold without making it harmless.
+    const releaseAfter = milliamps >= 50 ? 2 : milliamps >= 30 ? 4 : Infinity;
+    if (s.exposureSeconds >= releaseAfter) {
       s.running = false;
+      s.holding = false;
+      s.energized = false;
+      s.shockIntensity = 0;
       s.phase = 'idle';
       s.volts = 0;
       s.sparking = false;
     }
+  } else {
+    s.shockTimer = 0;
   }
 
   return s;

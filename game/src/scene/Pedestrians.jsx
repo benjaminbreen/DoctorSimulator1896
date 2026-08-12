@@ -10,6 +10,7 @@ import { terrainHeight } from '../world/terrain.js';
 import { parkItems } from '../world/centralPark.js';
 import { reportAgent, removeAgent } from '../world/agents.js';
 import { gameDebug } from '../debug.js';
+import { applyPlayerEvent, npcStartleEffect } from '../world/player.js';
 import {
   PEDESTRIAN_ARCHETYPES,
   PEDESTRIAN_BENCH_SITTERS as BENCH_SITTERS,
@@ -298,6 +299,7 @@ export default function Pedestrians() {
           entry.reactEnd = t + entry.react.getClip().duration - 0.25;
           entry.base.fadeOut(0.15);
           entry.react.reset().fadeIn(0.12).play();
+          applyPlayerEvent(npcStartleEffect(`pedestrian-${index}`));
         } else if (entry.reacting && t > entry.reactEnd) {
           entry.reacting = false;
           entry.cooldownUntil = t + BUMP_COOLDOWN;

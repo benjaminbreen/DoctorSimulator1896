@@ -6,6 +6,7 @@ import {
   rayVsBox,
   heroFollowYaw,
   heroLookAhead,
+  responsiveCameraBoom,
 } from '../src/camera/cameraMath.js';
 
 test('eye sits behind and beside the player at yaw 0', () => {
@@ -17,6 +18,20 @@ test('positive pitch raises the eye', () => {
   const flat = computeEyeTarget({ playerPos: [0, 0, 0], yaw: 0, pitch: 0, side: 0, up: 2, back: 3 });
   const pitched = computeEyeTarget({ playerPos: [0, 0, 0], yaw: 0, pitch: 0.5, side: 0, up: 2, back: 3 });
   assert.ok(pitched[1] > flat[1]);
+});
+
+test('portrait framing moves the camera back and farther over the shoulder', () => {
+  assert.deepEqual(
+    responsiveCameraBoom({ width: 852, height: 393, side: 0.25, back: 4.2 }),
+    { side: 0.25, back: 4.2 },
+  );
+
+  const portrait = responsiveCameraBoom({ width: 393, height: 852, side: 0.25, back: 4.2 });
+  assert.ok(portrait.side > 0.5);
+  assert.ok(portrait.back > 4.9);
+
+  const left = responsiveCameraBoom({ width: 393, height: 852, side: -0.25, back: 4.2 });
+  assert.ok(left.side < -0.5);
 });
 
 test('ray hits an axis-aligned box at the expected distance', () => {

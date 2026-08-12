@@ -21,6 +21,15 @@
 @import '@fontsource/old-standard-tt/latin-400.css';
 @import '@fontsource/old-standard-tt/latin-700.css';
 
+/* `100vh` follows Safari's large layout viewport, so bottom-anchored touch
+   controls can sit beneath visible browser chrome. Dynamic viewport units
+   keep the canvas and every overlay inside the space the player can see. */
+.game-shell {
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+}
+
 .park-intro {
   position: absolute;
   inset: 0;
@@ -228,6 +237,19 @@
   }
 
   .instrument-mobile-actions button:disabled { opacity: 0.4; }
+}
+
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) {
+  .instrument-title {
+    top: calc(66px + env(safe-area-inset-top, 0px)) !important;
+    width: min(42%, 330px);
+  }
+
+  .instrument-title p:last-child { display: none; }
+
+  .instrument-console-shell {
+    max-height: calc(100dvh - 66px - env(safe-area-inset-top, 0px));
+  }
 }
 
 /* Panel controls; everything else is Tailwind utilities. */

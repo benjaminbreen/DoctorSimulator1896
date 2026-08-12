@@ -7,6 +7,7 @@
 // placeholder ground truth. This component invents nothing.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import * as THREE from 'three';
 import { gameDebug } from '../debug.js';
 import { parkLandmark } from './landmarks.js';
 import {
@@ -20,6 +21,7 @@ import {
   healthCondition,
   neurastheniaCondition,
 } from '../world/player.js';
+import { mergeMeterFeedback, meterFeedbackStyle } from '../world/meterFeedback.js';
 import {
   Cameo, PinIcon, HeartIcon, BrainIcon, EyeIcon,
 } from './chrome.jsx';
@@ -50,6 +52,17 @@ function placeLine(zoneId, zoneLabel, position) {
   return zoneLabel;
 }
 
+function compactPlaceLine(place) {
+  const [zone, detail] = place.split(' — ');
+  if (detail && detail.length <= 12) return detail;
+  return {
+    'Central Park': 'Central Pk.',
+    'Cattell’s Psychology Lab': 'Cattell Lab',
+    'Your Waiting Room': 'Waiting Room',
+    'Your Consulting Room': 'Consulting Rm.',
+  }[zone] ?? zone.replace(/^Your /, '');
+}
+
 const METERS = {
   health: {
     label: 'Health',
@@ -77,6 +90,58 @@ function helpfulChange(metric, delta) {
 
 function signedChange(delta) {
   return `${delta > 0 ? '+' : '−'}${Math.abs(Math.round(delta))}`;
+}
+
+function MeterBurst({ feedback, entries }) {
+  const burstRef = useRef(null);
+  const point = useRef(new THREE.Vector3());
+  const cameraRight = useRef(new THREE.Vector3());
+
+  useEffect(() => {
+    if (!feedback) return undefined;
+    let frame = 0;
+    const started = globalThis.performance?.now?.() ?? Date.now();
+    const update = () => {
+      const node = burstRef.current;
+      const camera = gameDebug.camera;
+      if (!node || !camera || gameDebug.player.visible === false) {
+        if (node) node.style.visibility = 'hidden';
+      } else {
+        camera.updateMatrixWorld();
+        cameraRight.current.setFromMatrixColumn(camera.matrixWorld, 0);
+        point.current
+          .set(...gameDebug.player.position)
+          .addScaledVector(cameraRight.current, 0.72);
+        point.current.y += 1.38;
+        point.current.project(camera);
+        const onScreen = point.current.z >= -1 && point.current.z <= 1
+          && Math.abs(point.current.x) < 1.18 && Math.abs(point.current.y) < 1.18;
+        node.style.visibility = 'visible';
+        node.style.left = `${onScreen ? (point.current.x * 0.5 + 0.5) * 100 : 57}%`;
+        node.style.top = `${onScreen ? (-point.current.y * 0.5 + 0.5) * 100 : 48}%`;
+      }
+      const now = globalThis.performance?.now?.() ?? Date.now();
+      if (now - started < 1900) frame = requestAnimationFrame(update);
+    };
+    update();
+    return () => cancelAnimationFrame(frame);
+  }, [feedback]);
+
+  if (!feedback || entries.length === 0) return null;
+  return (
+    <div ref={burstRef} className="ghud-meter-burst" aria-hidden="true">
+      {entries.map(({ metric, delta }) => {
+        const visual = meterFeedbackStyle(metric, delta);
+        if (!visual) return null;
+        return (
+          <span key={metric} className={`ghud-meter-burst-value ghud-meter-burst-value--${visual.kind}`}>
+            <small>{visual.label}</small>
+            <strong>{signedChange(delta)}</strong>
+          </span>
+        );
+      })}
+    </div>
+  );
 }
 
 function MeterTooltip({ metric, player }) {
@@ -141,7 +206,13 @@ export default function GameHud({ runtime, worldClock, quiet = false }) {
     lastPlayerEvent.current = event;
     if (event) {
       feedbackSequence.current += 1;
-      setMeterFeedback({ id: feedbackSequence.current, event });
+      const receivedAt = globalThis.performance?.now?.() ?? Date.now();
+      setMeterFeedback((previous) => mergeMeterFeedback(
+        previous,
+        event,
+        receivedAt,
+        feedbackSequence.current,
+      ));
     }
   }), []);
   useEffect(() => subscribeHudOverlayRequests(setOverlay), []);
@@ -214,9 +285,12 @@ export default function GameHud({ runtime, worldClock, quiet = false }) {
         <i className="ghud-rule" aria-hidden="true" />
 
         <div className="ghud-plate ghud-plate--loc">
-          <div className="ghud-loc-line">
+          <div className="ghud-loc-line" aria-label={place || undefined}>
             <PinIcon />
-            <span className="ghud-loc-text">{place || '—'}</span>
+            <span className="ghud-loc-text ghud-loc-text--full">{place || '—'}</span>
+            <span className="ghud-loc-text ghud-loc-text--short" aria-hidden="true">
+              {place ? compactPlaceLine(place) : '—'}
+            </span>
           </div>
         </div>
 
@@ -295,7 +369,8 @@ export default function GameHud({ runtime, worldClock, quiet = false }) {
               {feedbackEvent?.changes?.health ? (
                 <span
                   key={`health-${meterFeedback.id}`}
-                  className={`ghud-meter-flash ${helpfulChange('health', feedbackEvent.changes.health) ? 'is-helpful' : 'is-harmful'}`}
+                  className={`ghud-meter-flash ghud-meter-flash--${meterFeedbackStyle('health', feedbackEvent.changes.health).kind}`}
+                  style={{ '--ghud-meter-position': `${player.health}%` }}
                   aria-hidden="true"
                 >
                   <strong
@@ -326,7 +401,8 @@ export default function GameHud({ runtime, worldClock, quiet = false }) {
               {feedbackEvent?.changes?.neurasthenia ? (
                 <span
                   key={`neurasthenia-${meterFeedback.id}`}
-                  className={`ghud-meter-flash ${helpfulChange('neurasthenia', feedbackEvent.changes.neurasthenia) ? 'is-helpful' : 'is-harmful'}`}
+                  className={`ghud-meter-flash ghud-meter-flash--${meterFeedbackStyle('neurasthenia', feedbackEvent.changes.neurasthenia).kind}`}
+                  style={{ '--ghud-meter-position': `${player.neurasthenia}%` }}
                   aria-hidden="true"
                 >
                   <strong
@@ -340,25 +416,6 @@ export default function GameHud({ runtime, worldClock, quiet = false }) {
             </span>
             <MeterTooltip metric="neurasthenia" player={player} />
           </div>
-          {feedbackEvent ? (
-            <div
-              key={`event-${meterFeedback.id}`}
-              className="ghud-meter-event"
-              aria-hidden="true"
-            >
-              <span className="ghud-meter-event-label">{feedbackEvent.label}</span>
-              <span className="ghud-meter-event-deltas">
-                {eventDeltas.map(({ metric, label, delta }) => (
-                  <strong
-                    key={metric}
-                    className={helpfulChange(metric, delta) ? 'is-helpful' : 'is-harmful'}
-                  >
-                    {label} {signedChange(delta)}
-                  </strong>
-                ))}
-              </span>
-            </div>
-          ) : null}
           <span className="ghud-meter-announcer" aria-live="polite" aria-atomic="true">
             {meterAnnouncement}
           </span>
@@ -371,6 +428,8 @@ export default function GameHud({ runtime, worldClock, quiet = false }) {
           <span>Observations may be recorded while wandering.</span>
         </p>
       )}
+
+      <MeterBurst key={meterFeedback?.id ?? 0} feedback={meterFeedback} entries={eventDeltas} />
 
       <ThrowAimHud />
 

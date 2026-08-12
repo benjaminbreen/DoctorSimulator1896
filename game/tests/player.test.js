@@ -23,6 +23,11 @@ import {
   STARTING_NEURASTHENIA,
   SEAT_REST_SECONDS,
   SEAT_COOLDOWN_SECONDS,
+  throwingEffect,
+  npcStartleEffect,
+  waterWalkingEffect,
+  waterWalkingStep,
+  WATER_WALK_INTERVAL_SECONDS,
 } from '../src/world/player.js';
 
 test.beforeEach(() => resetPlayer());
@@ -89,6 +94,27 @@ test('named events store their actual clamped changes', () => {
   assert.equal(player.neurasthenia, STARTING_NEURASTHENIA + 12);
   assert.equal(player.log[0].changes.health, -20);
   assert.equal(player.log[1].changes.health, 20, 'the log records what fit below the cap');
+});
+
+test('throwing and player-caused startles add named nervous-strain events', () => {
+  applyPlayerEvent(throwingEffect('apple', 'Apple'));
+  assert.equal(getPlayer().log.at(-1).label, 'You threw an apple like a reckless madman!');
+  assert.equal(getPlayer().neurasthenia, STARTING_NEURASTHENIA + 2);
+
+  applyPlayerEvent(npcStartleEffect('pedestrian-4'));
+  assert.equal(getPlayer().log.at(-1).label, 'You startled a passer-by.');
+  assert.equal(getPlayer().neurasthenia, STARTING_NEURASTHENIA + 5);
+});
+
+test('active water walking loses health in rate-limited intervals', () => {
+  let step = waterWalkingStep(0, WATER_WALK_INTERVAL_SECONDS / 2, true);
+  assert.deepEqual(step, { exposure: 1, damage: 0 });
+  step = waterWalkingStep(step.exposure, WATER_WALK_INTERVAL_SECONDS / 2, true);
+  assert.deepEqual(step, { exposure: 0, damage: 1 });
+  applyPlayerEvent(waterWalkingEffect(step.damage));
+  assert.equal(getPlayer().health, MAX - 1);
+  assert.equal(getPlayer().log.at(-1).label, 'You waded through cold water.');
+  assert.deepEqual(waterWalkingStep(1.5, 0.1, false), { exposure: 0, damage: 0 });
 });
 
 test('recent meter history is filtered, capped, and newest first', () => {

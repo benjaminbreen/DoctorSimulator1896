@@ -7,6 +7,7 @@ import {
   occlusionLimit,
   heroFollowYaw,
   heroLookAhead,
+  responsiveCameraBoom,
 } from '../camera/cameraMath.js';
 import { damp, clamp } from '../movement/mathUtils.js';
 import { gameDebug } from '../debug.js';
@@ -28,6 +29,7 @@ const MODES = ['shoulder', 'first', 'overhead', 'hero'];
 export default function CameraRig({ room, runtime, look, keyboard, heightAt = null }) {
   const camera = useThree((state) => state.camera);
   const scene = useThree((state) => state.scene);
+  const viewportSize = useThree((state) => state.size);
   const smoothedRef = useRef(null);
   // Where the camera has eased to while an instrument is in use.
   const focusRef = useRef({
@@ -291,6 +293,15 @@ export default function CameraRig({ room, runtime, look, keyboard, heightAt = nu
         camera.updateProjectionMatrix();
       }
     }
+
+    const responsiveBoom = responsiveCameraBoom({
+      width: viewportSize.width,
+      height: viewportSize.height,
+      side,
+      back,
+    });
+    side = responsiveBoom.side;
+    back = responsiveBoom.back;
 
     // Zoom scales the whole boom, so the framing angle holds as it dollies.
     const anchor = [lookPoint[0], playerPos[1] + ANCHOR_HEIGHT, lookPoint[2]];

@@ -18,8 +18,12 @@ import {
   harm,
   recoverFromSeat,
   fallEffect,
+  applyPlayerEvent,
+  waterWalkingEffect,
+  waterWalkingStep,
   SEAT_REST_SECONDS,
 } from '../world/player.js';
+import { feetAreInWater } from '../world/waterContact.js';
 import { seatFraming } from '../world/seating.js';
 import {
   beginThrowableCharge,
@@ -36,7 +40,9 @@ const MAX_DT = 1 / 30;
 const stillInput = { x: 0, z: 0, run: false, jump: false };
 const throwAim = new THREE.Vector3();
 
-export default function PlayerRig({ room, runtime, keyboard, look, spawn, spawnYaw, forcePlaceholder = false }) {
+export default function PlayerRig({
+  room, runtime, keyboard, look, spawn, spawnYaw, water = null, forcePlaceholder = false,
+}) {
   // Only the items that offer something. Filtered once per room, so the
   // per-frame scan is over a handful rather than every board in the place.
   const reachable = useMemo(
@@ -56,6 +62,7 @@ export default function PlayerRig({ room, runtime, keyboard, look, spawn, spawnY
   });
   // Prevent an E held through a door from firing again on arrival.
   const interactLatch = useRef(true);
+  const waterExposure = useRef(0);
   // So `__game.use('colour-wheel')` can open an instrument view without the
   // walk-and-aim, which is the slow part of checking one.
   useEffect(() => {
@@ -170,6 +177,13 @@ export default function PlayerRig({ room, runtime, keyboard, look, spawn, spawnY
       if (effect) harm(effect);
     }
     if (state.grounded && state.velocity[1] < 0) state.velocity[1] = -0.5;
+
+    const walkingInWater = state.grounded
+      && Math.hypot(corrected.x, corrected.z) > 0.0005
+      && feetAreInWater(water, next.x, next.y, next.z);
+    const waterStep = waterWalkingStep(waterExposure.current, dt, walkingInWater);
+    waterExposure.current = waterStep.exposure;
+    if (waterStep.damage > 0) applyPlayerEvent(waterWalkingEffect(waterStep.damage));
 
     for (let index = 0; index < controller.numComputedCollisions(); index += 1) {
       const normal = controller.computedCollision(index)?.normal1;

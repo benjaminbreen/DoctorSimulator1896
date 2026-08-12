@@ -318,7 +318,9 @@ function Spark({ from, to, live, intensity, seed, colour = '#dbe9ff' }) {
   useFrame((_, delta) => {
     const decay = Math.exp(-delta * 26);
     if (object.material) {
-      object.material.opacity = live ? Math.min(1, object.material.opacity * decay + 0.9) : 0;
+      object.material.opacity = live
+        ? Math.min(1, object.material.opacity * decay + Math.max(0.08, intensity) * 0.9)
+        : 0;
     }
     if (lightRef.current) {
       lightRef.current.intensity = live ? object.material.opacity * intensity * 9 : 0;
@@ -340,6 +342,69 @@ function Spark({ from, to, live, intensity, seed, colour = '#dbe9ff' }) {
   );
 }
 
+// Electrical current through the player is not a free-floating lightning
+// bolt. The visible response is kept at the metal contacts: tiny intermittent
+// corona points and a brief local flash, scaled by the same current that the
+// simulation uses for sensation and injury.
+function ShockField({ instrument }) {
+  const group = useRef();
+  const light = useRef();
+  const particles = useRef([]);
+  const points = useMemo(() => Array.from({ length: 14 }, (_, index) => {
+    const side = index % 2 === 0 ? -1 : 1;
+    const ring = Math.floor(index / 2);
+    return {
+      base: [0.29 + Math.sin(ring * 2.3) * 0.014, 0.075 + Math.cos(ring * 1.7) * 0.018, side * 0.085],
+      phase: index * 1.91,
+      size: 0.0025 + (index % 3) * 0.0012,
+    };
+  }), []);
+
+  useFrame((frame) => {
+    const level = instrument.state.shockIntensity ?? 0;
+    const time = frame.clock.elapsedTime;
+    if (group.current) group.current.visible = level > 0.005;
+    if (light.current) {
+      const pulse = 0.55 + Math.abs(Math.sin(time * 97)) * 0.45;
+      light.current.intensity = level * 16 * pulse;
+    }
+    particles.current.forEach((mesh, index) => {
+      if (!mesh) return;
+      const point = points[index];
+      const flicker = Math.max(0, Math.sin(time * (51 + index * 2.7) + point.phase));
+      mesh.position.set(
+        point.base[0] + Math.sin(time * 23 + point.phase) * 0.004 * level,
+        point.base[1] + Math.cos(time * 29 + point.phase) * 0.005 * level,
+        point.base[2],
+      );
+      mesh.scale.setScalar(0.5 + level * (0.6 + flicker));
+      mesh.material.opacity = level * flicker;
+    });
+  });
+
+  return (
+    <group ref={group} visible={false}>
+      {points.map((point, index) => (
+        <mesh
+          key={point.phase}
+          ref={(mesh) => { particles.current[index] = mesh; }}
+          position={point.base}
+        >
+          <sphereGeometry args={[point.size, 6, 6]} />
+          <meshBasicMaterial
+            color="#dcecff"
+            transparent
+            opacity={0}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+      ))}
+      <pointLight ref={light} position={[0.29, 0.09, 0]} color="#c9e1ff" distance={0.9} decay={2} intensity={0} />
+    </group>
+  );
+}
+
 function InductionCoil({ groups, instrument }) {
   const carriage = useRef();
   const hammer = useRef();
@@ -348,7 +413,7 @@ function InductionCoil({ groups, instrument }) {
   // The break the spark is drawn for. Re-rendering on every break at sixty a
   // second is fine — it is four numbers and a line.
   const [strike, setStrike] = useState(0);
-  const told = useRef({ shocks: 0, warned: false });
+  const told = useRef({ shocks: 0, warned: false, band: null });
 
   useFrame(() => {
     const s = instrument.state;
@@ -367,11 +432,17 @@ function InductionCoil({ groups, instrument }) {
           note: `${s.lastShock.milliamps.toFixed(1)} mA`,
         });
       }
-      notice(s.lastShock.text, {
-        tone: s.lastShock.tone,
-        detail: `${Math.round(s.lastShock.volts)} V peak · ${s.lastShock.milliamps.toFixed(1)} mA through you`,
-        seconds: s.lastShock.tone === 'hurt' ? 9 : 6,
-      });
+      // The meter may change every second during a held exposure; announce
+      // its onset and meaningful band changes, not an identical toast on
+      // every damage tick.
+      if (s.lastShock.onset || s.lastShock.band !== told.current.band) {
+        notice(s.lastShock.text, {
+          tone: s.lastShock.tone,
+          detail: `${Math.round(s.lastShock.volts)} V peak · ${s.lastShock.milliamps.toFixed(1)} mA through you`,
+          seconds: s.lastShock.tone === 'hurt' ? 9 : 6,
+        });
+        told.current.band = s.lastShock.band;
+      }
     }
     // One warning, the first time it is run up somewhere it could hurt you.
     // The machine gives no sign of this itself, which is the point.
@@ -431,6 +502,7 @@ function InductionCoil({ groups, instrument }) {
         seed={strike * 7 + 3}
         colour="#ffd9a8"
       />
+      <ShockField instrument={instrument} />
     </>
   );
 }

@@ -1,5 +1,6 @@
 import { clamp } from '../movement/mathUtils.js';
 import { throwableDefinition } from './throwables.js';
+import { applyPlayerEvent, throwingEffect } from './player.js';
 
 export const THROWABLE_REACH = 1.8;
 export const THROWABLE_CHARGE_SECONDS = 1.15;
@@ -127,13 +128,16 @@ export function throwableVelocity(direction, charge = state.charge, type = state
 }
 
 export function queueThrowableThrow(direction) {
-  if (state.phase !== 'charging' || !throwableDefinition(state.heldType)) return false;
+  const definition = throwableDefinition(state.heldType);
+  if (state.phase !== 'charging' || !definition) return false;
+  const type = state.heldType;
   publish({
     phase: 'windup',
     windup: THROWABLE_RELEASE_DELAY,
     pendingVelocity: throwableVelocity(direction, state.charge, state.heldType),
     throwSerial: state.throwSerial + 1,
   });
+  applyPlayerEvent(throwingEffect(type, definition.label));
   return true;
 }
 
