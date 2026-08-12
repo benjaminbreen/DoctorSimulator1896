@@ -105,6 +105,34 @@ export function createCarriageState(routeIndex = 0, startDist = 0, lane = CARRIA
     bend: 0,
     avoiding: false,
     blocked: false,
+    knockX: 0,
+    knockZ: 0,
+    knockRoll: 0,
+    knockPitch: 0,
+  };
+}
+
+// The route remains authoritative; a thrown object adds a short-lived visual
+// and physical shove around it. This keeps traffic deterministic afterward.
+export function applyCarriageProjectileHit(state, velocity, power = 1) {
+  const vx = Number(velocity?.x ?? velocity?.[0]) || 0;
+  const vz = Number(velocity?.z ?? velocity?.[2]) || 0;
+  const horizontal = Math.hypot(vx, vz);
+  if (horizontal < 0.01) return state;
+  const nx = vx / horizontal;
+  const nz = vz / horizontal;
+  const shove = clamp(horizontal * 0.065, 0.35, 1.15) * clamp(power, 0.1, 2);
+  const forwardX = Math.sin(state.yaw);
+  const forwardZ = Math.cos(state.yaw);
+  const side = nx * forwardZ - nz * forwardX;
+  const front = nx * forwardX + nz * forwardZ;
+  return {
+    ...state,
+    speed: Math.max(0, state.speed - shove * 1.6),
+    knockX: clamp((state.knockX ?? 0) + nx * shove, -1.35, 1.35),
+    knockZ: clamp((state.knockZ ?? 0) + nz * shove, -1.35, 1.35),
+    knockRoll: clamp((state.knockRoll ?? 0) - side * shove * 0.15, -0.22, 0.22),
+    knockPitch: clamp((state.knockPitch ?? 0) + front * shove * 0.09, -0.13, 0.13),
   };
 }
 
@@ -189,11 +217,17 @@ export function stepCarriage(state, dt, obstacles = [], params = {}) {
   const lat = damp(state.lat, desiredLat, p.swerveLambda * clamp(speed / 2, 0, 1), dt);
 
   const [nx, nz, ntx, ntz] = sampleRoute(route, s);
-  const x = nx + -ntz * lat;
-  const z = nz + ntx * lat;
+  const baseX = nx + -ntz * lat;
+  const baseZ = nz + ntx * lat;
+  const previousBaseX = state.x - (state.knockX ?? 0);
+  const previousBaseZ = state.z - (state.knockZ ?? 0);
+  const knockX = damp(state.knockX ?? 0, 0, 4.8, dt);
+  const knockZ = damp(state.knockZ ?? 0, 0, 4.8, dt);
+  const x = baseX + knockX;
+  const z = baseZ + knockZ;
 
-  const dx = x - state.x;
-  const dz = z - state.z;
+  const dx = baseX - previousBaseX;
+  const dz = baseZ - previousBaseZ;
   const heading = Math.hypot(dx, dz) > 1e-5 ? Math.atan2(dx, dz) : Math.atan2(ntx, ntz);
   const yaw = dampAngle(state.yaw, heading, 8, dt);
   const steer = damp(state.steer, clamp(shortestArc(yaw, heading) * 3, -0.5, 0.5), 6, dt);
@@ -211,5 +245,9 @@ export function stepCarriage(state, dt, obstacles = [], params = {}) {
     bend,
     avoiding,
     blocked,
+    knockX,
+    knockZ,
+    knockRoll: damp(state.knockRoll ?? 0, 0, 5.8, dt),
+    knockPitch: damp(state.knockPitch ?? 0, 0, 5.8, dt),
   };
 }

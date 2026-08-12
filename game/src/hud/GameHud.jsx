@@ -29,6 +29,7 @@ import CasebookModal from './CasebookModal.jsx';
 import DayPanel from './DayPanel.jsx';
 import FastTravelMenu from './FastTravelMenu.jsx';
 import { subscribeHudOverlayRequests } from './overlayRequests.js';
+import ThrowAimHud from './ThrowAimHud.jsx';
 import './hud.css';
 
 function formatClock(hours) {
@@ -201,8 +202,9 @@ export default function GameHud({ runtime, worldClock, quiet = false }) {
     <div className={`ghud${overlay ? ' ghud--overlay-open' : ''}`} aria-label="Practice chrome">
       <header className="ghud-bar">
         <div className="ghud-mono-wrap">
-          {/* Painted cartouche from the ornament sheet; the letter is baked in. */}
+          {/* Keep the painted cartouche, then cover its old letter with the DS seal. */}
           <img className="ghud-monogram-img" src="/ui/monogram.png" alt="" draggable={false} />
+          <img className="ghud-monogram-mark" src="/icon-512.png" alt="" draggable={false} />
         </div>
 
         <div className="ghud-plate ghud-plate--name">
@@ -369,6 +371,8 @@ export default function GameHud({ runtime, worldClock, quiet = false }) {
           <span>Observations may be recorded while wandering.</span>
         </p>
       )}
+
+      <ThrowAimHud />
 
       <LettersModal
         open={overlay === 'letters'}

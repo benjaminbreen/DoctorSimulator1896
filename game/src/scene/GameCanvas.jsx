@@ -80,7 +80,14 @@ const PARK_STAGE_LABELS = [
   'people-and-traffic',
 ];
 const PARK_FINAL_STAGE = PARK_STAGE_LABELS.length - 1;
-const PARK_LIFE_FEATURES = new Set(['pedestrians', 'horseless-carriage']);
+const PARK_LIFE_FEATURES = new Set([
+  'pedestrians',
+  'horseless-carriage',
+  'pigeon-flock',
+  'bees',
+  'butterflies',
+  'fireflies',
+]);
 
 function RenderedStage({ stage, onRendered }) {
   const reported = useRef(false);

@@ -1,6 +1,6 @@
 .mctl { display: none; }
 
-@media (max-width: 760px), (hover: none) and (pointer: coarse) {
+@media (hover: none) and (pointer: coarse) {
   .mctl {
     position: absolute;
     inset: 0;
@@ -160,8 +160,7 @@
   .debug-prompt { display: none; }
 }
 
-@media (max-width: 760px) and (orientation: landscape),
-  (hover: none) and (pointer: coarse) and (orientation: landscape) {
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) {
   .mctl-left { width: 116px; height: 116px; }
   .mctl-tip { display: none; }
   .mctl-action--interact { width: 60px; height: 60px; }

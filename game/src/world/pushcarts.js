@@ -60,6 +60,36 @@ function spherePiece(position, d, material, friction = 0.5) {
   };
 }
 
+function applePiece(position, d, material) {
+  return { ...spherePiece(position, d, material, 0.5), throwable: 'apple' };
+}
+
+function cabbagePiece(position, d, material, rng) {
+  return {
+    throwable: 'cabbage',
+    position,
+    rotation: [
+      (rng() - 0.5) * 0.18,
+      rng() * Math.PI * 2,
+      (rng() - 0.5) * 0.18,
+    ],
+    // Keep the cheap round collider. The leaves only change what is drawn.
+    collider: { type: 'ball', args: [d / 2], friction: 0.6, density: 320 },
+    parts: [{
+      shape: 'cabbage',
+      position: [0, 0, 0],
+      size: [1, 1, 1],
+      scale: [
+        d * (0.96 + rng() * 0.08),
+        d * (0.95 + rng() * 0.08),
+        d * (0.96 + rng() * 0.08),
+      ],
+      vertexColors: true,
+      ...material,
+    }],
+  };
+}
+
 function coalLoad(load, c) {
   const coal = { color: '#17181b', roughness: 0.35, metalness: 0.25 };
   for (const fwd of [-0.28, 0.26]) {
@@ -102,7 +132,7 @@ function appleLoad(load, c) {
     for (let j = 0; j < rows; j += 1) {
       if (c.rng() < 0.08) continue;
       const d = 0.08 + c.rng() * 0.014;
-      load.pieces.push(spherePiece(
+      load.pieces.push(applePiece(
         [
           -c.L2 / 2 + 0.08 + i * 0.12 + (c.rng() - 0.5) * 0.025,
           c.deckTop + 0.155 + d / 2 + c.rng() * 0.012,
@@ -122,7 +152,12 @@ function cabbageLoad(load, c) {
   const colors = ['#8ea45c', '#7c9a55', '#a4b06b', '#88975a'];
   const place = (fwd, y, side) => {
     const d = 0.22 + c.rng() * 0.04;
-    load.pieces.push(spherePiece([fwd, y, side], d, { color: pick(c.rng, colors), roughness: 0.62 }, 0.6));
+    load.pieces.push(cabbagePiece(
+      [fwd, y, side],
+      d,
+      { color: pick(c.rng, colors), roughness: 0.72 },
+      c.rng,
+    ));
   };
   const cols = Math.floor(c.L2 / 0.24);
   for (let i = 0; i < cols; i += 1) {
@@ -348,6 +383,7 @@ function buildCart(site) {
 
   return {
     id: site.id,
+    load: site.load,
     position: [site.x, ROAD_TOP + 0.02, site.z],
     yaw: site.yaw,
     wheelRadius: R,

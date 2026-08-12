@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { CABBAGE_GEOMETRY } from './cabbageGeometry.js';
 
 // The shape vocabulary a built prop is written in.
 //
@@ -26,6 +27,7 @@ export default function PropShape({ item }) {
   useEffect(() => () => generated?.dispose(), [generated]);
 
   if (generated) return <primitive object={generated} attach="geometry" />;
+  if (item.shape === 'cabbage') return <primitive object={CABBAGE_GEOMETRY} attach="geometry" />;
   if (item.shape === 'cylinder') return <cylinderGeometry args={[sx / 2, sx / 2, sy, item.radialSegments ?? 16]} />;
   if (item.shape === 'cylinderSector') {
     return (

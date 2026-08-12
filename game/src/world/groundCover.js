@@ -207,3 +207,7 @@ export function buildGroundCover({ tuftAmount = 1, tuftSize = 1 } = {}) {
 }
 
 export const groundCoverItems = buildGroundCover();
+
+// Ambient insects use the same authored flower positions as the rendered
+// cover. Keeping these items public prevents the two layers drifting apart.
+export const floweringCoverItems = groundCoverItems.filter((item) => FLOWERS.includes(item.model));

@@ -39,6 +39,8 @@ export const gameDebug = {
   // action, so the opium ritual can reach bones and pace smoke to the loop.
   avatarRoot: null,
   smokingAction: null,
+  // PlayerAvatar writes the animated hand position for object launch and aim.
+  throwableHandPosition: [0, 1.2, 0],
 };
 
 // Enter instrument mode on the first piece in the room offering the named

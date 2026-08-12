@@ -943,6 +943,7 @@ export function materialFor(item) {
   // #4a2c1d times a mahogany photo is nearly black. Tint only on request.
   return {
     color: set ? (item.tint ?? spec.tint ?? '#ffffff') : (item.color ?? '#4a3826'),
+    vertexColors: item.vertexColors ?? false,
     roughness: item.roughness ?? spec?.roughness ?? 0.75,
     metalness: item.metalness ?? spec?.metalness ?? 0,
     envMapIntensity: spec?.envMapIntensity ?? 1,

@@ -15,7 +15,7 @@ import { createLook } from './input/pointerLook.js';
 import { gameDebug, installDebugHandle } from './debug.js';
 import { installShotHarness } from './shots/harness.js';
 import { preservePose } from './world/travel.js';
-import { subscribe } from './world/interaction.js';
+import { isFocusedInteraction, subscribe } from './world/interaction.js';
 import { createActorRuntime } from './world/characters/actors.js';
 import { phase1Cast } from './content/clinic1896/phase1Cast.js';
 import { actorCueForConsultation, createConsultationRuntime } from './consultation/engine.js';
@@ -82,14 +82,13 @@ export default function App() {
   // The tuning rail is a development tool, not part of the game. Keep it out
   // of the default presentation; Shift+` opens it and its performance readout.
   const [tuningOpen, setTuningOpen] = useState(false);
-  // Using an instrument hides it whatever the toggle says: the console at the
-  // foot of the screen is the interface then, and a dev rail beside it is the
-  // single thing that most makes this look like a prototype.
+  // Focused interactions hide the ordinary HUD. Seats are kept separate from
+  // instruments so the touch Use control remains available to stand again.
   const [usingInstrument, setUsingInstrument] = useState(false);
   // A live consultation owns the foot of the screen; the HUD verbs yield it.
   const [consultActive, setConsultActive] = useState(false);
   const [paused, setPaused] = useState(false);
-  useEffect(() => subscribe((state) => setUsingInstrument(Boolean(state.using))), []);
+  useEffect(() => subscribe((state) => setUsingInstrument(isFocusedInteraction(state.using))), []);
   useEffect(() => actorRuntime.subscribe(setActors), [actorRuntime]);
   useEffect(() => actorRuntime.setSingle(technicalPatients[0].actor), [actorRuntime, technicalPatients]);
   useEffect(() => runtime.onChange((id, value) => {
@@ -238,8 +237,8 @@ export default function App() {
                 <ShotBar runtime={runtime} />
               </Suspense>
             )}
-            <ControlHelper hidden={usingInstrument || zone === 'consulting-office'} />
-            <MobileControls keyboard={keyboard} hidden={usingInstrument || zone === 'consulting-office'} />
+            <ControlHelper hidden={usingInstrument || consultActive} />
+            <MobileControls keyboard={keyboard} hidden={usingInstrument || consultActive} />
             {paused && (
               <div className="pointer-events-none absolute inset-0 z-50 grid place-items-center bg-black/20">
                 <div className="border border-amber-100/40 bg-neutral-950/90 px-8 py-4 font-serif text-2xl tracking-[0.22em] text-amber-50 shadow-2xl">

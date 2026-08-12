@@ -112,7 +112,7 @@ export function cattellLabItems(blueprint, lighting) {
   add(cardRack('card-rack', -1.3, BENCH, 2.45));
 
   // Under the window, where the subject sits to judge ten seconds.
-  const pendulum = secondsPendulum('pendulum', 3.25, BENCH, nz + 0.42, Math.PI);
+  const pendulum = secondsPendulum('pendulum', 3.25, BENCH, nz + 0.42, 0);
   pendulum[0] = {
     ...pendulum[0],
     affordance: {

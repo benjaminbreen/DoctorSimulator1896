@@ -7,7 +7,14 @@ import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RigidBody, CuboidCollider, useRapier } from '@react-three/rapier';
 import { handlesAlive } from '../physics/useCharacterController.js';
-import { createCarriageState, stepCarriage, ROUTES, RIDE_HEIGHT } from '../world/horselessCarriage.js';
+import {
+  applyCarriageProjectileHit,
+  createCarriageState,
+  stepCarriage,
+  ROUTES,
+  RIDE_HEIGHT,
+} from '../world/horselessCarriage.js';
+import { takeCarriageProjectileHit } from '../world/carriageImpacts.js';
 import { carriageImpactEffect, getPlayer, harm } from '../world/player.js';
 import { listAgents, reportAgent, removeAgent } from '../world/agents.js';
 import { gameDebug } from '../debug.js';
@@ -363,7 +370,11 @@ export default function HorselessCarriage() {
         obstacles.push(agent);
       }
 
-      const state = stepCarriage(unit.state, dt, obstacles, unit.params);
+      const projectileHit = takeCarriageProjectileHit(unit.id);
+      const beforeStep = projectileHit
+        ? applyCarriageProjectileHit(unit.state, projectileHit.velocity, projectileHit.power)
+        : unit.state;
+      const state = stepCarriage(beforeStep, dt, obstacles, unit.params);
       unit.state = state;
       nearestCarriageSq = Math.min(nearestCarriageSq, (state.x - player[0]) ** 2 + (state.z - player[2]) ** 2);
       reportAgent(`carriage-${unit.id}`, state.x, state.z, 1.7);
@@ -377,8 +388,8 @@ export default function HorselessCarriage() {
       if (bodyGroup) {
         const ride = Math.min(1, state.speed / 2);
         bodyGroup.position.y = Math.sin(state.wheelSpin * 2.6) * 0.008 * ride;
-        bodyGroup.rotation.z = -state.steer * 0.05;
-        bodyGroup.rotation.x = Math.sin(state.wheelSpin * 1.7) * 0.004 * ride;
+        bodyGroup.rotation.z = -state.steer * 0.05 + state.knockRoll;
+        bodyGroup.rotation.x = Math.sin(state.wheelSpin * 1.7) * 0.004 * ride + state.knockPitch;
       }
       for (const [index, wheel] of wheels.entries()) {
         if (wheel) wheel.rotation.x = state.wheelSpin / (index < 2 ? FRONT_R : REAR_R);
@@ -504,6 +515,7 @@ export default function HorselessCarriage() {
           colliders={false}
           position={[0, -20 - unit.id * 5, 0]}
           onCollisionEnter={onPlayerImpact}
+          userData={{ gameKind: 'horseless-carriage', carriageId: unit.id }}
         >
           <CuboidCollider
             ref={(node) => (unit.refs.collider = node)}

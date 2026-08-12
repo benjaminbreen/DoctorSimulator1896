@@ -15,6 +15,11 @@ const KNOWN_FEATURES = [
   'carousel',
   'checkers-tables',
   'horseless-carriage',
+  'pushcarts',
+  'pigeon-flock',
+  'bees',
+  'butterflies',
+  'fireflies',
 ];
 
 test('zone feature lists are unique and known', () => {

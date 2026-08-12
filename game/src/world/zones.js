@@ -115,6 +115,10 @@ export const zones = {
       'checkers-tables',
       'horseless-carriage',
       'pushcarts',
+      'pigeon-flock',
+      'bees',
+      'butterflies',
+      'fireflies',
     ],
   },
 };

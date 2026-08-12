@@ -6,7 +6,11 @@ import {
   STARTING_TIME,
   STARTING_ZONE,
 } from '../src/tuning/settingsSchema.js';
-import { applyGameStart, createTuningRuntime } from '../src/tuning/runtime.js';
+import {
+  applyGameStart,
+  createTuningRuntime,
+  migrateStoredTuning,
+} from '../src/tuning/runtime.js';
 
 const parameters = schemaParameters(settingsSchema);
 
@@ -52,6 +56,18 @@ test('interior ambient occlusion uses the approved defaults', () => {
   assert.equal(byId.get('aoRadius').default, 1.75);
 });
 
+test('ambient occlusion stays off outdoors', () => {
+  const runtime = createTuningRuntime(settingsSchema);
+  assert.equal(runtime.values.zone, 'central-park');
+  assert.equal(runtime.values.aoEnabled, false);
+
+  runtime.set('zone', 'consulting-office');
+  assert.equal(runtime.values.aoEnabled, true);
+
+  runtime.set('zone', 'central-park');
+  assert.equal(runtime.values.aoEnabled, false);
+});
+
 test('hero camera has an independent follow profile', () => {
   const byId = new Map(parameters.map((parameter) => [parameter.id, parameter]));
   assert.equal(byId.get('heroSide').default, 0.25);
@@ -61,6 +77,60 @@ test('hero camera has an independent follow profile', () => {
   assert.equal(byId.get('heroFollowRate').default, 3.5);
   assert.equal(byId.get('heroRecenterDelay').default, 0.9);
   assert.equal(byId.get('heroCollisionRadius').default, 0.22);
+});
+
+test('pigeon visibility controls are live outdoor tuning', () => {
+  const byId = new Map(parameters.map((parameter) => [parameter.id, parameter]));
+  assert.equal(byId.get('pigeonCount').default, 14);
+  assert.equal(byId.get('pigeonSize').default, 1.3);
+  assert.equal(byId.get('pigeonSpeed').default, 0.7);
+  assert.equal(byId.get('pigeonAltitude').default, -0.5);
+  assert.equal(byId.get('pigeonContinuous').default, true);
+  assert.equal(byId.get('pigeonSoloCount').default, 2);
+  assert.equal(byId.get('beeCount').default, 33);
+  assert.equal(byId.get('beeSize').default, 0.4);
+  assert.equal(byId.get('beeSpread').default, 1.5);
+  assert.equal(byId.get('butterflyCount').default, 18);
+  assert.equal(byId.get('fireflyCount').default, 55);
+  for (const id of [
+    'pigeonCount',
+    'pigeonSize',
+    'pigeonSpeed',
+    'pigeonAltitude',
+    'pigeonContinuous',
+    'pigeonSoloCount',
+    'beeCount',
+    'beeSize',
+    'beeSpeed',
+    'beeSpread',
+    'butterflyCount',
+    'butterflySize',
+    'butterflySpeed',
+    'butterflySpread',
+    'fireflyCount',
+    'fireflySize',
+    'fireflySpeed',
+    'fireflySpread',
+  ]) {
+    assert.notEqual(byId.get(id).mode, 'rebuild', `${id} should update live`);
+  }
+});
+
+test('version-one fauna defaults migrate without overwriting custom tuning', () => {
+  const migrated = migrateStoredTuning({
+    schemaVersion: 1,
+    values: {
+      pigeonSize: 1.5,
+      beeSize: 0.5,
+      beeSpread: 1,
+      beeSpeed: 1.75,
+    },
+  }, settingsSchema);
+  assert.equal(migrated.schemaVersion, 2);
+  assert.equal(migrated.values.pigeonSize, 1.3);
+  assert.equal(migrated.values.beeSize, 0.4);
+  assert.equal(migrated.values.beeSpread, 1.5);
+  assert.equal(migrated.values.beeSpeed, 1.75);
 });
 
 test('runtime clamps out-of-range writes and ignores unknown ids', () => {

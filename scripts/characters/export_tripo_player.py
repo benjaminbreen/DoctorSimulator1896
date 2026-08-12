@@ -33,6 +33,7 @@ CLIPS = (
     ("Quick Formal Bow.fbx", "FormalBow"),
     ("Shaking Hands 2.fbx", "Handshake"),
     ("Smoking.fbx", "Smoking"),
+    ("Throw Object.fbx", "Throw"),
 )
 
 

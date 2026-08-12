@@ -6,7 +6,7 @@ export const STARTING_ZONE = 'central-park';
 export const STARTING_TIME = 9.5;
 
 export const settingsSchema = {
-  version: 1,
+  version: 2,
   groups: [
     {
       id: 'world',
@@ -183,6 +183,26 @@ export const settingsSchema = {
         { id: 'cloudSpeed', label: 'Cloud drift', type: 'range', min: 0, max: 5, step: 0.1, default: 1.6 },
         { id: 'windStrength', label: 'Wind strength', type: 'range', min: 0, max: 3, step: 0.05, default: 0.75 },
         { id: 'windSpeed', label: 'Wind speed', type: 'range', min: 0, max: 4, step: 0.05, default: 1.1 },
+        // Procedural pigeons stay one instanced draw regardless of count.
+        // Size defaults above life scale so the distant silhouettes survive fog.
+        { id: 'pigeonCount', label: 'Pigeon count', type: 'range', min: 0, max: 14, step: 1, default: 14 },
+        { id: 'pigeonSize', label: 'Pigeon size ×', type: 'range', min: 0.5, max: 4, step: 0.05, default: 1.3 },
+        { id: 'pigeonSpeed', label: 'Pigeon speed ×', type: 'range', min: 0.2, max: 2.5, step: 0.05, default: 0.7 },
+        { id: 'pigeonAltitude', label: 'Pigeon altitude + (m)', type: 'range', min: -15, max: 20, step: 0.5, default: -0.5 },
+        { id: 'pigeonContinuous', label: 'Continuous pigeons', type: 'toggle', default: true },
+        { id: 'pigeonSoloCount', label: 'Solo pigeons', type: 'range', min: 0, max: 2, step: 1, default: 2 },
+        { id: 'beeCount', label: 'Bee count', type: 'range', min: 0, max: 44, step: 1, default: 33 },
+        { id: 'beeSize', label: 'Bee size ×', type: 'range', min: 0.1, max: 4, step: 0.05, default: 0.4 },
+        { id: 'beeSpeed', label: 'Bee speed ×', type: 'range', min: 0.2, max: 2.5, step: 0.05, default: 1 },
+        { id: 'beeSpread', label: 'Bee spread ×', type: 'range', min: 0.25, max: 3, step: 0.05, default: 1.5 },
+        { id: 'butterflyCount', label: 'Butterfly count', type: 'range', min: 0, max: 32, step: 1, default: 18 },
+        { id: 'butterflySize', label: 'Butterfly size ×', type: 'range', min: 0.4, max: 3, step: 0.05, default: 1 },
+        { id: 'butterflySpeed', label: 'Butterfly speed ×', type: 'range', min: 0.2, max: 2.5, step: 0.05, default: 1 },
+        { id: 'butterflySpread', label: 'Butterfly spread ×', type: 'range', min: 0.4, max: 2.5, step: 0.05, default: 1 },
+        { id: 'fireflyCount', label: 'Firefly count', type: 'range', min: 0, max: 88, step: 1, default: 55 },
+        { id: 'fireflySize', label: 'Firefly glow ×', type: 'range', min: 0.4, max: 3, step: 0.05, default: 1 },
+        { id: 'fireflySpeed', label: 'Firefly speed ×', type: 'range', min: 0.2, max: 2.5, step: 0.05, default: 1 },
+        { id: 'fireflySpread', label: 'Firefly spread ×', type: 'range', min: 0.4, max: 2.5, step: 0.05, default: 1 },
         // Separate from the interior slider: the sun's shadow map covers ~50m,
         // so the same texel radius blurs a metre wide outdoors and a few cm in.
         { id: 'sunShadowRadius', label: 'Sun shadow softness', type: 'range', min: 0, max: 6, step: 0.25, default: 1 },

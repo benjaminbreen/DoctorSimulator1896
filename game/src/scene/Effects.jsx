@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { Uniform, Vector3 } from 'three';
 import { BloomEffect, Effect, ToneMappingMode } from 'postprocessing';
 import { EffectComposer, Bloom, N8AO, ToneMapping, Vignette, wrapEffect } from '@react-three/postprocessing';
@@ -50,6 +50,10 @@ const TONE_MAPPING_MODES = {
 // The composer ref is safe, so both are reached through its passes instead.
 export default function Effects({ runtime, indoors }) {
   const composerRef = useRef();
+  const dpr = useThree((state) => state.viewport.dpr);
+  // Retina rendering already supersamples the image. Extra MSAA there adds
+  // substantial bandwidth and resolve work without a visible edge benefit.
+  const multisampling = dpr >= 1.5 ? 0 : 2;
 
   useFrame(() => {
     const composer = composerRef.current;
@@ -78,7 +82,7 @@ export default function Effects({ runtime, indoors }) {
   });
 
   return (
-    <EffectComposer ref={composerRef} multisampling={4}>
+    <EffectComposer ref={composerRef} multisampling={multisampling}>
       {indoors && runtime.values.aoEnabled ? (
         <N8AO distanceFalloff={1} halfRes color="#120d08" />
       ) : (
@@ -90,7 +94,9 @@ export default function Effects({ runtime, indoors }) {
           the renderer, which FrameSettings keeps current. */}
       <ToneMapping mode={TONE_MAPPING_MODES[runtime.values.toneMapping] ?? ToneMappingMode.AGX} />
       {indoors ? <></> : <WarmGrade />}
-      <Vignette eskil={false} offset={0.28} darkness={0.55} />
+      {/* The exterior already has strong edge contrast from sky, buildings,
+          and the HUD. A lighter vignette keeps facade detail out of black. */}
+      <Vignette eskil={false} offset={0.28} darkness={indoors ? 0.55 : 0.32} />
     </EffectComposer>
   );
 }

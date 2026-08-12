@@ -12,6 +12,7 @@ import { damp, clamp } from '../movement/mathUtils.js';
 import { gameDebug } from '../debug.js';
 import { getInteraction } from '../world/interaction.js';
 import { consultationSeatFraming, seatFov } from '../consultation/seatFraming.js';
+import { instrumentFov, resetInstrumentZoom } from '../instruments/viewFraming.js';
 
 const ANCHOR_HEIGHT = 1.45;
 const EYE_HEIGHT = 1.62;
@@ -76,22 +77,26 @@ export default function CameraRig({ room, runtime, look, keyboard, heightAt = nu
     if (framing) {
       const focus = focusRef.current;
       const kind = seat || using?.kind === 'seat' ? 'seat' : 'instrument';
-      if (!focus.armed || focus.kind !== kind) {
+      const focusKey = kind === 'instrument' ? using?.id : kind;
+      if (!focus.armed || focus.key !== focusKey) {
         // Start the ease from wherever the camera already is.
         focus.armed = true;
         focus.kind = kind;
+        focus.key = focusKey;
         focus.settled = false;
         focus.position.copy(camera.position);
         focus.target.set(...framing.target);
+        if (kind === 'instrument') resetInstrumentZoom();
       }
       const blend = 1 - Math.exp(-dt * 6);
       focus.position.lerp(scratchPosition.set(...framing.position), blend);
       camera.position.copy(focus.position);
 
-      if (kind === 'seat' && focus.settled) {
-        // Seated: the eye holds still while drag pans and the wheel zooms,
-        // on the first-person conventions so the feel matches.
-        look.look.pitch = clamp(look.look.pitch, -0.55, 0.8);
+      if (focus.settled) {
+        // Seated and instrument views share a fixed eye: drag changes aim and
+        // the wheel changes field of view, without moving the player.
+        const pitchLimit = kind === 'seat' ? [-0.55, 0.8] : [-0.95, 0.95];
+        look.look.pitch = clamp(look.look.pitch, pitchLimit[0], pitchLimit[1]);
         const pitch = -look.look.pitch;
         const yaw = look.look.yaw;
         const cos = Math.cos(pitch);
@@ -103,7 +108,7 @@ export default function CameraRig({ room, runtime, look, keyboard, heightAt = nu
       } else {
         focus.target.lerp(scratchTarget.set(...framing.target), blend);
         camera.lookAt(focus.target);
-        if (kind === 'seat' && focus.position.distanceTo(scratchPosition) < 0.06) {
+        if (focus.position.distanceTo(scratchPosition) < 0.06) {
           // Arrived: hand the aim to the player exactly where the ease left
           // it, so control begins without a jump.
           const dx = focus.target.x - focus.position.x;
@@ -116,8 +121,8 @@ export default function CameraRig({ room, runtime, look, keyboard, heightAt = nu
 
       const fovTarget = kind === 'seat'
         ? (using?.kind === 'seat' ? framing.fov ?? values.fov : seatFov())
-        : (framing.fov ?? values.fov);
-      const nextFov = kind === 'seat' ? damp(camera.fov, fovTarget, 9, dt) : fovTarget;
+        : instrumentFov(framing.fov ?? values.fov);
+      const nextFov = damp(camera.fov, fovTarget, 9, dt);
       if (camera.fov !== nextFov) {
         camera.fov = nextFov;
         camera.updateProjectionMatrix();
@@ -133,6 +138,10 @@ export default function CameraRig({ room, runtime, look, keyboard, heightAt = nu
       // it eases home instead of snapping.
       focusRef.current.armed = false;
       smoothedRef.current = null;
+      if (camera.fov !== values.fov) {
+        camera.fov = values.fov;
+        camera.updateProjectionMatrix();
+      }
     }
 
     // The shot harness drives the camera directly; damping and occlusion

@@ -168,7 +168,7 @@
 
 .instrument-mobile-actions { display: none; }
 
-@media (max-width: 760px), (hover: none) and (pointer: coarse) {
+@media (hover: none) and (pointer: coarse) {
   html,
   body,
   #root { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; }

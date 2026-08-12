@@ -42,6 +42,27 @@ test('patient profile and appearance generation is reproducible but rerollable',
   assert.notDeepEqual(first[0].actor.recipe.values, rerolled[0].actor.recipe.values);
 });
 
+test('the generated clinical presentation owns the playable case', () => {
+  const patients = createTechnicalPatients([2273, 4819, 4816]);
+  for (const fixture of patients) {
+    const clinical = fixture.profile.clinical;
+    assert.equal(fixture.opening.dialogue, `“${clinical.presentingComplaint[0].toUpperCase()}${clinical.presentingComplaint.slice(1)}”`);
+    assert.deepEqual(
+      fixture.facts.filter((fact) => fact.kind === 'symptom').map((fact) => fact.value.toLowerCase().replace(/\.$/, '')),
+      clinical.symptoms,
+    );
+    assert.equal(fixture.facts.find((fact) => fact.label === 'Respiration').value, `Respiration is ${clinical.performance.breathingRate} breaths per minute.`);
+    assert.equal(fixture.diagnoses[0].label.toLowerCase(), clinical.periodCategory);
+    assert.ok(fixture.caseNote.requiredFactIds.every((id) => fixture.facts.some((fact) => fact.id === id)));
+  }
+
+  const rerolled = createTechnicalPatients([2274, 4820, 4817]);
+  assert.notDeepEqual(
+    patients.map((fixture) => fixture.opening.dialogue),
+    rerolled.map((fixture) => fixture.opening.dialogue),
+  );
+});
+
 test('foreign-born profiles retain a coherent migration record', () => {
   const patient = TECHNICAL_PATIENTS[0].profile;
   assert.equal(patient.identity.origin.id, 'irish-american');
@@ -62,6 +83,8 @@ test('private interpretation records a hypothesis without advancing time', () =>
 });
 
 test('case notebook starts with identity only and grows from player actions', () => {
+  const [exam] = patient.examinations;
+  const fact = patient.facts.find((entry) => entry.disclosure === 'withheld');
   let state = beginInquiry();
   let notebook = buildCaseNotebook(patient, state);
   assert.deepEqual(notebook.patient, {
@@ -74,15 +97,15 @@ test('case notebook starts with identity only and grows from player actions', ()
   assert.deepEqual(notebook.diagnoses, []);
 
   state = consultationTransition(state, patient, { type: 'interpret', id: 'read-distress' });
-  state = consultationTransition(state, patient, { type: 'examine', id: 'a-check-hands' });
-  const input = { stance: 'question', text: 'What happens when you sleep and wake at night?' };
+  state = consultationTransition(state, patient, { type: 'examine', id: exam.id });
+  const input = { stance: 'question', text: `Tell me more about the ${fact.releaseOn[0]}.` };
   state = consultationTransition(state, patient, {
     type: 'speech-response', input,
     response: renderOfflineDialogue(buildDialogueRequest(patient, state, input), patient),
   });
   notebook = buildCaseNotebook(patient, state);
-  assert.deepEqual(notebook.observations.map((entry) => entry.kind), ['Private impression', 'Observe hands']);
-  assert.deepEqual(notebook.clues.map((clue) => clue.label), ['Sleep']);
+  assert.deepEqual(notebook.observations.map((entry) => entry.kind), ['Private impression', exam.label]);
+  assert.deepEqual(notebook.clues.map((clue) => clue.label), [fact.label]);
   assert.equal(notebook.diagnosesAvailable, false);
 
   state = consultationTransition(state, patient, { type: 'begin-decision' });
@@ -93,48 +116,54 @@ test('case notebook starts with identity only and grows from player actions', ()
 });
 
 test('offline dialogue discloses only a fact earned by the current question', () => {
+  const fact = patient.facts.find((entry) => entry.disclosure === 'withheld');
   const state = beginInquiry();
-  const input = { stance: 'question', text: 'What happens when you try to sleep at night?' };
+  const input = { stance: 'question', text: `Tell me about the ${fact.releaseOn[0]}.` };
   const request = buildDialogueRequest(patient, state, input);
-  assert.deepEqual(request.allowedDisclosureIds, ['a-sleep']);
+  assert.deepEqual(request.allowedDisclosureIds, [fact.id]);
   const response = renderOfflineDialogue(request, patient);
   const next = consultationTransition(state, patient, { type: 'speech-response', input, response });
   assert.equal(next.elapsedMinutes, 5);
-  assert.ok(next.disclosedFactIds.includes('a-sleep'));
-  assert.equal(next.history.at(-1).disclosedNow[0], 'a-sleep');
+  assert.ok(next.disclosedFactIds.includes(fact.id));
+  assert.equal(next.history.at(-1).disclosedNow[0], fact.id);
   assert.equal(actorCueForConsultation(next).speaking, true);
 });
 
 test('the sim rejects an LLM attempt to disclose an unearned fact', () => {
+  const fact = patient.facts.find((entry) => entry.disclosure === 'withheld');
   const state = beginInquiry();
   const next = consultationTransition(state, patient, {
     type: 'speech-response',
     input: { stance: 'question', text: 'How are you today?' },
     response: {
       dialogue: '“There is nothing else.”',
-      disclosedNow: ['a-pulse'],
+      disclosedNow: [fact.id],
       appraisal: { register: 'neutral', decorumBreach: 0, intent: 'question', terminates: false },
     },
   });
-  assert.equal(next.disclosedFactIds.includes('a-pulse'), false);
+  assert.equal(next.disclosedFactIds.includes(fact.id), false);
   assert.match(next.errors.at(-1), /unauthorized disclosure/);
 });
 
 test('examination advances time and records a deterministic observation', () => {
+  const exam = patient.examinations[0];
+  const fact = patient.facts.find((entry) => entry.id === exam.factId);
   const state = beginInquiry();
-  const next = consultationTransition(state, patient, { type: 'examine', id: 'a-check-hands' });
+  const next = consultationTransition(state, patient, { type: 'examine', id: exam.id });
   assert.equal(next.elapsedMinutes, 3);
-  assert.ok(next.observedFactIds.includes('a-tremor'));
-  assert.equal(next.history.at(-1).fact.value, 'Fine tremor at rest');
+  assert.ok(next.observedFactIds.includes(fact.id));
+  assert.equal(next.history.at(-1).fact.value, fact.value);
   assert.deepEqual(actorCueForConsultation(next), {
     body: 'clinic-idle', expression: 'guarded', gaze: 'doctor', speaking: false,
   });
 });
 
 test('a complete consultation reaches distinct reputation and record ledgers', () => {
+  const exam = patient.examinations[0];
+  const fact = patient.facts.find((entry) => entry.disclosure === 'withheld');
   let state = beginInquiry();
-  state = consultationTransition(state, patient, { type: 'examine', id: 'a-check-hands' });
-  const input = { stance: 'reassure', text: 'Please tell me what happens when you sleep and wake at night.' };
+  state = consultationTransition(state, patient, { type: 'examine', id: exam.id });
+  const input = { stance: 'reassure', text: `Please tell me more about the ${fact.releaseOn[0]}.` };
   state = consultationTransition(state, patient, {
     type: 'speech-response', input,
     response: renderOfflineDialogue(buildDialogueRequest(patient, state, input), patient),
@@ -145,13 +174,13 @@ test('a complete consultation reaches distinct reputation and record ledgers', (
   state = consultationTransition(state, patient, { type: 'begin-case-note' });
   state = consultationTransition(state, patient, {
     type: 'write-case-note',
-    text: 'Repeated waking interrupts sleep, while a fine hand tremor remains visible at rest during examination today.',
+    text: `The patient reports ${patient.facts[0].value.toLowerCase()} Examination and questioning establish ${patient.caseNote.requiredFactIds.map((id) => patient.facts.find((entry) => entry.id === id).value.toLowerCase()).join(' and ')} today.`,
   });
   state = consultationTransition(state, patient, { type: 'submit-case-note' });
   assert.equal(state.stage, 'result');
   assert.deepEqual(state.result, {
     reputation: 12,
-    record: 4,
+    record: 11,
     noteCoverage: 100,
     diagnosisId: 'a-diagnosis-1',
     treatmentId: 'a-treatment-1',
@@ -159,20 +188,25 @@ test('a complete consultation reaches distinct reputation and record ledgers', (
 });
 
 test('the runtime publishes states and its offline renderer is deterministic', () => {
+  const secondPatient = TECHNICAL_PATIENTS[1];
+  const disclosed = secondPatient.facts.find((fact) => fact.disclosure === 'withheld');
   const runtime = createConsultationRuntime(TECHNICAL_PATIENTS, renderOfflineDialogue);
   const snapshots = [];
   const unsubscribe = runtime.subscribe((state) => snapshots.push(state));
   runtime.start('technical-b');
   runtime.dispatch({ type: 'begin-inquiry' });
-  const first = runtime.speak({ stance: 'question', text: 'Does bright light trouble you?' });
+  const first = runtime.speak({ stance: 'question', text: `Tell me about the ${disclosed.releaseOn[0]}.` });
   unsubscribe();
   assert.equal(snapshots.length, 3);
-  assert.ok(first.disclosedFactIds.includes('b-light'));
-  const request = buildDialogueRequest(TECHNICAL_PATIENTS[1], beginInquiry(), { stance: 'question', text: 'bright light' });
-  assert.deepEqual(renderOfflineDialogue(request, TECHNICAL_PATIENTS[1]), renderOfflineDialogue(request, TECHNICAL_PATIENTS[1]));
+  assert.ok(first.disclosedFactIds.includes(disclosed.id));
+  const secondState = consultationTransition(startConsultation(secondPatient), secondPatient, { type: 'begin-inquiry' });
+  const request = buildDialogueRequest(secondPatient, secondState, { stance: 'question', text: disclosed.releaseOn[0] });
+  assert.deepEqual(renderOfflineDialogue(request, secondPatient), renderOfflineDialogue(request, secondPatient));
 });
 
 test('the runtime reports only deterministic consultation time costs', () => {
+  const exam = patient.examinations[0];
+  const fact = patient.facts.find((entry) => entry.disclosure === 'withheld');
   const advances = [];
   const runtime = createConsultationRuntime([patient], renderOfflineDialogue, {
     onAdvanceMinutes: (minutes, action) => advances.push([minutes, action.type]),
@@ -180,8 +214,8 @@ test('the runtime reports only deterministic consultation time costs', () => {
   runtime.start(patient.id);
   runtime.dispatch({ type: 'begin-inquiry' });
   runtime.dispatch({ type: 'interpret', id: 'read-distress' });
-  runtime.dispatch({ type: 'examine', id: 'a-check-hands' });
-  runtime.speak({ stance: 'question', text: 'What happens when you try to sleep?' });
+  runtime.dispatch({ type: 'examine', id: exam.id });
+  runtime.speak({ stance: 'question', text: `Tell me about the ${fact.releaseOn[0]}.` });
   assert.deepEqual(advances, [[3, 'examine'], [5, 'speech-response']]);
 });
 

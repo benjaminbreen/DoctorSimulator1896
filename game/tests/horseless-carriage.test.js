@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   CARRIAGE_TUNING,
   ROUTES,
+  applyCarriageProjectileHit,
   createCarriageState,
   sampleRoute,
   stepCarriage,
@@ -125,4 +126,24 @@ test('resumes once the way clears', () => {
   // Speed is sampled at the peak: the run may end inside a corner slowdown.
   assert.ok(peak > CARRIAGE_TUNING.cruise * 0.9, `peak speed ${peak}`);
   assert.ok(state.s > 35, `moving again, s=${state.s}`);
+});
+
+test('a fast projectile shoves and rocks a carriage, then the route recentres it', () => {
+  const moving = run(createCarriageState(0, 5), 5);
+  const hit = applyCarriageProjectileHit(moving, [14, 1, 3], 1);
+  assert.ok(hit.knockX > 0.5, `horizontal shove ${hit.knockX}`);
+  assert.ok(Math.abs(hit.knockRoll) > 0.02, `body roll ${hit.knockRoll}`);
+  assert.ok(hit.speed < moving.speed, `speed ${moving.speed} -> ${hit.speed}`);
+
+  const recovered = run(hit, 2);
+  assert.ok(Math.abs(recovered.knockX) < 0.01, `recentered ${recovered.knockX}`);
+  assert.ok(Math.abs(recovered.knockRoll) < 0.001, `settled ${recovered.knockRoll}`);
+});
+
+test('lighter throwable types deliver proportionally less carriage knockback', () => {
+  const moving = run(createCarriageState(0, 5), 5);
+  const cabbage = applyCarriageProjectileHit(moving, [14, 1, 3], 1);
+  const apple = applyCarriageProjectileHit(moving, [14, 1, 3], 0.32);
+  assert.ok(apple.knockX < cabbage.knockX * 0.4);
+  assert.ok(apple.speed > cabbage.speed);
 });

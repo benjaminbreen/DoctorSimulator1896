@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
+import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { RigidBody, CapsuleCollider, useRapier } from '@react-three/rapier';
 import { movementStep, applySlide } from '../movement/movementStep.js';
@@ -20,8 +21,20 @@ import {
   SEAT_REST_SECONDS,
 } from '../world/player.js';
 import { seatFraming } from '../world/seating.js';
+import {
+  beginThrowableCharge,
+  chargeThrowable,
+  estimateThrowableRange,
+  findReachableThrowable,
+  getThrowablePlay,
+  pickUpThrowable,
+  queueThrowableThrow,
+} from '../world/throwablePlay.js';
+import { throwableDefinition } from '../world/throwables.js';
 
 const MAX_DT = 1 / 30;
+const stillInput = { x: 0, z: 0, run: false, jump: false };
+const throwAim = new THREE.Vector3();
 
 export default function PlayerRig({ room, runtime, keyboard, look, spawn, spawnYaw, forcePlaceholder = false }) {
   // Only the items that offer something. Filtered once per room, so the
@@ -111,8 +124,18 @@ export default function PlayerRig({ room, runtime, keyboard, look, spawn, spawnY
       return;
     }
 
+    let throwPlay = getThrowablePlay();
+    const throwing = throwPlay.phase === 'charging' || throwPlay.phase === 'windup';
+    if (throwPlay.phase === 'charging' && keyboard.state.interact) {
+      chargeThrowable(dt);
+      throwPlay = getThrowablePlay();
+    }
+    if (throwing && gameDebug.stats.cameraYaw !== null) {
+      state.yaw = gameDebug.stats.cameraYaw;
+    }
+
     const result = movementStep({
-      input: keyboard.moveInput(),
+      input: throwing ? stillInput : keyboard.moveInput(),
       // Movement is relative to the active camera's yaw (hero mode follows
       // the player's facing, not the mouse).
       lookYaw: gameDebug.stats.cameraYaw ?? look.look.yaw,
@@ -183,18 +206,53 @@ export default function PlayerRig({ room, runtime, keyboard, look, spawn, spawnY
 
     // A door beats a prop: standing in a doorway with a chair beside it
     // should still offer the door.
+    throwPlay = getThrowablePlay();
+    if (throwPlay.phase !== 'empty') {
+      const definition = throwableDefinition(throwPlay.heldType);
+      const label = definition?.label.toLowerCase() ?? 'object';
+      setReach(null);
+      if (throwPlay.phase === 'held') {
+        gameDebug.prompt = `Hold E to throw ${label}`;
+        if (!keyboard.state.interact) interactLatch.current = false;
+        else if (!interactLatch.current) {
+          interactLatch.current = true;
+          if (gameDebug.stats.cameraYaw !== null) state.yaw = gameDebug.stats.cameraYaw;
+          beginThrowableCharge();
+        }
+      } else if (throwPlay.phase === 'charging') {
+        gameDebug.prompt = `Release E · ${Math.round(estimateThrowableRange(throwPlay.charge, throwPlay.heldType))} m`;
+        if (!keyboard.state.interact) {
+          if (gameDebug.camera) gameDebug.camera.getWorldDirection(throwAim);
+          else throwAim.set(Math.sin(state.yaw), 0.1, -Math.cos(state.yaw));
+          queueThrowableThrow(throwAim);
+          interactLatch.current = false;
+        }
+      } else {
+        gameDebug.prompt = `Throwing ${label}`;
+        if (!keyboard.state.interact) interactLatch.current = false;
+      }
+      return;
+    }
+
     const item = active ? null : findReachable(reachable, gameDebug.player.position, state.yaw);
+    const throwable = active || item
+      ? null
+      : findReachableThrowable(gameDebug.player.position, state.yaw);
+    const throwableLabel = throwableDefinition(throwable?.type)?.label.toLowerCase();
     setReach(item ? { id: item.id, item, affordance: item.affordance } : null);
     gameDebug.prompt = active
       ? active.label
       : item
         ? `${item.affordance.verb} ${item.affordance.name ?? ''}`.trim()
-        : null;
+        : throwable
+          ? `Pick up ${throwableLabel ?? 'object'}`
+          : null;
 
     if (!keyboard.state.interact) interactLatch.current = false;
-    else if (!interactLatch.current && (active || item)) {
+    else if (!interactLatch.current && (active || item || throwable)) {
       interactLatch.current = true;
       if (active) requestTravel(runtime, active);
+      else if (throwable) pickUpThrowable(throwable.id);
       else if (item.affordance.kind === 'instrument') {
         useInstrument({ id: item.id, item, instrument: item.affordance.instrument });
       } else if (item.affordance.kind === 'seat') {

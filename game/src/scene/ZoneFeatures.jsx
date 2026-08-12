@@ -17,6 +17,10 @@ const FEATURES = {
   'checkers-tables': lazy(() => import('./CheckersTables.jsx')),
   'horseless-carriage': lazy(() => import('./HorselessCarriage.jsx')),
   pushcarts: lazy(() => import('./Pushcarts.jsx')),
+  'pigeon-flock': lazy(() => import('./PigeonFlock.jsx')),
+  bees: lazy(() => import('./BeeSwarms.jsx')),
+  butterflies: lazy(() => import('./Butterflies.jsx')),
+  fireflies: lazy(() => import('./Fireflies.jsx')),
 };
 
 export default function ZoneFeatures({ zone, runtime, ids = zone.features ?? [], suspendTogether = false }) {

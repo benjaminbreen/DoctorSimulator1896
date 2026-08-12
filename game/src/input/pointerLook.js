@@ -4,6 +4,8 @@
 // wheel move the same number.
 
 import { adjustSeatZoom, consultationSeatFraming } from '../consultation/seatFraming.js';
+import { adjustInstrumentZoom } from '../instruments/viewFraming.js';
+import { getInteraction } from '../world/interaction.js';
 
 // Per wheel pixel. Trackpad pinch arrives as a ctrl-held wheel with much
 // smaller deltas, so it gets its own rate.
@@ -57,6 +59,13 @@ export function createLook(runtime) {
     // the boom, so the player's walking zoom is left as they set it.
     if (consultationSeatFraming()) {
       adjustSeatZoom(event.deltaY * (event.ctrlKey ? SEAT_PINCH_RATE : SEAT_WHEEL_RATE));
+      return;
+    }
+    // A focused instrument uses the same fixed-eye convention as a seated
+    // consultation. The wheel changes its field of view without disturbing
+    // the player's walking camera zoom.
+    if (getInteraction().using?.instrument) {
+      adjustInstrumentZoom(event.deltaY * (event.ctrlKey ? SEAT_PINCH_RATE : SEAT_WHEEL_RATE));
       return;
     }
     const rate = event.ctrlKey ? PINCH_RATE : WHEEL_RATE;

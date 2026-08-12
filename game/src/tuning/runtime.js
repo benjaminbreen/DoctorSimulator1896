@@ -9,6 +9,25 @@ import indoorPreset from './presets/indoor.json' with { type: 'json' };
 const STORAGE_KEY = 'ghosts-game.tuning.v1';
 const storage = typeof localStorage === 'undefined' ? null : localStorage;
 
+// Version 2 changes only ambient-fauna defaults. Preserve every authored or
+// imported setting, replacing values that still equal the old defaults.
+export function migrateStoredTuning(stored, schema) {
+  if (schema.version !== 2 || stored?.schemaVersion !== 1 || !stored.values) return stored;
+  const values = { ...stored.values };
+  const oldDefaults = {
+    pigeonSize: [1.5, 1.3],
+    pigeonSpeed: [1, 0.7],
+    pigeonAltitude: [-3, -0.5],
+    pigeonContinuous: [false, true],
+    beeSpread: [1, 1.5],
+  };
+  for (const [id, [before, after]] of Object.entries(oldDefaults)) {
+    if (values[id] === before) values[id] = after;
+  }
+  if (values.beeSize === 1.4 || values.beeSize === 0.5) values.beeSize = 0.4;
+  return { ...stored, schemaVersion: 2, values };
+}
+
 function coerce(definition, value) {
   if (definition.type === 'toggle') return Boolean(value);
   if (definition.type === 'select') {
@@ -94,7 +113,7 @@ export function createTuningRuntime(schema) {
   function loadStored() {
     if (!storage) return;
     try {
-      const stored = JSON.parse(storage.getItem(STORAGE_KEY));
+      const stored = migrateStoredTuning(JSON.parse(storage.getItem(STORAGE_KEY)), schema);
       if (stored?.schemaVersion === schema.version) applyPreset(stored);
     } catch {
       storage.removeItem(STORAGE_KEY);

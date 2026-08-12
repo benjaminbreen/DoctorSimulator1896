@@ -32,6 +32,12 @@ export function getInteraction() {
   return snapshot();
 }
 
+// Seats still need the shared Use action so a touch player can stand again.
+// Other focused interactions replace exploration with their own controls.
+export function isFocusedInteraction(entry) {
+  return Boolean(entry && entry.kind !== 'seat');
+}
+
 // Written from the frame loop, so it must not notify unless it changed —
 // otherwise every frame re-renders the HUD.
 export function setReach(entry) {

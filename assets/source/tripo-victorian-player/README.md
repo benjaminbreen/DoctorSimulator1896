@@ -14,6 +14,7 @@ The playable export currently includes these Mixamo clips:
 - `Slow Run.fbx` → `Run`
 - `Jump.fbx` → `Jump`
 - `Standing Jump-2.fbx` → `StandingJump`
+- `Throw Object.fbx` → `Throw`
 - `Quick Formal Bow.fbx` → `FormalBow`
 - `Shaking Hands 2.fbx` → `Handshake`
 

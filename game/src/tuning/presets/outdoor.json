@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "values": {
     "tuftAmount": 0.8,
     "tuftSize": 1.35,

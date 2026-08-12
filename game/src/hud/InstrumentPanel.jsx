@@ -648,6 +648,8 @@ export default function InstrumentPanel() {
               {!coil && !wheel && !pendulum && (
                 <Hint keys="Space">{state.phase === 'set' ? 'release shutter' : 'set again'}</Hint>
               )}
+              <Hint keys="Drag">look</Hint>
+              <Hint keys="Wheel">zoom</Hint>
               <Hint keys="Esc">step away</Hint>
             </div>
           </div>

@@ -12,9 +12,9 @@ export function createSecondsPendulum(options = {}) {
     id: 'seconds-pendulum',
     label: 'Seconds pendulum',
     framing: {
-      offset: [0, 0.72, 2.45],
-      target: [0, 0.64, 0],
-      fov: 34,
+      offset: [0, 0.76, 3.05],
+      target: [0, 0.52, 0],
+      fov: 48,
     },
     length: options.length ?? SECONDS_LENGTH,
     amplitude: options.amplitude ?? 0.27,

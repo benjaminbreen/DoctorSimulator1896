@@ -3,21 +3,48 @@ import { generatePatient, patientToRendererCRecipe } from '../../../shared/patie
 
 export const DEFAULT_TECHNICAL_PATIENT_SEEDS = Object.freeze([2273, 4819, 4816]);
 
-function generatedActor(seed, id, sex, expression = 'neutral') {
-  const profile = generatePatient({ seed, sex });
-  const female = sex === 'female';
-  const recipe = patientToRendererCRecipe(profile, {
-    id,
-    animation: { body: 'clinic-idle', expression, gaze: 'doctor', speaking: false },
-    // The two cohort masters currently use opposite forward axes. Keep that
-    // asset correction at this adapter boundary; both use the east chair.
-    // Lifted to the chair's seat height; at y 0 the sitting pose sinks in.
-    placement: female
-      ? { position: [0.45, 0.22, -1.7], rotation: [0, Math.PI, 0], scale: 1 }
-      : { position: [0.45, 0.22, -1.7], rotation: [0, 0, 0], scale: 1 },
-  });
-  return { profile, actor: createActorInstance({ id, recipe }) };
-}
+const PRESENTATION_DETAILS = Object.freeze({
+  'neurasthenic-exhaustion': Object.freeze({
+    diagnoses: ['Neurasthenic exhaustion', 'Anaemic debility'],
+    treatments: ['Rest and regulated sleep', 'Galvanic treatment'],
+  }),
+  'melancholic-withdrawal': Object.freeze({
+    diagnoses: ['Melancholia', 'Neurasthenic exhaustion'],
+    treatments: ['Change of scene and companionship', 'Rest and nourishing diet'],
+  }),
+  'anxious-palpitations': Object.freeze({
+    diagnoses: ['Nervous palpitation', 'Neurasthenic exhaustion'],
+    treatments: ['Rest and regulated breathing', 'Galvanic treatment'],
+  }),
+  'persistent-insomnia': Object.freeze({
+    diagnoses: ['Nervous insomnia', 'Neurasthenic exhaustion'],
+    treatments: ['Regulated sleep and exercise', 'Bromide draught'],
+  }),
+  'bereavement-visions': Object.freeze({
+    diagnoses: ['Morbid grief', 'Nervous exhaustion'],
+    treatments: ['Companionship and observation', 'Rest and regulated sleep'],
+  }),
+  'compulsive-fears': Object.freeze({
+    diagnoses: ['Fixed nervous apprehension', 'Neurasthenic exhaustion'],
+    treatments: ['Regulated occupation and exercise', 'Rest and seclusion'],
+  }),
+  'functional-tremor': Object.freeze({
+    diagnoses: ['Hysterical tremor', 'Neurasthenic exhaustion'],
+    treatments: ['Rest and graduated exercise', 'Galvanic treatment'],
+  }),
+  'traumatic-fright': Object.freeze({
+    diagnoses: ['Nervous shock', 'Neurasthenic exhaustion'],
+    treatments: ['Rest and removal from reminders', 'Galvanic treatment'],
+  }),
+  'morphine-habit': Object.freeze({
+    diagnoses: ['Morphine habit', 'Neurasthenic exhaustion'],
+    treatments: ['Supervised gradual withdrawal', 'Rest and nourishing diet'],
+  }),
+  'postpartum-disturbance': Object.freeze({
+    diagnoses: ['Puerperal mental disturbance', 'Melancholia'],
+    treatments: ['Close nursing and rest', 'Removal from household duties'],
+  }),
+});
 
 const commonInterpretations = Object.freeze([
   Object.freeze({ id: 'read-distress', text: 'The patient appears genuinely distressed.' }),
@@ -25,129 +52,166 @@ const commonInterpretations = Object.freeze([
   Object.freeze({ id: 'read-physical', text: 'A physical sign deserves more weight than the manner of speaking.' }),
 ]);
 
-function technicalPatient(input) {
+function sentence(value) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  return `${text[0].toUpperCase()}${text.slice(1).replace(/[.!?]+$/, '')}.`;
+}
+
+function words(value) {
+  return String(value || '').toLowerCase().match(/[a-z]+/g) || [];
+}
+
+function uniqueTerms(...values) {
+  return [...new Set(values.flatMap(words).filter((word) => word.length > 3))];
+}
+
+function expressionFor(profile) {
+  if (['weary', 'sad'].includes(profile.clinical.affect)) return 'fatigued';
+  return 'guarded';
+}
+
+function generatedActor(profile, id) {
+  const female = profile.identity.sex === 'female';
+  const recipe = patientToRendererCRecipe(profile, {
+    id,
+    animation: { body: 'clinic-idle', expression: expressionFor(profile), gaze: 'doctor', speaking: false },
+    // The two cohort masters currently use opposite forward axes. Keep that
+    // asset correction here and lift both figures to the chair's seat height.
+    placement: female
+      ? { position: [0.45, 0.22, -1.7], rotation: [0, Math.PI, 0], scale: 1 }
+      : { position: [0.45, 0.22, -1.7], rotation: [0, 0, 0], scale: 1 },
+  });
+  return createActorInstance({ id, recipe });
+}
+
+function symptomFact(prefix, symptom, index) {
+  const id = `${prefix}-symptom-${index + 1}`;
+  const disclosed = index === 0;
+  return {
+    id,
+    kind: 'symptom',
+    label: sentence(symptom).replace(/\.$/, ''),
+    value: sentence(symptom),
+    confidence: 'high',
+    measurement: false,
+    disclosure: disclosed ? 'open' : 'withheld',
+    releaseOn: uniqueTerms(symptom),
+    patientWording: sentence(`The trouble includes ${symptom}`),
+    noteTerms: uniqueTerms(symptom),
+  };
+}
+
+function physicalFacts(profile, prefix) {
+  const rate = profile.clinical.performance.breathingRate;
+  const tremor = profile.clinical.performance.tremor;
+  const tremorValue = tremor >= 1
+    ? 'A marked tremor is visible while the hands are supported.'
+    : tremor >= 0.4
+      ? 'A fine tremor is visible while the hands are supported.'
+      : 'No marked tremor is visible while the hands are supported.';
+  return [
+    {
+      id: `${prefix}-sign-breathing`, kind: 'sign', label: 'Respiration',
+      value: `Respiration is ${rate} breaths per minute.`, confidence: 'high',
+      measurement: true, disclosure: 'observed', noteTerms: ['respiration', 'breaths', String(rate)],
+    },
+    {
+      id: `${prefix}-sign-tremor`, kind: 'sign', label: 'Hands',
+      value: tremorValue, confidence: 'moderate', measurement: false,
+      disclosure: 'observed', noteTerms: ['tremor', 'hands'],
+    },
+  ];
+}
+
+function examinationsFor(prefix, signs) {
+  return [
+    {
+      id: `${prefix}-exam-breathing`, label: 'Count respiration', factId: signs[0].id,
+      reply: signs[0].value,
+      uncertainty: 'One count must be weighed with the patient’s account and manner of breathing.',
+    },
+    {
+      id: `${prefix}-exam-hands`, label: 'Observe hands', factId: signs[1].id,
+      reply: signs[1].value,
+      uncertainty: 'The patient knows the hands are being watched.',
+    },
+  ];
+}
+
+function makePrompt(prefix, fact, index) {
+  const topic = fact.releaseOn[0] || fact.label.toLowerCase();
+  return {
+    id: `${prefix}-ask-${index + 1}`,
+    text: `Tell me more about the ${topic}.`,
+    stance: 'question',
+  };
+}
+
+function consultationFor(profile, index) {
+  const prefix = String.fromCharCode(97 + index);
+  const details = PRESENTATION_DETAILS[profile.clinical.id];
+  const symptoms = profile.clinical.symptoms.map((symptom, symptomIndex) => (
+    symptomFact(prefix, symptom, symptomIndex)
+  ));
+  const signs = physicalFacts(profile, prefix);
+  const facts = [...symptoms, ...signs];
+  const withheld = symptoms.filter((fact) => fact.disclosure === 'withheld');
+  const diagnoses = details?.diagnoses || [profile.clinical.periodCategory, 'Neurasthenic exhaustion'];
+  const treatments = details?.treatments || ['Rest and observation', 'Galvanic treatment'];
+  const subject = profile.identity.sex === 'male' ? 'He' : 'She';
+
+  return {
+    opening: {
+      dialogue: `“${sentence(profile.clinical.presentingComplaint).replace(/\.$/, '')}”`,
+      behavior: `${subject} describes the trouble as having lasted ${profile.clinical.duration}.`,
+    },
+    facts,
+    examinations: examinationsFor(prefix, signs),
+    prompts: [
+      ...withheld.slice(0, 3).map((fact, factIndex) => makePrompt(prefix, fact, factIndex)),
+      { id: `${prefix}-reassure`, text: 'You may speak plainly here; nothing leaves this room.', stance: 'reassure' },
+    ],
+    diagnoses: diagnoses.map((label, diagnosisIndex) => ({
+      id: `${prefix}-diagnosis-${diagnosisIndex + 1}`,
+      label,
+      reputation: diagnosisIndex === 0 ? 4 : 1,
+      record: diagnosisIndex === 0 ? 4 : 1,
+    })),
+    treatments: treatments.map((label, treatmentIndex) => ({
+      id: `${prefix}-treatment-${treatmentIndex + 1}`,
+      label,
+      reputation: treatmentIndex === 0 ? 4 : 1,
+      record: treatmentIndex === 0 ? 3 : 0,
+    })),
+    requiredFactIds: [withheld[0].id, signs[0].id],
+  };
+}
+
+function technicalPatient(seed, index, sex) {
+  const id = `technical-${String.fromCharCode(97 + index)}`;
+  const profile = generatePatient({ seed, sex });
+  const consultation = consultationFor(profile, index);
   return Object.freeze({
+    id,
     contentStatus: 'technical-fixture',
     profileStatus: 'draft-procedural',
     initialTrust: 50,
+    profile,
+    actor: generatedActor(profile, id),
     interpretations: commonInterpretations,
-    caseNote: { minimumWords: 12, requiredFactIds: input.requiredFactIds },
-    ...input,
-    label: input.profile.identity.fullName,
+    caseNote: { minimumWords: 12, requiredFactIds: consultation.requiredFactIds },
+    ...consultation,
+    label: profile.identity.fullName,
   });
 }
 
 export function createTechnicalPatients(seeds = DEFAULT_TECHNICAL_PATIENT_SEEDS) {
-  const normalizedSeeds = DEFAULT_TECHNICAL_PATIENT_SEEDS.map((fallback, index) => Number(seeds[index]) || fallback);
-  const cast = [
-    generatedActor(normalizedSeeds[0], 'technical-a', 'female', 'guarded'),
-    generatedActor(normalizedSeeds[1], 'technical-b', 'male', 'guarded'),
-    generatedActor(normalizedSeeds[2], 'technical-c', 'female', 'fatigued'),
-  ];
+  const normalized = DEFAULT_TECHNICAL_PATIENT_SEEDS.map((fallback, index) => Number(seeds[index]) || fallback);
   return Object.freeze([
-  technicalPatient({
-    id: 'technical-a',
-    profile: cast[0].profile,
-    actor: cast[0].actor,
-    opening: {
-      dialogue: '“I have slept badly for several nights, and my hands will not remain still.”',
-      behavior: 'She holds both hands together in her lap.',
-    },
-    facts: [
-      { id: 'a-complaint', label: 'Complaint', value: 'Poor sleep and shaking hands', confidence: 'high', measurement: false, disclosure: 'open', noteTerms: ['sleep', 'shaking', 'tremor'] },
-      { id: 'a-sleep', label: 'Sleep', value: 'Wakes repeatedly', confidence: 'high', measurement: false, disclosure: 'withheld', releaseOn: ['sleep', 'night', 'wake'], patientWording: 'I wake again and again before morning.', noteTerms: ['wake', 'sleep'] },
-      { id: 'a-pulse', label: 'Pulse', value: 'Quick and regular', confidence: 'high', measurement: true, disclosure: 'withheld', releaseOn: ['pulse', 'heart'], patientWording: 'I often feel my heart beating quickly.', noteTerms: ['pulse', 'regular'] },
-      { id: 'a-tremor', label: 'Tremor', value: 'Fine tremor at rest', confidence: 'high', measurement: false, disclosure: 'withheld', releaseOn: ['hand', 'shake', 'tremor'], patientWording: 'It continues even when I try to rest my hands.', noteTerms: ['tremor', 'hand'] },
-    ],
-    examinations: [
-      { id: 'a-check-pulse', label: 'Take pulse', factId: 'a-pulse', reply: 'The pulse is quick but regular.', uncertainty: 'A single reading cannot establish its usual rate.' },
-      { id: 'a-check-hands', label: 'Observe hands', factId: 'a-tremor', reply: 'A fine tremor continues while the hands are supported.', behavior: 'She watches your hands closely.' },
-    ],
-    // Question texts carry the release tokens of the facts they pursue.
-    prompts: [
-      { id: 'a-ask-night', text: 'Tell me how you pass the night — do you wake?', stance: 'question' },
-      { id: 'a-ask-hands', text: 'When did the trembling of your hands begin?', stance: 'question' },
-      { id: 'a-ask-heart', text: 'Does your heart ever race or flutter?', stance: 'question' },
-      { id: 'a-reassure', text: 'You are safe to speak plainly; nothing leaves this room.', stance: 'reassure' },
-    ],
-    diagnoses: [
-      { id: 'a-diagnosis-1', label: 'Nervous exhaustion', reputation: 4, record: 1 },
-      { id: 'a-diagnosis-2', label: 'Hysterical tremor', reputation: 1, record: 4 },
-    ],
-    treatments: [
-      { id: 'a-treatment-1', label: 'Rest and regulated sleep', reputation: 4, record: -1 },
-      { id: 'a-treatment-2', label: 'Galvanic treatment', reputation: 1, record: 4 },
-    ],
-    requiredFactIds: ['a-sleep', 'a-tremor'],
-  }),
-  technicalPatient({
-    id: 'technical-b',
-    profile: cast[1].profile,
-    actor: cast[1].actor,
-    opening: {
-      dialogue: '“The pain returns behind my eyes, especially when the room is bright.”',
-      behavior: 'He turns slightly away from the lamp.',
-    },
-    facts: [
-      { id: 'b-complaint', label: 'Complaint', value: 'Recurring head pain', confidence: 'high', measurement: false, disclosure: 'open', noteTerms: ['pain', 'head'] },
-      { id: 'b-light', label: 'Light', value: 'Bright light worsens pain', confidence: 'high', measurement: false, disclosure: 'withheld', releaseOn: ['light', 'lamp', 'bright'], patientWording: 'Bright light makes the pain markedly worse.', noteTerms: ['light', 'bright'] },
-      { id: 'b-pupils', label: 'Pupils', value: 'Equal response to light', confidence: 'high', measurement: false, disclosure: 'withheld', releaseOn: ['eye', 'pupil', 'vision'], patientWording: 'My sight itself does not seem changed.', noteTerms: ['pupil', 'equal'] },
-      { id: 'b-nausea', label: 'Nausea', value: 'Occasional nausea', confidence: 'moderate', measurement: false, disclosure: 'withheld', releaseOn: ['stomach', 'sick', 'nausea'], patientWording: 'At its worst, the pain turns my stomach.', noteTerms: ['nausea', 'stomach'] },
-    ],
-    examinations: [
-      { id: 'b-check-pupils', label: 'Inspect pupils', factId: 'b-pupils', reply: 'Both pupils respond equally to the shaded lamp.' },
-      { id: 'b-test-light', label: 'Vary the light', factId: 'b-light', reply: 'The brighter light promptly increases his discomfort.', behavior: 'He raises a hand to shade his eyes.' },
-    ],
-    prompts: [
-      { id: 'b-ask-light', text: 'Does the lamplight trouble you just now?', stance: 'question' },
-      { id: 'b-ask-vision', text: 'Has your vision itself changed at all?', stance: 'question' },
-      { id: 'b-ask-stomach', text: 'Does the pain ever turn your stomach?', stance: 'question' },
-      { id: 'b-reassure', text: 'Take your time; we will go slowly and carefully.', stance: 'reassure' },
-    ],
-    diagnoses: [
-      { id: 'b-diagnosis-1', label: 'Sick headache', reputation: 4, record: 2 },
-      { id: 'b-diagnosis-2', label: 'Ocular strain', reputation: 1, record: 4 },
-    ],
-    treatments: [
-      { id: 'b-treatment-1', label: 'Rest in a darkened room', reputation: 3, record: 0 },
-      { id: 'b-treatment-2', label: 'Corrective spectacles', reputation: 1, record: 4 },
-    ],
-    requiredFactIds: ['b-light', 'b-pupils'],
-  }),
-  technicalPatient({
-    id: 'technical-c',
-    profile: cast[2].profile,
-    actor: cast[2].actor,
-    opening: {
-      dialogue: '“I become faint when I stand, and the weakness has been worse this week.”',
-      behavior: 'She remains seated and keeps one hand on the chair.',
-    },
-    facts: [
-      { id: 'c-complaint', label: 'Complaint', value: 'Weakness and faintness', confidence: 'high', measurement: false, disclosure: 'open', noteTerms: ['weak', 'faint'] },
-      { id: 'c-standing', label: 'Standing', value: 'Symptoms worsen on standing', confidence: 'high', measurement: false, disclosure: 'withheld', releaseOn: ['stand', 'rise', 'upright'], patientWording: 'It comes over me when I rise from a chair.', noteTerms: ['stand', 'rise'] },
-      { id: 'c-pulse', label: 'Pulse', value: 'Pulse rises after standing', confidence: 'high', measurement: true, disclosure: 'withheld', releaseOn: ['pulse', 'heart'], patientWording: 'My heart races when the faintness begins.', noteTerms: ['pulse', 'rises'] },
-      { id: 'c-tongue', label: 'Tongue', value: 'Pale appearance', confidence: 'moderate', measurement: false, disclosure: 'withheld', releaseOn: ['mouth', 'tongue'], patientWording: 'My mouth has felt unusually dry.', noteTerms: ['tongue', 'pale'] },
-    ],
-    examinations: [
-      { id: 'c-check-pulse', label: 'Compare pulse', factId: 'c-pulse', reply: 'The pulse rises after she carefully stands.', behavior: 'She grips the chair until the faintness passes.' },
-      { id: 'c-check-tongue', label: 'Inspect tongue', factId: 'c-tongue', reply: 'The tongue and inner mouth appear pale.' },
-    ],
-    prompts: [
-      { id: 'c-ask-standing', text: 'What happens when you rise from a chair?', stance: 'question' },
-      { id: 'c-ask-heart', text: 'Does your heart race when the faintness comes?', stance: 'question' },
-      { id: 'c-ask-mouth', text: 'Has your mouth been dry, or your appetite poor?', stance: 'question' },
-      { id: 'c-reassure', text: 'We shall take this gently; you are in careful hands.', stance: 'reassure' },
-    ],
-    diagnoses: [
-      { id: 'c-diagnosis-1', label: 'Anaemic debility', reputation: 4, record: 0 },
-      { id: 'c-diagnosis-2', label: 'Nervous palpitation', reputation: 1, record: 4 },
-    ],
-    treatments: [
-      { id: 'c-treatment-1', label: 'Iron and nourishing diet', reputation: 4, record: -2 },
-      { id: 'c-treatment-2', label: 'Recumbent rest', reputation: 1, record: 4 },
-    ],
-    requiredFactIds: ['c-standing', 'c-pulse'],
-  }),
+    technicalPatient(normalized[0], 0, 'female'),
+    technicalPatient(normalized[1], 1, 'male'),
+    technicalPatient(normalized[2], 2, 'female'),
   ]);
 }
 

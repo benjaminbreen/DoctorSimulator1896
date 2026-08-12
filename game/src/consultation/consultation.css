@@ -1235,7 +1235,8 @@
     text-align: center;
   }
 
-  .gcon-rail-book span:first-child { display: inline; }
+  .gcon-rail-book .gcon-desktop-label { display: none; }
+  .gcon-rail-book .gcon-mobile-label { display: inline; }
   .gcon-rail-book .gcon-key { display: none; }
 
   .gcon-stage,
