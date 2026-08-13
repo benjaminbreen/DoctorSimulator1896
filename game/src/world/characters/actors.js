@@ -11,12 +11,19 @@ export function createActorInstance(input = {}) {
 
 export function updateActorCue(actor, cue = {}) {
   if (!actor) return actor;
+  const normalized = createCharacterRecipe({
+    ...actor.recipe,
+    animation: { ...actor.recipe.animation, ...cue },
+  });
   return {
     ...actor,
-    recipe: createCharacterRecipe({
+    // Animation is the only live part of a consultation cue. Preserve the
+    // appearance, asset, and placement references so the renderer can keep
+    // its cloned skeleton and mixer instead of rebuilding the whole patient.
+    recipe: {
       ...actor.recipe,
-      animation: { ...actor.recipe.animation, ...cue },
-    }),
+      animation: normalized.animation,
+    },
   };
 }
 

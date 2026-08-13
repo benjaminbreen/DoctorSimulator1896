@@ -29,6 +29,11 @@ test('actor cues update immutably through the shared vocabulary', () => {
   assert.deepEqual(updated.recipe.animation, {
     body: 'sitting-distressed', expression: 'distressed', gaze: 'away', speaking: false,
   });
+  assert.equal(updated.recipe.values, original.recipe.values);
+  assert.equal(updated.recipe.presentation, original.recipe.presentation);
+  assert.equal(updated.recipe.restingFace, original.recipe.restingFace);
+  assert.equal(updated.recipe.asset, original.recipe.asset);
+  assert.equal(updated.recipe.placement, original.recipe.placement);
 });
 
 test('the actor runtime swaps patients and applies semantic cues', () => {
