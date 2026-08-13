@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  graphicsSettingsForDevice,
   MOBILE_CONTEXT_RECYCLE_DELAY_MS,
   shouldRecycleWebGLContextOnTravel,
   webGLContextKey,
@@ -45,5 +46,29 @@ test('only the mobile context key changes between zones', () => {
 });
 
 test('the mobile handoff waits for React Three Fiber context cleanup', () => {
-  assert.ok(MOBILE_CONTEXT_RECYCLE_DELAY_MS > 500);
+  assert.ok(MOBILE_CONTEXT_RECYCLE_DELAY_MS >= 1500);
+});
+
+test('constrained mobile graphics avoid the destination allocation spike', () => {
+  const authored = {
+    antialias: true,
+    postEnabled: true,
+    pixelRatioCap: 2,
+    shadowMapSize: '2048',
+  };
+
+  assert.deepEqual(graphicsSettingsForDevice(authored, true), {
+    antialias: false,
+    postEnabled: false,
+    pixelRatioCap: 1.25,
+    maxShadowMapSize: 1024,
+    deferIdleActors: true,
+  });
+  assert.deepEqual(graphicsSettingsForDevice(authored, false), {
+    antialias: true,
+    postEnabled: true,
+    pixelRatioCap: 2,
+    maxShadowMapSize: Infinity,
+    deferIdleActors: false,
+  });
 });

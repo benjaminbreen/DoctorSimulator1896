@@ -33,6 +33,7 @@ import { gameDebug } from '../debug.js';
 import { getInteraction } from '../world/interaction.js';
 import { consultationSeatFraming } from '../consultation/seatFraming.js';
 import {
+  graphicsSettingsForDevice,
   MOBILE_CONTEXT_RECYCLE_DELAY_MS,
   shouldRecycleWebGLContextOnTravel,
   webGLContextKey,
@@ -173,7 +174,7 @@ function isGroundCover(item) {
 }
 
 // Applies live renderer params each frame and wires mouse look to the canvas.
-function FrameSettings({ runtime, look, exposureBase, exterior }) {
+function FrameSettings({ runtime, look, exposureBase, exterior, pixelRatioCap }) {
   const gl = useThree((state) => state.gl);
   const camera = useThree((state) => state.camera);
   const setDpr = useThree((state) => state.setDpr);
@@ -207,7 +208,7 @@ function FrameSettings({ runtime, look, exposureBase, exterior }) {
       camera.fov = values.fov;
       camera.updateProjectionMatrix();
     }
-    const dpr = Math.min(window.devicePixelRatio, values.pixelRatioCap);
+    const dpr = Math.min(window.devicePixelRatio, pixelRatioCap);
     if (Math.abs(gl.getPixelRatio() - dpr) > 0.01) setDpr(dpr);
     gameDebug.stats.fps = damp(gameDebug.stats.fps, 1 / Math.max(delta, 1e-4), 3.5, delta);
   });
@@ -225,11 +226,16 @@ export default function GameCanvas({
   keyboard,
   look,
   actors = [],
+  consultationActive = false,
   rebuildVersion = 0,
   onReadyForReveal,
 }) {
   const values = runtime.values;
   const recycleOnTravel = useMemo(shouldRecycleWebGLContextOnTravel, []);
+  const graphics = useMemo(
+    () => graphicsSettingsForDevice(values, recycleOnTravel),
+    [recycleOnTravel, values.antialias, values.pixelRatioCap, values.postEnabled],
+  );
   const [canvasZone, setCanvasZone] = useState(values.zone);
   useEffect(() => {
     if (!recycleOnTravel || canvasZone === values.zone) return undefined;
@@ -249,10 +255,11 @@ export default function GameCanvas({
     <Canvas
       key={contextKey}
       shadows={SHADOW_CONFIG}
+      dpr={Math.min(globalThis.devicePixelRatio ?? 1, graphics.pixelRatioCap)}
       // With post on, the scene renders into the composer's own buffer and the
       // default framebuffer's MSAA is allocated but never resolved; the
       // composer does the antialiasing instead.
-      gl={{ antialias: values.antialias && !values.postEnabled, powerPreference: 'high-performance' }}
+      gl={{ antialias: graphics.antialias && !graphics.postEnabled, powerPreference: 'high-performance' }}
       camera={{ fov: values.fov, near: 0.1, far: 1500, position: [2, 2.4, 5.5] }}
       onCreated={({ gl }) => {
         gameDebug.renderer = gl;
@@ -269,6 +276,8 @@ export default function GameCanvas({
         keyboard={keyboard}
         look={look}
         actors={actors}
+        consultationActive={consultationActive}
+        graphics={graphics}
         onReadyForReveal={onReadyForReveal}
       />
     </Canvas>
@@ -286,7 +295,16 @@ function RendererZoneSettings({ runtime }) {
   return null;
 }
 
-function SceneContents({ runtime, worldClock, keyboard, look, actors, onReadyForReveal }) {
+function SceneContents({
+  runtime,
+  worldClock,
+  keyboard,
+  look,
+  actors,
+  consultationActive,
+  graphics,
+  onReadyForReveal,
+}) {
   // Rebuild params (zone included) are read once per mount; App remounts
   // these contents on change.
   const values = runtime.values;
@@ -435,6 +453,7 @@ function SceneContents({ runtime, worldClock, keyboard, look, actors, onReadyFor
         look={look}
         exposureBase={lighting.exposureBase ?? 1}
         exterior={room.exterior}
+        pixelRatioCap={graphics.pixelRatioCap}
       />
       <PlayerStateStep />
       <PlayerMeterEffects />
@@ -443,7 +462,11 @@ function SceneContents({ runtime, worldClock, keyboard, look, actors, onReadyFor
           <Suspense fallback={null}>
             <Physics gravity={[0, -9.81, 0]}>
               <ParkStage active stage={0} onRendered={onParkStageRendered}>
-              <SkyRig config={lighting} runtime={runtime} />
+              <SkyRig
+                config={lighting}
+                runtime={runtime}
+                maxShadowMapSize={graphics.maxShadowMapSize}
+              />
               <StarField runtime={runtime} />
               <SunDisc runtime={runtime} />
               <MoonDisc runtime={runtime} />
@@ -519,7 +542,7 @@ function SceneContents({ runtime, worldClock, keyboard, look, actors, onReadyFor
               <PlayerAvatar runtime={runtime} onReady={onAvatarReady} />
             </Suspense>
           )}
-          {values.postEnabled && parkStage >= 6 && (
+          {graphics.postEnabled && parkStage >= 6 && (
             <Suspense fallback={null}>
               <Effects runtime={runtime} indoors={false} />
             </Suspense>
@@ -533,7 +556,13 @@ function SceneContents({ runtime, worldClock, keyboard, look, actors, onReadyFor
             <Furniture items={room.furnitureBoxes} />
             <PropModels items={room.furnitureBoxes.filter((item) => item.model)} />
             <>
-              <LightingRig room={room} config={lighting} runtime={runtime} dressing={dressing} />
+              <LightingRig
+                room={room}
+                config={lighting}
+                runtime={runtime}
+                dressing={dressing}
+                maxShadowMapSize={graphics.maxShadowMapSize}
+              />
               <InteriorEnvironment lighting={lighting} runtime={runtime} />
               <CeilingRose room={room} lighting={lighting} />
               <WallArt items={room.furnitureBoxes} />
@@ -572,12 +601,16 @@ function SceneContents({ runtime, worldClock, keyboard, look, actors, onReadyFor
             <ColliderDebug room={room} runtime={runtime} />
             <InstrumentStage />
             {blueprint.id === 'CONSULTING_OFFICE' && <OpiumRitual />}
-            {blueprint.id === 'CONSULTING_OFFICE' && actors.length > 0 && (
-              <ActorLayer actors={actors} />
+            {blueprint.id === 'CONSULTING_OFFICE'
+              && actors.length > 0
+              && (!graphics.deferIdleActors || consultationActive) && (
+              <Suspense fallback={null}>
+                <ActorLayer actors={actors} />
+              </Suspense>
             )}
             </Physics>
           </Suspense>
-          {values.postEnabled && (
+          {graphics.postEnabled && (
             <Suspense fallback={null}>
               <Effects runtime={runtime} indoors />
             </Suspense>

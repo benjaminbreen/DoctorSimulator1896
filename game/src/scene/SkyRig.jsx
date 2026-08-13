@@ -19,7 +19,7 @@ const HEMI_GROUND = { night: new THREE.Color('#111a29'), day: new THREE.Color('#
 const AMBIENT_NIGHT = new THREE.Color('#526b91');
 const AMBIENT_DAY = new THREE.Color('#e4e7de');
 const scratch = new THREE.Color();
-export default function SkyRig({ config, runtime }) {
+export default function SkyRig({ config, runtime, maxShadowMapSize = Infinity }) {
   const scene = useThree((state) => state.scene);
   const sunRef = useRef();
   const ambientRef = useRef();
@@ -28,7 +28,11 @@ export default function SkyRig({ config, runtime }) {
   // The sun's map covers 50m against an interior light's few metres, so it
   // needs the extra rank to resolve thin casters. A bench is slats and iron
   // bars: below about 3cm per texel it writes nothing and casts no shadow.
-  const shadowMapSize = Math.min(Number(runtime.values.shadowMapSize) * 2, 4096);
+  const shadowMapSize = Math.min(
+    Number(runtime.values.shadowMapSize) * 2,
+    4096,
+    maxShadowMapSize,
+  );
 
   // Grade uniforms live on the compiled program, so hold them for useFrame.
   const grade = useMemo(

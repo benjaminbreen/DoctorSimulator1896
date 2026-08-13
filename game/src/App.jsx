@@ -207,6 +207,7 @@ export default function App() {
           keyboard={keyboard}
           look={look}
           actors={actors}
+          consultationActive={consultActive}
           onReadyForReveal={setParkReady}
         />
         {!shotMode && (

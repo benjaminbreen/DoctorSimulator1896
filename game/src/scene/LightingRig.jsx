@@ -42,12 +42,18 @@ function flickerNoise(time, seed) {
 
 // What a window shows is WindowView's or WindowSky's job; this rig only makes
 // light.
-export default function LightingRig({ room, config, runtime, dressing }) {
+export default function LightingRig({
+  room,
+  config,
+  runtime,
+  dressing,
+  maxShadowMapSize = Infinity,
+}) {
   const ambientRef = useRef();
   const hemisphereRef = useRef();
   const portalRefs = useRef([]);
   const gaslightRefs = useRef([]);
-  const shadowMapSize = Number(runtime.values.shadowMapSize);
+  const shadowMapSize = Math.min(Number(runtime.values.shadowMapSize), maxShadowMapSize);
 
   const portals = useMemo(() => {
     const found = config.windowPortals
@@ -146,8 +152,12 @@ export default function LightingRig({ room, config, runtime, dressing }) {
             }}
             target={portal.target}
             castShadow={portal.casts}
-            shadow-mapSize-width={portal.casts ? Math.min(shadowMapSize * 2, 2048) : shadowMapSize}
-            shadow-mapSize-height={portal.casts ? Math.min(shadowMapSize * 2, 2048) : shadowMapSize}
+            shadow-mapSize-width={portal.casts
+              ? Math.min(shadowMapSize * 2, 2048, maxShadowMapSize)
+              : shadowMapSize}
+            shadow-mapSize-height={portal.casts
+              ? Math.min(shadowMapSize * 2, 2048, maxShadowMapSize)
+              : shadowMapSize}
             shadow-camera-near={0.1}
             shadow-camera-far={16}
             shadow-camera-left={-SHADOW_EXTENT}
