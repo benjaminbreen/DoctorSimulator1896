@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useLoader } from '@react-three/fiber';
 import { RigidBody, CuboidCollider, CylinderCollider } from '@react-three/rapier';
@@ -52,6 +52,7 @@ function Backdrop({ item, facadeTextures }) {
   useEffect(() => () => facadeMaterial.dispose(), [facadeMaterial]);
   const capY = item.size[1] / 2 + 0.25;
   const chimneys = 1 + (seed % 3);
+  const castsShadow = item.shadows ?? true;
   const identify = item.landmarkLabel
     ? (event) => {
         // React Three Fiber measures pointer travel between down and up. A
@@ -71,11 +72,11 @@ function Backdrop({ item, facadeTextures }) {
       rotation={[0, item.yaw ?? 0, 0]}
       onClick={identify}
     >
-      <mesh castShadow receiveShadow>
+      <mesh castShadow={castsShadow} receiveShadow>
         <boxGeometry args={item.size} />
         <primitive attach="material" object={facadeMaterial} />
       </mesh>
-      <mesh position={[0, capY, 0]} castShadow receiveShadow>
+      <mesh position={[0, capY, 0]} castShadow={castsShadow} receiveShadow>
         <boxGeometry args={[item.size[0] + 0.5, 0.5, item.size[2] + 0.5]} />
         <meshStandardMaterial color="#4c4138" roughness={0.95} />
       </mesh>
@@ -87,7 +88,7 @@ function Backdrop({ item, facadeTextures }) {
             capY + 0.85,
             (hash01(seed + index * 7) - 0.5) * item.size[2] * 0.6,
           ]}
-          castShadow
+          castShadow={castsShadow}
           receiveShadow
         >
           <boxGeometry args={[0.55, 1.2, 0.55]} />
@@ -95,24 +96,24 @@ function Backdrop({ item, facadeTextures }) {
         </mesh>
       ))}
       {item.roof === 'cone' && (
-        <mesh position={[0, capY + 2.4, 0]} castShadow receiveShadow>
+        <mesh position={[0, capY + 2.4, 0]} castShadow={castsShadow} receiveShadow>
           <coneGeometry args={[Math.min(item.size[0], item.size[2]) * 0.42, 5, 12]} />
           <meshStandardMaterial color="#3e4046" roughness={0.85} />
         </mesh>
       )}
       {item.roof === 'mansard' && (
-        <mesh position={[0, capY + 1.5, 0]} rotation={[0, Math.PI / 4, 0]} castShadow receiveShadow>
+        <mesh position={[0, capY + 1.5, 0]} rotation={[0, Math.PI / 4, 0]} castShadow={castsShadow} receiveShadow>
           <coneGeometry args={[Math.max(item.size[0], item.size[2]) * 0.6, 3.2, 4]} />
           <meshStandardMaterial color="#43454c" roughness={0.9} />
         </mesh>
       )}
       {!item.roof && item.size[1] > 18 && seed % 3 === 0 && (
         <group position={[item.size[0] * 0.2, capY + 1.3, -item.size[2] * 0.15]}>
-          <mesh castShadow receiveShadow>
+          <mesh castShadow={castsShadow} receiveShadow>
             <cylinderGeometry args={[0.95, 1.05, 1.7, 12]} />
             <meshStandardMaterial color="#5a4636" roughness={0.9} />
           </mesh>
-          <mesh position={[0, 1.15, 0]} castShadow receiveShadow>
+          <mesh position={[0, 1.15, 0]} castShadow={castsShadow} receiveShadow>
             <coneGeometry args={[1.1, 0.7, 12]} />
             <meshStandardMaterial color="#4a3a2e" roughness={0.9} />
           </mesh>
@@ -120,6 +121,170 @@ function Backdrop({ item, facadeTextures }) {
       )}
     </group>
   );
+}
+
+function FacadeBatch({ entries, facadeTextures }) {
+  const meshRef = useRef();
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  const style = entries[0]?.facadeStyle ?? 0;
+  const tone = entries[0]?.facadeTone ?? null;
+  const groundStart = entries[0]
+    ? entries[0].position[1] - entries[0].size[1] / 2
+    : 0;
+  const material = useMemo(
+    () => createFacadeMaterial(
+      facadeTextures,
+      style,
+      idHash(entries[0]?.id ?? ''),
+      false,
+      groundStart,
+      tone,
+      true,
+    ),
+    [entries, facadeTextures, groundStart, style, tone],
+  );
+  useEffect(() => () => material.dispose(), [material]);
+  useLayoutEffect(() => {
+    const mesh = meshRef.current;
+    if (!mesh) return;
+    entries.forEach((entry, index) => {
+      dummy.position.set(...entry.position);
+      dummy.rotation.set(0, entry.yaw ?? 0, 0);
+      dummy.scale.set(...entry.size);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(index, dummy.matrix);
+      mesh.setColorAt(
+        index,
+        new THREE.Color('#ffffff').offsetHSL(0, 0, (hash01(idHash(entry.id)) - 0.5) * 0.08),
+      );
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  }, [dummy, entries]);
+  return (
+    <instancedMesh ref={meshRef} args={[undefined, undefined, entries.length]} receiveShadow>
+      <boxGeometry args={[1, 1, 1]} />
+      <primitive attach="material" object={material} />
+    </instancedMesh>
+  );
+}
+
+function MansardBatch({ entries }) {
+  const meshRef = useRef();
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  useLayoutEffect(() => {
+    const mesh = meshRef.current;
+    if (!mesh) return;
+    entries.forEach((entry, index) => {
+      const radius = Math.max(entry.size[0], entry.size[2]) * 0.6;
+      dummy.position.set(
+        entry.position[0],
+        entry.position[1] + entry.size[1] / 2 + 1.75,
+        entry.position[2],
+      );
+      dummy.rotation.set(0, Math.PI / 4, 0);
+      dummy.scale.set(radius, 3.2, radius);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(index, dummy.matrix);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+  }, [dummy, entries]);
+  return (
+    <instancedMesh ref={meshRef} args={[undefined, undefined, entries.length]} receiveShadow>
+      <coneGeometry args={[1, 1, 4]} />
+      <meshStandardMaterial color="#43454c" roughness={0.9} />
+    </instancedMesh>
+  );
+}
+
+function ProceduralFacades({ items, facadeTextures }) {
+  const { batches, caps, chimneys, mansards } = useMemo(() => {
+    const grouped = new Map();
+    const roofCaps = [];
+    const chimneyPots = [];
+    const mansardRoofs = [];
+    for (const item of items) {
+      if (item.kind !== 'backdrop' || !item.frontageFamily || item.landmarkLabel) continue;
+      const key = `${item.facadeStyle ?? 0}:${Number.isInteger(item.facadeTone) ? item.facadeTone : 'default'}`;
+      const batch = grouped.get(key) ?? [];
+      batch.push(item);
+      grouped.set(key, batch);
+      roofCaps.push({
+        id: `${item.id}-roof-cap`,
+        position: [item.position[0], item.position[1] + item.size[1] / 2 + 0.25, item.position[2]],
+        size: [item.size[0] + 0.5, 0.5, item.size[2] + 0.5],
+        color: '#4c4138',
+      });
+      const chimneySeed = idHash(item.id);
+      chimneyPots.push({
+        id: `${item.id}-chimney`,
+        position: [
+          item.position[0] + (hash01(chimneySeed) - 0.5) * item.size[0] * 0.45,
+          item.position[1] + item.size[1] / 2 + 1.05,
+          item.position[2] + (hash01(chimneySeed * 2.7) - 0.5) * item.size[2] * 0.4,
+        ],
+        size: [0.48, 1.1, 0.48],
+        color: item.facadeStyle === 1 ? '#51382e' : '#4a3a32',
+      });
+      if (item.roof === 'mansard') mansardRoofs.push(item);
+    }
+    return {
+      batches: [...grouped.entries()],
+      caps: roofCaps,
+      chimneys: chimneyPots,
+      mansards: mansardRoofs,
+    };
+  }, [items]);
+  return (
+    <group>
+      {batches.map(([key, entries]) => (
+        <FacadeBatch key={key} entries={entries} facadeTextures={facadeTextures} />
+      ))}
+      <InfillBatch entries={caps} />
+      <InfillBatch entries={chimneys} />
+      <MansardBatch entries={mansards} />
+    </group>
+  );
+}
+
+function InfillBatch({ entries }) {
+  const meshRef = useRef();
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  useLayoutEffect(() => {
+    const mesh = meshRef.current;
+    if (!mesh) return;
+    entries.forEach((entry, index) => {
+      dummy.position.set(...entry.position);
+      dummy.rotation.set(0, entry.yaw ?? 0, 0);
+      dummy.scale.set(...entry.size);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(index, dummy.matrix);
+      mesh.setColorAt(index, new THREE.Color(entry.color ?? '#716e65'));
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  }, [dummy, entries]);
+
+  return (
+    <instancedMesh ref={meshRef} args={[undefined, undefined, entries.length]} receiveShadow>
+      <boxGeometry args={[1, 1, 1]} />
+      <meshStandardMaterial vertexColors roughness={0.95} />
+    </instancedMesh>
+  );
+}
+
+function BlockInfill({ items }) {
+  const batches = useMemo(() => {
+    const grouped = new Map();
+    for (const item of items) {
+      if (item.kind !== 'block-infill') continue;
+      const batch = grouped.get(item.infillType) ?? [];
+      batch.push(item);
+      grouped.set(item.infillType, batch);
+    }
+    return [...grouped.entries()];
+  }, [items]);
+  return batches.map(([type, entries]) => <InfillBatch key={type} entries={entries} />);
 }
 
 function ItemGeometry({ item }) {
@@ -283,6 +448,8 @@ export default function Furniture({ items }) {
 
   return (
     <group>
+      <BlockInfill items={items} />
+      <ProceduralFacades items={items} facadeTextures={maps.facades} />
       <RigidBody type="fixed" colliders={false}>
         {solid.map((item) => (
           <ItemCollider key={item.id} item={item} />
@@ -300,13 +467,21 @@ export default function Furniture({ items }) {
           if (item.landmarkModel === 'metropolitan-club') {
             return <MetropolitanClub key={item.id} item={item} />;
           }
+          if (item.frontageFamily && !item.landmarkLabel) return null;
           return <Backdrop key={item.id} item={item} facadeTextures={maps.facades} />;
         }
         // Trees render through the instanced TreeField, catalog pieces
         // through PropModels, framed pictures through WallArt; all still
         // take their colliders here. `render: false` marks collider-only
         // boxes whose visuals live elsewhere (the Gapstow stonework).
-        if (item.kind === 'tree' || item.kind === 'wallArt' || item.model || item.dynamic || item.render === false) return null;
+        if (
+          item.kind === 'tree'
+          || item.kind === 'wallArt'
+          || item.kind === 'block-infill'
+          || item.model
+          || item.dynamic
+          || item.render === false
+        ) return null;
         return (
           <mesh
             key={item.id}

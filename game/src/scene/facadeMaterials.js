@@ -67,9 +67,17 @@ function facadeTint(styleIndex, seed, tone) {
 // Y runs upward. The sign keeps the masonry facing the same way on opposite
 // sides, and a per-building phase prevents a row from sharing one obvious
 // repeating patch.
-function applyMetreScaledUvs(material, seed, style, heightM, tone) {
-  const offset = new THREE.Vector2(hash01(seed * 3.17) * 7, hash01(seed * 5.23) * 7);
-  const groundStart = -heightM / 2;
+function applyMetreScaledUvs(material, seed, style, heightM, tone, instancedWorldSpace = false) {
+  const offset = instancedWorldSpace
+    ? new THREE.Vector2(0, 0)
+    : new THREE.Vector2(hash01(seed * 3.17) * 7, hash01(seed * 5.23) * 7);
+  const groundStart = instancedWorldSpace ? heightM : -heightM / 2;
+  const facadePosition = instancedWorldSpace
+    ? `vec3 facadePosition = position;
+        #ifdef USE_INSTANCING
+          facadePosition = (instanceMatrix * vec4(position, 1.0)).xyz;
+        #endif`
+    : 'vec3 facadePosition = position;';
   material.onBeforeCompile = (shader) => {
     shader.uniforms.facadeUvOffset = { value: offset };
     shader.uniforms.facadeGroundStart = { value: groundStart };
@@ -84,14 +92,15 @@ function applyMetreScaledUvs(material, seed, style, heightM, tone) {
       .replace(
         '#include <uv_vertex>',
         `#include <uv_vertex>
-        vFacadeLocalY = position.y;
+        ${facadePosition}
+        vFacadeLocalY = facadePosition.y;
         vec2 facadeSurfaceUv;
         if (abs(normal.y) > 0.5) {
-          facadeSurfaceUv = vec2(position.x, -position.z);
+          facadeSurfaceUv = vec2(facadePosition.x, -facadePosition.z);
         } else if (abs(normal.x) > 0.5) {
-          facadeSurfaceUv = vec2(-position.z * sign(normal.x), position.y);
+          facadeSurfaceUv = vec2(-facadePosition.z * sign(normal.x), facadePosition.y);
         } else {
-          facadeSurfaceUv = vec2(position.x * sign(normal.z), position.y);
+          facadeSurfaceUv = vec2(facadePosition.x * sign(normal.z), facadePosition.y);
         }
         facadeSurfaceUv = facadeSurfaceUv / ${METRES_PER_REPEAT.toFixed(1)} + facadeUvOffset;
         #ifdef USE_MAP
@@ -132,7 +141,7 @@ function applyMetreScaledUvs(material, seed, style, heightM, tone) {
   };
   // Every facade uses the same shader shape; only ordinary uniforms, colour,
   // and texture bindings differ. This lets Three share one compiled program.
-  material.customProgramCacheKey = () => 'facade-metre-uv-base-v3';
+  material.customProgramCacheKey = () => `facade-metre-uv-base-v4-${instancedWorldSpace ? 'world' : 'local'}`;
   return material;
 }
 
@@ -143,6 +152,7 @@ export function createFacadeMaterial(
   unlit = false,
   heightM = 12,
   toneIndex = null,
+  instancedWorldSpace = false,
 ) {
   const style = ((styleIndex % STYLE_SURFACES.length) + STYLE_SURFACES.length) % STYLE_SURFACES.length;
   const map = textures[STYLE_SURFACES[style]];
@@ -161,5 +171,5 @@ export function createFacadeMaterial(
         roughness: STYLE_ROUGHNESS[style],
         metalness: 0,
       });
-  return applyMetreScaledUvs(material, seed, style, heightM, tone);
+  return applyMetreScaledUvs(material, seed, style, heightM, tone, instancedWorldSpace);
 }

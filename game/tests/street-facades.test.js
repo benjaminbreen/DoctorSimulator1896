@@ -7,20 +7,19 @@ import { streetItems } from '../src/world/streetGrid.js';
 const ROWS = [
   ['fifth-east-a', 'x', '-x'],
   ['fifth-east-b', 'x', '-x'],
-  ['cps-south-a', 'z', '-z'],
   ['cps-south-b', 'z', '-z'],
-  ['fifty-eighth-n', 'z', '+z'],
   ['fifty-eighth-s', 'z', '-z'],
   ['madison-west', 'x', '+x'],
   ['madison-east', 'x', '-x'],
-  ['sixth-west', 'x', '+x'],
-  ['block-a-inner', 'z', '-z'],
-  ['sixtieth-south-block', 'z', '-z'],
+  ['sixty-first-south', 'z', '-z'],
+  ['fifty-seventh-n-central', 'z', '+z'],
+  ['cps-north-east', 'z', '+z'],
 ];
 
 const NAMED_BUILDINGS = new Map([
   ['hotel-new-netherland', 'New Netherland Hotel'],
   ['hotel-savoy', 'Hotel Savoy'],
+  ['bolkenhayn-apartments', 'The Bolkenhayn Apartments'],
   ['plaza-hotel-1890', 'The Plaza Hotel (1890)'],
   ['metropolitan-club', 'Metropolitan Club'],
   ['vanderbilt-mansion', 'Cornelius Vanderbilt II Mansion'],
@@ -31,7 +30,9 @@ const NAMED_BUILDINGS = new Map([
 
 function rowBuildings(prefix) {
   return streetItems
-    .filter((item) => item.kind === 'backdrop' && item.id.startsWith(`${prefix}-`))
+    .filter((item) => item.kind === 'backdrop'
+      && item.id.startsWith(`${prefix}-`)
+      && /^\d+$/.test(item.id.slice(prefix.length + 1)))
     .sort((a, b) => Number(a.id.slice(prefix.length + 1)) - Number(b.id.slice(prefix.length + 1)));
 }
 
@@ -130,7 +131,7 @@ test('authored landmarks carry click labels while procedural rows remain anonymo
   }
 });
 
-test('East 60th separates the club from a full-depth, continuous south block', () => {
+test('East 60th separates the club from a continuous south frontage with rear courts', () => {
   const club = streetItems.find((item) => item.id === 'metropolitan-club');
   const hotel = streetItems.find((item) => item.id === 'hotel-new-netherland');
   const neighbours = rowBuildings('sixtieth-south-block');
@@ -138,8 +139,10 @@ test('East 60th separates the club from a full-depth, continuous south block', (
   assert.equal(club.position[2], 42);
   assert.ok(club.position[2] + club.size[2] / 2 <= 50, 'club ends north of 60th sidewalk');
   assert.ok(hotel.size[2] >= 17, 'corner building regains full block depth');
-  assert.ok(neighbours.length >= 4, 'corner building has a substantial attached row');
+  assert.ok(neighbours.length >= 1, 'corner building has an attached frontage');
+  assert.ok(neighbours.every((entry) => entry.frontageFamily === 'apartment'));
   // Parcel meshes are inset 15cm from each authored party-wall edge.
-  assert.ok(Math.abs(neighbours[0].position[0] - neighbours[0].size[0] / 2 - 129.6) < 0.01);
-  assert.ok(Math.abs(neighbours.at(-1).position[0] + neighbours.at(-1).size[0] / 2 - 159.5) < 0.01);
+  assert.ok(Math.abs(neighbours[0].position[0] - neighbours[0].size[0] / 2 - 132.15) < 0.01);
+  assert.ok(Math.abs(neighbours.at(-1).position[0] + neighbours.at(-1).size[0] / 2 - 148.35) < 0.01);
+  assert.ok(streetItems.some((item) => item.id === 'new-netherland-east-court-court'));
 });
