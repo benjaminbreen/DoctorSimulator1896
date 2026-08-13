@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 // stall contributes at most one frame, so loading can never consume the
 // reading time between title-card beats.
 const MAX_FRAME_MS = 50;
-const ROLE_AT_MS = 1500;
-const SECRET_AT_MS = 3100;
-const CREDIT_AT_MS = 4700;
-const FADE_AT_MS = 7400;
-const FADE_DURATION_MS = 1300;
+const ROLE_AT_MS = 900;
+const SECRET_AT_MS = 2000;
+const CREDIT_AT_MS = 3100;
+const FADE_AT_MS = 4700;
+const FADE_DURATION_MS = 900;
+const REDUCED_MOTION_FADE_DURATION_MS = 150;
 
 export default function ParkIntro({ ready }) {
   const readyRef = useRef(ready);
@@ -27,6 +28,7 @@ export default function ParkIntro({ ready }) {
     const secretAt = reducedMotion ? 0 : SECRET_AT_MS;
     const creditAt = reducedMotion ? 0 : CREDIT_AT_MS;
     const fadeAt = reducedMotion ? 3500 : FADE_AT_MS;
+    const fadeDuration = reducedMotion ? REDUCED_MOTION_FADE_DURATION_MS : FADE_DURATION_MS;
     let frame = null;
     let last = null;
     let viewedMs = 0;
@@ -52,7 +54,7 @@ export default function ParkIntro({ ready }) {
         fadeStartedAt = viewedMs;
         setLeaving(true);
       }
-      if (fadeStartedAt !== null && viewedMs - fadeStartedAt >= FADE_DURATION_MS) {
+      if (fadeStartedAt !== null && viewedMs - fadeStartedAt >= fadeDuration) {
         setVisible(false);
         return;
       }
