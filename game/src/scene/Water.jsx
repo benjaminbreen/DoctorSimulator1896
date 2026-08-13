@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { solarRamps } from '../world/solar.js';
+import { moonState } from '../world/moon.js';
+import { environmentPalette } from '../world/skyPalette.js';
 import { terrainHeight } from '../world/terrain.js';
 import { gameDebug } from '../debug.js';
 
@@ -220,6 +222,8 @@ const FRAGMENT = /* glsl */ `
   uniform float uTime;
   uniform float uDayness;
   uniform float uGolden;
+  uniform float uKeyStrength;
+  uniform float uMoonness;
   uniform vec3 uSunDir;
   uniform vec3 uScatter;
   uniform vec3 uExtinction;
@@ -337,8 +341,13 @@ const FRAGMENT = /* glsl */ `
     vec3 color = mix(body, refl, reflShare);
 
     vec3 halfDir = normalize(uSunDir + view);
-    float glint = pow(max(dot(normal, halfDir), 0.0), 160.0) * uDayness;
-    color += mix(vec3(1.0, 0.96, 0.88), vec3(1.0, 0.8, 0.55), uGolden) * glint * 0.9;
+    float glint = pow(max(dot(normal, halfDir), 0.0), 160.0) * uKeyStrength;
+    vec3 keyColor = mix(
+      mix(vec3(1.0, 0.96, 0.88), vec3(1.0, 0.8, 0.55), uGolden),
+      vec3(0.55, 0.7, 1.0),
+      uMoonness
+    );
+    color += keyColor * glint * 0.9;
 
     // Waterline: a faint broken band where the sheet thins out, following the
     // bed contour rather than the mesh edge.
@@ -346,7 +355,7 @@ const FRAGMENT = /* glsl */ `
     float lap = 0.6 + 0.4 * sin(vWorldPos.x * 2.3 - vWorldPos.z * 1.7 + uTime * 0.9)
       * sin(vWorldPos.x * 0.7 + vWorldPos.z * 1.1 - uTime * 0.6);
     float foam = shallow * shallow * lap * uShoreFoam;
-    color += foam * vec3(0.72, 0.78, 0.74) * (0.3 + 0.7 * uDayness);
+    color += foam * vec3(0.72, 0.78, 0.74) * (0.08 + 0.92 * uDayness);
 
     // Deep water is opaque body+mirror; thin water hands over to the real bed.
     float bodyAlpha = 1.0 - dot(transmit, vec3(0.34, 0.4, 0.26));
@@ -403,6 +412,8 @@ export default function Water({ runtime, outline, level = -0.5 }) {
           uTime: { value: 0 },
           uDayness: { value: 1 },
           uGolden: { value: 0 },
+          uKeyStrength: { value: 1 },
+          uMoonness: { value: 0 },
           uSunDir: { value: new THREE.Vector3(0, 1, 0) },
           uScatter: { value: new THREE.Color('#3d5a4e') },
           uExtinction: { value: new THREE.Vector3(1.15, 0.55, 0.78) },
@@ -472,20 +483,18 @@ export default function Water({ runtime, outline, level = -0.5 }) {
     const uniforms = material.uniforms;
     const values = runtime.values;
     const ramps = solarRamps(values.timeOfDay, values.dayOfYear);
+    const moon = moonState(values.timeOfDay, values.dayOfYear);
+    const moonLight = moon.light * ramps.night * values.moonlightIntensity;
+    const palette = environmentPalette(values.timeOfDay, values.dayOfYear, values);
     uniforms.uTime.value = state.clock.elapsedTime;
     uniforms.uDayness.value = ramps.daylight;
     uniforms.uGolden.value = ramps.golden;
-    uniforms.uSunDir.value.set(ramps.direction[0], ramps.direction[1], ramps.direction[2]).normalize();
-    uniforms.uSkyZenith.value.setRGB(
-      0.06 + 0.44 * ramps.daylight,
-      0.1 + 0.59 * ramps.daylight,
-      0.16 + 0.69 * ramps.daylight,
-    );
-    uniforms.uSkyHorizon.value.setRGB(
-      0.09 + 0.79 * ramps.daylight + 0.12 * ramps.golden,
-      0.12 + 0.79 * ramps.daylight,
-      0.17 + 0.77 * ramps.daylight - 0.1 * ramps.golden,
-    );
+    const moonIsKey = moonLight > ramps.daylight;
+    uniforms.uSunDir.value.fromArray(moonIsKey ? moon.direction : ramps.direction).normalize();
+    uniforms.uKeyStrength.value = Math.max(ramps.daylight, moonLight * 0.7);
+    uniforms.uMoonness.value = moonIsKey ? 1 : 0;
+    uniforms.uSkyZenith.value.fromArray(palette.top);
+    uniforms.uSkyHorizon.value.fromArray(palette.horizon);
     uniforms.uReflectivity.value = values.waterReflectivity;
     uniforms.uMirrorStrength.value = values.waterMirrorStrength;
     uniforms.uReflectionBlur.value = values.waterReflectionBlur;

@@ -11,6 +11,8 @@ export default function DebugHud({ showStats = false }) {
   useEffect(() => {
     const id = setInterval(() => {
       const { position, grounded } = gameDebug.player;
+      const render = gameDebug.renderer?.info?.render;
+      const scene = gameDebug.sceneMetrics();
       setSnapshot({
         fps: Math.round(gameDebug.stats.fps),
         zone: gameDebug.zoneLabel ?? '',
@@ -19,6 +21,11 @@ export default function DebugHud({ showStats = false }) {
         z: position[2].toFixed(2),
         grounded,
         camera: gameDebug.stats.cameraDistance.toFixed(2),
+        draws: render?.calls ?? 0,
+        triangles: render?.triangles ?? 0,
+        landmarkBatches: scene?.landmarkBatches ?? 0,
+        landmarkInstances: scene?.landmarkInstances ?? 0,
+        sceneTriangles: scene?.estimatedTriangles ?? 0,
         prompt: gameDebug.prompt,
       });
     }, 200);
@@ -40,6 +47,9 @@ export default function DebugHud({ showStats = false }) {
         <div className="pointer-events-none absolute left-3 top-28 rounded bg-black/55 px-3 py-2 font-mono text-[11px] leading-relaxed text-neutral-300">
           <div className="text-amber-200">{snapshot.zone}</div>
           <div>{snapshot.fps} fps</div>
+          <div>{snapshot.draws} draws · {Math.round(snapshot.triangles / 1000)}k tris</div>
+          <div>{snapshot.landmarkBatches} landmark batches · {snapshot.landmarkInstances} instances</div>
+          <div>{Math.round(snapshot.sceneTriangles / 1000)}k scene tris (geometry estimate)</div>
           <div>
             pos {snapshot.x}, {snapshot.y}, {snapshot.z}
           </div>

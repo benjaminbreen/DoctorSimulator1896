@@ -1,0 +1,3960 @@
+{
+  "targetName": "1896 Southeast Central Park Landmark Blocks",
+  "targetId": "1896-southeast-central-park-landmark-blocks",
+  "schemaVersion": "2.1",
+  "terminologyProfile": {
+    "domain": "real-time procedural Three.js asset",
+    "geometryTerms": [
+      "silhouette",
+      "topology",
+      "primitive",
+      "bevel",
+      "chamfer",
+      "taper",
+      "bend",
+      "boolean cut",
+      "edge loop",
+      "surface normal",
+      "displacement"
+    ],
+    "materialTerms": [
+      "albedo",
+      "baseColor",
+      "roughness",
+      "metalness",
+      "normal map",
+      "bump map",
+      "ambient occlusion",
+      "cavity dirt",
+      "edge wear",
+      "clearcoat"
+    ],
+    "lightingTerms": [
+      "key light",
+      "fill light",
+      "rim light",
+      "HDRI/environment reflection",
+      "contact shadow"
+    ],
+    "descriptionRule": "Use measurable 3D graphics terms. Avoid vague words unless they are paired with concrete geometry/material/shader parameters."
+  },
+  "sourceImage": "/var/folders/6k/yjq5djpn7d74hcj8srdz24m40000gn/T/codex-clipboard-712d4bb3-4584-47dd-b6e1-4d4cbd882944.png",
+  "referenceCamera": {
+    "solved": false,
+    "fovDegrees": 40.0,
+    "aspect": 1.0,
+    "orientation": {
+      "yaw": 0.0,
+      "pitch": 0.0,
+      "roll": 0.0
+    },
+    "positionHint": [
+      0.0,
+      0.0,
+      3.0
+    ],
+    "note": "For likeness work, solve the reference camera (forge/stage1_intake/solve_camera_pose.py) so the review render aligns with the photo and the reference can be projected. Confirm by overlay review."
+  },
+  "suitability": "conditional",
+  "scores": {
+    "object_isolation": 0,
+    "silhouette_readability": 0,
+    "depth_inference": 0,
+    "primitive_decomposition": 0,
+    "material_procedurality": 0,
+    "occlusion_risk": 0,
+    "interaction_fit": 0
+  },
+  "preSpecAssessment": {
+    "objectClass": {
+      "primaryType": "compressed urban landmark ensemble",
+      "primaryDomain": "object",
+      "formLanguage": [
+        "French chateau",
+        "Romanesque hotel",
+        "Italian Renaissance hotel",
+        "attached marble row",
+        "French Renaissance mansion"
+      ],
+      "structureKind": [
+        "static merged shells",
+        "instanced facade systems",
+        "low-segment roof silhouettes"
+      ],
+      "motionPotential": [
+        "static architecture",
+        "click identification only"
+      ],
+      "materialFamilies": [
+        "limestone and marble",
+        "Roman brick",
+        "slate",
+        "aged copper",
+        "painted iron and sash"
+      ],
+      "notes": "Game-scale ensemble preserving the current playable grid and landmark hierarchy."
+    },
+    "complexity": {
+      "tier": "complex",
+      "scores": {
+        "silhouetteComplexity": 3,
+        "componentCount": 3,
+        "hierarchyDepth": 2,
+        "repetitionDensity": 3,
+        "materialLayerCount": 2,
+        "localDetailDensity": 2,
+        "occlusionRisk": 1,
+        "actionReadinessNeed": 1
+      },
+      "estimatedCounts": {
+        "macroComponents": 4,
+        "mesoComponents": 8,
+        "microFeatureGroups": 5,
+        "materialLayers": 6,
+        "repetitionSystems": 3
+      },
+      "reasoning": [
+        "Seven compressed landmarks share materials and repetition systems but require distinct skyline silhouettes.",
+        "Street-facing hierarchy matters more than hidden elevations or exact ornament."
+      ]
+    },
+    "specDepthDecision": {
+      "requiredDepth": "complex",
+      "minimumComponentLevels": [
+        "macro",
+        "meso",
+        "micro"
+      ],
+      "needsRepetitionSystems": true,
+      "needsMaterialLocalOverrides": true,
+      "needsMultipleReviewViews": true,
+      "needsActionReadyHierarchy": true,
+      "rationale": "Choose simple/moderate/complex/ultra-complex from observed structure, not from a hardcoded domain."
+    },
+    "unknownsToResolveBeforeImplementation": [],
+    "detailInventory": {
+      "scanMethod": "landmark identity zones",
+      "targetMinDetails": 10,
+      "details": [
+        {
+          "id": "vanderbilt-turrets",
+          "kind": "contour",
+          "description": "Conical and square corner towers",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "vanderbilt-silhouette"
+          },
+          "evidenceRef": "full-object",
+          "confidence": 0.9
+        },
+        {
+          "id": "vanderbilt-dormers",
+          "kind": "ridge",
+          "description": "Gabled dormer rhythm",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "dormer-rhythm"
+          },
+          "evidenceRef": "full-object",
+          "confidence": 0.85
+        },
+        {
+          "id": "netherland-arches",
+          "kind": "contour",
+          "description": "Romanesque base arches",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "hotel-arch-bases"
+          },
+          "evidenceRef": "full-object",
+          "confidence": 0.8
+        },
+        {
+          "id": "netherland-crown",
+          "kind": "contour",
+          "description": "Tall turreted hotel crown",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "mansion-rooflines"
+          },
+          "evidenceRef": "full-object",
+          "confidence": 0.82
+        },
+        {
+          "id": "savoy-cornice",
+          "kind": "ridge",
+          "description": "Strong Italianate cornice bands",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "cornice-bands"
+          },
+          "evidenceRef": "full-object",
+          "confidence": 0.8
+        },
+        {
+          "id": "marble-stoops",
+          "kind": "contour",
+          "description": "Repeated row-house stoops",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "entrance-portals"
+          },
+          "evidenceRef": "full-object",
+          "confidence": 0.86
+        },
+        {
+          "id": "row-party-walls",
+          "kind": "seam",
+          "description": "Attached-house party-wall rhythm",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "rowhouse-party-rhythm"
+          },
+          "evidenceRef": "full-object",
+          "confidence": 0.9
+        },
+        {
+          "id": "gerry-gable",
+          "kind": "contour",
+          "description": "Dominant French gable",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "mansion-rooflines"
+          },
+          "evidenceRef": "full-object",
+          "confidence": 0.9
+        },
+        {
+          "id": "iron-areaways",
+          "kind": "linework",
+          "description": "Low iron areaway and gate fields",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "iron-areaways"
+          },
+          "evidenceRef": "full-object",
+          "confidence": 0.75
+        },
+        {
+          "id": "base-weathering",
+          "kind": "stain",
+          "description": "Restrained base and sill weathering",
+          "mapsTo": {
+            "type": "material.localOverrides",
+            "ref": "masonry/base-weathering"
+          },
+          "evidenceRef": "full-object",
+          "confidence": 0.7
+        }
+      ]
+    },
+    "anatomy": {
+      "applies": false,
+      "styleHeads": 0.0,
+      "proportions": {
+        "headUnit": 0.0,
+        "torso": 0.0,
+        "legs": 0.0,
+        "shoulderWidth": 0.0,
+        "hipWidth": 0.0
+      },
+      "pose": {
+        "type": "unassessed",
+        "jointAngles": {}
+      },
+      "faceLandmarks": {
+        "eyeLine": 0.0,
+        "eyeSpacing": 0.0,
+        "noseBase": 0.0,
+        "mouthLine": 0.0,
+        "hairline": 0.0
+      },
+      "features": [],
+      "confidence": 0.0,
+      "note": "Only meaningful when objectClass.primaryDomain is character or hybrid. Set applies=true and fill from forge/stage1_intake/extract_landmarks.py. See grimoire/character/reconstruction.md and grimoire/character/likeness_maximization.md."
+    },
+    "sourceImage": "/var/folders/6k/yjq5djpn7d74hcj8srdz24m40000gn/T/codex-clipboard-712d4bb3-4584-47dd-b6e1-4d4cbd882944.png"
+  },
+  "qualityContract": {
+    "qualityBar": "complex",
+    "definitionOfDone": [
+      "The rendered model matches the reference silhouette, primary proportions, visible component hierarchy, material response, and most recognizable local features for the selected fidelity tier."
+    ],
+    "minimumSpecDepth": {
+      "macroComponents": 3,
+      "mesoComponents": 8,
+      "microFeatureGroups": 5,
+      "materialLayers": 3,
+      "repetitionSystems": 1,
+      "reviewViewpoints": 4
+    },
+    "featureGroups": [
+      {
+        "id": "overall-silhouette",
+        "name": "Overall silhouette and proportions",
+        "required": true,
+        "qualityCriteria": [
+          "Bounding shape, dominant curves, negative spaces, and scale relationships are explicitly described."
+        ],
+        "evidenceRefs": [
+          "full-object"
+        ],
+        "failureModes": [
+          "model reads as a generic placeholder instead of the reference object",
+          "major proportions are guessed without evidence"
+        ]
+      },
+      {
+        "id": "primary-structure",
+        "name": "Primary structure and hierarchy",
+        "required": true,
+        "qualityCriteria": [
+          "Major parts, joints, seams, contact points, and parent-child relationships are named before code generation."
+        ],
+        "evidenceRefs": [
+          "full-object"
+        ],
+        "failureModes": [
+          "large visible parts are merged into one mesh",
+          "component hierarchy is too shallow for the observed complexity"
+        ]
+      },
+      {
+        "id": "attachment-joint-correctness",
+        "name": "Attachment and joint correctness",
+        "required": true,
+        "qualityCriteria": [
+          "Every visible child appendage, branch, limb, handle, connector, tube, cable, horn, wing, leg, or hinged part has an attachment contract with parent socket, localStart/localEnd, contact type, embed/overlap, and gap tolerance."
+        ],
+        "evidenceRefs": [
+          "full-object"
+        ],
+        "failureModes": [
+          "child part root floats away from the parent",
+          "branch/limb/tube is centered in space instead of pivoting from its root",
+          "parent-child transform mixes world and local coordinates"
+        ]
+      },
+      {
+        "id": "surface-material-response",
+        "name": "Surface material response",
+        "required": true,
+        "qualityCriteria": [
+          "Albedo zones, roughness, normal/bump/displacement intent, cavity dirt, edge wear, and local overrides are specified where visible.",
+          "Important materials define independent albedo, roughness, height/normal, and AO responses instead of reusing one texture for unrelated PBR channels.",
+          "Surface response is decomposed into macro, meso, and micro frequency bands with scale and amplitude tied to object scale."
+        ],
+        "evidenceRefs": [
+          "full-object"
+        ],
+        "failureModes": [
+          "surface looks like flat plastic",
+          "local material variation is missing or not tied to image evidence"
+        ]
+      },
+      {
+        "id": "reference-lookdev",
+        "name": "Reference color, material, and lighting response",
+        "required": true,
+        "qualityCriteria": [
+          "Material-pass names the reference-derived albedo palette, roughness variation, tactile normal/bump/displacement response, and local masks.",
+          "When a source image is available, run reference PBR extraction and require confidence >= 0.7 before treating maps as implementation-ready.",
+          "Lighting-pass names key/fill/rim or environment light, exposure, tone mapping, background, and contact shadow behavior.",
+          "Neutral, grazing-angle, and reference-matched renders prove that surface relief survives relighting and is not painted into albedo."
+        ],
+        "evidenceRefs": [
+          "full-object"
+        ],
+        "failureModes": [
+          "model has acceptable shape but reads as flat shaded or plastic",
+          "colors are a generic average instead of reference-observed local color zones",
+          "lighting is evenly ambient and cannot reproduce the source value range"
+        ]
+      }
+    ],
+    "visualDeltaChecks": [
+      "silhouette and negative-space delta",
+      "component hierarchy depth delta",
+      "repetition density and distribution delta",
+      "material albedo/roughness/normal response delta",
+      "local feature placement and scale delta"
+    ],
+    "antiShallowSpecRules": [
+      "Do not proceed to code if qualityContract.qualityBar is unassessed.",
+      "Do not proceed to code if the spec only contains a root component for a moderate or complex object.",
+      "Do not proceed to code if required featureGroups are not represented by componentTree, materials, or repetitionSystems.",
+      "Do not proceed to code if visible local features are described only in prose and not attached to components/materials/evidenceRefs.",
+      "Do not proceed past structural-pass if attached child parts lack attachment.parentSocket, localStart, localEnd, embedDepth/overlap, and gapTolerance.",
+      "Do not pass material look-dev when albedo is reused as roughness, height, normal, or AO.",
+      "Do not pass material look-dev without macro, meso, and micro surface frequency bands for close-up materials.",
+      "Do not pass reference-fidelity material look-dev from a source image without usable referencePbr maps or an explicit documented limitation.",
+      "Do not patch a spec with extracted PBR maps when extraction confidence is below the target threshold unless the user explicitly accepts lower fidelity.",
+      "Do not place adjacent separate-geometry parts below 0.02 world-unit seam overlap (source: grimoire/build/geometry_patterns.md).",
+      "Do not satisfy raised or recessed relief, fasteners, or grip structure with a map alone when the feature affects form; use geometry or displacement (source: grimoire/build/geometry_patterns.md).",
+      "Adjacent components must overlap by at least 0.02 world units at shared seams (source: grimoire/build/geometry_patterns.md).",
+      "Raised or recessed relief and fasteners must be geometry, instanced micro-parts, or displacement; a map alone is an approximation (source: grimoire/build/geometry_patterns.md)."
+    ],
+    "mustNotDo": [
+      "Do not proceed to code if qualityContract.qualityBar is unassessed.",
+      "Do not proceed to code if the spec only contains a root component for a moderate or complex object.",
+      "Do not proceed to code if required featureGroups are not represented by componentTree, materials, or repetitionSystems.",
+      "Do not proceed to code if visible local features are described only in prose and not attached to components/materials/evidenceRefs.",
+      "Do not proceed past structural-pass if attached child parts lack attachment.parentSocket, localStart, localEnd, embedDepth/overlap, and gapTolerance.",
+      "Do not pass material look-dev when albedo is reused as roughness, height, normal, or AO.",
+      "Do not pass material look-dev without macro, meso, and micro surface frequency bands for close-up materials.",
+      "Do not pass reference-fidelity material look-dev from a source image without usable referencePbr maps or an explicit documented limitation.",
+      "Do not patch a spec with extracted PBR maps when extraction confidence is below the target threshold unless the user explicitly accepts lower fidelity.",
+      "Do not place adjacent separate-geometry parts below 0.02 world-unit seam overlap (source: grimoire/build/geometry_patterns.md).",
+      "Do not satisfy raised or recessed relief, fasteners, or grip structure with a map alone when the feature affects form; use geometry or displacement (source: grimoire/build/geometry_patterns.md).",
+      "Adjacent components must overlap by at least 0.02 world units at shared seams (source: grimoire/build/geometry_patterns.md).",
+      "Raised or recessed relief and fasteners must be geometry, instanced micro-parts, or displacement; a map alone is an approximation (source: grimoire/build/geometry_patterns.md)."
+    ]
+  },
+  "qualityTargets": {
+    "targetFidelity": 0.7,
+    "mustMatch": [
+      "landmark silhouette and relative height",
+      "street-wall continuity",
+      "period material families",
+      "recognizable roof and entrance systems"
+    ],
+    "niceToHave": [
+      "micro scratches, stains, chips, and dirt masks",
+      "secondary lighting match"
+    ],
+    "fpsTarget": 30,
+    "reviewViewpoints": [
+      "front",
+      "three-quarter",
+      "side",
+      "thickness-axis",
+      "long-axis"
+    ]
+  },
+  "selfCorrectLoop": {
+    "enabled": true,
+    "visualAcceptance": {
+      "reviewer": "ai-vision",
+      "threshold": 0.7,
+      "comparisonArtifactRequired": true,
+      "layerScoresRequired": true,
+      "codePixelDiffIsAcceptanceAuthority": false,
+      "scoringRule": "AI vision must inspect a side-by-side reference/render sheet and score the current pass from 0 to 1. Pixel-diff code may assist diagnostics but cannot approve a pass.",
+      "requiredLayerScores": [
+        "silhouetteProportion",
+        "componentStructure",
+        "formDetail",
+        "materialSurface",
+        "lightingCamera"
+      ],
+      "featureReviewPolicy": {
+        "enabled": true,
+        "reviewUnit": "semantic-subsystem",
+        "maxCriticalFeaturesPerPass": 5,
+        "maxImportantFeaturesPerPass": 3,
+        "criticalDefaultThreshold": 0.8,
+        "importantAverageThreshold": 0.65,
+        "adaptiveEscalation": true,
+        "singleImagePairOnly": true,
+        "selectionRule": "Choose only the most visually salient, identity-defining, user-prioritized, or high-risk semantic systems. Group repeated parts instead of reviewing every mesh. AI vision scores every selected feature from the same full reference/render pair."
+      }
+    },
+    "reviewAfterPasses": [
+      "blockout",
+      "structural-pass",
+      "form-refinement",
+      "material-pass",
+      "surface-pass",
+      "lighting-pass",
+      "interaction-pass",
+      "optimization-pass"
+    ],
+    "allowedActions": [
+      "continue",
+      "refine-spec",
+      "refine-code",
+      "request-input",
+      "stop"
+    ],
+    "specRefineTriggers": [
+      "missing component",
+      "wrong primitive family",
+      "wrong proportions",
+      "material layer under-specified",
+      "local feature not traceable to viewEvidence",
+      "reference ambiguity discovered during implementation"
+    ],
+    "codeRefineTriggers": [
+      "spec is adequate but generated geometry/material does not match",
+      "browser render differs from reference",
+      "performance budget exceeded",
+      "lighting hides geometry or material response"
+    ],
+    "stopCriteria": [
+      "target fidelity reached or user accepts current approximation",
+      "remaining gaps require new reference images or manual art"
+    ],
+    "screenshotPolicy": {
+      "requiredForPasses": [
+        "blockout",
+        "structural-pass",
+        "form-refinement",
+        "material-pass",
+        "surface-pass",
+        "lighting-pass",
+        "interaction-pass"
+      ],
+      "preferredCapture": "in-app-browser-screenshot",
+      "fallbackCapture": "user-supplied-screenshot-path",
+      "minimumEvidence": "Each visual pass needs a reference image, rendered screenshot, side-by-side comparison sheet, AI vision score, layer scores, and critique before choosing continue.",
+      "reviewPairRule": "Compare the same camera/viewpoint whenever possible; do not judge a front reference against a random render angle.",
+      "acceptanceAuthority": "AI vision review of the comparison sheet. Code-generated pixel similarity is not sufficient evidence."
+    }
+  },
+  "featureReviewTargets": [
+    {
+      "id": "vanderbilt-chateau-silhouette",
+      "name": "Vanderbilt chateau towers and roofline",
+      "tier": "critical",
+      "passIds": [
+        "blockout",
+        "structural-pass"
+      ],
+      "minimumScore": 0.8,
+      "mustPass": true,
+      "componentRefs": [
+        "vanderbilt"
+      ],
+      "evidenceRefs": [
+        "full-object"
+      ]
+    },
+    {
+      "id": "hotel-height-hierarchy",
+      "name": "New Netherland and Savoy/Bolkenhayn height hierarchy",
+      "tier": "critical",
+      "passIds": [
+        "blockout",
+        "structural-pass"
+      ],
+      "minimumScore": 0.8,
+      "mustPass": true,
+      "componentRefs": [
+        "hotel-ensemble"
+      ],
+      "evidenceRefs": [
+        "full-object"
+      ]
+    },
+    {
+      "id": "mansion-edge-rhythm",
+      "name": "Marble Row, Huntington, and Gerry street-edge rhythm",
+      "tier": "critical",
+      "passIds": [
+        "structural-pass",
+        "form-refinement"
+      ],
+      "minimumScore": 0.78,
+      "mustPass": true,
+      "componentRefs": [
+        "edge-ensemble"
+      ],
+      "evidenceRefs": [
+        "full-object"
+      ]
+    },
+    {
+      "id": "shared-facade-language",
+      "name": "Shared windows, cornices, dormers, and entrances",
+      "tier": "important",
+      "passIds": [
+        "form-refinement",
+        "material-pass"
+      ],
+      "minimumScore": 0.68,
+      "mustPass": false,
+      "componentRefs": [
+        "window-bays",
+        "roof-systems",
+        "entrance-systems"
+      ],
+      "evidenceRefs": [
+        "full-object"
+      ]
+    },
+    {
+      "id": "runtime-budget",
+      "name": "Merged shells and low-cost repeated detail",
+      "tier": "critical",
+      "passIds": [
+        "optimization-pass"
+      ],
+      "minimumScore": 0.8,
+      "mustPass": true,
+      "componentRefs": [
+        "district-root"
+      ],
+      "evidenceRefs": [
+        "full-object"
+      ]
+    }
+  ],
+  "sculptPipeline": {
+    "passGateMode": "locked-sequential",
+    "passOrder": [
+      "blockout",
+      "structural-pass",
+      "form-refinement",
+      "material-pass",
+      "surface-pass",
+      "lighting-pass",
+      "interaction-pass",
+      "optimization-pass"
+    ],
+    "currentPass": "blockout",
+    "completedPasses": [],
+    "lastCompletedPass": "",
+    "blockedReason": "blockout requires a browser screenshot and self-correction review before structural-pass unlocks",
+    "nextRequiredEvidence": [
+      "blockout browser render screenshot from your agent's browser/screenshot tool",
+      "side-by-side reference/render comparison sheet",
+      "AI vision score >= 0.7 with layer scores and mismatch critique",
+      "critical semantic feature scores from the same image pair meeting their individual thresholds",
+      "reviewHistory entry for blockout with action=continue"
+    ]
+  },
+  "lookDevTargets": {
+    "qualityPriority": "performance-balanced",
+    "materialPass": {
+      "albedoPaletteRequired": true,
+      "roughnessVariationRequired": true,
+      "normalOrBumpRequired": true,
+      "localOverridesRequired": true,
+      "minimumTextureResolution": 1024,
+      "preferredTextureResolution": 2048,
+      "independentMapChannels": [
+        "albedo",
+        "roughness",
+        "height",
+        "normal",
+        "ambient-occlusion"
+      ],
+      "requiredSurfaceFrequencyBands": [
+        "macro",
+        "meso",
+        "micro"
+      ],
+      "geometryReliefRequiredWhenSilhouetteAffected": true,
+      "referencePbrExtraction": {
+        "requiredWhenSourceImagePresent": false,
+        "targetThreshold": 0.7,
+        "stopOnLowConfidence": true,
+        "script": "forge/stage1_intake/extract_pbr_evidence.py",
+        "acceptedLimitation": "single-image extraction is reference-derived inference, not exact photogrammetry"
+      },
+      "mustAvoid": [
+        "single flat albedo per material",
+        "uniform roughness",
+        "albedo texture reused as roughness/height/normal/AO",
+        "single-frequency random noise",
+        "plastic-looking smooth bark, stone, cloth, foliage, or aged material",
+        "local color/detail described only in prose without material masks",
+        "claiming exact PBR recovery when confidence is below the target threshold"
+      ]
+    },
+    "lightingPass": {
+      "requiredTerms": [
+        "key light",
+        "fill light",
+        "rim or environment light",
+        "exposure",
+        "tone mapping",
+        "background",
+        "contact shadow"
+      ],
+      "mustAvoid": [
+        "ambient-only lighting",
+        "flat value range",
+        "missing contact shadow",
+        "reference lighting copied without separating material readability"
+      ]
+    },
+    "screenshotReview": [
+      "Compare albedo palette and local color zones.",
+      "Compare roughness/normal/bump response under light.",
+      "Compare cavity dirt, edge wear, stains, moss, scratches, or other local masks.",
+      "Compare key/fill/rim structure, exposure, tone mapping, background, and contact shadows.",
+      "Capture a neutral-light render to verify material readability without reference lighting.",
+      "Capture a grazing-light close-up to expose flat normals, uniform roughness, tiling, and plastic highlights.",
+      "Capture a reference-matched render from the same camera framing as the source."
+    ]
+  },
+  "actionReadiness": {
+    "contract": "Every macro/meso component should be generated as a stable named Object3D pivot node with a mesh child, action metadata, optional sockets, collider proxy, and destruction metadata.",
+    "defaultRigType": "action-ready-static-rig",
+    "rootMotionNode": "root",
+    "requiredComponentFields": [
+      "id",
+      "parent",
+      "transform",
+      "attachment for child appendages, connectors, limbs, tubes, handles, legs, horns, wings, branches, or cables",
+      "actionProfile.animationRole",
+      "actionProfile.pivot",
+      "actionProfile.collider",
+      "actionProfile.destruction"
+    ],
+    "transformChannels": [
+      "translate",
+      "rotate",
+      "scale",
+      "bend",
+      "twist",
+      "detach",
+      "visibility",
+      "material-state"
+    ],
+    "authoringRules": [
+      "Do not collapse independently movable parts into one mesh.",
+      "Put transforms on component pivot groups, not only on raw meshes.",
+      "For attached child parts, put the pivot at the semantic root/socket and build visible geometry from localStart to localEnd.",
+      "Represent hinge, socket, detachable, and breakable intent even when no animation is implemented yet.",
+      "Use simplified collider proxies for runtime physics instead of visual mesh colliders by default."
+    ],
+    "destructionPolicy": {
+      "defaultBreakable": false,
+      "fractureGroupNaming": "Use stable semantic names such as body-shell, left-hinge, glass-panel, branch-segment.",
+      "debrisStrategy": "Prefer detachable component groups and a small number of procedural fragments over random mesh explosion."
+    }
+  },
+  "assumptions": [
+    "Hidden elevations continue the visible facade grammar.",
+    "Exact lot dimensions are compressed to the existing street grid.",
+    "Period photographs establish identity but do not imply measured reconstruction."
+  ],
+  "coordinateFrame": {
+    "front": "camera-facing side in the reference image",
+    "up": "image up direction",
+    "scaleReference": "unit scale; adjust after first browser render"
+  },
+  "silhouette": {
+    "boundingShape": "",
+    "aspectRatios": [],
+    "symmetry": "",
+    "dominantCurves": [],
+    "negativeSpaces": [],
+    "landmarks": []
+  },
+  "viewEvidence": [
+    {
+      "id": "full-object",
+      "view": "primary",
+      "imageRegion": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1.0,
+        "height": 1.0,
+        "units": "normalized"
+      },
+      "observations": [],
+      "confidence": 0.5
+    }
+  ],
+  "componentTree": [
+    {
+      "id": "district-root",
+      "name": "Landmark district envelope",
+      "level": "macro",
+      "role": "static district envelope",
+      "importance": 1.0,
+      "confidence": 0.78,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Static overlapping boxes, low-segment roofs, and instanced facade parts reproduce the visible architectural hierarchy.",
+      "geometryDescriptor": {
+        "topologyIntent": "merged static shell with instanced repeated detail",
+        "edgeTreatment": {
+          "type": "small-bevel-or-layered-cornice",
+          "bevelRadius": 0.02,
+          "segments": 1
+        },
+        "deformationStack": [],
+        "uvStrategy": "world-scale procedural facade coordinates",
+        "normalStrategy": "generated face normals"
+      },
+      "parent": null,
+      "attachment": null,
+      "dimensions": {
+        "width": 1,
+        "height": 1,
+        "depth": 1,
+        "units": "parcel-relative",
+        "confidence": 0.78
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "actionProfile": {
+        "animationRole": "static-architecture",
+        "pivot": {
+          "mode": "parcel-center",
+          "localPosition": [
+            0,
+            0,
+            0
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "confidence": 1.0
+        },
+        "transformChannels": {
+          "translate": false,
+          "rotate": false,
+          "scale": false,
+          "bend": false,
+          "twist": false,
+          "detach": false,
+          "visibility": true,
+          "materialState": true
+        },
+        "sockets": [],
+        "collider": {
+          "type": "box",
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "isTrigger": false,
+          "notes": "One coarse parcel proxy; decorative children have no colliders."
+        },
+        "constraints": [],
+        "destruction": {
+          "breakable": false,
+          "fractureGroup": "architecture",
+          "seamRefs": [],
+          "detachableFragments": [],
+          "breakImpulse": 0,
+          "debrisMaterial": "masonry"
+        }
+      },
+      "material": "masonry",
+      "materialLayers": [
+        "masonry"
+      ],
+      "colorMaterialRecipe": {
+        "dominantAlbedo": "rgba(128,104,82,1)",
+        "secondaryAlbedo": "rgba(202,194,174,1)",
+        "materialClass": "stone",
+        "materialClassConfidence": 0.82
+      },
+      "deformations": [],
+      "joints": [],
+      "seams": [],
+      "localFeatures": [
+        {
+          "id": "district-envelope",
+          "description": "Landmark district envelope",
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "surfaceDetail": {
+        "macroRoughness": 0.84,
+        "microRoughness": 0.12,
+        "bumpAmplitude": 0.012,
+        "normalPattern": "project facade texture or small-scale masonry breakup",
+        "displacementPattern": "none",
+        "occlusionPattern": "cornice and window recess contacts",
+        "edgeWearPattern": "restrained sill and base discoloration",
+        "notes": "Relief affecting silhouette is geometry; texture relief stays subtle."
+      },
+      "evidenceRefs": [
+        "full-object"
+      ],
+      "details": [],
+      "fidelityTier": "gameplay-landmark"
+    },
+    {
+      "id": "vanderbilt",
+      "name": "Cornelius Vanderbilt II mansion ensemble",
+      "level": "macro",
+      "role": "mansion ensemble",
+      "importance": 1.0,
+      "confidence": 0.78,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Static overlapping boxes, low-segment roofs, and instanced facade parts reproduce the visible architectural hierarchy.",
+      "geometryDescriptor": {
+        "topologyIntent": "merged static shell with instanced repeated detail",
+        "edgeTreatment": {
+          "type": "small-bevel-or-layered-cornice",
+          "bevelRadius": 0.02,
+          "segments": 1
+        },
+        "deformationStack": [],
+        "uvStrategy": "world-scale procedural facade coordinates",
+        "normalStrategy": "generated face normals"
+      },
+      "parent": "district-root",
+      "attachment": null,
+      "dimensions": {
+        "width": 1,
+        "height": 1,
+        "depth": 1,
+        "units": "parcel-relative",
+        "confidence": 0.78
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "actionProfile": {
+        "animationRole": "static-architecture",
+        "pivot": {
+          "mode": "parcel-center",
+          "localPosition": [
+            0,
+            0,
+            0
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "confidence": 1.0
+        },
+        "transformChannels": {
+          "translate": false,
+          "rotate": false,
+          "scale": false,
+          "bend": false,
+          "twist": false,
+          "detach": false,
+          "visibility": true,
+          "materialState": true
+        },
+        "sockets": [],
+        "collider": {
+          "type": "box",
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "isTrigger": false,
+          "notes": "One coarse parcel proxy; decorative children have no colliders."
+        },
+        "constraints": [],
+        "destruction": {
+          "breakable": false,
+          "fractureGroup": "architecture",
+          "seamRefs": [],
+          "detachableFragments": [],
+          "breakImpulse": 0,
+          "debrisMaterial": "masonry"
+        }
+      },
+      "material": "limestone",
+      "materialLayers": [
+        "limestone"
+      ],
+      "colorMaterialRecipe": {
+        "dominantAlbedo": "rgba(202,194,174,1)",
+        "secondaryAlbedo": "rgba(85,77,71,1)",
+        "materialClass": "stone",
+        "materialClassConfidence": 0.82
+      },
+      "deformations": [],
+      "joints": [],
+      "seams": [],
+      "localFeatures": [
+        {
+          "id": "vanderbilt-silhouette",
+          "description": "Cornelius Vanderbilt II mansion ensemble",
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "surfaceDetail": {
+        "macroRoughness": 0.84,
+        "microRoughness": 0.12,
+        "bumpAmplitude": 0.012,
+        "normalPattern": "project facade texture or small-scale masonry breakup",
+        "displacementPattern": "none",
+        "occlusionPattern": "cornice and window recess contacts",
+        "edgeWearPattern": "restrained sill and base discoloration",
+        "notes": "Relief affecting silhouette is geometry; texture relief stays subtle."
+      },
+      "evidenceRefs": [
+        "full-object"
+      ],
+      "details": [],
+      "fidelityTier": "gameplay-landmark"
+    },
+    {
+      "id": "hotel-ensemble",
+      "name": "Fifth Avenue hotel ensemble",
+      "level": "macro",
+      "role": "hotel ensemble",
+      "importance": 1.0,
+      "confidence": 0.78,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Static overlapping boxes, low-segment roofs, and instanced facade parts reproduce the visible architectural hierarchy.",
+      "geometryDescriptor": {
+        "topologyIntent": "merged static shell with instanced repeated detail",
+        "edgeTreatment": {
+          "type": "small-bevel-or-layered-cornice",
+          "bevelRadius": 0.02,
+          "segments": 1
+        },
+        "deformationStack": [],
+        "uvStrategy": "world-scale procedural facade coordinates",
+        "normalStrategy": "generated face normals"
+      },
+      "parent": "district-root",
+      "attachment": null,
+      "dimensions": {
+        "width": 1,
+        "height": 1,
+        "depth": 1,
+        "units": "parcel-relative",
+        "confidence": 0.78
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "actionProfile": {
+        "animationRole": "static-architecture",
+        "pivot": {
+          "mode": "parcel-center",
+          "localPosition": [
+            0,
+            0,
+            0
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "confidence": 1.0
+        },
+        "transformChannels": {
+          "translate": false,
+          "rotate": false,
+          "scale": false,
+          "bend": false,
+          "twist": false,
+          "detach": false,
+          "visibility": true,
+          "materialState": true
+        },
+        "sockets": [],
+        "collider": {
+          "type": "box",
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "isTrigger": false,
+          "notes": "One coarse parcel proxy; decorative children have no colliders."
+        },
+        "constraints": [],
+        "destruction": {
+          "breakable": false,
+          "fractureGroup": "architecture",
+          "seamRefs": [],
+          "detachableFragments": [],
+          "breakImpulse": 0,
+          "debrisMaterial": "masonry"
+        }
+      },
+      "material": "brick",
+      "materialLayers": [
+        "brick"
+      ],
+      "colorMaterialRecipe": {
+        "dominantAlbedo": "rgba(112,76,62,1)",
+        "secondaryAlbedo": "rgba(177,144,105,1)",
+        "materialClass": "stone",
+        "materialClassConfidence": 0.82
+      },
+      "deformations": [],
+      "joints": [],
+      "seams": [],
+      "localFeatures": [
+        {
+          "id": "hotel-height-hierarchy",
+          "description": "Fifth Avenue hotel ensemble",
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "surfaceDetail": {
+        "macroRoughness": 0.84,
+        "microRoughness": 0.12,
+        "bumpAmplitude": 0.012,
+        "normalPattern": "project facade texture or small-scale masonry breakup",
+        "displacementPattern": "none",
+        "occlusionPattern": "cornice and window recess contacts",
+        "edgeWearPattern": "restrained sill and base discoloration",
+        "notes": "Relief affecting silhouette is geometry; texture relief stays subtle."
+      },
+      "evidenceRefs": [
+        "full-object"
+      ],
+      "details": [],
+      "fidelityTier": "gameplay-landmark"
+    },
+    {
+      "id": "edge-ensemble",
+      "name": "Marble Row and edge mansion ensemble",
+      "level": "macro",
+      "role": "mansion row ensemble",
+      "importance": 1.0,
+      "confidence": 0.78,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Static overlapping boxes, low-segment roofs, and instanced facade parts reproduce the visible architectural hierarchy.",
+      "geometryDescriptor": {
+        "topologyIntent": "merged static shell with instanced repeated detail",
+        "edgeTreatment": {
+          "type": "small-bevel-or-layered-cornice",
+          "bevelRadius": 0.02,
+          "segments": 1
+        },
+        "deformationStack": [],
+        "uvStrategy": "world-scale procedural facade coordinates",
+        "normalStrategy": "generated face normals"
+      },
+      "parent": "district-root",
+      "attachment": null,
+      "dimensions": {
+        "width": 1,
+        "height": 1,
+        "depth": 1,
+        "units": "parcel-relative",
+        "confidence": 0.78
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "actionProfile": {
+        "animationRole": "static-architecture",
+        "pivot": {
+          "mode": "parcel-center",
+          "localPosition": [
+            0,
+            0,
+            0
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "confidence": 1.0
+        },
+        "transformChannels": {
+          "translate": false,
+          "rotate": false,
+          "scale": false,
+          "bend": false,
+          "twist": false,
+          "detach": false,
+          "visibility": true,
+          "materialState": true
+        },
+        "sockets": [],
+        "collider": {
+          "type": "box",
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "isTrigger": false,
+          "notes": "One coarse parcel proxy; decorative children have no colliders."
+        },
+        "constraints": [],
+        "destruction": {
+          "breakable": false,
+          "fractureGroup": "architecture",
+          "seamRefs": [],
+          "detachableFragments": [],
+          "breakImpulse": 0,
+          "debrisMaterial": "masonry"
+        }
+      },
+      "material": "limestone",
+      "materialLayers": [
+        "limestone"
+      ],
+      "colorMaterialRecipe": {
+        "dominantAlbedo": "rgba(214,207,190,1)",
+        "secondaryAlbedo": "rgba(126,92,71,1)",
+        "materialClass": "stone",
+        "materialClassConfidence": 0.82
+      },
+      "deformations": [],
+      "joints": [],
+      "seams": [],
+      "localFeatures": [
+        {
+          "id": "edge-streetwall",
+          "description": "Marble Row and edge mansion ensemble",
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "surfaceDetail": {
+        "macroRoughness": 0.84,
+        "microRoughness": 0.12,
+        "bumpAmplitude": 0.012,
+        "normalPattern": "project facade texture or small-scale masonry breakup",
+        "displacementPattern": "none",
+        "occlusionPattern": "cornice and window recess contacts",
+        "edgeWearPattern": "restrained sill and base discoloration",
+        "notes": "Relief affecting silhouette is geometry; texture relief stays subtle."
+      },
+      "evidenceRefs": [
+        "full-object"
+      ],
+      "details": [],
+      "fidelityTier": "gameplay-landmark"
+    },
+    {
+      "id": "vanderbilt-body",
+      "name": "Vanderbilt asymmetrical chateau body",
+      "level": "meso",
+      "role": "mansion mass",
+      "importance": 0.82,
+      "confidence": 0.78,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Static overlapping boxes, low-segment roofs, and instanced facade parts reproduce the visible architectural hierarchy.",
+      "geometryDescriptor": {
+        "topologyIntent": "merged static shell with instanced repeated detail",
+        "edgeTreatment": {
+          "type": "small-bevel-or-layered-cornice",
+          "bevelRadius": 0.02,
+          "segments": 1
+        },
+        "deformationStack": [],
+        "uvStrategy": "world-scale procedural facade coordinates",
+        "normalStrategy": "generated face normals"
+      },
+      "parent": "vanderbilt",
+      "attachment": null,
+      "dimensions": {
+        "width": 1,
+        "height": 1,
+        "depth": 1,
+        "units": "parcel-relative",
+        "confidence": 0.78
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "actionProfile": {
+        "animationRole": "static-architecture",
+        "pivot": {
+          "mode": "parcel-center",
+          "localPosition": [
+            0,
+            0,
+            0
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "confidence": 1.0
+        },
+        "transformChannels": {
+          "translate": false,
+          "rotate": false,
+          "scale": false,
+          "bend": false,
+          "twist": false,
+          "detach": false,
+          "visibility": true,
+          "materialState": true
+        },
+        "sockets": [],
+        "collider": {
+          "type": "box",
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "isTrigger": false,
+          "notes": "One coarse parcel proxy; decorative children have no colliders."
+        },
+        "constraints": [],
+        "destruction": {
+          "breakable": false,
+          "fractureGroup": "architecture",
+          "seamRefs": [],
+          "detachableFragments": [],
+          "breakImpulse": 0,
+          "debrisMaterial": "masonry"
+        }
+      },
+      "material": "limestone",
+      "materialLayers": [
+        "limestone"
+      ],
+      "colorMaterialRecipe": {
+        "dominantAlbedo": "rgba(202,194,174,1)",
+        "secondaryAlbedo": "rgba(150,142,128,1)",
+        "materialClass": "stone",
+        "materialClassConfidence": 0.82
+      },
+      "deformations": [],
+      "joints": [],
+      "seams": [],
+      "localFeatures": [
+        {
+          "id": "vanderbilt-massing",
+          "description": "Vanderbilt asymmetrical chateau body",
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "surfaceDetail": {
+        "macroRoughness": 0.84,
+        "microRoughness": 0.12,
+        "bumpAmplitude": 0.012,
+        "normalPattern": "project facade texture or small-scale masonry breakup",
+        "displacementPattern": "none",
+        "occlusionPattern": "cornice and window recess contacts",
+        "edgeWearPattern": "restrained sill and base discoloration",
+        "notes": "Relief affecting silhouette is geometry; texture relief stays subtle."
+      },
+      "evidenceRefs": [
+        "full-object"
+      ],
+      "details": [],
+      "fidelityTier": "gameplay-landmark"
+    },
+    {
+      "id": "new-netherland",
+      "name": "New Netherland tower",
+      "level": "meso",
+      "role": "hotel tower",
+      "importance": 0.82,
+      "confidence": 0.78,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Static overlapping boxes, low-segment roofs, and instanced facade parts reproduce the visible architectural hierarchy.",
+      "geometryDescriptor": {
+        "topologyIntent": "merged static shell with instanced repeated detail",
+        "edgeTreatment": {
+          "type": "small-bevel-or-layered-cornice",
+          "bevelRadius": 0.02,
+          "segments": 1
+        },
+        "deformationStack": [],
+        "uvStrategy": "world-scale procedural facade coordinates",
+        "normalStrategy": "generated face normals"
+      },
+      "parent": "hotel-ensemble",
+      "attachment": null,
+      "dimensions": {
+        "width": 1,
+        "height": 1,
+        "depth": 1,
+        "units": "parcel-relative",
+        "confidence": 0.78
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "actionProfile": {
+        "animationRole": "static-architecture",
+        "pivot": {
+          "mode": "parcel-center",
+          "localPosition": [
+            0,
+            0,
+            0
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "confidence": 1.0
+        },
+        "transformChannels": {
+          "translate": false,
+          "rotate": false,
+          "scale": false,
+          "bend": false,
+          "twist": false,
+          "detach": false,
+          "visibility": true,
+          "materialState": true
+        },
+        "sockets": [],
+        "collider": {
+          "type": "box",
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "isTrigger": false,
+          "notes": "One coarse parcel proxy; decorative children have no colliders."
+        },
+        "constraints": [],
+        "destruction": {
+          "breakable": false,
+          "fractureGroup": "architecture",
+          "seamRefs": [],
+          "detachableFragments": [],
+          "breakImpulse": 0,
+          "debrisMaterial": "masonry"
+        }
+      },
+      "material": "brick",
+      "materialLayers": [
+        "brick"
+      ],
+      "colorMaterialRecipe": {
+        "dominantAlbedo": "rgba(104,69,58,1)",
+        "secondaryAlbedo": "rgba(154,105,78,1)",
+        "materialClass": "stone",
+        "materialClassConfidence": 0.82
+      },
+      "deformations": [],
+      "joints": [],
+      "seams": [],
+      "localFeatures": [
+        {
+          "id": "hotel-arch-bases",
+          "description": "New Netherland tower",
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "surfaceDetail": {
+        "macroRoughness": 0.84,
+        "microRoughness": 0.12,
+        "bumpAmplitude": 0.012,
+        "normalPattern": "project facade texture or small-scale masonry breakup",
+        "displacementPattern": "none",
+        "occlusionPattern": "cornice and window recess contacts",
+        "edgeWearPattern": "restrained sill and base discoloration",
+        "notes": "Relief affecting silhouette is geometry; texture relief stays subtle."
+      },
+      "evidenceRefs": [
+        "full-object"
+      ],
+      "details": [],
+      "fidelityTier": "gameplay-landmark"
+    },
+    {
+      "id": "savoy",
+      "name": "Hotel Savoy mass",
+      "level": "meso",
+      "role": "hotel mass",
+      "importance": 0.82,
+      "confidence": 0.78,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Static overlapping boxes, low-segment roofs, and instanced facade parts reproduce the visible architectural hierarchy.",
+      "geometryDescriptor": {
+        "topologyIntent": "merged static shell with instanced repeated detail",
+        "edgeTreatment": {
+          "type": "small-bevel-or-layered-cornice",
+          "bevelRadius": 0.02,
+          "segments": 1
+        },
+        "deformationStack": [],
+        "uvStrategy": "world-scale procedural facade coordinates",
+        "normalStrategy": "generated face normals"
+      },
+      "parent": "hotel-ensemble",
+      "attachment": null,
+      "dimensions": {
+        "width": 1,
+        "height": 1,
+        "depth": 1,
+        "units": "parcel-relative",
+        "confidence": 0.78
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "actionProfile": {
+        "animationRole": "static-architecture",
+        "pivot": {
+          "mode": "parcel-center",
+          "localPosition": [
+            0,
+            0,
+            0
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "confidence": 1.0
+        },
+        "transformChannels": {
+          "translate": false,
+          "rotate": false,
+          "scale": false,
+          "bend": false,
+          "twist": false,
+          "detach": false,
+          "visibility": true,
+          "materialState": true
+        },
+        "sockets": [],
+        "collider": {
+          "type": "box",
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "isTrigger": false,
+          "notes": "One coarse parcel proxy; decorative children have no colliders."
+        },
+        "constraints": [],
+        "destruction": {
+          "breakable": false,
+          "fractureGroup": "architecture",
+          "seamRefs": [],
+          "detachableFragments": [],
+          "breakImpulse": 0,
+          "debrisMaterial": "masonry"
+        }
+      },
+      "material": "brick",
+      "materialLayers": [
+        "brick"
+      ],
+      "colorMaterialRecipe": {
+        "dominantAlbedo": "rgba(139,93,70,1)",
+        "secondaryAlbedo": "rgba(194,151,106,1)",
+        "materialClass": "stone",
+        "materialClassConfidence": 0.82
+      },
+      "deformations": [],
+      "joints": [],
+      "seams": [],
+      "localFeatures": [
+        {
+          "id": "cornice-bands",
+          "description": "Hotel Savoy mass",
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "surfaceDetail": {
+        "macroRoughness": 0.84,
+        "microRoughness": 0.12,
+        "bumpAmplitude": 0.012,
+        "normalPattern": "project facade texture or small-scale masonry breakup",
+        "displacementPattern": "none",
+        "occlusionPattern": "cornice and window recess contacts",
+        "edgeWearPattern": "restrained sill and base discoloration",
+        "notes": "Relief affecting silhouette is geometry; texture relief stays subtle."
+      },
+      "evidenceRefs": [
+        "full-object"
+      ],
+      "details": [],
+      "fidelityTier": "gameplay-landmark"
+    },
+    {
+      "id": "bolkenhayn",
+      "name": "Bolkenhayn apartment mass",
+      "level": "meso",
+      "role": "apartment mass",
+      "importance": 0.82,
+      "confidence": 0.78,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Static overlapping boxes, low-segment roofs, and instanced facade parts reproduce the visible architectural hierarchy.",
+      "geometryDescriptor": {
+        "topologyIntent": "merged static shell with instanced repeated detail",
+        "edgeTreatment": {
+          "type": "small-bevel-or-layered-cornice",
+          "bevelRadius": 0.02,
+          "segments": 1
+        },
+        "deformationStack": [],
+        "uvStrategy": "world-scale procedural facade coordinates",
+        "normalStrategy": "generated face normals"
+      },
+      "parent": "hotel-ensemble",
+      "attachment": null,
+      "dimensions": {
+        "width": 1,
+        "height": 1,
+        "depth": 1,
+        "units": "parcel-relative",
+        "confidence": 0.78
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "actionProfile": {
+        "animationRole": "static-architecture",
+        "pivot": {
+          "mode": "parcel-center",
+          "localPosition": [
+            0,
+            0,
+            0
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "confidence": 1.0
+        },
+        "transformChannels": {
+          "translate": false,
+          "rotate": false,
+          "scale": false,
+          "bend": false,
+          "twist": false,
+          "detach": false,
+          "visibility": true,
+          "materialState": true
+        },
+        "sockets": [],
+        "collider": {
+          "type": "box",
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "isTrigger": false,
+          "notes": "One coarse parcel proxy; decorative children have no colliders."
+        },
+        "constraints": [],
+        "destruction": {
+          "breakable": false,
+          "fractureGroup": "architecture",
+          "seamRefs": [],
+          "detachableFragments": [],
+          "breakImpulse": 0,
+          "debrisMaterial": "masonry"
+        }
+      },
+      "material": "brick",
+      "materialLayers": [
+        "brick"
+      ],
+      "colorMaterialRecipe": {
+        "dominantAlbedo": "rgba(132,84,67,1)",
+        "secondaryAlbedo": "rgba(188,144,103,1)",
+        "materialClass": "stone",
+        "materialClassConfidence": 0.82
+      },
+      "deformations": [],
+      "joints": [],
+      "seams": [],
+      "localFeatures": [
+        {
+          "id": "bolkenhayn-height",
+          "description": "Bolkenhayn apartment mass",
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "surfaceDetail": {
+        "macroRoughness": 0.84,
+        "microRoughness": 0.12,
+        "bumpAmplitude": 0.012,
+        "normalPattern": "project facade texture or small-scale masonry breakup",
+        "displacementPattern": "none",
+        "occlusionPattern": "cornice and window recess contacts",
+        "edgeWearPattern": "restrained sill and base discoloration",
+        "notes": "Relief affecting silhouette is geometry; texture relief stays subtle."
+      },
+      "evidenceRefs": [
+        "full-object"
+      ],
+      "details": [],
+      "fidelityTier": "gameplay-landmark"
+    },
+    {
+      "id": "marble-row",
+      "name": "Surviving Marble Row houses",
+      "level": "meso",
+      "role": "attached row houses",
+      "importance": 0.82,
+      "confidence": 0.78,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Static overlapping boxes, low-segment roofs, and instanced facade parts reproduce the visible architectural hierarchy.",
+      "geometryDescriptor": {
+        "topologyIntent": "merged static shell with instanced repeated detail",
+        "edgeTreatment": {
+          "type": "small-bevel-or-layered-cornice",
+          "bevelRadius": 0.02,
+          "segments": 1
+        },
+        "deformationStack": [],
+        "uvStrategy": "world-scale procedural facade coordinates",
+        "normalStrategy": "generated face normals"
+      },
+      "parent": "edge-ensemble",
+      "attachment": null,
+      "dimensions": {
+        "width": 1,
+        "height": 1,
+        "depth": 1,
+        "units": "parcel-relative",
+        "confidence": 0.78
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "actionProfile": {
+        "animationRole": "static-architecture",
+        "pivot": {
+          "mode": "parcel-center",
+          "localPosition": [
+            0,
+            0,
+            0
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "confidence": 1.0
+        },
+        "transformChannels": {
+          "translate": false,
+          "rotate": false,
+          "scale": false,
+          "bend": false,
+          "twist": false,
+          "detach": false,
+          "visibility": true,
+          "materialState": true
+        },
+        "sockets": [],
+        "collider": {
+          "type": "box",
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "isTrigger": false,
+          "notes": "One coarse parcel proxy; decorative children have no colliders."
+        },
+        "constraints": [],
+        "destruction": {
+          "breakable": false,
+          "fractureGroup": "architecture",
+          "seamRefs": [],
+          "detachableFragments": [],
+          "breakImpulse": 0,
+          "debrisMaterial": "masonry"
+        }
+      },
+      "material": "limestone",
+      "materialLayers": [
+        "limestone"
+      ],
+      "colorMaterialRecipe": {
+        "dominantAlbedo": "rgba(222,216,201,1)",
+        "secondaryAlbedo": "rgba(177,169,153,1)",
+        "materialClass": "stone",
+        "materialClassConfidence": 0.82
+      },
+      "deformations": [],
+      "joints": [],
+      "seams": [],
+      "localFeatures": [
+        {
+          "id": "rowhouse-party-rhythm",
+          "description": "Surviving Marble Row houses",
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "surfaceDetail": {
+        "macroRoughness": 0.84,
+        "microRoughness": 0.12,
+        "bumpAmplitude": 0.012,
+        "normalPattern": "project facade texture or small-scale masonry breakup",
+        "displacementPattern": "none",
+        "occlusionPattern": "cornice and window recess contacts",
+        "edgeWearPattern": "restrained sill and base discoloration",
+        "notes": "Relief affecting silhouette is geometry; texture relief stays subtle."
+      },
+      "evidenceRefs": [
+        "full-object"
+      ],
+      "details": [],
+      "fidelityTier": "gameplay-landmark"
+    },
+    {
+      "id": "huntington",
+      "name": "Collis P. Huntington mansion",
+      "level": "meso",
+      "role": "corner mansion",
+      "importance": 0.82,
+      "confidence": 0.78,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Static overlapping boxes, low-segment roofs, and instanced facade parts reproduce the visible architectural hierarchy.",
+      "geometryDescriptor": {
+        "topologyIntent": "merged static shell with instanced repeated detail",
+        "edgeTreatment": {
+          "type": "small-bevel-or-layered-cornice",
+          "bevelRadius": 0.02,
+          "segments": 1
+        },
+        "deformationStack": [],
+        "uvStrategy": "world-scale procedural facade coordinates",
+        "normalStrategy": "generated face normals"
+      },
+      "parent": "edge-ensemble",
+      "attachment": null,
+      "dimensions": {
+        "width": 1,
+        "height": 1,
+        "depth": 1,
+        "units": "parcel-relative",
+        "confidence": 0.78
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "actionProfile": {
+        "animationRole": "static-architecture",
+        "pivot": {
+          "mode": "parcel-center",
+          "localPosition": [
+            0,
+            0,
+            0
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "confidence": 1.0
+        },
+        "transformChannels": {
+          "translate": false,
+          "rotate": false,
+          "scale": false,
+          "bend": false,
+          "twist": false,
+          "detach": false,
+          "visibility": true,
+          "materialState": true
+        },
+        "sockets": [],
+        "collider": {
+          "type": "box",
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "isTrigger": false,
+          "notes": "One coarse parcel proxy; decorative children have no colliders."
+        },
+        "constraints": [],
+        "destruction": {
+          "breakable": false,
+          "fractureGroup": "architecture",
+          "seamRefs": [],
+          "detachableFragments": [],
+          "breakImpulse": 0,
+          "debrisMaterial": "masonry"
+        }
+      },
+      "material": "brick",
+      "materialLayers": [
+        "brick"
+      ],
+      "colorMaterialRecipe": {
+        "dominantAlbedo": "rgba(131,84,66,1)",
+        "secondaryAlbedo": "rgba(204,193,172,1)",
+        "materialClass": "stone",
+        "materialClassConfidence": 0.82
+      },
+      "deformations": [],
+      "joints": [],
+      "seams": [],
+      "localFeatures": [
+        {
+          "id": "huntington-corner",
+          "description": "Collis P. Huntington mansion",
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "surfaceDetail": {
+        "macroRoughness": 0.84,
+        "microRoughness": 0.12,
+        "bumpAmplitude": 0.012,
+        "normalPattern": "project facade texture or small-scale masonry breakup",
+        "displacementPattern": "none",
+        "occlusionPattern": "cornice and window recess contacts",
+        "edgeWearPattern": "restrained sill and base discoloration",
+        "notes": "Relief affecting silhouette is geometry; texture relief stays subtle."
+      },
+      "evidenceRefs": [
+        "full-object"
+      ],
+      "details": [],
+      "fidelityTier": "gameplay-landmark"
+    },
+    {
+      "id": "gerry",
+      "name": "Elbridge T. Gerry mansion",
+      "level": "meso",
+      "role": "corner mansion",
+      "importance": 0.82,
+      "confidence": 0.78,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Static overlapping boxes, low-segment roofs, and instanced facade parts reproduce the visible architectural hierarchy.",
+      "geometryDescriptor": {
+        "topologyIntent": "merged static shell with instanced repeated detail",
+        "edgeTreatment": {
+          "type": "small-bevel-or-layered-cornice",
+          "bevelRadius": 0.02,
+          "segments": 1
+        },
+        "deformationStack": [],
+        "uvStrategy": "world-scale procedural facade coordinates",
+        "normalStrategy": "generated face normals"
+      },
+      "parent": "edge-ensemble",
+      "attachment": null,
+      "dimensions": {
+        "width": 1,
+        "height": 1,
+        "depth": 1,
+        "units": "parcel-relative",
+        "confidence": 0.78
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "actionProfile": {
+        "animationRole": "static-architecture",
+        "pivot": {
+          "mode": "parcel-center",
+          "localPosition": [
+            0,
+            0,
+            0
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "confidence": 1.0
+        },
+        "transformChannels": {
+          "translate": false,
+          "rotate": false,
+          "scale": false,
+          "bend": false,
+          "twist": false,
+          "detach": false,
+          "visibility": true,
+          "materialState": true
+        },
+        "sockets": [],
+        "collider": {
+          "type": "box",
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "isTrigger": false,
+          "notes": "One coarse parcel proxy; decorative children have no colliders."
+        },
+        "constraints": [],
+        "destruction": {
+          "breakable": false,
+          "fractureGroup": "architecture",
+          "seamRefs": [],
+          "detachableFragments": [],
+          "breakImpulse": 0,
+          "debrisMaterial": "masonry"
+        }
+      },
+      "material": "limestone",
+      "materialLayers": [
+        "limestone"
+      ],
+      "colorMaterialRecipe": {
+        "dominantAlbedo": "rgba(197,188,169,1)",
+        "secondaryAlbedo": "rgba(108,82,70,1)",
+        "materialClass": "stone",
+        "materialClassConfidence": 0.82
+      },
+      "deformations": [],
+      "joints": [],
+      "seams": [],
+      "localFeatures": [
+        {
+          "id": "gerry-gable",
+          "description": "Elbridge T. Gerry mansion",
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "surfaceDetail": {
+        "macroRoughness": 0.84,
+        "microRoughness": 0.12,
+        "bumpAmplitude": 0.012,
+        "normalPattern": "project facade texture or small-scale masonry breakup",
+        "displacementPattern": "none",
+        "occlusionPattern": "cornice and window recess contacts",
+        "edgeWearPattern": "restrained sill and base discoloration",
+        "notes": "Relief affecting silhouette is geometry; texture relief stays subtle."
+      },
+      "evidenceRefs": [
+        "full-object"
+      ],
+      "details": [],
+      "fidelityTier": "gameplay-landmark"
+    },
+    {
+      "id": "roof-systems",
+      "name": "Slate mansards, gables, turrets, and chimneys",
+      "level": "meso",
+      "role": "roof systems",
+      "importance": 0.82,
+      "confidence": 0.78,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Static overlapping boxes, low-segment roofs, and instanced facade parts reproduce the visible architectural hierarchy.",
+      "geometryDescriptor": {
+        "topologyIntent": "merged static shell with instanced repeated detail",
+        "edgeTreatment": {
+          "type": "small-bevel-or-layered-cornice",
+          "bevelRadius": 0.02,
+          "segments": 1
+        },
+        "deformationStack": [],
+        "uvStrategy": "world-scale procedural facade coordinates",
+        "normalStrategy": "generated face normals"
+      },
+      "parent": "district-root",
+      "attachment": null,
+      "dimensions": {
+        "width": 1,
+        "height": 1,
+        "depth": 1,
+        "units": "parcel-relative",
+        "confidence": 0.78
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "actionProfile": {
+        "animationRole": "static-architecture",
+        "pivot": {
+          "mode": "parcel-center",
+          "localPosition": [
+            0,
+            0,
+            0
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "confidence": 1.0
+        },
+        "transformChannels": {
+          "translate": false,
+          "rotate": false,
+          "scale": false,
+          "bend": false,
+          "twist": false,
+          "detach": false,
+          "visibility": true,
+          "materialState": true
+        },
+        "sockets": [],
+        "collider": {
+          "type": "box",
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "isTrigger": false,
+          "notes": "One coarse parcel proxy; decorative children have no colliders."
+        },
+        "constraints": [],
+        "destruction": {
+          "breakable": false,
+          "fractureGroup": "architecture",
+          "seamRefs": [],
+          "detachableFragments": [],
+          "breakImpulse": 0,
+          "debrisMaterial": "masonry"
+        }
+      },
+      "material": "slate",
+      "materialLayers": [
+        "slate"
+      ],
+      "colorMaterialRecipe": {
+        "dominantAlbedo": "rgba(50,55,56,1)",
+        "secondaryAlbedo": "rgba(67,77,72,1)",
+        "materialClass": "stone",
+        "materialClassConfidence": 0.82
+      },
+      "deformations": [],
+      "joints": [],
+      "seams": [],
+      "localFeatures": [
+        {
+          "id": "mansion-rooflines",
+          "description": "Slate mansards, gables, turrets, and chimneys",
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "surfaceDetail": {
+        "macroRoughness": 0.84,
+        "microRoughness": 0.12,
+        "bumpAmplitude": 0.012,
+        "normalPattern": "project facade texture or small-scale masonry breakup",
+        "displacementPattern": "none",
+        "occlusionPattern": "cornice and window recess contacts",
+        "edgeWearPattern": "restrained sill and base discoloration",
+        "notes": "Relief affecting silhouette is geometry; texture relief stays subtle."
+      },
+      "evidenceRefs": [
+        "full-object"
+      ],
+      "details": [],
+      "fidelityTier": "gameplay-landmark"
+    },
+    {
+      "id": "window-bays",
+      "name": "Instanced sash and window bay system",
+      "level": "micro",
+      "role": "facade bay system",
+      "importance": 0.58,
+      "confidence": 0.78,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Static overlapping boxes, low-segment roofs, and instanced facade parts reproduce the visible architectural hierarchy.",
+      "geometryDescriptor": {
+        "topologyIntent": "merged static shell with instanced repeated detail",
+        "edgeTreatment": {
+          "type": "small-bevel-or-layered-cornice",
+          "bevelRadius": 0.02,
+          "segments": 1
+        },
+        "deformationStack": [],
+        "uvStrategy": "world-scale procedural facade coordinates",
+        "normalStrategy": "generated face normals"
+      },
+      "parent": "district-root",
+      "attachment": null,
+      "dimensions": {
+        "width": 1,
+        "height": 1,
+        "depth": 1,
+        "units": "parcel-relative",
+        "confidence": 0.78
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "actionProfile": {
+        "animationRole": "static-architecture",
+        "pivot": {
+          "mode": "parcel-center",
+          "localPosition": [
+            0,
+            0,
+            0
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "confidence": 1.0
+        },
+        "transformChannels": {
+          "translate": false,
+          "rotate": false,
+          "scale": false,
+          "bend": false,
+          "twist": false,
+          "detach": false,
+          "visibility": true,
+          "materialState": true
+        },
+        "sockets": [],
+        "collider": {
+          "type": "box",
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "isTrigger": false,
+          "notes": "One coarse parcel proxy; decorative children have no colliders."
+        },
+        "constraints": [],
+        "destruction": {
+          "breakable": false,
+          "fractureGroup": "architecture",
+          "seamRefs": [],
+          "detachableFragments": [],
+          "breakImpulse": 0,
+          "debrisMaterial": "masonry"
+        }
+      },
+      "material": "glass",
+      "materialLayers": [
+        "glass"
+      ],
+      "colorMaterialRecipe": {
+        "dominantAlbedo": "rgba(42,54,60,1)",
+        "secondaryAlbedo": "rgba(102,113,111,1)",
+        "materialClass": "glass",
+        "materialClassConfidence": 0.82
+      },
+      "deformations": [],
+      "joints": [],
+      "seams": [],
+      "localFeatures": [
+        {
+          "id": "window-grid",
+          "description": "Instanced sash and window bay system",
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "surfaceDetail": {
+        "macroRoughness": 0.84,
+        "microRoughness": 0.12,
+        "bumpAmplitude": 0.012,
+        "normalPattern": "project facade texture or small-scale masonry breakup",
+        "displacementPattern": "none",
+        "occlusionPattern": "cornice and window recess contacts",
+        "edgeWearPattern": "restrained sill and base discoloration",
+        "notes": "Relief affecting silhouette is geometry; texture relief stays subtle."
+      },
+      "evidenceRefs": [
+        "full-object"
+      ],
+      "details": [],
+      "fidelityTier": "gameplay-landmark"
+    },
+    {
+      "id": "cornice-system",
+      "name": "Instanced belt course and cornice system",
+      "level": "micro",
+      "role": "cornice system",
+      "importance": 0.58,
+      "confidence": 0.78,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Static overlapping boxes, low-segment roofs, and instanced facade parts reproduce the visible architectural hierarchy.",
+      "geometryDescriptor": {
+        "topologyIntent": "merged static shell with instanced repeated detail",
+        "edgeTreatment": {
+          "type": "small-bevel-or-layered-cornice",
+          "bevelRadius": 0.02,
+          "segments": 1
+        },
+        "deformationStack": [],
+        "uvStrategy": "world-scale procedural facade coordinates",
+        "normalStrategy": "generated face normals"
+      },
+      "parent": "district-root",
+      "attachment": null,
+      "dimensions": {
+        "width": 1,
+        "height": 1,
+        "depth": 1,
+        "units": "parcel-relative",
+        "confidence": 0.78
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "actionProfile": {
+        "animationRole": "static-architecture",
+        "pivot": {
+          "mode": "parcel-center",
+          "localPosition": [
+            0,
+            0,
+            0
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "confidence": 1.0
+        },
+        "transformChannels": {
+          "translate": false,
+          "rotate": false,
+          "scale": false,
+          "bend": false,
+          "twist": false,
+          "detach": false,
+          "visibility": true,
+          "materialState": true
+        },
+        "sockets": [],
+        "collider": {
+          "type": "box",
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "isTrigger": false,
+          "notes": "One coarse parcel proxy; decorative children have no colliders."
+        },
+        "constraints": [],
+        "destruction": {
+          "breakable": false,
+          "fractureGroup": "architecture",
+          "seamRefs": [],
+          "detachableFragments": [],
+          "breakImpulse": 0,
+          "debrisMaterial": "masonry"
+        }
+      },
+      "material": "limestone",
+      "materialLayers": [
+        "limestone"
+      ],
+      "colorMaterialRecipe": {
+        "dominantAlbedo": "rgba(216,208,190,1)",
+        "secondaryAlbedo": "rgba(153,143,126,1)",
+        "materialClass": "stone",
+        "materialClassConfidence": 0.82
+      },
+      "deformations": [],
+      "joints": [],
+      "seams": [],
+      "localFeatures": [
+        {
+          "id": "cornice-bands",
+          "description": "Instanced belt course and cornice system",
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "surfaceDetail": {
+        "macroRoughness": 0.84,
+        "microRoughness": 0.12,
+        "bumpAmplitude": 0.012,
+        "normalPattern": "project facade texture or small-scale masonry breakup",
+        "displacementPattern": "none",
+        "occlusionPattern": "cornice and window recess contacts",
+        "edgeWearPattern": "restrained sill and base discoloration",
+        "notes": "Relief affecting silhouette is geometry; texture relief stays subtle."
+      },
+      "evidenceRefs": [
+        "full-object"
+      ],
+      "details": [],
+      "fidelityTier": "gameplay-landmark"
+    },
+    {
+      "id": "dormer-system",
+      "name": "Instanced dormer and gable system",
+      "level": "micro",
+      "role": "dormer system",
+      "importance": 0.58,
+      "confidence": 0.78,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Static overlapping boxes, low-segment roofs, and instanced facade parts reproduce the visible architectural hierarchy.",
+      "geometryDescriptor": {
+        "topologyIntent": "merged static shell with instanced repeated detail",
+        "edgeTreatment": {
+          "type": "small-bevel-or-layered-cornice",
+          "bevelRadius": 0.02,
+          "segments": 1
+        },
+        "deformationStack": [],
+        "uvStrategy": "world-scale procedural facade coordinates",
+        "normalStrategy": "generated face normals"
+      },
+      "parent": "roof-systems",
+      "attachment": null,
+      "dimensions": {
+        "width": 1,
+        "height": 1,
+        "depth": 1,
+        "units": "parcel-relative",
+        "confidence": 0.78
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "actionProfile": {
+        "animationRole": "static-architecture",
+        "pivot": {
+          "mode": "parcel-center",
+          "localPosition": [
+            0,
+            0,
+            0
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "confidence": 1.0
+        },
+        "transformChannels": {
+          "translate": false,
+          "rotate": false,
+          "scale": false,
+          "bend": false,
+          "twist": false,
+          "detach": false,
+          "visibility": true,
+          "materialState": true
+        },
+        "sockets": [],
+        "collider": {
+          "type": "box",
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "isTrigger": false,
+          "notes": "One coarse parcel proxy; decorative children have no colliders."
+        },
+        "constraints": [],
+        "destruction": {
+          "breakable": false,
+          "fractureGroup": "architecture",
+          "seamRefs": [],
+          "detachableFragments": [],
+          "breakImpulse": 0,
+          "debrisMaterial": "masonry"
+        }
+      },
+      "material": "slate",
+      "materialLayers": [
+        "slate"
+      ],
+      "colorMaterialRecipe": {
+        "dominantAlbedo": "rgba(54,59,60,1)",
+        "secondaryAlbedo": "rgba(183,176,160,1)",
+        "materialClass": "stone",
+        "materialClassConfidence": 0.82
+      },
+      "deformations": [],
+      "joints": [],
+      "seams": [],
+      "localFeatures": [
+        {
+          "id": "dormer-rhythm",
+          "description": "Instanced dormer and gable system",
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "surfaceDetail": {
+        "macroRoughness": 0.84,
+        "microRoughness": 0.12,
+        "bumpAmplitude": 0.012,
+        "normalPattern": "project facade texture or small-scale masonry breakup",
+        "displacementPattern": "none",
+        "occlusionPattern": "cornice and window recess contacts",
+        "edgeWearPattern": "restrained sill and base discoloration",
+        "notes": "Relief affecting silhouette is geometry; texture relief stays subtle."
+      },
+      "evidenceRefs": [
+        "full-object"
+      ],
+      "details": [],
+      "fidelityTier": "gameplay-landmark"
+    },
+    {
+      "id": "entrance-systems",
+      "name": "Arched portals, stoops, and canopies",
+      "level": "micro",
+      "role": "entrance systems",
+      "importance": 0.58,
+      "confidence": 0.78,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Static overlapping boxes, low-segment roofs, and instanced facade parts reproduce the visible architectural hierarchy.",
+      "geometryDescriptor": {
+        "topologyIntent": "merged static shell with instanced repeated detail",
+        "edgeTreatment": {
+          "type": "small-bevel-or-layered-cornice",
+          "bevelRadius": 0.02,
+          "segments": 1
+        },
+        "deformationStack": [],
+        "uvStrategy": "world-scale procedural facade coordinates",
+        "normalStrategy": "generated face normals"
+      },
+      "parent": "district-root",
+      "attachment": null,
+      "dimensions": {
+        "width": 1,
+        "height": 1,
+        "depth": 1,
+        "units": "parcel-relative",
+        "confidence": 0.78
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "actionProfile": {
+        "animationRole": "static-architecture",
+        "pivot": {
+          "mode": "parcel-center",
+          "localPosition": [
+            0,
+            0,
+            0
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "confidence": 1.0
+        },
+        "transformChannels": {
+          "translate": false,
+          "rotate": false,
+          "scale": false,
+          "bend": false,
+          "twist": false,
+          "detach": false,
+          "visibility": true,
+          "materialState": true
+        },
+        "sockets": [],
+        "collider": {
+          "type": "box",
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "isTrigger": false,
+          "notes": "One coarse parcel proxy; decorative children have no colliders."
+        },
+        "constraints": [],
+        "destruction": {
+          "breakable": false,
+          "fractureGroup": "architecture",
+          "seamRefs": [],
+          "detachableFragments": [],
+          "breakImpulse": 0,
+          "debrisMaterial": "masonry"
+        }
+      },
+      "material": "limestone",
+      "materialLayers": [
+        "limestone"
+      ],
+      "colorMaterialRecipe": {
+        "dominantAlbedo": "rgba(208,199,180,1)",
+        "secondaryAlbedo": "rgba(66,55,46,1)",
+        "materialClass": "stone",
+        "materialClassConfidence": 0.82
+      },
+      "deformations": [],
+      "joints": [],
+      "seams": [],
+      "localFeatures": [
+        {
+          "id": "entrance-portals",
+          "description": "Arched portals, stoops, and canopies",
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "surfaceDetail": {
+        "macroRoughness": 0.84,
+        "microRoughness": 0.12,
+        "bumpAmplitude": 0.012,
+        "normalPattern": "project facade texture or small-scale masonry breakup",
+        "displacementPattern": "none",
+        "occlusionPattern": "cornice and window recess contacts",
+        "edgeWearPattern": "restrained sill and base discoloration",
+        "notes": "Relief affecting silhouette is geometry; texture relief stays subtle."
+      },
+      "evidenceRefs": [
+        "full-object"
+      ],
+      "details": [],
+      "fidelityTier": "gameplay-landmark"
+    },
+    {
+      "id": "ironwork-system",
+      "name": "Areaways, gates, and roof rails",
+      "level": "micro",
+      "role": "ironwork system",
+      "importance": 0.58,
+      "confidence": 0.78,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Static overlapping boxes, low-segment roofs, and instanced facade parts reproduce the visible architectural hierarchy.",
+      "geometryDescriptor": {
+        "topologyIntent": "merged static shell with instanced repeated detail",
+        "edgeTreatment": {
+          "type": "small-bevel-or-layered-cornice",
+          "bevelRadius": 0.02,
+          "segments": 1
+        },
+        "deformationStack": [],
+        "uvStrategy": "world-scale procedural facade coordinates",
+        "normalStrategy": "generated face normals"
+      },
+      "parent": "district-root",
+      "attachment": null,
+      "dimensions": {
+        "width": 1,
+        "height": 1,
+        "depth": 1,
+        "units": "parcel-relative",
+        "confidence": 0.78
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "actionProfile": {
+        "animationRole": "static-architecture",
+        "pivot": {
+          "mode": "parcel-center",
+          "localPosition": [
+            0,
+            0,
+            0
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "confidence": 1.0
+        },
+        "transformChannels": {
+          "translate": false,
+          "rotate": false,
+          "scale": false,
+          "bend": false,
+          "twist": false,
+          "detach": false,
+          "visibility": true,
+          "materialState": true
+        },
+        "sockets": [],
+        "collider": {
+          "type": "box",
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "isTrigger": false,
+          "notes": "One coarse parcel proxy; decorative children have no colliders."
+        },
+        "constraints": [],
+        "destruction": {
+          "breakable": false,
+          "fractureGroup": "architecture",
+          "seamRefs": [],
+          "detachableFragments": [],
+          "breakImpulse": 0,
+          "debrisMaterial": "masonry"
+        }
+      },
+      "material": "iron",
+      "materialLayers": [
+        "iron"
+      ],
+      "colorMaterialRecipe": {
+        "dominantAlbedo": "rgba(37,41,40,1)",
+        "secondaryAlbedo": "rgba(78,83,77,1)",
+        "materialClass": "metal",
+        "materialClassConfidence": 0.82
+      },
+      "deformations": [],
+      "joints": [],
+      "seams": [],
+      "localFeatures": [
+        {
+          "id": "iron-areaways",
+          "description": "Areaways, gates, and roof rails",
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "surfaceDetail": {
+        "macroRoughness": 0.84,
+        "microRoughness": 0.12,
+        "bumpAmplitude": 0.012,
+        "normalPattern": "project facade texture or small-scale masonry breakup",
+        "displacementPattern": "none",
+        "occlusionPattern": "cornice and window recess contacts",
+        "edgeWearPattern": "restrained sill and base discoloration",
+        "notes": "Relief affecting silhouette is geometry; texture relief stays subtle."
+      },
+      "evidenceRefs": [
+        "full-object"
+      ],
+      "details": [],
+      "fidelityTier": "gameplay-landmark"
+    }
+  ],
+  "materials": [
+    {
+      "id": "masonry",
+      "name": "Shared muted masonry",
+      "type": "standard",
+      "shaderModel": "MeshStandardMaterial",
+      "baseColor": "#806852",
+      "color": "#806852",
+      "albedo": {
+        "dominant": "#806852",
+        "secondary": [
+          "#9a8268"
+        ],
+        "samplingNotes": "Period-reference palette interpreted through game lighting."
+      },
+      "colorVariation": {
+        "palette": [
+          "#806852",
+          "#9a8268"
+        ],
+        "pattern": "parcel-and-instance tint",
+        "amplitude": 0.08,
+        "heightCorrelation": 0.15
+      },
+      "textureResolution": 1024,
+      "textureProjection": {
+        "mode": "world-space",
+        "repeat": [
+          4,
+          4
+        ],
+        "anisotropy": 4,
+        "texelDensityIntent": "Stable masonry scale across differently sized shells."
+      },
+      "surfaceFrequencyBands": [
+        {
+          "id": "macro",
+          "frequency": 1.5,
+          "amplitude": 0.12,
+          "role": "parcel color variation"
+        },
+        {
+          "id": "meso",
+          "frequency": 10,
+          "amplitude": 0.08,
+          "role": "masonry courses and slate strips"
+        },
+        {
+          "id": "micro",
+          "frequency": 48,
+          "amplitude": 0.02,
+          "role": "grazing-light breakup"
+        }
+      ],
+      "roughness": {
+        "base": 0.88,
+        "variation": 0.08,
+        "map": "independent project roughness or scalar instance variation",
+        "localResponse": "darker cavities are slightly rougher"
+      },
+      "metalness": {
+        "base": 0,
+        "variation": 0.05
+      },
+      "normal": {
+        "pattern": "independent project normal or geometry normals",
+        "strength": 0.16,
+        "scale": 24,
+        "space": "tangent"
+      },
+      "bump": {
+        "pattern": "independent fine masonry field",
+        "amplitude": 0.012,
+        "scale": 1
+      },
+      "displacement": {
+        "pattern": "none",
+        "amplitude": 0,
+        "scale": 1,
+        "silhouetteAffects": false
+      },
+      "ambientOcclusion": {
+        "cavityStrength": 0.18,
+        "contactShadowBias": 0.22,
+        "notes": "Applied at window, belt-course, and roof contacts."
+      },
+      "wear": {
+        "edgeWear": 0.025,
+        "scratches": [],
+        "chips": []
+      },
+      "dirt": {
+        "amount": 0.035,
+        "cavityBias": 0.5,
+        "color": "#342d26"
+      },
+      "localOverrides": [
+        {
+          "id": "base-weathering",
+          "region": "base-and-sill contacts",
+          "roughness": 0.92,
+          "albedoShift": "slightly darker and less saturated",
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "shaderNotes": [
+        "Share the material across the landmark kit; vary color per instance."
+      ],
+      "notes": "Performance-balanced period facade finish.",
+      "qualityTier": "utility"
+    },
+    {
+      "id": "limestone",
+      "name": "Pale limestone and marble",
+      "type": "standard",
+      "shaderModel": "MeshStandardMaterial",
+      "baseColor": "#d4cdbb",
+      "color": "#d4cdbb",
+      "albedo": {
+        "dominant": "#d4cdbb",
+        "secondary": [
+          "#b9b09d"
+        ],
+        "samplingNotes": "Period-reference palette interpreted through game lighting."
+      },
+      "colorVariation": {
+        "palette": [
+          "#d4cdbb",
+          "#b9b09d"
+        ],
+        "pattern": "parcel-and-instance tint",
+        "amplitude": 0.08,
+        "heightCorrelation": 0.15
+      },
+      "textureResolution": 1024,
+      "textureProjection": {
+        "mode": "world-space",
+        "repeat": [
+          4,
+          4
+        ],
+        "anisotropy": 4,
+        "texelDensityIntent": "Stable masonry scale across differently sized shells."
+      },
+      "surfaceFrequencyBands": [
+        {
+          "id": "macro",
+          "frequency": 1.5,
+          "amplitude": 0.12,
+          "role": "parcel color variation"
+        },
+        {
+          "id": "meso",
+          "frequency": 10,
+          "amplitude": 0.08,
+          "role": "masonry courses and slate strips"
+        },
+        {
+          "id": "micro",
+          "frequency": 48,
+          "amplitude": 0.02,
+          "role": "grazing-light breakup"
+        }
+      ],
+      "roughness": {
+        "base": 0.9,
+        "variation": 0.08,
+        "map": "independent project roughness or scalar instance variation",
+        "localResponse": "darker cavities are slightly rougher"
+      },
+      "metalness": {
+        "base": 0,
+        "variation": 0.05
+      },
+      "normal": {
+        "pattern": "independent project normal or geometry normals",
+        "strength": 0.16,
+        "scale": 24,
+        "space": "tangent"
+      },
+      "bump": {
+        "pattern": "independent fine masonry field",
+        "amplitude": 0.012,
+        "scale": 1
+      },
+      "displacement": {
+        "pattern": "none",
+        "amplitude": 0,
+        "scale": 1,
+        "silhouetteAffects": false
+      },
+      "ambientOcclusion": {
+        "cavityStrength": 0.18,
+        "contactShadowBias": 0.22,
+        "notes": "Applied at window, belt-course, and roof contacts."
+      },
+      "wear": {
+        "edgeWear": 0.025,
+        "scratches": [],
+        "chips": []
+      },
+      "dirt": {
+        "amount": 0.035,
+        "cavityBias": 0.5,
+        "color": "#342d26"
+      },
+      "localOverrides": [
+        {
+          "id": "sill-weathering",
+          "region": "base-and-sill contacts",
+          "roughness": 0.9400000000000001,
+          "albedoShift": "slightly darker and less saturated",
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "shaderNotes": [
+        "Share the material across the landmark kit; vary color per instance."
+      ],
+      "notes": "Performance-balanced period facade finish.",
+      "qualityTier": "utility"
+    },
+    {
+      "id": "brick",
+      "name": "Warm Roman brick",
+      "type": "standard",
+      "shaderModel": "MeshStandardMaterial",
+      "baseColor": "#7f5142",
+      "color": "#7f5142",
+      "albedo": {
+        "dominant": "#7f5142",
+        "secondary": [
+          "#9a6952"
+        ],
+        "samplingNotes": "Period-reference palette interpreted through game lighting."
+      },
+      "colorVariation": {
+        "palette": [
+          "#7f5142",
+          "#9a6952"
+        ],
+        "pattern": "parcel-and-instance tint",
+        "amplitude": 0.08,
+        "heightCorrelation": 0.15
+      },
+      "textureResolution": 1024,
+      "textureProjection": {
+        "mode": "world-space",
+        "repeat": [
+          4,
+          4
+        ],
+        "anisotropy": 4,
+        "texelDensityIntent": "Stable masonry scale across differently sized shells."
+      },
+      "surfaceFrequencyBands": [
+        {
+          "id": "macro",
+          "frequency": 1.5,
+          "amplitude": 0.12,
+          "role": "parcel color variation"
+        },
+        {
+          "id": "meso",
+          "frequency": 10,
+          "amplitude": 0.08,
+          "role": "masonry courses and slate strips"
+        },
+        {
+          "id": "micro",
+          "frequency": 48,
+          "amplitude": 0.02,
+          "role": "grazing-light breakup"
+        }
+      ],
+      "roughness": {
+        "base": 0.91,
+        "variation": 0.08,
+        "map": "independent project roughness or scalar instance variation",
+        "localResponse": "darker cavities are slightly rougher"
+      },
+      "metalness": {
+        "base": 0,
+        "variation": 0.05
+      },
+      "normal": {
+        "pattern": "independent project normal or geometry normals",
+        "strength": 0.16,
+        "scale": 24,
+        "space": "tangent"
+      },
+      "bump": {
+        "pattern": "independent fine masonry field",
+        "amplitude": 0.012,
+        "scale": 1
+      },
+      "displacement": {
+        "pattern": "none",
+        "amplitude": 0,
+        "scale": 1,
+        "silhouetteAffects": false
+      },
+      "ambientOcclusion": {
+        "cavityStrength": 0.18,
+        "contactShadowBias": 0.22,
+        "notes": "Applied at window, belt-course, and roof contacts."
+      },
+      "wear": {
+        "edgeWear": 0.025,
+        "scratches": [],
+        "chips": []
+      },
+      "dirt": {
+        "amount": 0.035,
+        "cavityBias": 0.5,
+        "color": "#342d26"
+      },
+      "localOverrides": [
+        {
+          "id": "soot-streaks",
+          "region": "base-and-sill contacts",
+          "roughness": 0.9500000000000001,
+          "albedoShift": "slightly darker and less saturated",
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "shaderNotes": [
+        "Share the material across the landmark kit; vary color per instance."
+      ],
+      "notes": "Performance-balanced period facade finish.",
+      "qualityTier": "utility"
+    },
+    {
+      "id": "slate",
+      "name": "Dark slate and aged roof metal",
+      "type": "standard",
+      "shaderModel": "MeshStandardMaterial",
+      "baseColor": "#343b3c",
+      "color": "#343b3c",
+      "albedo": {
+        "dominant": "#343b3c",
+        "secondary": [
+          "#465049"
+        ],
+        "samplingNotes": "Period-reference palette interpreted through game lighting."
+      },
+      "colorVariation": {
+        "palette": [
+          "#343b3c",
+          "#465049"
+        ],
+        "pattern": "parcel-and-instance tint",
+        "amplitude": 0.08,
+        "heightCorrelation": 0.15
+      },
+      "textureResolution": 1024,
+      "textureProjection": {
+        "mode": "world-space",
+        "repeat": [
+          4,
+          4
+        ],
+        "anisotropy": 4,
+        "texelDensityIntent": "Stable masonry scale across differently sized shells."
+      },
+      "surfaceFrequencyBands": [
+        {
+          "id": "macro",
+          "frequency": 1.5,
+          "amplitude": 0.12,
+          "role": "parcel color variation"
+        },
+        {
+          "id": "meso",
+          "frequency": 10,
+          "amplitude": 0.08,
+          "role": "masonry courses and slate strips"
+        },
+        {
+          "id": "micro",
+          "frequency": 48,
+          "amplitude": 0.02,
+          "role": "grazing-light breakup"
+        }
+      ],
+      "roughness": {
+        "base": 0.73,
+        "variation": 0.08,
+        "map": "independent project roughness or scalar instance variation",
+        "localResponse": "darker cavities are slightly rougher"
+      },
+      "metalness": {
+        "base": 0.08,
+        "variation": 0.05
+      },
+      "normal": {
+        "pattern": "independent project normal or geometry normals",
+        "strength": 0.16,
+        "scale": 24,
+        "space": "tangent"
+      },
+      "bump": {
+        "pattern": "independent fine masonry field",
+        "amplitude": 0.012,
+        "scale": 1
+      },
+      "displacement": {
+        "pattern": "none",
+        "amplitude": 0,
+        "scale": 1,
+        "silhouetteAffects": false
+      },
+      "ambientOcclusion": {
+        "cavityStrength": 0.18,
+        "contactShadowBias": 0.22,
+        "notes": "Applied at window, belt-course, and roof contacts."
+      },
+      "wear": {
+        "edgeWear": 0.025,
+        "scratches": [],
+        "chips": []
+      },
+      "dirt": {
+        "amount": 0.035,
+        "cavityBias": 0.5,
+        "color": "#342d26"
+      },
+      "localOverrides": [
+        {
+          "id": "roof-patina",
+          "region": "base-and-sill contacts",
+          "roughness": 0.77,
+          "albedoShift": "slightly darker and less saturated",
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "shaderNotes": [
+        "Share the material across the landmark kit; vary color per instance."
+      ],
+      "notes": "Performance-balanced period facade finish.",
+      "qualityTier": "utility"
+    },
+    {
+      "id": "glass",
+      "name": "Opaque period-window depth",
+      "type": "standard",
+      "shaderModel": "MeshStandardMaterial",
+      "baseColor": "#35444a",
+      "color": "#35444a",
+      "albedo": {
+        "dominant": "#35444a",
+        "secondary": [
+          "#66716f"
+        ],
+        "samplingNotes": "Period-reference palette interpreted through game lighting."
+      },
+      "colorVariation": {
+        "palette": [
+          "#35444a",
+          "#66716f"
+        ],
+        "pattern": "parcel-and-instance tint",
+        "amplitude": 0.08,
+        "heightCorrelation": 0.15
+      },
+      "textureResolution": 1024,
+      "textureProjection": {
+        "mode": "world-space",
+        "repeat": [
+          4,
+          4
+        ],
+        "anisotropy": 4,
+        "texelDensityIntent": "Stable masonry scale across differently sized shells."
+      },
+      "surfaceFrequencyBands": [
+        {
+          "id": "macro",
+          "frequency": 1.5,
+          "amplitude": 0.12,
+          "role": "parcel color variation"
+        },
+        {
+          "id": "meso",
+          "frequency": 10,
+          "amplitude": 0.08,
+          "role": "masonry courses and slate strips"
+        },
+        {
+          "id": "micro",
+          "frequency": 48,
+          "amplitude": 0.02,
+          "role": "grazing-light breakup"
+        }
+      ],
+      "roughness": {
+        "base": 0.38,
+        "variation": 0.08,
+        "map": "independent project roughness or scalar instance variation",
+        "localResponse": "darker cavities are slightly rougher"
+      },
+      "metalness": {
+        "base": 0,
+        "variation": 0.05
+      },
+      "normal": {
+        "pattern": "independent project normal or geometry normals",
+        "strength": 0.16,
+        "scale": 24,
+        "space": "tangent"
+      },
+      "bump": {
+        "pattern": "independent fine masonry field",
+        "amplitude": 0.012,
+        "scale": 1
+      },
+      "displacement": {
+        "pattern": "none",
+        "amplitude": 0,
+        "scale": 1,
+        "silhouetteAffects": false
+      },
+      "ambientOcclusion": {
+        "cavityStrength": 0.18,
+        "contactShadowBias": 0.22,
+        "notes": "Applied at window, belt-course, and roof contacts."
+      },
+      "wear": {
+        "edgeWear": 0.025,
+        "scratches": [],
+        "chips": []
+      },
+      "dirt": {
+        "amount": 0.035,
+        "cavityBias": 0.5,
+        "color": "#342d26"
+      },
+      "localOverrides": [
+        {
+          "id": "curtain-variation",
+          "region": "base-and-sill contacts",
+          "roughness": 0.42,
+          "albedoShift": "slightly darker and less saturated",
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "shaderNotes": [
+        "Share the material across the landmark kit; vary color per instance."
+      ],
+      "notes": "Performance-balanced period facade finish.",
+      "qualityTier": "utility"
+    },
+    {
+      "id": "iron",
+      "name": "Painted architectural iron",
+      "type": "standard",
+      "shaderModel": "MeshStandardMaterial",
+      "baseColor": "#292d2c",
+      "color": "#292d2c",
+      "albedo": {
+        "dominant": "#292d2c",
+        "secondary": [
+          "#4a4f4a"
+        ],
+        "samplingNotes": "Period-reference palette interpreted through game lighting."
+      },
+      "colorVariation": {
+        "palette": [
+          "#292d2c",
+          "#4a4f4a"
+        ],
+        "pattern": "parcel-and-instance tint",
+        "amplitude": 0.08,
+        "heightCorrelation": 0.15
+      },
+      "textureResolution": 1024,
+      "textureProjection": {
+        "mode": "world-space",
+        "repeat": [
+          4,
+          4
+        ],
+        "anisotropy": 4,
+        "texelDensityIntent": "Stable masonry scale across differently sized shells."
+      },
+      "surfaceFrequencyBands": [
+        {
+          "id": "macro",
+          "frequency": 1.5,
+          "amplitude": 0.12,
+          "role": "parcel color variation"
+        },
+        {
+          "id": "meso",
+          "frequency": 10,
+          "amplitude": 0.08,
+          "role": "masonry courses and slate strips"
+        },
+        {
+          "id": "micro",
+          "frequency": 48,
+          "amplitude": 0.02,
+          "role": "grazing-light breakup"
+        }
+      ],
+      "roughness": {
+        "base": 0.5,
+        "variation": 0.08,
+        "map": "independent project roughness or scalar instance variation",
+        "localResponse": "darker cavities are slightly rougher"
+      },
+      "metalness": {
+        "base": 0.72,
+        "variation": 0.05
+      },
+      "normal": {
+        "pattern": "independent project normal or geometry normals",
+        "strength": 0.16,
+        "scale": 24,
+        "space": "tangent"
+      },
+      "bump": {
+        "pattern": "independent fine masonry field",
+        "amplitude": 0.012,
+        "scale": 1
+      },
+      "displacement": {
+        "pattern": "none",
+        "amplitude": 0,
+        "scale": 1,
+        "silhouetteAffects": false
+      },
+      "ambientOcclusion": {
+        "cavityStrength": 0.18,
+        "contactShadowBias": 0.22,
+        "notes": "Applied at window, belt-course, and roof contacts."
+      },
+      "wear": {
+        "edgeWear": 0.025,
+        "scratches": [],
+        "chips": []
+      },
+      "dirt": {
+        "amount": 0.035,
+        "cavityBias": 0.5,
+        "color": "#342d26"
+      },
+      "localOverrides": [
+        {
+          "id": "paint-wear",
+          "region": "base-and-sill contacts",
+          "roughness": 0.54,
+          "albedoShift": "slightly darker and less saturated",
+          "evidenceRefs": [
+            "full-object"
+          ]
+        }
+      ],
+      "shaderNotes": [
+        "Share the material across the landmark kit; vary color per instance."
+      ],
+      "notes": "Performance-balanced period facade finish.",
+      "qualityTier": "utility"
+    }
+  ],
+  "repetitionSystems": [
+    {
+      "id": "facade-window-grid",
+      "componentRef": "window-bays",
+      "distribution": "Per-landmark bay grids with shared box geometry",
+      "geometry": "thin recessed panes and sash bars",
+      "instances": 180,
+      "buildsGeometry": true,
+      "realization": "instanced-geometry"
+    },
+    {
+      "id": "cornice-and-course-bands",
+      "componentRef": "cornice-system",
+      "distribution": "Floor lines and crowns",
+      "geometry": "shared thin box courses",
+      "instances": 64,
+      "buildsGeometry": true,
+      "realization": "instanced-geometry"
+    },
+    {
+      "id": "dormer-and-chimney-rhythm",
+      "componentRef": "dormer-system",
+      "distribution": "Roof-facing dormer rows and sparse chimneys",
+      "geometry": "shared low-segment boxes and pyramids",
+      "instances": 42,
+      "buildsGeometry": true,
+      "realization": "instanced-geometry"
+    }
+  ],
+  "buildPasses": [
+    {
+      "id": "blockout",
+      "goal": "Match macro silhouette and proportions.",
+      "componentRefs": [
+        "root"
+      ],
+      "acceptance": [
+        "Silhouette reads correctly without materials.",
+        "Quality contract has named all required macro feature groups before code generation.",
+        "AI vision comparison score meets selfCorrectLoop.visualAcceptance.threshold."
+      ]
+    },
+    {
+      "id": "structural-pass",
+      "goal": "Build the component hierarchy implied by the pre-spec complexity assessment.",
+      "componentRefs": [
+        "root"
+      ],
+      "acceptance": [
+        "Macro, meso, and repeated structures meet qualityContract.minimumSpecDepth.",
+        "Parent-child relations, joints, seams, sockets, and contact points are explicit.",
+        "Every attached child appendage/connector has parentSocket, localStart/localEnd, contactType, embedDepth or overlap, and gapTolerance.",
+        "AI vision comparison score meets selfCorrectLoop.visualAcceptance.threshold."
+      ]
+    },
+    {
+      "id": "form-refinement",
+      "goal": "Refine shape, deformation, bevels, tapers, curves, asymmetry, and visible local geometry.",
+      "componentRefs": [
+        "root"
+      ],
+      "acceptance": [
+        "Important visible forms are represented in component geometryDescriptor, deformations, localFeatures, or repetitionSystems.",
+        "Endpoint-based child parts are rooted at their attachment sockets and do not visibly float away from parents.",
+        "AI vision comparison score meets selfCorrectLoop.visualAcceptance.threshold."
+      ]
+    },
+    {
+      "id": "material-pass",
+      "goal": "Match material color, roughness, bump, and local variation.",
+      "componentRefs": [
+        "root"
+      ],
+      "acceptance": [
+        "Reference-derived albedo palette records dominant, secondary, and accent colors per visible material.",
+        "Each important material defines roughness variation and at least one normal/bump/displacement response.",
+        "Local material overrides, dirt/wear/stains/moss/chips/scratches or equivalent masks are tied to evidenceRefs.",
+        "Thin, transparent, reflective, wet, or fibrous materials document alpha/transmission/clearcoat/metalness/fiber response when relevant.",
+        "Generated preview uses procedural albedo/roughness/bump texture or vertex color variation instead of one flat color.",
+        "Generated preview uses independent PBR maps at 1024px or higher for the quality-first tier.",
+        "If source pixels are available, referencePbr extraction passed at confidence >= 0.7 or the pass is stopped/requesting better references.",
+        "Macro, meso, and micro surface frequency bands are visible at the intended review distance without obvious tiling.",
+        "AI vision comparison score meets selfCorrectLoop.visualAcceptance.threshold."
+      ]
+    },
+    {
+      "id": "surface-pass",
+      "goal": "Add procedural surface locality such as normal/bump/displacement, AO, dirt, stains, chips, grain, moss, scratches, and wear.",
+      "componentRefs": [
+        "root"
+      ],
+      "acceptance": [
+        "Every required material feature group has local overrides or surfaceDetail tied to evidenceRefs.",
+        "A grazing-angle close-up proves that normal/height detail breaks highlights naturally and does not read as smooth plastic.",
+        "AI vision comparison score meets selfCorrectLoop.visualAcceptance.threshold."
+      ]
+    },
+    {
+      "id": "lighting-pass",
+      "goal": "Make material and form readable under neutral turntable lighting plus optional reference lighting.",
+      "componentRefs": [
+        "root"
+      ],
+      "acceptance": [
+        "lightingFromPhoto identifies key light direction/color/intensity, fill light, rim or environment light, and ambient color.",
+        "Exposure, tone mapping, background color/gradient, shadow softness, and contact shadow behavior are specified.",
+        "Lighting does not hide geometry/material gaps and screenshots can be compared fairly to the reference.",
+        "Neutral, grazing, and reference-matched lighting checks distinguish material errors from lighting errors.",
+        "AI vision comparison score meets selfCorrectLoop.visualAcceptance.threshold."
+      ]
+    },
+    {
+      "id": "interaction-pass",
+      "goal": "Make the model ready for future animation, transformation, physics, or destruction.",
+      "componentRefs": [
+        "root"
+      ],
+      "acceptance": [
+        "Macro and movable meso components have stable pivot nodes.",
+        "Sockets, collider proxies, and destruction metadata are present for future runtime actions.",
+        "AI vision comparison score meets selfCorrectLoop.visualAcceptance.threshold."
+      ]
+    },
+    {
+      "id": "optimization-pass",
+      "goal": "Protect runtime performance after visual fidelity is accepted.",
+      "componentRefs": [
+        "root"
+      ],
+      "acceptance": [
+        "Triangle count, draw calls, instancing, LOD strategy, and FPS target are documented or verified.",
+        "Repeated detail is instanced or simplified where possible without breaking silhouette/material believability."
+      ]
+    }
+  ],
+  "visualEvidence": [],
+  "reviewHistory": [],
+  "lodPlan": [
+    {
+      "tier": "near",
+      "distance": 0,
+      "strategy": "full component tree and material layers"
+    },
+    {
+      "tier": "far",
+      "distance": 30,
+      "strategy": "merge static components and reduce local feature geometry"
+    }
+  ],
+  "performanceBudget": {
+    "qualityPriority": "performance-balanced",
+    "targetTriangles": 55000,
+    "maxDrawCalls": 24,
+    "textureSize": 1024,
+    "fpsTarget": 30,
+    "optimizationPolicy": "Share shell materials, instance repeated details, disable decorative shadows, and keep one coarse collider per parcel."
+  },
+  "lightingFromPhoto": [
+    "Use the game's sun as the key light; landmark materials do not add lights.",
+    "Use the world sky/environment as fill and rim light with existing exposure and ACES tone mapping.",
+    "Only macro roofs may cast; contact shadow/AO comes from the existing world renderer and decorative batches do not cast."
+  ],
+  "proceduralStrategy": [
+    "Block out macro silhouette first.",
+    "Add component hierarchy and joints.",
+    "Create stable pivot groups, sockets, collider proxies, and destruction metadata before visual polish.",
+    "Refine forms with bevels, tapers, bends, and procedural noise.",
+    "Run reference PBR extraction for important source-image materials and stop when confidence is below the target threshold.",
+    "Add material variation before adding expensive micro-geometry."
+  ],
+  "animationAnchors": [
+    "root pivot node supports whole-object translation, rotation, scale, and visibility changes",
+    "component pivot groups support later local transforms without rebuilding geometry"
+  ],
+  "destructionAnchors": [
+    "actionProfile.destruction.fractureGroup marks detachable or breakable component sets",
+    "component seams and sockets define plausible break points instead of random explosions"
+  ],
+  "risks": [
+    "Tall hotel mass can dominate the compressed skyline.",
+    "Excess window detail can exceed draw-call budget if not instanced.",
+    "Roof shadows can hurt frame rate if enabled on every batch."
+  ],
+  "localSpecSearch": {
+    "collection": "core_3d",
+    "query": "1896 Southeast Central Park Landmark Blocks French chateau hotel row house architectural ensemble",
+    "index": {
+      "status": "hit",
+      "reason": "current",
+      "fingerprint": "6857e5ab528b42ac12f4f411f862610a0bffce8e47aee3610a7603c318072fe8"
+    },
+    "matches": []
+  }
+}

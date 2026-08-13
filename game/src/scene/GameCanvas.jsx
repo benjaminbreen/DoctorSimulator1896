@@ -15,6 +15,8 @@ import PlayerRig from './PlayerRig.jsx';
 import CameraRig from './CameraRig.jsx';
 import SkyRig from './SkyRig.jsx';
 import SunDisc from './SunDisc.jsx';
+import MoonDisc from './MoonDisc.jsx';
+import StarField from './StarField.jsx';
 import CloudDome from './CloudDome.jsx';
 import Terrain from './Terrain.jsx';
 import PlayerStateStep from './PlayerStateStep.jsx';
@@ -30,6 +32,11 @@ import { solarRamps } from '../world/solar.js';
 import { gameDebug } from '../debug.js';
 import { getInteraction } from '../world/interaction.js';
 import { consultationSeatFraming } from '../consultation/seatFraming.js';
+import {
+  MOBILE_CONTEXT_RECYCLE_DELAY_MS,
+  shouldRecycleWebGLContextOnTravel,
+  webGLContextKey,
+} from './mobileGraphics.js';
 
 const Room = lazy(() => import('./Room.jsx'));
 const Furniture = lazy(() => import('./Furniture.jsx'));
@@ -179,10 +186,14 @@ function FrameSettings({ runtime, look, exposureBase, exterior }) {
     const values = runtime.values;
     // Outdoors the stop follows the sun, so noon and dusk are not graded the
     // same. Interiors are gaslit and keep whatever the zone asked for.
-    const { daylight, golden } = exterior
+    const { daylight, golden, night, astronomicalNight } = exterior
       ? solarRamps(values.timeOfDay, values.dayOfYear)
-      : { daylight: 0, golden: 0 };
-    const grade = exterior ? 1 + daylight * 0.19 + golden * 0.05 : 1;
+      : { daylight: 0, golden: 0, night: 0, astronomicalNight: 0 };
+    // A modest night-adaptation lift reveals moonlit and city-lit surfaces
+    // without making midnight read like day-for-night photography.
+    const grade = exterior
+      ? 1 + daylight * 0.19 + golden * 0.05 + night * 0.3 + astronomicalNight * 0.1
+      : 1;
     const exposure = exposureBase * values.exposure * grade;
     if (gl.toneMappingExposure !== exposure) gl.toneMappingExposure = exposure;
     // Hero mode owns a speed-responsive FOV, and a framing (instrument or
@@ -203,11 +214,11 @@ function FrameSettings({ runtime, look, exposureBase, exterior }) {
   return null;
 }
 
-// The Canvas (and its WebGL context) outlives zone travel: compiled shader
-// programs and uploaded GPU resources survive, so revisiting a zone skips
-// most of its first-visit cost. Only params that genuinely need a new
-// context (antialias mode) remount the Canvas itself; everything
-// zone-dependent lives in SceneContents, remounted per rebuild.
+// On desktop the Canvas (and its WebGL context) outlives zone travel: compiled
+// shaders and uploaded GPU resources survive, so revisiting a zone skips most
+// of its first-visit cost. Memory-constrained touch devices briefly unmount it
+// between zones instead; otherwise the park and consulting-room resources can
+// coexist long enough for iOS WebKit to terminate the page.
 export default function GameCanvas({
   runtime,
   worldClock,
@@ -218,7 +229,22 @@ export default function GameCanvas({
   onReadyForReveal,
 }) {
   const values = runtime.values;
-  const contextKey = `${values.antialias}-${values.postEnabled}`;
+  const recycleOnTravel = useMemo(shouldRecycleWebGLContextOnTravel, []);
+  const [canvasZone, setCanvasZone] = useState(values.zone);
+  useEffect(() => {
+    if (!recycleOnTravel || canvasZone === values.zone) return undefined;
+    const nextZone = values.zone;
+    const timer = setTimeout(() => {
+      setCanvasZone(nextZone);
+    }, MOBILE_CONTEXT_RECYCLE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [canvasZone, recycleOnTravel, values.zone]);
+
+  // Returning no Canvas starts its teardown immediately. The effect above
+  // mounts the destination only after R3F has forced the old context closed.
+  if (recycleOnTravel && canvasZone !== values.zone) return null;
+
+  const contextKey = webGLContextKey(values, recycleOnTravel);
   return (
     <Canvas
       key={contextKey}
@@ -229,6 +255,7 @@ export default function GameCanvas({
       gl={{ antialias: values.antialias && !values.postEnabled, powerPreference: 'high-performance' }}
       camera={{ fov: values.fov, near: 0.1, far: 1500, position: [2, 2.4, 5.5] }}
       onCreated={({ gl }) => {
+        gameDebug.renderer = gl;
         gl.outputColorSpace = THREE.SRGBColorSpace;
         // Darwin's lesson: PCFSoft silently loses filtering in recent three,
         // and PCF is the only type that honors shadow.radius.
@@ -248,11 +275,12 @@ export default function GameCanvas({
   );
 }
 
-// Applies rebuild-mode renderer params on each zone mount; the context
-// itself persists, so this replaces what onCreated used to do.
+// Applies rebuild-mode renderer params on each zone mount; the context usually
+// persists on desktop, so this replaces what onCreated used to do there.
 function RendererZoneSettings({ runtime }) {
   const gl = useThree((state) => state.gl);
   useEffect(() => {
+    gameDebug.renderer = gl;
     gl.toneMapping = TONE_MAPPINGS[runtime.values.toneMapping] ?? THREE.ACESFilmicToneMapping;
   }, [gl, runtime]);
   return null;
@@ -416,7 +444,9 @@ function SceneContents({ runtime, worldClock, keyboard, look, actors, onReadyFor
             <Physics gravity={[0, -9.81, 0]}>
               <ParkStage active stage={0} onRendered={onParkStageRendered}>
               <SkyRig config={lighting} runtime={runtime} />
+              <StarField runtime={runtime} />
               <SunDisc runtime={runtime} />
+              <MoonDisc runtime={runtime} />
               <CloudDome config={lighting} runtime={runtime} />
               <Terrain />
               <PlayerRig

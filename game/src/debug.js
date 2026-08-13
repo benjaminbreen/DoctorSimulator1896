@@ -28,6 +28,39 @@ export const gameDebug = {
   freeCamera: null,
   camera: null,
   scene: null,
+  renderer: null,
+  sceneMetrics() {
+    const scene = gameDebug.scene;
+    if (!scene) return null;
+    let meshes = 0;
+    let instancedMeshes = 0;
+    let landmarkBatches = 0;
+    let landmarkInstances = 0;
+    let estimatedTriangles = 0;
+    scene.traverse((object) => {
+      if (object.isMesh) meshes += 1;
+      if (object.isInstancedMesh) {
+        instancedMeshes += 1;
+        if (object.name?.startsWith('landmark-')) {
+          landmarkBatches += 1;
+          landmarkInstances += object.count ?? 0;
+        }
+      }
+      const geometry = object.geometry;
+      if (!geometry) return;
+      const triangles = geometry.index
+        ? geometry.index.count / 3
+        : (geometry.attributes?.position?.count ?? 0) / 3;
+      estimatedTriangles += triangles * (object.isInstancedMesh ? object.count : 1);
+    });
+    return {
+      meshes,
+      instancedMeshes,
+      landmarkBatches,
+      landmarkInstances,
+      estimatedTriangles: Math.round(estimatedTriangles),
+    };
+  },
   room: null,
   actors: { requested: [], loaded: [] },
   // Written by HorselessCarriage every frame: carriages is one state

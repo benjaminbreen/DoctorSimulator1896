@@ -50,13 +50,20 @@ export function solarRamps(timeOfDay, dayOfYear = START_DAY_OF_YEAR) {
   // Light ages through the afternoon: brightness eases to 82% as the sun
   // drops from 28 to 4 degrees, instead of holding full until dusk.
   const shoulder = 0.82 + 0.18 * smoothstep(4, 28, altitude);
+  const daylight = smoothstep(-6, 3, altitude) * shoulder;
   return {
     direction,
     altitude,
-    daylight: smoothstep(-6, 3, altitude) * shoulder,
+    daylight,
     // Onset near 25 degrees, full by 2, gone below -5: golden builds through
     // the afternoon and peaks at the horizon.
     golden: smoothstep(-5, 0.5, altitude) * (1 - smoothstep(2, 25, altitude)),
     night: 1 - smoothstep(-12, -4, altitude),
+    // Explicit twilight stages keep the visual handoff authored all the way
+    // through midnight instead of ending the grade when the sun disappears.
+    civilDark: 1 - smoothstep(-6, 0, altitude),
+    nauticalDark: 1 - smoothstep(-12, -6, altitude),
+    astronomicalNight: 1 - smoothstep(-18, -12, altitude),
+    starVisibility: 1 - smoothstep(-12, -3, altitude),
   };
 }

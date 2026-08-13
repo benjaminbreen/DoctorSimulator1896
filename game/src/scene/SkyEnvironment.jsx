@@ -67,7 +67,7 @@ export default function SkyEnvironment({ runtime }) {
       target = next;
       scene.environment = next.texture;
     };
-    render(environmentPalette(runtime.values.timeOfDay, runtime.values.dayOfYear));
+    render(environmentPalette(runtime.values.timeOfDay, runtime.values.dayOfYear, runtime.values));
     probe.render = render;
     return () => {
       probe.render = null;
@@ -83,7 +83,7 @@ export default function SkyEnvironment({ runtime }) {
 
   useFrame((_, delta) => {
     const values = runtime.values;
-    const palette = environmentPalette(values.timeOfDay, values.dayOfYear);
+    const palette = environmentPalette(values.timeOfDay, values.dayOfYear, values);
     // 1.4: fill moved here from the outdoor flat ambient, which now runs
     // near zero (see SkyRig).
     scene.environmentIntensity = values.envIntensity * 1.4 * palette.intensity;

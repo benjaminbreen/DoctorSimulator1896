@@ -383,17 +383,20 @@ function buildStreets() {
     { ...strip('hotel-new-netherland-apron', 122, 73, 19, 19.6, WALK_TOP - 0.015, 0.24, 'paving', '#8d8779'), collider: false },
     // Full-depth corner mass between 60th and 59th. Its neighbouring parcels
     // continue east as one solid block instead of leaving a freestanding tower.
-    building('hotel-new-netherland', 120.5, 72, 20.6, 34, 17.6, {
+    building('hotel-new-netherland', 120.5, 72, 20.6, 36, 17.6, {
       facadeStyle: 1, roof: 'cone', awnings: true,
-      landmarkLabel: 'New Netherland Hotel', ...ALL_FACES,
+      landmarkLabel: 'New Netherland Hotel', landmarkModel: 'new-netherland-hotel',
+      shadows: false, ...ALL_FACES,
     }),
-    building('hotel-savoy', 119.5, 105.9, 18.6, 24, 13.4, {
+    building('hotel-savoy', 119.5, 105.9, 18.6, 32, 13.4, {
       facadeStyle: 1, roof: 'mansard', awnings: true,
-      landmarkLabel: 'Hotel Savoy', ...ALL_FACES,
+      landmarkLabel: 'Hotel Savoy', landmarkModel: 'savoy-hotel',
+      shadows: false, ...ALL_FACES,
     }),
-    building('bolkenhayn-apartments', 119, 120.4, 17.6, 18, 12.8, {
+    building('bolkenhayn-apartments', 119, 120.4, 17.6, 22, 12.8, {
       facadeStyle: 2, roof: 'mansard', awnings: true,
-      landmarkLabel: 'The Bolkenhayn Apartments', ...ALL_FACES,
+      landmarkLabel: 'The Bolkenhayn Apartments', landmarkModel: 'bolkenhayn-apartments',
+      shadows: false, ...ALL_FACES,
     }),
     building('plaza-hotel-1890', 84.8, 107.1, 22, 17, 15.8, {
       facadeStyle: 2, roof: 'mansard',
@@ -412,9 +415,31 @@ function buildStreets() {
     }),
     // The expanded house occupied the west Fifth Avenue frontage between
     // 57th and 58th. The compressed footprint preserves that urban role.
-    building('vanderbilt-mansion', 84.8, 157, 22, 16, 27.6, {
+    building('vanderbilt-mansion', 84.8, 157, 22, 19, 27.6, {
       facadeStyle: 2, roof: 'mansard', frontageFamily: 'mansion',
-      landmarkLabel: 'Cornelius Vanderbilt II Mansion', ...ALL_FACES,
+      landmarkLabel: 'Cornelius Vanderbilt II Mansion', landmarkModel: 'vanderbilt-mansion',
+      shadows: false, ...ALL_FACES,
+    }),
+    // The 57th-to-58th Street block keeps a compressed portion of Mary Mason
+    // Jones's attached white-marble row. By 1896 the Huntington house supplied
+    // the more individual southern corner silhouette, so two authored parcels
+    // replace nine generic frontage colliders here.
+    building('marble-row', 122.2, 149.5, 24, 15.5, 12.6, {
+      facadeStyle: 4, frontageFamily: 'marble', rowCount: 4,
+      landmarkLabel: 'Marble Row', landmarkModel: 'marble-row',
+      shadows: false, ...ALL_FACES,
+    }),
+    building('huntington-mansion', 122.2, 163.5, 24, 18.5, 14.8, {
+      facadeStyle: 0, frontageFamily: 'mansion',
+      landmarkLabel: 'Collis P. Huntington Mansion', landmarkModel: 'huntington-mansion',
+      shadows: false, ...ALL_FACES,
+    }),
+    // The Gerry house closes the Fifth/61st corner immediately north of the
+    // Metropolitan Club, with the documented narrow service alley between.
+    building('gerry-mansion', 122.5, 23.5, 24.6, 18.5, 12.6, {
+      facadeStyle: 2, frontageFamily: 'mansion',
+      landmarkLabel: 'Elbridge T. Gerry Mansion', landmarkModel: 'gerry-mansion',
+      shadows: false, ...ALL_FACES,
     }),
     // Three wings and two narrow courts suggest the larger Navarro complex
     // beside the new Seventh Avenue edge without building all eight houses.
@@ -434,7 +459,7 @@ function buildStreets() {
   // Fifth Avenue face south of that new short street.
   frontageRow(items, 'fifth-east-a', 'x', 110.2, -70, 2, 13, 1, 'mansion');
   frontageRow(items, 'sixty-first-north', 'z', 2.8, 124.5, 159.5, 11, -1, 'mansion');
-  frontageRow(items, 'sixty-first-south', 'z', 17.2, 110.2, 159.5, 13, 1, 'mansion');
+  frontageRow(items, 'sixty-first-south', 'z', 17.2, 136.2, 159.5, 13, 1, 'mansion');
   frontageRow(items, 'madison-east-north', 'x', 174.2, -70, 2.8, 12, 1, 'apartment');
   frontageRow(items, 'madison-east-mid', 'x', 174.2, 17.2, 48.8, 12, 1, 'brownstone');
   frontageRow(items, 'sixtieth-north-west', 'z', 48.8, 136, 159.5, 14, -1, 'brownstone');
@@ -464,9 +489,6 @@ function buildStreets() {
   frontageRow(items, 'fifty-seventh-n-west', 'z', 170.8, -84.5, -47.2, 9, -1, 'brownstone', 0.3);
   frontageRow(items, 'fifty-eighth-s-central', 'z', 143.2, -32.5, 70, 9, 1, 'mansion');
   frontageRow(items, 'fifty-seventh-n-central', 'z', 170.8, -32.5, 70, 9, -1, 'brownstone');
-  frontageRow(items, 'fifth-east-b', 'x', 110.2, 143.2, 170.8, 12, 1, 'marble');
-  frontageRow(items, 'fifty-eighth-s-east', 'z', 143.2, 124, 147.5, 9, 1, 'marble');
-  frontageRow(items, 'fifty-seventh-n-east', 'z', 170.8, 124, 147.5, 9, -1, 'mansion');
   frontageRow(items, 'madison-west', 'x', 159.8, 143.2, 170.8, 11, -1, 'brownstone');
   frontageRow(items, 'madison-east', 'x', 174.2, 100, 126.8, 12, 1, 'apartment', 0.25);
   frontageRow(items, 'madison-east-south', 'x', 174.2, 143.2, 170.8, 12, 1, 'brownstone', 0.3);
@@ -486,7 +508,8 @@ function buildStreets() {
   serviceCourt(items, 'madison-mid-service-court', 206.2, 114, 39.2, 9.6, { divisions: 2, houses: 2 });
   serviceCourt(items, 'seventh-south-yards', -65.9, 157, 37.2, 9.6, { earth: true, divisions: 2, houses: 2 });
   serviceCourt(items, 'fifty-seventh-central-yards', 18.8, 157, 102.5, 9.6, { earth: true, divisions: 4, houses: 3 });
-  serviceCourt(items, 'marble-row-yards', 135.8, 157, 23.2, 9.6, { divisions: 1, houses: 1 });
+  serviceCourt(items, 'marble-row-yards', 141, 149.5, 13.2, 12.6, { divisions: 1, houses: 1 });
+  serviceCourt(items, 'huntington-rear-court', 141, 163.5, 13.2, 14.8, { divisions: 1, houses: 0 });
   serviceCourt(items, 'madison-south-yards', 206.2, 157, 39.2, 9.6, { divisions: 2, houses: 2 });
 
   for (const site of STREET_LAMP_SITES) items.push(...lamp(site.id, site.x, site.z, site.yaw));

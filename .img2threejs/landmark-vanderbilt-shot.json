@@ -1,0 +1,13 @@
+{
+  "zone": "central-park",
+  "camera": {
+    "position": [138, 12, 156],
+    "yaw": 1.5707963268,
+    "pitch": 0.04,
+    "fov": 62
+  },
+  "figure": {
+    "position": [101, 157],
+    "yaw": 1.5707963268
+  }
+}

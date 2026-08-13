@@ -6,7 +6,6 @@ import { streetItems } from '../src/world/streetGrid.js';
 
 const ROWS = [
   ['fifth-east-a', 'x', '-x'],
-  ['fifth-east-b', 'x', '-x'],
   ['cps-south-b', 'z', '-z'],
   ['fifty-eighth-s', 'z', '-z'],
   ['madison-west', 'x', '+x'],
@@ -23,6 +22,9 @@ const NAMED_BUILDINGS = new Map([
   ['plaza-hotel-1890', 'The Plaza Hotel (1890)'],
   ['metropolitan-club', 'Metropolitan Club'],
   ['vanderbilt-mansion', 'Cornelius Vanderbilt II Mansion'],
+  ['marble-row', 'Marble Row'],
+  ['huntington-mansion', 'Collis P. Huntington Mansion'],
+  ['gerry-mansion', 'Elbridge T. Gerry Mansion'],
   ['navarro-flats-a', 'Navarro Flats'],
   ['navarro-flats-b', 'Navarro Flats'],
   ['navarro-flats-c', 'Navarro Flats'],
@@ -129,6 +131,21 @@ test('authored landmarks carry click labels while procedural rows remain anonymo
   for (const [prefix] of ROWS) {
     for (const building of rowBuildings(prefix)) assert.equal(building.landmarkLabel, undefined);
   }
+});
+
+test('the Fifth Avenue mansion blocks use authored parcels instead of generic frontage rows', () => {
+  assert.equal(rowBuildings('fifth-east-b').length, 0);
+  assert.equal(rowBuildings('fifty-eighth-s-east').length, 0);
+  assert.equal(rowBuildings('fifty-seventh-n-east').length, 0);
+
+  const marble = streetItems.find((item) => item.id === 'marble-row');
+  const huntington = streetItems.find((item) => item.id === 'huntington-mansion');
+  const gerry = streetItems.find((item) => item.id === 'gerry-mansion');
+  assert.equal(marble.landmarkModel, 'marble-row');
+  assert.equal(marble.rowCount, 4);
+  assert.equal(huntington.landmarkModel, 'huntington-mansion');
+  assert.equal(gerry.landmarkModel, 'gerry-mansion');
+  assert.ok(marble.size[2] + huntington.size[2] >= 27, 'authored parcels close the 57th-to-58th frontage');
 });
 
 test('East 60th separates the club from a continuous south frontage with rear courts', () => {

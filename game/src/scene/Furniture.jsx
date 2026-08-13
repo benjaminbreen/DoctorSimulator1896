@@ -6,6 +6,7 @@ import { itemBoxes, boxDensity, rotateOffset } from '../physics/propBodies.js';
 import PropShape from './PropShape.jsx';
 import PropMaterial from './PropMaterial.jsx';
 import MetropolitanClub from './MetropolitanClub.jsx';
+import GildedAgeLandmarks, { isGildedAgeLandmark } from './GildedAgeLandmarks.jsx';
 import { getInteraction, subscribe } from '../world/interaction.js';
 import { notice } from '../world/notices.js';
 import {
@@ -450,6 +451,7 @@ export default function Furniture({ items }) {
     <group>
       <BlockInfill items={items} />
       <ProceduralFacades items={items} facadeTextures={maps.facades} />
+      <GildedAgeLandmarks items={items} facadeTextures={maps.facades} />
       <RigidBody type="fixed" colliders={false}>
         {solid.map((item) => (
           <ItemCollider key={item.id} item={item} />
@@ -467,6 +469,7 @@ export default function Furniture({ items }) {
           if (item.landmarkModel === 'metropolitan-club') {
             return <MetropolitanClub key={item.id} item={item} />;
           }
+          if (isGildedAgeLandmark(item)) return null;
           if (item.frontageFamily && !item.landmarkLabel) return null;
           return <Backdrop key={item.id} item={item} facadeTextures={maps.facades} />;
         }

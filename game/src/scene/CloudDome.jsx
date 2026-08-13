@@ -2,6 +2,8 @@ import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { solarRamps } from '../world/solar.js';
+import { moonState } from '../world/moon.js';
+import { environmentPalette } from '../world/skyPalette.js';
 
 // Darwin's CloudDeck idea at small scale: one BackSide dome, an fbm field
 // planar-projected onto the view direction, lit by a gradient probe toward
@@ -24,6 +26,8 @@ const FRAGMENT = /* glsl */ `
   uniform float uGolden;
   uniform float uNight;
   uniform vec3 uSunDir;
+  uniform vec3 uMoonDir;
+  uniform float uMoonLight;
   uniform vec3 uFogColor;
 
   float hash(vec2 p) {
@@ -64,7 +68,8 @@ const FRAGMENT = /* glsl */ `
     vec2 p2 = dir.xz / (max(dir.y, 0.0) + 0.34) * uScale * 2.1;
     float scud = smoothstep(0.72, 0.92, fbm(p2 + drift * 2.3)) * 0.35;
 
-    float alpha = clamp(puff * 1.2 + scud * 0.4 * uCover, 0.0, 1.0) * aboveHorizon * (1.0 - uNight * 0.85);
+    float alpha = clamp(puff * 1.2 + scud * 0.4 * uCover, 0.0, 1.0)
+      * aboveHorizon * mix(1.0, 0.55, uNight);
     // Distant cloud sinks into the haze over the last ~15 degrees of sky,
     // instead of stamping hard shapes on the horizon gradient.
     alpha *= smoothstep(0.04, 0.30, dir.y);
@@ -75,15 +80,22 @@ const FRAGMENT = /* glsl */ `
     vec2 sunPlane = normalize(uSunDir.xz + vec2(1e-4));
     vec2 lightStep = sunPlane * mix(0.2, 0.5, 1.0 - clamp(uSunDir.y, 0.0, 1.0));
     float sunFacing = clamp((field - fbm(p * 2.2 + drift + lightStep)) * 3.4 + 0.42, 0.0, 1.0);
+    vec2 moonPlane = normalize(uMoonDir.xz + vec2(1e-4));
+    vec2 moonStep = moonPlane * mix(0.2, 0.5, 1.0 - clamp(uMoonDir.y, 0.0, 1.0));
+    float moonFacing = clamp((field - fbm(p * 2.2 + drift + moonStep)) * 3.0 + 0.38, 0.0, 1.0);
 
     // Both ends in the sky's own linear range: the zenith sits near 1, so a
     // lit flank has to go past it and a shaded one well under, or the cloud
     // disappears into the blue. Dusk warms the shaded flank too: grey
     // bellies over an orange horizon is the pasted-on look.
+    vec3 nightShaded = uFogColor * 0.16 + vec3(0.002, 0.004, 0.01);
+    vec3 nightLit = uFogColor * 0.7 + vec3(0.02, 0.035, 0.075);
+    vec3 nightColor = mix(nightShaded, nightLit, moonFacing * uMoonLight);
     vec3 shaded = mix(uFogColor * 0.34, vec3(0.36, 0.21, 0.16), uGolden);
-    vec3 lit = mix(vec3(0.9), vec3(1.7, 1.66, 1.58), uDayness);
+    vec3 lit = mix(vec3(1.1), vec3(1.7, 1.66, 1.58), uDayness);
     lit = mix(lit, vec3(1.7, 1.0, 0.55), uGolden * 0.8);
-    vec3 color = mix(shaded, lit, sunFacing);
+    vec3 dayColor = mix(shaded, lit, sunFacing);
+    vec3 color = mix(nightColor, dayColor, uDayness);
     // Rim past 1.0 on purpose: the one part of a cloud that should bloom.
     color += vec3(1.0, 0.9, 0.75) * pow(sunFacing, 3.0) * uDayness * 0.24;
 
@@ -110,6 +122,8 @@ export default function CloudDome({ config, runtime }) {
           uGolden: { value: 0 },
           uNight: { value: 0 },
           uSunDir: { value: new THREE.Vector3(0, 1, 0) },
+          uMoonDir: { value: new THREE.Vector3(0, 1, 0) },
+          uMoonLight: { value: 0 },
           uFogColor: { value: new THREE.Color(config.fog?.color ?? '#cdd6e4') },
         },
       }),
@@ -119,6 +133,8 @@ export default function CloudDome({ config, runtime }) {
   useFrame((state) => {
     const values = runtime.values;
     const ramps = solarRamps(values.timeOfDay, values.dayOfYear);
+    const moon = moonState(values.timeOfDay, values.dayOfYear);
+    const palette = environmentPalette(values.timeOfDay, values.dayOfYear, values);
     const uniforms = material.uniforms;
     uniforms.uTime.value = state.clock.elapsedTime * values.cloudSpeed;
     uniforms.uCover.value = values.cloudCover;
@@ -128,6 +144,9 @@ export default function CloudDome({ config, runtime }) {
     uniforms.uGolden.value = ramps.golden;
     uniforms.uNight.value = ramps.night;
     uniforms.uSunDir.value.set(ramps.direction[0], ramps.direction[1], ramps.direction[2]);
+    uniforms.uMoonDir.value.fromArray(moon.direction);
+    uniforms.uMoonLight.value = moon.light * ramps.night * values.moonlightIntensity;
+    uniforms.uFogColor.value.setRGB(palette.horizon[0], palette.horizon[1], palette.horizon[2]);
   });
 
   return (
