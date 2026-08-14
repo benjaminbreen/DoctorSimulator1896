@@ -1,0 +1,127 @@
+{
+  "id": "NEW_NETHERLAND_LOBBY_DAY",
+  "ambient": {
+    "color": "#75695a",
+    "intensity": 0.22,
+    "scale": 0.6
+  },
+  "hemisphere": {
+    "skyColor": "#a9b2c6",
+    "groundColor": "#4d4234",
+    "intensity": 0.3,
+    "scale": 0.62
+  },
+  "windowSky": "#aebbd1",
+  "windowPortals": [
+    {
+      "windowId": "window-ave-n",
+      "color": "#c9d4e6",
+      "intensity": 2.1,
+      "elevationDeg": 34,
+      "azimuthDeg": -8,
+      "castShadow": true
+    },
+    {
+      "windowId": "window-ave-s",
+      "color": "#c9d4e6",
+      "intensity": 1.8,
+      "elevationDeg": 34,
+      "azimuthDeg": 8,
+      "castShadow": false
+    }
+  ],
+  "gaslights": [
+    {
+      "propId": "gaslight-chandelier-w",
+      "color": "#ffd9a8",
+      "intensity": 5.5,
+      "distance": 11,
+      "decay": 2,
+      "flicker": 0.02,
+      "castShadow": true
+    },
+    {
+      "propId": "gaslight-chandelier-e",
+      "color": "#ffd9a8",
+      "intensity": 5.5,
+      "distance": 11,
+      "decay": 2,
+      "flicker": 0.02,
+      "castShadow": false
+    },
+    {
+      "propId": "gaslight-column-n",
+      "color": "#ffdcae",
+      "intensity": 4.0,
+      "distance": 8,
+      "decay": 2,
+      "flicker": 0.02,
+      "castShadow": false
+    },
+    {
+      "propId": "gaslight-column-s",
+      "color": "#ffdcae",
+      "intensity": 4.0,
+      "distance": 8,
+      "decay": 2,
+      "flicker": 0.02,
+      "castShadow": false
+    },
+    {
+      "propId": "gaslight-north-w",
+      "color": "#ffd9a8",
+      "intensity": 2.6,
+      "distance": 5,
+      "decay": 2,
+      "flicker": 0.03,
+      "castShadow": false
+    },
+    {
+      "propId": "gaslight-north-e",
+      "color": "#ffd9a8",
+      "intensity": 2.6,
+      "distance": 5,
+      "decay": 2,
+      "flicker": 0.03,
+      "castShadow": false
+    },
+    {
+      "propId": "gaslight-south-w",
+      "color": "#ffd9a8",
+      "intensity": 2.6,
+      "distance": 5,
+      "decay": 2,
+      "flicker": 0.03,
+      "castShadow": false
+    },
+    {
+      "propId": "gaslight-south-e",
+      "color": "#ffd9a8",
+      "intensity": 2.6,
+      "distance": 5,
+      "decay": 2,
+      "flicker": 0.03,
+      "castShadow": false
+    },
+    {
+      "propId": "gaslight-desk",
+      "color": "#ffe2b8",
+      "intensity": 2.2,
+      "distance": 4,
+      "decay": 2,
+      "flicker": 0.02,
+      "castShadow": false
+    }
+  ],
+  "exposureBase": 0.95,
+  "materials": {
+    "wall": "#e3d6bd",
+    "floor": "#c9c2a8",
+    "ceiling": "#5e2019",
+    "trim": "#6b4a20",
+    "wallTexture": "procedural/marble",
+    "floorTexture": "procedural/netherland-mosaic",
+    "wallRoughness": 0.95,
+    "floorRoughness": 0.42
+  }
+}

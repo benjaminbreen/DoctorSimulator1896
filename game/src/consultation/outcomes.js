@@ -32,22 +32,71 @@ function scorePhrase(score) {
 }
 
 function interpretationScore(patient, state) {
-  const prepared = state.interpretationIds
-    .map((id) => patient.interpretations.find((item) => item.id === id)?.alignment)
-    .filter(Number.isFinite);
-  const custom = state.customInterpretations
-    .map((item) => item.classification?.alignment)
-    .filter(Number.isFinite);
-  const values = [...prepared, ...custom];
-  if (!values.length) return 5;
-  const average = values.reduce((sum, value) => sum + value, 0) / values.length;
-  return clamp(Math.round(5 + average * 1.6), 0, 10);
+  const latest = [...state.history].reverse().find((event) => event.kind === 'interpretation');
+  const alignment = latest?.alignment;
+  return Number.isFinite(alignment) ? clamp(Math.round(5 + alignment * 1.6), 0, 10) : 5;
 }
 
 function jamesLetter(patient, scores, model) {
   const address = model.james?.address || 'My dear Doctor';
   const close = model.james?.close || 'Yours faithfully, William James';
   return `${address}, Your observation in ${patient.profile.identity.displayName}’s case was ${scorePhrase(scores.observation)} (${scores.observation}/10). Your diagnostic reasoning was ${scorePhrase(scores.diagnosis)} (${scores.diagnosis}/10), and your conduct of treatment was ${scorePhrase(scores.treatment)} (${scores.treatment}/10). I find ${scorePhrase(scores.scientificPromise)} scientific promise in the record (${scores.scientificPromise}/10), especially where you distinguished what was observed from what was merely supposed. ${close}`;
+}
+
+function consultationCounts(state) {
+  return {
+    questionsAsked: state.history.filter((event) => (
+      event.kind === 'speech' && event.stance === 'question' && event.countsAsQuestion !== false
+    )).length,
+    examinationsPerformed: state.history.filter((event) => event.kind === 'examination').length,
+  };
+}
+
+function performanceFeedback(result, state) {
+  const counts = consultationCounts(state);
+  const strengths = [];
+  const improvements = [];
+  if (result.evidenceCoverage >= 65) strengths.push('You gathered a focused body of useful evidence.');
+  else improvements.push('A little more discriminating evidence would have made the assessment firmer.');
+  if (counts.examinationsPerformed > 0) strengths.push('You tested the history against physical findings.');
+  else improvements.push('No physical examination was entered in the record.');
+  if ((result.scores?.diagnosis ?? 0) >= 7) strengths.push('The diagnosis was well supported by the evidence you had.');
+  else improvements.push('The final diagnosis was only partly supported by the discovered evidence.');
+  if ((result.scores?.treatment ?? 0) >= 7) strengths.push('The treatment plan addressed the patient’s likely needs.');
+  else improvements.push('The treatment plan carried important limitations or risks.');
+  if ((state.elapsedMinutes || 0) <= (state.appointmentMinutes || 30)) strengths.push('You concluded within the scheduled appointment.');
+  else improvements.push('The consultation ran into overtime and delayed the practice.');
+  return {
+    strengths: strengths.slice(0, 2),
+    improvements: improvements.slice(0, 2),
+  };
+}
+
+function departureLine(model, experienceBand) {
+  return model.departureLines?.[experienceBand] || {
+    high: '“Thank you, Doctor. I believe I understand what I am to do.”',
+    middle: '“Thank you, Doctor. I shall think carefully on what you have said.”',
+    low: '“Good day, Doctor. I do not think there is more to be said.”',
+  }[experienceBand];
+}
+
+function attachSummary(result, state) {
+  const counts = consultationCounts(state);
+  return {
+    ...result,
+    immediate: {
+      ...result.immediate,
+      satisfactionOutOfTen: Math.round((result.immediate.satisfaction / 10) * 10) / 10,
+    },
+    summary: {
+      ...counts,
+      minutesUsed: state.elapsedMinutes || 0,
+      scheduledMinutes: state.appointmentMinutes || 30,
+      overtimeMinutes: Math.max(0, (state.elapsedMinutes || 0) - (state.appointmentMinutes || 30)),
+      selectedEvidenceCount: state.caseRecordFactIds?.length || 0,
+    },
+    feedback: performanceFeedback(result, state),
+  };
 }
 
 export function resolveAuthoredOutcome(patient, state, noteCoverage) {
@@ -93,7 +142,7 @@ export function resolveAuthoredOutcome(patient, state, noteCoverage) {
     scientificPromise,
   };
 
-  return {
+  const result = {
     kind: 'authored-outcome',
     diagnosisId: diagnosis.id,
     treatmentId: treatment.id,
@@ -105,6 +154,7 @@ export function resolveAuthoredOutcome(patient, state, noteCoverage) {
       satisfaction,
       band: experienceBand,
       narrative: [immediateLead, immediateDetail].filter(Boolean).join(' '),
+      departureLine: departureLine(model, experienceBand),
       paymentCents: payment,
       paymentLabel: payment === model.fee.full ? 'Fee paid in full' : 'Reduced fee paid',
       wordOfMouth: experienceBand === 'high' ? 'Likely recommendation' : experienceBand === 'middle' ? 'No clear recommendation' : 'Likely complaint',
@@ -125,4 +175,56 @@ export function resolveAuthoredOutcome(patient, state, noteCoverage) {
     },
     modernDebrief: `${model.modernDebrief} ${treatment.evaluation?.modernText || ''}`.trim(),
   };
+  return attachSummary(result, state);
+}
+
+export function resolveFollowUpOutcome(patient, state) {
+  const model = patient.outcomeModel;
+  if (!model) return null;
+  const evidenceRatio = ratioFor(model.evidenceFactIds, state.disclosedFactIds);
+  const observation = Math.round(evidenceRatio * 10);
+  const satisfaction = clamp(Math.round(state.satisfaction + 2), 0, 100);
+  const experienceBand = band(satisfaction, { high: 70, middle: 43 });
+  const scores = {
+    observation,
+    diagnosis: 5,
+    treatment: 5,
+    interpretation: interpretationScore(patient, state),
+    caseRecord: 5,
+    scientificPromise: clamp(Math.round(observation * 0.45 + 3.5), 0, 10),
+  };
+  const result = {
+    kind: 'follow-up-outcome',
+    diagnosisId: null,
+    treatmentId: null,
+    noteCoverage: 0,
+    evidenceCoverage: Math.round(evidenceRatio * 100),
+    reputation: 0,
+    record: rounded((observation + scores.interpretation) / 2),
+    immediate: {
+      satisfaction,
+      band: experienceBand,
+      narrative: 'You explain that the available evidence does not yet justify a settled course and arrange another visit.',
+      departureLine: model.followUpDepartureLine || '“Very well, Doctor. I would rather return than have you name the trouble too quickly.”',
+      paymentCents: model.fee.reduced,
+      paymentLabel: 'Reduced consultation fee',
+      wordOfMouth: 'No clear recommendation',
+      reputation: 0,
+    },
+    oneMonth: {
+      band: 'little-change',
+      narrative: model.followUpMonthText || 'No treatment has yet been begun; the later course depends on the arranged return visit.',
+      healthChange: 0,
+      functionChange: 0,
+      episodesChange: 0,
+      incomeChangeCents: 0,
+    },
+    scores,
+    james: {
+      letter: jamesLetter(patient, scores, model),
+      disclaimer: 'The assessment explains fixed scores derived from the case record.',
+    },
+    modernDebrief: `${model.modernDebrief} The player deferred treatment pending further evidence.`,
+  };
+  return attachSummary(result, state);
 }

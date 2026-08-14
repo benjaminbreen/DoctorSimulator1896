@@ -4,32 +4,58 @@ import { useFrame, useLoader } from '@react-three/fiber';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
-import { RigidBody, CapsuleCollider, CylinderCollider, useRapier } from '@react-three/rapier';
+import {
+  RigidBody,
+  CapsuleCollider,
+  CuboidCollider,
+  CylinderCollider,
+  useRapier,
+} from '@react-three/rapier';
 import { handlesAlive } from '../physics/useCharacterController.js';
 import { terrainHeight } from '../world/terrain.js';
 import { parkItems } from '../world/centralPark.js';
+import { APRON_W, GAPSTOW, walkY as gapstowWalkY } from '../world/gapstow.js';
 import { reportAgent, removeAgent } from '../world/agents.js';
 import { clearActorImpacts, queueActorImpact, takeActorImpacts } from '../world/actorImpacts.js';
 import {
   REACTION_MOTION,
   REACTION_PHASE,
   beginReaction,
+  classifyPedestrianStartle,
   createReactionState,
-  reactionUsesProneCollider,
   stepReaction,
 } from '../world/actorReactions.js';
 import { gameDebug } from '../debug.js';
 import { applyPlayerEvent, npcStartleEffect } from '../world/player.js';
 import {
+  PEDESTRIAN_STROLLER_CIRCUITS as STROLLER_CIRCUITS,
+  strollerScheduleState,
+} from '../world/strollerPedestrians.js';
+import {
+  PARK_VISITOR_ITINERARY,
+  parkVisitorItineraryState,
+} from '../world/parkVisitorItinerary.js';
+import {
+  PING_PONG_PHASE,
+  createPingPongRouteState,
+  interpolateRouteTurnYaw,
+  routeTurnProgress,
+  stepPingPongRoute,
+} from '../world/pingPongRoute.js';
+import { buildPeriodStroller } from './strollerModel.js';
+import { normalizeNonmetallicCharacterMaterial } from './characterMaterials.js';
+import { restoreLoopingIdle } from './characterGestures.js';
+import {
   PEDESTRIAN_ARCHETYPES,
   PEDESTRIAN_BENCH_SITTERS as BENCH_SITTERS,
-  PEDESTRIAN_FALL_REACTION_FILE,
   PEDESTRIAN_MAN_CLIP_FILES as MAN_CLIP_FILES,
   PEDESTRIAN_POSERS as POSERS,
   PEDESTRIAN_REACTION_FILE,
   PEDESTRIAN_ROUTES as ROUTES,
   PEDESTRIAN_SHARED_CLIPS as SHARED_CLIPS,
   PEDESTRIAN_STANDERS as STANDERS,
+  pedestrianScheduleActive,
+  PEDESTRIAN_STRAWHAT_MOTION_FILE,
   PEDESTRIAN_WOMAN_CLIP_FILES as WOMAN_CLIP_FILES,
 } from '../world/pedestrianCatalog.js';
 
@@ -54,44 +80,77 @@ const BUMP_DISTANCE = 0.85;
 const BUMP_RELEASE_DISTANCE = 1.15;
 const BUMP_COOLDOWN = 4;
 const STANDING_COLLIDER = Object.freeze({ halfHeight: 0.55, radius: 0.28, y: 0.88 });
+const Y_AXIS = new THREE.Vector3(0, 1, 0);
 
 function playReactionPhase(entry) {
-  const { phase, variant } = entry.reaction;
-  if (entry.renderedPhase === phase && entry.renderedVariant === variant) return;
+  const { phase } = entry.reaction;
+  if (entry.renderedPhase === phase) return;
   const previous = entry.activeAction;
-  let next = null;
-  if (phase === REACTION_PHASE.STAGGER) next = entry.actions.stagger;
-  else if (phase === REACTION_PHASE.FALLING) next = entry.actions[variant];
-  else if (phase === REACTION_PHASE.PRONE) next = entry.actions.prone;
-  else if (phase === REACTION_PHASE.RISING) next = entry.actions.rise;
+  const next = phase === REACTION_PHASE.STAGGER ? entry.actions.stagger : null;
 
   if (phase === REACTION_PHASE.NORMAL) {
     previous?.fadeOut(0.25);
     entry.base.fadeIn(0.28).play();
     entry.activeAction = null;
   } else if (next) {
+    if (entry.ambientAction) {
+      entry.ambientAction.stop();
+      entry.ambientAction = null;
+      entry.ambientName = null;
+      entry.nextAmbientAt = entry.reaction.phaseUntil + 5;
+    }
     entry.base.fadeOut(0.14);
     if (previous && previous !== next) previous.fadeOut(0.16);
-    const motion = REACTION_MOTION[variant];
-    next.reset().setEffectiveTimeScale(motion?.timeScale ?? 1).fadeIn(0.12).play();
+    next.reset().setEffectiveTimeScale(REACTION_MOTION.stagger.timeScale).fadeIn(0.12).play();
     entry.activeAction = next;
   }
   entry.renderedPhase = phase;
-  entry.renderedVariant = variant;
 }
 
-function benchSitterPose({ benchId, along }) {
+function playAmbient(entry, name, now) {
+  const next = entry.actions[name];
+  if (!next || entry.activeAction || entry.ambientAction) return false;
+  entry.base.fadeOut(0.18);
+  next.reset().setLoop(THREE.LoopOnce, 1).fadeIn(0.16).play();
+  next.clampWhenFinished = true;
+  entry.ambientAction = next;
+  entry.ambientName = name;
+  entry.ambientUntil = now + next.getClip().duration / Math.max(0.1, entry.speed) + 0.08;
+  return true;
+}
+
+function finishAmbient(entry, now) {
+  restoreLoopingIdle(entry.mixer, entry.base, entry.ambientAction);
+  entry.ambientAction = null;
+  entry.ambientName = null;
+  entry.ambientIndex += 1;
+  entry.nextAmbientAt = now + 7 + hash01(entry.ambientIndex * 17.3 + entry.age) * 12;
+}
+
+function benchSitterPose({ benchId, along, yawOffset = 0 }) {
   const bench = parkItems.find((item) => item.id === benchId);
   if (!bench) throw new Error(`Pedestrian bench not found: ${benchId}`);
   const yaw = bench.yaw ?? 0;
   const x = bench.position[0] + Math.cos(yaw) * along;
   const z = bench.position[2] - Math.sin(yaw) * along;
-  return { x, z, yaw };
+  return { x, z, yaw: yaw + yawOffset };
 }
 
 function hash01(seed) {
   const value = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
   return value - Math.floor(value);
+}
+
+function compatibleClips(source, clips) {
+  const names = new Set();
+  source.traverse((node) => {
+    if (node.name) names.add(node.name);
+  });
+  return clips.map((clip) => {
+    const copy = clip.clone();
+    copy.tracks = copy.tracks.filter((track) => names.has(track.name.split('.')[0]));
+    return copy;
+  });
 }
 
 // Mixamo animations carry no props; the briefcase is ours, hung from the
@@ -150,6 +209,28 @@ function routeLength(points) {
   return total;
 }
 
+function routeGroundY(route, x, z) {
+  if (route.crossesGapstow) {
+    const dx = x - GAPSTOW.x;
+    const dz = z - GAPSTOW.z;
+    const cos = Math.cos(GAPSTOW.yaw);
+    const sin = Math.sin(GAPSTOW.yaw);
+    const along = dx * cos - dz * sin;
+    const across = dx * sin + dz * cos;
+    if (Math.abs(along) <= APRON_W && Math.abs(across) <= 2.2) {
+      return gapstowWalkY(along) + 0.02;
+    }
+  }
+  return route.onTerrain ? terrainHeight(x, z) : WALK_TOP;
+}
+
+function setBaseAction(entry, next) {
+  if (!next || next === entry.base) return;
+  entry.base.fadeOut(0.24);
+  next.reset().fadeIn(0.24).play();
+  entry.base = next;
+}
+
 export default function Pedestrians({ runtime }) {
   // All pedestrian GLBs are meshopt-compressed.
   const withMeshopt = (loader) => loader.setMeshoptDecoder(MeshoptDecoder);
@@ -158,43 +239,68 @@ export default function Pedestrians({ runtime }) {
   const dressGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.d.modelPath, withMeshopt);
   const somberGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.s.modelPath, withMeshopt);
   const fortiesGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.f.modelPath, withMeshopt);
+  const strawhatGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.h.modelPath, withMeshopt);
+  const strawhatMotionGltf = useLoader(GLTFLoader, PEDESTRIAN_STRAWHAT_MOTION_FILE, withMeshopt);
   const manClipGltfs = useLoader(GLTFLoader, MAN_CLIP_FILES, withMeshopt);
   const womanClipGltfs = useLoader(GLTFLoader, WOMAN_CLIP_FILES, withMeshopt);
   const reactGltf = useLoader(GLTFLoader, PEDESTRIAN_REACTION_FILE, withMeshopt);
-  const fallGltf = useLoader(GLTFLoader, PEDESTRIAN_FALL_REACTION_FILE, withMeshopt);
   const { world, rapier } = useRapier();
-  const standingShape = useMemo(
-    () => new rapier.Capsule(STANDING_COLLIDER.halfHeight, STANDING_COLLIDER.radius),
-    [rapier],
-  );
+  const bodyQuaternion = useRef(new THREE.Quaternion());
 
   const { group, walkers, figures } = useMemo(() => {
     const reactClip = reactGltf.animations[0];
-    const fallClips = fallGltf.animations;
-    const manClips = [
+    const manClips = compatibleClips(manGltf.scene, [
       ...manGltf.animations,
       ...manClipGltfs.flatMap((entry) => entry.animations),
       reactClip,
-      ...fallClips,
-    ];
+    ]);
     const sharedClips = manClips.filter((clip) => SHARED_CLIPS.includes(clip.name));
     const womanWalk = womanClipGltfs.flatMap((entry) => entry.animations);
     const cast = {
       m: { source: manGltf.scene, clips: manClips },
       w: {
         source: womanGltf.scene,
-        clips: [...womanGltf.animations, ...womanWalk, ...sharedClips, reactClip, ...fallClips],
+        clips: compatibleClips(womanGltf.scene, [
+          ...womanGltf.animations,
+          ...womanWalk,
+          ...sharedClips,
+          ...strawhatMotionGltf.animations,
+        ]),
       },
-      // The summer-dress woman walks and stands only; she shares the
-      // working-class woman's gait.
-      d: { source: dressGltf.scene, clips: [...dressGltf.animations, ...womanWalk, reactClip, ...fallClips] },
+      // These three figures carry the same complete 65-bone Mixamo skeleton
+      // as Strawhat, so her standalone motion library transfers directly.
+      d: {
+        source: dressGltf.scene,
+        clips: compatibleClips(dressGltf.scene, [
+          ...dressGltf.animations,
+          ...womanWalk,
+          ...strawhatMotionGltf.animations,
+        ]),
+      },
       // This figure carries its own long seated loop. The matching full
       // Mixamo rig also leaves walking clips available if she is reused later.
-      s: { source: somberGltf.scene, clips: somberGltf.animations },
-      f: { source: fortiesGltf.scene, clips: [...fortiesGltf.animations, reactClip, ...fallClips] },
+      s: { source: somberGltf.scene, clips: compatibleClips(somberGltf.scene, somberGltf.animations) },
+      f: {
+        source: fortiesGltf.scene,
+        clips: compatibleClips(fortiesGltf.scene, [
+          ...fortiesGltf.animations,
+          ...strawhatGltf.animations,
+          ...strawhatMotionGltf.animations,
+        ]),
+      },
+      h: {
+        source: strawhatGltf.scene,
+        clips: compatibleClips(strawhatGltf.scene, [
+          ...strawhatGltf.animations,
+          ...strawhatMotionGltf.animations,
+        ]),
+      },
     };
-    const findClip = (who, name) =>
-      cast[who].clips.find((clip) => clip.name === name) ?? cast[who].clips[0];
+    const findClip = (who, name) => {
+      const clip = cast[who].clips.find((candidate) => candidate.name === name);
+      if (!clip) throw new Error(`Pedestrian ${who} is missing animation ${name}`);
+      return clip;
+    };
 
     const root = new THREE.Group();
     const walking = [];
@@ -227,17 +333,29 @@ export default function Pedestrians({ runtime }) {
         // Kept small and symmetric: the figure has one material, so any
         // lightness drop darkens the face along with the suit.
         if (node.material) {
-          node.material = node.material.clone();
-          node.material.color.offsetHSL(
-            (hash01(index * 7.1) - 0.5) * 0.02,
-            -0.03,
-            (hash01(index * 5.3) - 0.5) * 0.06,
-          );
+          const sourceMaterials = Array.isArray(node.material) ? node.material : [node.material];
+          const materials = sourceMaterials.map((material) => material.clone());
+          node.material = Array.isArray(node.material) ? materials : materials[0];
+          for (const material of materials) {
+            normalizeNonmetallicCharacterMaterial(material);
+            material.color.offsetHSL(
+              (hash01(index * 7.1) - 0.5) * 0.02,
+              -0.03,
+              (hash01(index * 5.3) - 0.5) * 0.06,
+            );
+          }
         }
       });
       // A wrapper carries position/yaw so placement stays in world terms.
       const wrapper = new THREE.Group();
       wrapper.add(figure);
+      const stroller = spec.strollerVariant
+        ? buildPeriodStroller(spec.strollerVariant)
+        : null;
+      if (stroller) {
+        wrapper.add(stroller.group);
+        meshes.push(...stroller.meshes);
+      }
       root.add(wrapper);
       if (/Briefcase/.test(clipName)) attachBriefcase(figure);
       const clip = findClip(who, clipName);
@@ -251,19 +369,14 @@ export default function Pedestrians({ runtime }) {
       };
       const actions = {
         stagger: action(REACTION_MOTION.stagger.clip),
-        fallShoulder: action(REACTION_MOTION.fallShoulder.clip),
-        fallGeneric: action(REACTION_MOTION.fallGeneric.clip),
-        prone: action(REACTION_MOTION.prone.clip),
-        rise: action(REACTION_MOTION.rise.clip),
       };
-      for (const key of ['stagger', 'fallShoulder', 'fallGeneric', 'rise']) {
-        actions[key]?.setLoop(THREE.LoopOnce, 1);
-        if (actions[key]) actions[key].clampWhenFinished = true;
-      }
-      actions.prone?.setLoop(THREE.LoopRepeat, Infinity);
+      for (const name of spec.ambientClips ?? []) actions[name] = action(name);
+      actions.stagger?.setLoop(THREE.LoopOnce, 1);
+      if (actions.stagger) actions.stagger.clampWhenFinished = true;
       const entry = {
         id: spec.id,
         age: spec.age,
+        gender: who === 'm' ? 'male' : 'female',
         wrapper,
         meshes,
         mixer,
@@ -271,13 +384,25 @@ export default function Pedestrians({ runtime }) {
         actions,
         reaction: createReactionState(),
         activeAction: null,
+        ambientAction: null,
+        ambientName: null,
+        ambientClips: spec.ambientClips ?? null,
+        ambientIndex: 0,
+        ambientUntil: Infinity,
+        nextAmbientAt: 8 + hash01(index * 19.7 + 4) * 13,
         renderedPhase: REACTION_PHASE.NORMAL,
-        renderedVariant: null,
         cooldownUntil: 0,
         playerNear: false,
         velocity: [0, 0],
-        refs: { body: null, standingCollider: null, proneCollider: null, restingCollider: null },
+        refs: {
+          body: null,
+          standingCollider: null,
+          restingCollider: null,
+          strollerCollider: null,
+        },
         poser: false,
+        schedule: spec.schedule ?? null,
+        stroller,
         speed: 0.92 + hash01(index * 13.7) * 0.16,
         pending: 0,
       };
@@ -309,19 +434,80 @@ export default function Pedestrians({ runtime }) {
 
     ROUTES.forEach((route, index) => {
       const entry = spawn(index + 40, route, 'Walk');
+      const idleName = cast[route.who].clips.some((clip) => clip.name === 'Idle')
+        ? 'Idle'
+        : 'StandingIdle';
+      const idle = entry.mixer.clipAction(findClip(route.who, idleName));
+      idle.setLoop(THREE.LoopRepeat, Infinity);
+      const length = routeLength(route.points);
       // Same object in both lists, so the bump state is shared.
       walking.push(Object.assign(entry, {
         route,
-        length: routeLength(route.points),
-        dist: hash01(index * 5.9) * routeLength(route.points),
+        length,
+        routeMotion: createPingPongRouteState({
+          distance: hash01(index * 5.9) * length,
+          seed: index + 40,
+        }),
+        routeActions: { walk: entry.base, idle },
+        turnFromYaw: entry.wrapper.rotation.y,
+        turnToYaw: entry.wrapper.rotation.y,
+      }));
+    });
+
+    {
+      const spec = PARK_VISITOR_ITINERARY;
+      const entry = spawn(55, spec, 'Walk');
+      const [x, z] = spec.toCarousel.points[0];
+      entry.wrapper.position.set(x, terrainHeight(x, z), z);
+      entry.wrapper.rotation.y = spec.initialYaw;
+      walking.push(Object.assign(entry, {
+        itinerary: spec,
+        itineraryActions: {
+          walk: entry.base,
+          idle: entry.mixer.clipAction(findClip(spec.who, 'Idle')),
+        },
+        itineraryPhase: null,
+      }));
+    }
+
+    STROLLER_CIRCUITS.forEach((route, index) => {
+      const entry = spawn(index + 60, route, 'StrollerWalk');
+      const length = routeLength(route.points);
+      const idleClip = findClip(route.who, 'StrollerIdle');
+      walking.push(Object.assign(entry, {
+        route,
+        length,
+        dist: route.startFraction * length,
         dir: 1,
+        speed: route.speed,
+        strollerActions: {
+          walk: entry.base,
+          idle: entry.mixer.clipAction(idleClip),
+        },
+        strollerPaused: false,
+        wheelSpin: 0,
       }));
     });
 
     return { group: root, walkers: walking, figures: all };
-  }, [manGltf, womanGltf, dressGltf, somberGltf, fortiesGltf, manClipGltfs, womanClipGltfs, reactGltf, fallGltf]);
+  }, [manGltf, womanGltf, dressGltf, somberGltf, fortiesGltf, strawhatGltf, strawhatMotionGltf, manClipGltfs, womanClipGltfs, reactGltf]);
 
   const frameCount = useRef(0);
+  const trackedPeople = useMemo(
+    () => figures.map((entry) => ({
+      id: entry.id,
+      gender: entry.gender,
+      position: [entry.wrapper.position.x, entry.wrapper.position.y, entry.wrapper.position.z],
+      yaw: entry.wrapper.rotation.y,
+    })),
+    [figures],
+  );
+  useEffect(() => {
+    gameDebug.pedestrians = trackedPeople;
+    return () => {
+      if (gameDebug.pedestrians === trackedPeople) gameDebug.pedestrians = [];
+    };
+  }, [trackedPeople]);
   useFrame((state, delta) => {
     // Casting a shadow means a second full pass over the figure. Past a few
     // metres the sun's shadow of a stranger is a smudge; only the ones near
@@ -331,6 +517,23 @@ export default function Pedestrians({ runtime }) {
     frameCount.current += 1;
     for (const [index, entry] of figures.entries()) {
       const { x, z } = entry.wrapper.position;
+      const tracked = trackedPeople[index];
+      tracked.position[0] = x;
+      tracked.position[1] = entry.wrapper.position.y;
+      tracked.position[2] = z;
+      tracked.yaw = entry.wrapper.rotation.y;
+      const scheduleActive = pedestrianScheduleActive(entry.schedule, runtime.values.timeOfDay);
+      entry.wrapper.visible = scheduleActive;
+      if (!scheduleActive) {
+        removeAgent(entry.id);
+        const inactiveCollider = entry.poser
+          ? entry.refs.restingCollider
+          : entry.refs.standingCollider;
+        if (entry.refs.body && handlesAlive(world, entry.refs.body, inactiveCollider)) {
+          entry.refs.body.setNextKinematicTranslation({ x: 0, y: -100, z: 0 });
+        }
+        continue;
+      }
       const dist2 = (x - eye.x) ** 2 + (z - eye.z) ** 2;
       const shadowDistance = runtime.values.outdoorShadowDistance;
       const near = dist2 < shadowDistance * shadowDistance;
@@ -338,6 +541,7 @@ export default function Pedestrians({ runtime }) {
       // Accumulate time so a throttled figure moves at true speed, just in
       // coarser steps. The +index staggers mid-tier updates across frames.
       const reacting = entry.reaction.phase !== REACTION_PHASE.NORMAL;
+      if (entry.ambientAction && t >= entry.ambientUntil) finishAmbient(entry, t);
       entry.pending = Math.min(entry.pending + delta * (reacting ? 1 : entry.speed), 1);
       const animate =
         dist2 < ANIM_NEAR * ANIM_NEAR ||
@@ -347,27 +551,39 @@ export default function Pedestrians({ runtime }) {
         entry.mixer.update(entry.pending);
         entry.pending = 0;
       }
-      // The carriages steer around whatever is reported here.
-      reportAgent(entry.id, x, z, reactionUsesProneCollider(entry.reaction) ? 0.32 : 0.45);
+      // The carriages steer around whatever is reported here. A stroller is
+      // reported from the combined adult/carriage centre, not the adult's
+      // feet, so traffic clears the whole rig.
+      const yaw = entry.wrapper.rotation.y;
+      const agentOffset = entry.stroller ? 0.55 : 0;
+      reportAgent(
+        entry.id,
+        x + Math.sin(yaw) * agentOffset,
+        z + Math.cos(yaw) * agentOffset,
+        entry.stroller ? 0.9 : 0.45,
+        {
+          kind: 'pedestrian',
+          gender: entry.gender,
+          velocity: [...entry.velocity],
+        },
+      );
 
       // The collider tracks the figure; the player's controller resolves
       // against it, so nobody can be walked through.
       const activeCollider = entry.poser
         ? entry.refs.restingCollider
-        : reactionUsesProneCollider(entry.reaction)
-          ? entry.refs.proneCollider
-          : entry.refs.standingCollider;
+        : entry.refs.standingCollider;
       const { body } = entry.refs;
       if (body && handlesAlive(world, body, activeCollider)) {
         const p = entry.wrapper.position;
         body.setNextKinematicTranslation({ x: p.x, y: p.y, z: p.z });
+        if (entry.stroller) {
+          bodyQuaternion.current.setFromAxisAngle(Y_AXIS, entry.wrapper.rotation.y);
+          body.setNextKinematicRotation(bodyQuaternion.current);
+        }
       }
 
       if (!entry.poser) {
-        const prone = reactionUsesProneCollider(entry.reaction);
-        entry.refs.standingCollider?.setEnabled(!prone);
-        entry.refs.proneCollider?.setEnabled(prone);
-
         for (const impact of takeActorImpacts(entry.id)) {
           const sourceVelocity = impact.sourceVelocity ?? [0, 0, 0];
           const relativeSpeed = Math.hypot(
@@ -376,9 +592,12 @@ export default function Pedestrians({ runtime }) {
           );
           const next = beginReaction(
             entry.reaction,
-            { ...impact, relativeSpeed },
+            {
+              ...impact,
+              relativeSpeed,
+              response: classifyPedestrianStartle({ ...impact, relativeSpeed }),
+            },
             t,
-            { age: entry.age },
           );
           if (next !== entry.reaction) {
             entry.reaction = next;
@@ -387,22 +606,21 @@ export default function Pedestrians({ runtime }) {
           }
         }
 
-        const canStand = entry.reaction.phase !== REACTION_PHASE.PRONE
-          || t < entry.reaction.proneUntil
-          || !world.intersectionWithShape(
-            { x, y: entry.wrapper.position.y + STANDING_COLLIDER.y, z },
-            { x: 0, y: 0, z: 0, w: 1 },
-            standingShape,
-            undefined,
-            undefined,
-            entry.refs.standingCollider,
-            body,
-          );
-        const stepped = stepReaction(entry.reaction, t, { canStand });
+        const stepped = stepReaction(entry.reaction, t);
         if (stepped !== entry.reaction) {
           entry.reaction = stepped;
           playReactionPhase(entry);
         }
+      }
+
+      if (
+        entry.ambientClips
+        && entry.reaction.phase === REACTION_PHASE.NORMAL
+        && !entry.ambientAction
+        && t >= entry.nextAmbientAt
+      ) {
+        const name = entry.ambientClips[entry.ambientIndex % entry.ambientClips.length];
+        if (!playAmbient(entry, name, t)) entry.nextAmbientAt = t + 2;
       }
 
       // Preserve the forgiving proximity trigger from the original reaction:
@@ -426,9 +644,13 @@ export default function Pedestrians({ runtime }) {
               relativeSpeed,
               running: gameDebug.player.running,
               direction: [playerVelocity[0], playerVelocity[2]],
+              response: classifyPedestrianStartle({
+                cause: 'player-body',
+                relativeSpeed,
+                running: gameDebug.player.running,
+              }),
             },
             t,
-            { age: entry.age },
           );
           if (next !== entry.reaction) {
             entry.reaction = next;
@@ -449,8 +671,102 @@ export default function Pedestrians({ runtime }) {
         walker.velocity[1] = 0;
         continue;
       }
-      walker.dist += WALK_SPEED * delta * walker.dir * walker.speed;
-      if (walker.dist > walker.length) {
+
+      if (walker.itinerary) {
+        const itineraryState = parkVisitorItineraryState(runtime.values.timeOfDay);
+        if (itineraryState.phase !== walker.itineraryPhase) {
+          walker.itineraryPhase = itineraryState.phase;
+          setBaseAction(
+            walker,
+            itineraryState.action === 'Idle'
+              ? walker.itineraryActions.idle
+              : walker.itineraryActions.walk,
+          );
+        }
+        const [x, z, dx, dz] = routePoint(
+          itineraryState.route.points,
+          itineraryState.distance,
+        );
+        walker.wrapper.position.set(x, routeGroundY(itineraryState.route, x, z), z);
+        if (itineraryState.moving) {
+          walker.wrapper.rotation.y = Math.atan2(dx, dz);
+          const length = Math.hypot(dx, dz) || 1;
+          walker.velocity[0] = (dx / length) * WALK_SPEED;
+          walker.velocity[1] = (dz / length) * WALK_SPEED;
+        } else {
+          walker.wrapper.rotation.y = itineraryState.yaw;
+          walker.velocity[0] = 0;
+          walker.velocity[1] = 0;
+        }
+        continue;
+      }
+
+      if (walker.stroller) {
+        const paused = strollerScheduleState(walker.route.schedule, t).paused;
+        if (paused !== walker.strollerPaused) {
+          walker.strollerPaused = paused;
+          setBaseAction(walker, paused ? walker.strollerActions.idle : walker.strollerActions.walk);
+        }
+        if (paused) {
+          walker.velocity[0] = 0;
+          walker.velocity[1] = 0;
+          continue;
+        }
+      }
+
+      if (walker.routeMotion) {
+        const stepped = stepPingPongRoute(walker.routeMotion, {
+          delta,
+          now: t,
+          length: walker.length,
+          speed: WALK_SPEED * walker.speed,
+        });
+        const [x, z, dx, dz] = routePoint(walker.route.points, walker.routeMotion.distance);
+        const y = routeGroundY(walker.route, x, z);
+        walker.wrapper.position.set(x, y, z);
+        const targetYaw = Math.atan2(
+          dx * walker.routeMotion.direction,
+          dz * walker.routeMotion.direction,
+        );
+        if (stepped.phaseChanged) {
+          if (stepped.phase === PING_PONG_PHASE.WALKING) {
+            setBaseAction(walker, walker.routeActions.walk);
+            walker.wrapper.rotation.y = targetYaw;
+          } else {
+            setBaseAction(walker, walker.routeActions.idle);
+            if (stepped.phase === PING_PONG_PHASE.TURNING) {
+              walker.turnFromYaw = walker.wrapper.rotation.y;
+              walker.turnToYaw = targetYaw;
+            }
+          }
+        }
+        if (stepped.phase === PING_PONG_PHASE.TURNING) {
+          walker.wrapper.rotation.y = interpolateRouteTurnYaw(
+            walker.turnFromYaw,
+            walker.turnToYaw,
+            routeTurnProgress(walker.routeMotion, t),
+          );
+        } else if (stepped.phase === PING_PONG_PHASE.WALKING) {
+          walker.wrapper.rotation.y = targetYaw;
+        }
+        if (stepped.moving) {
+          const tangentLength = Math.hypot(dx, dz) || 1;
+          walker.velocity[0] = (dx / tangentLength) * WALK_SPEED
+            * walker.routeMotion.direction * walker.speed;
+          walker.velocity[1] = (dz / tangentLength) * WALK_SPEED
+            * walker.routeMotion.direction * walker.speed;
+        } else {
+          walker.velocity[0] = 0;
+          walker.velocity[1] = 0;
+        }
+        continue;
+      }
+
+      const travel = WALK_SPEED * delta * walker.dir * walker.speed;
+      walker.dist += travel;
+      if (walker.route.loop) {
+        walker.dist = ((walker.dist % walker.length) + walker.length) % walker.length;
+      } else if (walker.dist > walker.length) {
         walker.dist = walker.length;
         walker.dir = -1;
       } else if (walker.dist < 0) {
@@ -458,12 +774,16 @@ export default function Pedestrians({ runtime }) {
         walker.dir = 1;
       }
       const [x, z, dx, dz] = routePoint(walker.route.points, walker.dist);
-      const y = walker.route.onTerrain ? terrainHeight(x, z) : WALK_TOP;
+      const y = routeGroundY(walker.route, x, z);
       walker.wrapper.position.set(x, y, z);
       walker.wrapper.rotation.y = Math.atan2(dx * walker.dir, dz * walker.dir);
       const length = Math.hypot(dx, dz) || 1;
       walker.velocity[0] = (dx / length) * WALK_SPEED * walker.dir * walker.speed;
       walker.velocity[1] = (dz / length) * WALK_SPEED * walker.dir * walker.speed;
+      if (walker.stroller) {
+        walker.wheelSpin += Math.abs(travel) / walker.stroller.wheelRadius;
+        for (const wheel of walker.stroller.wheels) wheel.rotation.x = walker.wheelSpin;
+      }
     }
   });
 
@@ -474,6 +794,7 @@ export default function Pedestrians({ runtime }) {
         clearActorImpacts(entry.id);
       });
       for (const entry of figures) {
+        entry.stroller?.dispose();
         for (const mesh of entry.meshes) mesh.material?.dispose?.();
       }
     },
@@ -516,15 +837,14 @@ export default function Pedestrians({ runtime }) {
                 position={[0, STANDING_COLLIDER.y, 0]}
                 activeCollisionTypes={rapier.ActiveCollisionTypes.ALL}
               />
-              <CapsuleCollider
-                ref={(node) => {
-                  entry.refs.proneCollider = node;
-                  node?.setEnabled(false);
-                }}
-                args={[0.12, 0.34]}
-                position={[0, 0.36, 0]}
-                activeCollisionTypes={rapier.ActiveCollisionTypes.ALL}
-              />
+              {entry.stroller ? (
+                <CuboidCollider
+                  ref={(node) => (entry.refs.strollerCollider = node)}
+                  args={[0.4, 0.5, 0.58]}
+                  position={[0, 0.66, 0.82]}
+                  activeCollisionTypes={rapier.ActiveCollisionTypes.ALL}
+                />
+              ) : null}
             </>
           )}
         </RigidBody>

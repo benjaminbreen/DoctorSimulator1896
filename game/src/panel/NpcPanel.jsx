@@ -9,6 +9,8 @@ import {
   CHARACTER_EXPRESSIONS,
 } from '../../../shared/characters/recipe.js';
 import RendererCActor from '../scene/characters/RendererCActor.jsx';
+import { buildPeriodStroller } from '../scene/strollerModel.js';
+import { buildWalkingStick, findMixamoBone } from '../scene/walkingStick.js';
 import {
   currentPedestrianCast,
   PEDESTRIAN_ARCHETYPES,
@@ -40,12 +42,24 @@ function patientRows(patients) {
 function pedestrianRows() {
   return currentPedestrianCast().map((entry) => ({
     ...entry,
-    label: PEDESTRIAN_ARCHETYPES[entry.archetype].label,
+    label: entry.labelOverride ?? PEDESTRIAN_ARCHETYPES[entry.archetype].label,
   }));
 }
 
 function withMeshopt(loader) {
   loader.setMeshoptDecoder(MeshoptDecoder);
+}
+
+function clipsCompatibleWith(root, clips) {
+  const names = new Set();
+  root.traverse((node) => {
+    if (node.name) names.add(node.name);
+  });
+  return clips.map((clip) => {
+    const copy = clip.clone();
+    copy.tracks = copy.tracks.filter((track) => names.has(track.name.split('.')[0]));
+    return copy;
+  });
 }
 
 function PatientFigure({ entry, body, expression, paused = false }) {
@@ -72,6 +86,7 @@ function PatientFigure({ entry, body, expression, paused = false }) {
 }
 
 function PedestrianFigure({ entry, animation, paused = false }) {
+  const stageRef = useRef();
   const archetype = PEDESTRIAN_ARCHETYPES[entry.archetype];
   const gltfs = useLoader(GLTFLoader, archetype.animationSources, withMeshopt);
   const actor = useMemo(() => {
@@ -83,9 +98,17 @@ function PedestrianFigure({ entry, animation, paused = false }) {
       if (node.material) node.material = node.material.clone();
       if (node.isSkinnedMesh) node.frustumCulled = false;
     });
-    const clips = gltfs.flatMap((gltf) => gltf.animations);
-    return { root, clips, mixer: new THREE.AnimationMixer(root) };
-  }, [gltfs]);
+    const clips = clipsCompatibleWith(root, gltfs.flatMap((gltf) => gltf.animations));
+    const walkingStick = archetype.prop === 'walking-stick' ? buildWalkingStick() : null;
+    return {
+      root,
+      clips,
+      mixer: new THREE.AnimationMixer(root),
+      stroller: entry.strollerVariant ? buildPeriodStroller(entry.strollerVariant) : null,
+      walkingStick,
+      walkingStickHand: walkingStick ? findMixamoBone(root, 'RightHand') : null,
+    };
+  }, [archetype.prop, gltfs, entry.strollerVariant]);
 
   useEffect(() => {
     const clip = actor.clips.find((candidate) => candidate.name === animation) ?? actor.clips[0];
@@ -97,10 +120,16 @@ function PedestrianFigure({ entry, animation, paused = false }) {
 
   useFrame((_, delta) => {
     if (!paused) actor.mixer.update(Math.min(delta, 0.1));
+    if (actor.walkingStick && stageRef.current) {
+      stageRef.current.updateMatrixWorld(true);
+      actor.walkingStick.update(actor.walkingStickHand, stageRef.current);
+    }
   });
 
   useEffect(() => () => {
     actor.mixer.stopAllAction();
+    actor.stroller?.dispose();
+    actor.walkingStick?.dispose();
     actor.root.traverse((node) => {
       if (!node.isMesh && !node.isSkinnedMesh) return;
       const materials = Array.isArray(node.material) ? node.material : [node.material];
@@ -109,8 +138,12 @@ function PedestrianFigure({ entry, animation, paused = false }) {
   }, [actor]);
 
   return (
-    <group scale={NPC_SCALE}>
-      <primitive object={actor.root} />
+    <group ref={stageRef}>
+      <group scale={NPC_SCALE}>
+        <primitive object={actor.root} />
+      </group>
+      {actor.stroller ? <primitive object={actor.stroller.group} /> : null}
+      {actor.walkingStick ? <primitive object={actor.walkingStick.group} /> : null}
     </group>
   );
 }

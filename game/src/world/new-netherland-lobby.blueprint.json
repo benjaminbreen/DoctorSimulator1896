@@ -1,0 +1,340 @@
+{
+  "id": "NEW_NETHERLAND_LOBBY",
+  "label": "New Netherland Hotel",
+  "schemaVersion": 1,
+  "dimensions": {
+    "width": 16.0,
+    "depth": 18.0,
+    "ceiling": 7.4,
+    "floorY": 0
+  },
+  "outline": [
+    [-8, 9],
+    [8, 9],
+    [8, -9],
+    [-8, -9]
+  ],
+  "navigation": {
+    "defaultSpawn": [-5.4, 0, 0],
+    "defaultFacing": [1, 0, 0]
+  },
+  "walls": [
+    {
+      "id": "west-wall",
+      "position": [-8, 3.7, 0],
+      "size": [0.4, 7.4, 18.0],
+      "yaw": 0,
+      "openings": [
+        {
+          "id": "window-ave-n",
+          "type": "window",
+          "center": [-4.6, 2.4],
+          "size": [1.6, 2.8],
+          "sillHeight": 1.0
+        },
+        {
+          "id": "door-street",
+          "type": "door",
+          "center": [0, 1.7],
+          "size": [2.2, 3.4],
+          "sillHeight": 0,
+          "blocked": true,
+          "open": true
+        },
+        {
+          "id": "window-ave-s",
+          "type": "window",
+          "center": [4.6, 2.4],
+          "size": [1.6, 2.8],
+          "sillHeight": 1.0
+        }
+      ]
+    },
+    {
+      "id": "east-wall",
+      "position": [8, 3.7, 0],
+      "size": [0.4, 7.4, 18.0],
+      "yaw": 0,
+      "openings": [
+        {
+          "id": "door-stairs",
+          "type": "door",
+          "center": [-5.3, 2.85],
+          "size": [1.4, 2.5],
+          "sillHeight": 1.6,
+          "blocked": true
+        },
+        {
+          "id": "door-cafe",
+          "type": "door",
+          "center": [4.8, 1.5],
+          "size": [1.6, 3.0],
+          "sillHeight": 0,
+          "blocked": true
+        }
+      ]
+    },
+    {
+      "id": "north-wall",
+      "position": [0, 3.7, -9],
+      "size": [16.0, 7.4, 0.4],
+      "yaw": 0,
+      "openings": []
+    },
+    {
+      "id": "south-wall",
+      "position": [0, 3.7, 9],
+      "size": [16.0, 7.4, 0.4],
+      "yaw": 0,
+      "openings": []
+    }
+  ],
+  "transitions": [
+    {
+      "id": "to-park",
+      "label": "Out to Fifth Avenue",
+      "position": [-6.9, 0],
+      "radius": 1.2,
+      "to": {
+        "zone": "central-park",
+        "spawn": [107.2, 1.29, 70.9],
+        "facing": [-1, 0]
+      }
+    }
+  ],
+  "furniture": [
+    {
+      "id": "nn-sofa-north",
+      "kind": "furniture",
+      "model": "victorian_style_sofa",
+      "position": [-3.4, 0, -7.9],
+      "size": [2.8959, 1.1115, 1.2321],
+      "yaw": 0
+    },
+    {
+      "id": "nn-sofa-south",
+      "kind": "furniture",
+      "model": "victorian_style_sofa",
+      "position": [-3.4, 0, 7.9],
+      "size": [2.8959, 1.1115, 1.2321],
+      "yaw": 3.1416
+    },
+    {
+      "id": "nn-armchair-nw",
+      "kind": "furniture",
+      "model": "ArmChair_01",
+      "position": [-4.9, 0, -5.6],
+      "size": [0.8484, 1.0651, 0.7658],
+      "yaw": 0.9,
+      "dynamic": true,
+      "mass": 11
+    },
+    {
+      "id": "nn-armchair-ne",
+      "kind": "furniture",
+      "model": "ArmChair_01",
+      "position": [-2.1, 0, -5.7],
+      "size": [0.8484, 1.0651, 0.7658],
+      "yaw": -0.7,
+      "dynamic": true,
+      "mass": 11
+    },
+    {
+      "id": "nn-armchair-sw",
+      "kind": "furniture",
+      "model": "ArmChair_01",
+      "position": [-4.9, 0, 5.6],
+      "size": [0.8484, 1.0651, 0.7658],
+      "yaw": 2.3,
+      "dynamic": true,
+      "mass": 11
+    },
+    {
+      "id": "nn-armchair-se",
+      "kind": "furniture",
+      "model": "ArmChair_01",
+      "position": [-2.1, 0, 5.7],
+      "size": [0.8484, 1.0651, 0.7658],
+      "yaw": 3.8,
+      "dynamic": true,
+      "mass": 11
+    },
+    {
+      "id": "nn-table-north",
+      "kind": "furniture",
+      "model": "SmallTable02",
+      "position": [-3.5, 0, -5.9],
+      "size": [0.5536, 0.855, 0.5272],
+      "yaw": 0
+    },
+    {
+      "id": "nn-table-south",
+      "kind": "furniture",
+      "model": "SmallTable02",
+      "position": [-3.5, 0, 5.9],
+      "size": [0.5536, 0.855, 0.5272],
+      "yaw": 0
+    },
+    {
+      "id": "nn-fireplace",
+      "kind": "furniture",
+      "model": "Fireplace",
+      "position": [3.4, 0, 8.4],
+      "size": [2.0446, 1.9581, 0.7891],
+      "yaw": 3.1416
+    },
+    {
+      "id": "nn-mantel-clock",
+      "kind": "furniture",
+      "model": "mantel_clock_01",
+      "position": [3.4, 1.96, 8.45],
+      "size": [0.3423, 0.1605, 0.1262],
+      "yaw": 3.1416,
+      "collider": false
+    },
+    {
+      "id": "nn-clock",
+      "kind": "furniture",
+      "model": "Clock",
+      "position": [7.75, 0, 2.6],
+      "size": [0.5669, 1.3793, 0.2205],
+      "yaw": -1.5708
+    },
+    {
+      "id": "nn-painting-west-n",
+      "kind": "furniture",
+      "model": "Painting",
+      "position": [-7.77, 2.4, -2.9],
+      "size": [1.1245, 0.7898, 0.0174],
+      "modelScale": 1.4,
+      "yaw": 1.5708,
+      "collider": false
+    },
+    {
+      "id": "nn-painting-west-s",
+      "kind": "furniture",
+      "model": "Painting",
+      "position": [-7.77, 2.4, 2.9],
+      "size": [1.1245, 0.7898, 0.0174],
+      "modelScale": 1.4,
+      "yaw": 1.5708,
+      "collider": false
+    },
+    {
+      "id": "nn-palm-entrance-n",
+      "kind": "furniture",
+      "model": "shapespark_plants__Bush-02_14",
+      "position": [-6.7, 0.38, -7.5],
+      "size": [1.3868, 1.0211, 1.4793],
+      "modelScale": 0.85,
+      "yaw": 0.7,
+      "collider": false
+    },
+    {
+      "id": "nn-palm-entrance-s",
+      "kind": "furniture",
+      "model": "shapespark_plants__Bush-03_15",
+      "position": [-6.7, 0.38, 7.5],
+      "size": [1.3571, 1.1829, 1.4194],
+      "modelScale": 0.85,
+      "yaw": 2.1,
+      "collider": false
+    },
+    {
+      "id": "nn-palm-column-n",
+      "kind": "furniture",
+      "model": "shapespark_plants__Bush-03_15",
+      "position": [1.8, 0.38, -5.1],
+      "size": [1.3571, 1.1829, 1.4194],
+      "modelScale": 0.9,
+      "yaw": 3.6,
+      "collider": false
+    },
+    {
+      "id": "nn-palm-column-s",
+      "kind": "furniture",
+      "model": "shapespark_plants__Bush-02_14",
+      "position": [1.8, 0.38, 5.1],
+      "size": [1.3868, 1.0211, 1.4793],
+      "modelScale": 0.9,
+      "yaw": 5.0,
+      "collider": false
+    },
+    {
+      "id": "nn-palm-desk-n",
+      "kind": "furniture",
+      "model": "shapespark_plants__Bush-02_14",
+      "position": [6.8, 0.38, -2.7],
+      "size": [1.3868, 1.0211, 1.4793],
+      "modelScale": 0.8,
+      "yaw": 1.3,
+      "collider": false
+    },
+    {
+      "id": "nn-palm-desk-s",
+      "kind": "furniture",
+      "model": "shapespark_plants__Bush-03_15",
+      "position": [6.8, 0.38, 2.7],
+      "size": [1.3571, 1.1829, 1.4194],
+      "modelScale": 0.8,
+      "yaw": 4.2,
+      "collider": false
+    }
+  ],
+  "props": [
+    {
+      "id": "gaslight-chandelier-w",
+      "kind": "lightMarker",
+      "position": [-4.2, 5.5, 0],
+      "fixture": false
+    },
+    {
+      "id": "gaslight-chandelier-e",
+      "kind": "lightMarker",
+      "position": [4.2, 5.5, 0],
+      "fixture": false
+    },
+    {
+      "id": "gaslight-column-n",
+      "kind": "lightMarker",
+      "position": [0, 5.0, -3.6],
+      "fixture": false
+    },
+    {
+      "id": "gaslight-column-s",
+      "kind": "lightMarker",
+      "position": [0, 5.0, 3.6],
+      "fixture": false
+    },
+    {
+      "id": "gaslight-north-w",
+      "kind": "lightMarker",
+      "position": [-4.5, 3.1, -8.7],
+      "fixture": false
+    },
+    {
+      "id": "gaslight-north-e",
+      "kind": "lightMarker",
+      "position": [3.0, 3.1, -8.7],
+      "fixture": false
+    },
+    {
+      "id": "gaslight-south-w",
+      "kind": "lightMarker",
+      "position": [-4.5, 3.1, 8.7],
+      "fixture": false
+    },
+    {
+      "id": "gaslight-south-e",
+      "kind": "lightMarker",
+      "position": [3.0, 3.1, 8.7],
+      "fixture": false
+    },
+    {
+      "id": "gaslight-desk",
+      "kind": "lightMarker",
+      "position": [6.1, 1.62, 0],
+      "fixture": false
+    }
+  ]
+}

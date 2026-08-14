@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { gameDebug } from '../debug.js';
 import { getThrowablePlay } from '../world/throwablePlay.js';
 import { throwableDefinition } from '../world/throwables.js';
@@ -7,12 +7,22 @@ import { throwableDefinition } from '../world/throwables.js';
 // The prompt remains game-facing; the stats block follows the tuning panel.
 export default function DebugHud({ showStats = false }) {
   const [snapshot, setSnapshot] = useState(null);
+  const cachedSceneMetrics = useRef(null);
+  const nextSceneSampleAt = useRef(0);
 
   useEffect(() => {
     const id = setInterval(() => {
       const { position, grounded } = gameDebug.player;
       const render = gameDebug.renderer?.info?.render;
-      const scene = gameDebug.sceneMetrics();
+      const now = globalThis.performance?.now?.() ?? Date.now();
+      // sceneMetrics traverses the full Three scene. It changes only when a
+      // staged batch arrives, so sampling it five times per second adds hitches
+      // without adding useful information to the tuning readout.
+      if (now >= nextSceneSampleAt.current) {
+        cachedSceneMetrics.current = gameDebug.sceneMetrics();
+        nextSceneSampleAt.current = now + 2500;
+      }
+      const scene = cachedSceneMetrics.current;
       setSnapshot({
         fps: Math.round(gameDebug.stats.fps),
         zone: gameDebug.zoneLabel ?? '',
@@ -28,7 +38,7 @@ export default function DebugHud({ showStats = false }) {
         sceneTriangles: scene?.estimatedTriangles ?? 0,
         prompt: gameDebug.prompt,
       });
-    }, 200);
+    }, 500);
     return () => clearInterval(id);
   }, []);
 

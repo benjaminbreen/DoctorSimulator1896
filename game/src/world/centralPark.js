@@ -12,6 +12,7 @@
 import { parkProp, gasLamp } from './parkCatalog.js';
 import { modelSize } from './modelPacks.js';
 import { GAPSTOW, localToWorld, walkY, RUN_W } from './gapstow.js';
+import { PARK_LANDMARKS } from './parkLandmarks.js';
 
 const RAILING = 'metal_and_concrete_guardrail_8_MB';
 
@@ -271,9 +272,9 @@ function buildItems() {
 
   // The Arsenal and the Menagerie sheds behind it.
   items.push(
-    { id: 'arsenal', kind: 'furniture', position: [88, 4.5, -44], size: [13, 9, 17], yaw: 0, color: '#71453a', texture: 'brick', absoluteY: true },
-    { id: 'menagerie-shed-1', kind: 'furniture', position: [78, 1.75, -52], size: [10, 3.5, 4], yaw: 0.1, color: '#6d5a44', absoluteY: true },
-    { id: 'menagerie-shed-2', kind: 'furniture', position: [80, 1.5, -62], size: [8, 3, 3.5], yaw: -0.15, color: '#645440', absoluteY: true },
+    { id: 'arsenal', kind: 'furniture', position: [88, 4.5, -44], size: [13, 9, 17], yaw: 0, color: '#71453a', texture: 'brick', absoluteY: true, ...PARK_LANDMARKS.arsenal },
+    { id: 'menagerie-shed-1', kind: 'furniture', position: [78, 1.75, -52], size: [10, 3.5, 4], yaw: 0.1, color: '#6d5a44', absoluteY: true, ...PARK_LANDMARKS.menagerie },
+    { id: 'menagerie-shed-2', kind: 'furniture', position: [80, 1.5, -62], size: [8, 3, 3.5], yaw: -0.15, color: '#645440', absoluteY: true, ...PARK_LANDMARKS.menagerie },
   );
 
   // Benches along the walks: plain slatted ones on the drives, the ornate

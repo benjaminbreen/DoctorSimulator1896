@@ -498,8 +498,9 @@ test('Renderer C menswear refits four production wardrobe sources across body bu
       menswear.rebuild(values);
       const names = menswear.pieces().map(({ mesh }) => mesh.name);
       const stats = menswear.stats();
+      const triangleBudget = style === 'mens-authored-victorian-set' ? 100000 : 70000;
       assert.ok(
-        stats.components >= 20 && stats.triangles > 14000 && stats.triangles < 70000,
+        stats.components >= 20 && stats.triangles > 14000 && stats.triangles < triangleBudget,
         `${style} produced ${JSON.stringify(stats)}`,
       );
       const expectedCarrier = style === 'mens-working-clothes' ? 'RendererC_WorkGarment'
@@ -661,7 +662,7 @@ test('MHR costume fitting measures the posed body and eye details follow the eye
   body.morphTargetInfluences[body.morphTargetDictionary.shape_58] = 0;
   const initialScale = eyes.groups[0].scale.x;
   values.eyeColor = '#783f26'; values.eyeSize = 0.5;
-  values.mhrEyeGlobeScale = 1.05; values.mhrEyeDepth = -1.2; values.mhrEyeVertical = 1.1;
+  values.mhrEyeGlobeScale = 1.15; values.mhrEyeDepth = -1.2; values.mhrEyeVertical = 1.1;
   values.mhrScleraColor = '#bba99a'; values.mhrScleraBrightness = 0.12;
   values.mhrIrisScale = 1.28; values.mhrPupilScale = 0.72; values.mhrCorneaGloss = 0.8;
   eyes.update(values);

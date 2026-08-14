@@ -29,6 +29,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
   );
   const clips = gltf.animations;
   const currentActionRef = useRef(null);
+  const settledAnimationRef = useRef(null);
   const actor = useMemo(() => {
     const root = cloneSkeleton(gltf.scene);
     root.rotation.x = Number(recipe.asset?.modelRotationX) || 0;
@@ -83,9 +84,19 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
   // Start and blend actions before the browser paints. A passive effect runs
   // one frame too late: the newly committed skeleton is visible in bind pose.
   useLayoutEffect(() => {
-    const clipName = recipe.asset?.clipMap?.[recipe.animation.body]
-      || BODY_CUE_CLIPS[recipe.animation.body]
-      || 'ClinicIdle';
+    settledAnimationRef.current = null;
+    const responsiveSpokenGesture = recipe.presentation?.performanceStyle === 'responsive-consultation'
+      && recipe.animation.speaking
+      && TRANSIENT_BODY_CUES.has(recipe.animation.body);
+    // The dejected source is almost still through the arms, and the ordinary
+    // talking source moves the wrists only a few centimetres. The short seated
+    // hand beat is legible from the consultation camera and returns cleanly to
+    // the knee; expression and gaze continue to carry the response's mood.
+    const clipName = responsiveSpokenGesture
+      ? 'SittingKneeStrike'
+      : recipe.asset?.clipMap?.[recipe.animation.body]
+        || BODY_CUE_CLIPS[recipe.animation.body]
+        || 'ClinicIdle';
     const fallbackName = recipe.asset?.clipMap?.['clinic-idle'] || 'ClinicIdle';
     const clip = clips.find((candidate) => candidate.name === clipName)
       || clips.find((candidate) => candidate.name === fallbackName)
@@ -105,6 +116,18 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
       idleAction.play();
       idleAction.crossFadeFrom(action, 0.18, true);
       currentActionRef.current = { mixer: actor.mixer, action: idleAction };
+      if (recipe.presentation?.performanceStyle === 'responsive-consultation') {
+        // The response begins as direct address. When the hand gesture returns
+        // to the lap, release the patient's attention too: stop the speech
+        // envelope and let the eyes settle away from the doctor. A discouraged
+        // patient drops their gaze instead of looking sideways.
+        settledAnimationRef.current = {
+          ...recipe.animation,
+          body: 'clinic-idle',
+          gaze: recipe.animation.expression === 'discouraged' ? 'down' : 'away',
+          speaking: false,
+        };
+      }
     };
     if (transient || recipe.animation.body === 'stand-up') {
       action?.setLoop(THREE.LoopOnce, 1);
@@ -171,7 +194,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
   useFrame((_, delta) => {
     if (paused) return;
     actor.mixer.update(Math.min(delta, 0.1));
-    actor.face.update(delta, recipe.animation);
+    actor.face.update(delta, settledAnimationRef.current || recipe.animation);
   });
 
   const { position, rotation, scale } = recipe.placement;

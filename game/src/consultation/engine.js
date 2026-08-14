@@ -6,10 +6,12 @@ import {
   validateConsultationPatient,
 } from './contract.js';
 import { relationshipEffects, resolveInquiryRule, ruleIsAvailable } from './patientLogic.js';
-import { resolveAuthoredOutcome } from './outcomes.js';
+import { resolveAuthoredOutcome, resolveFollowUpOutcome } from './outcomes.js';
 
 const SPEECH_MINUTES = 5;
 const EXAMINATION_MINUTES = 3;
+const APPOINTMENT_MINUTES = 30;
+const OVERTIME_EXTENSION_MINUTES = 5;
 
 function addUnique(values, additions) {
   return [...new Set([...(values || []), ...(additions || [])])];
@@ -33,6 +35,38 @@ function record(state, event) {
 
 function factById(patient, id) {
   return patient.facts.find((fact) => fact.id === id) || null;
+}
+
+export function consultationTiming(patient, state, previewMinutes = 0) {
+  const scheduledMinutes = state?.appointmentMinutes
+    ?? patient?.appointment?.minutes
+    ?? APPOINTMENT_MINUTES;
+  const extensionMinutes = patient?.appointment?.overtimeExtensionMinutes
+    ?? OVERTIME_EXTENSION_MINUTES;
+  const maxOvertimeExtensions = patient?.appointment?.maxOvertimeExtensions ?? 1;
+  const overtimeExtensions = state?.overtimeExtensions || 0;
+  const authorizedMinutes = scheduledMinutes + overtimeExtensions * extensionMinutes;
+  const usedMinutes = (state?.elapsedMinutes || 0) + Math.max(0, Number(previewMinutes) || 0);
+  const scheduledRemaining = Math.max(0, scheduledMinutes - usedMinutes);
+  const authorizedRemaining = Math.max(0, authorizedMinutes - usedMinutes);
+  const status = usedMinutes >= scheduledMinutes
+    ? 'overtime'
+    : scheduledRemaining <= 5
+      ? 'critical'
+      : scheduledRemaining <= 10 ? 'warning' : 'calm';
+  return {
+    scheduledMinutes,
+    authorizedMinutes,
+    usedMinutes,
+    scheduledRemaining,
+    authorizedRemaining,
+    overtimeMinutes: Math.max(0, usedMinutes - scheduledMinutes),
+    overtimeExtensions,
+    maxOvertimeExtensions,
+    canExtendOvertime: overtimeExtensions < maxOvertimeExtensions,
+    deadlineReached: usedMinutes >= authorizedMinutes,
+    status,
+  };
 }
 
 function notebookNoteFor(rule, acceptedFact, rejected) {
@@ -70,6 +104,10 @@ export function buildDialogueRequest(patient, state, input) {
     promptId: input?.promptId || null,
     custom: Boolean(input?.custom),
     resolvedRuleId: rule?.id || null,
+    minutes: rule?.minutes ?? SPEECH_MINUTES,
+    maxDisclosures: rule?.maxDisclosures ?? 1,
+    responseTo: input?.responseTo || null,
+    pendingResponseId: state.pendingResponseId || null,
     trust: state.trust,
     elapsedMinutes: state.elapsedMinutes,
     disclosedFacts: state.disclosedFactIds.map((id) => factById(patient, id)).filter(Boolean),
@@ -99,16 +137,21 @@ export function startConsultation(patient) {
     stage: 'opening',
     mode: 'patient',
     elapsedMinutes: 0,
+    appointmentMinutes: patient.appointment?.minutes ?? APPOINTMENT_MINUTES,
+    overtimeExtensions: 0,
     trust: patient.initialTrust ?? 50,
     satisfaction: patient.initialSatisfaction ?? 50,
     disclosedFactIds,
     observedFactIds: [],
     interpretationIds: [],
+    workingHypothesisId: null,
     customInterpretations: [],
     provisionalDiagnosisId: null,
     diagnosisId: null,
     treatmentId: null,
     caseNote: '',
+    caseRecordFactIds: [],
+    pendingResponseId: null,
     result: null,
     errors: [],
     history: [{ kind: 'opening', dialogue: patient.opening.dialogue, behavior: patient.opening.behavior || '' }],
@@ -136,8 +179,12 @@ export function consultationTransition(state, patient, action) {
       return record({
         ...state,
         interpretationIds: addUnique(state.interpretationIds, [interpretation.id]),
+        workingHypothesisId: interpretation.id,
         provisionalDiagnosisId: interpretation.provisionalDiagnosisId || state.provisionalDiagnosisId,
-      }, { kind: 'interpretation', id: interpretation.id, text: interpretation.text });
+      }, {
+        kind: 'interpretation', id: interpretation.id, text: interpretation.text,
+        label: interpretation.label || interpretation.text, alignment: interpretation.alignment,
+      });
     }
     case 'interpret-custom': {
       const error = requireStage(state, 'inquiry');
@@ -145,32 +192,48 @@ export function consultationTransition(state, patient, action) {
       const text = String(action.text || '').trim().slice(0, 600);
       if (!text) return withError(state, 'an interpretation requires text');
       const entry = { text, classification: action.classification || null };
+      const id = `custom-${state.customInterpretations.length + 1}`;
       return record({
         ...state,
         customInterpretations: [...state.customInterpretations, entry],
+        workingHypothesisId: id,
       }, {
-        kind: 'interpretation', id: `custom-${state.customInterpretations.length + 1}`,
+        kind: 'interpretation', id,
         text, custom: true, classification: entry.classification,
+        label: entry.classification?.label || text,
+        alignment: entry.classification?.alignment,
       });
     }
     case 'examine': {
       const error = requireStage(state, 'inquiry');
       if (error) return withError(state, error);
+      if (state.pendingResponseId) return withError(state, 'respond to the patient before changing the subject');
+      if (consultationTiming(patient, state).deadlineReached) {
+        return withError(state, 'the appointment has ended; decide, arrange follow-up, or take overtime');
+      }
       const examination = patient.examinations.find((item) => item.id === action.id);
       if (!examination) return withError(state, `unknown examination ${action.id}`);
-      const fact = factById(patient, examination.factId);
+      const factIds = (examination.factIds || [examination.factId]).filter(Boolean);
+      if (!examination.repeatable && factIds.every((id) => state.observedFactIds.includes(id))) {
+        return withError(state, 'that examination has already been completed');
+      }
+      const facts = factIds.map((id) => factById(patient, id)).filter(Boolean);
+      const fact = facts[0];
       const effects = examination.effects || {};
       return record({
         ...state,
         elapsedMinutes: state.elapsedMinutes + (examination.minutes ?? EXAMINATION_MINUTES),
         trust: Math.max(0, Math.min(100, state.trust + (effects.trust || 0))),
         satisfaction: Math.max(0, Math.min(100, state.satisfaction + (effects.satisfaction || 0))),
-        disclosedFactIds: addUnique(state.disclosedFactIds, [fact.id]),
-        observedFactIds: addUnique(state.observedFactIds, [fact.id]),
+        disclosedFactIds: addUnique(state.disclosedFactIds, factIds),
+        observedFactIds: addUnique(state.observedFactIds, factIds),
       }, {
         kind: 'examination', id: examination.id, label: examination.label,
-        reply: examination.reply, fact,
+        reply: examination.reply, fact, facts,
         bodyCue: examination.bodyCue || null,
+        reactionExpression: examination.reactionExpression || null,
+        trustDelta: effects.trust || 0,
+        satisfactionDelta: effects.satisfaction || 0,
         behavior: examination.behavior || '', uncertainty: examination.uncertainty || '',
       });
     }
@@ -179,6 +242,12 @@ export function consultationTransition(state, patient, action) {
       if (error) return withError(state, error);
       const request = buildDialogueRequest(patient, state, action.input);
       if (!request.playerInput) return withError(state, 'speech requires text');
+      if (state.pendingResponseId && request.responseTo !== state.pendingResponseId) {
+        return withError(state, 'respond to the patient before changing the subject');
+      }
+      if (consultationTiming(patient, state).deadlineReached && !state.pendingResponseId) {
+        return withError(state, 'the appointment has ended; decide, arrange follow-up, or take overtime');
+      }
       const response = normalizeDialogueResponse(action.response);
       const allowed = new Set(request.allowedDisclosureIds);
       const accepted = response.disclosedNow.filter((id) => allowed.has(id));
@@ -197,12 +266,16 @@ export function consultationTransition(state, patient, action) {
       ));
       const satisfaction = Math.max(0, Math.min(100, state.satisfaction + (effects.satisfaction || 0)));
       const terminated = response.appraisal.terminates || trust <= 0;
+      const pendingResponseId = request.responseTo || rule?.resolvesPendingResponseId
+        ? null
+        : rule?.opensPendingResponseId || state.pendingResponseId;
       const next = record({
         ...state,
         stage: terminated ? 'terminated' : state.stage,
-        elapsedMinutes: state.elapsedMinutes + SPEECH_MINUTES,
+        elapsedMinutes: state.elapsedMinutes + request.minutes,
         trust,
         satisfaction,
+        pendingResponseId,
         disclosedFactIds: addUnique(state.disclosedFactIds, accepted),
         errors: rejected.length
           ? [...state.errors, `dialogue attempted unauthorized disclosure: ${rejected.join(', ')}`]
@@ -210,7 +283,12 @@ export function consultationTransition(state, patient, action) {
       }, {
         kind: 'speech', input: request.playerInput, stance: request.stance,
         promptId: request.promptId, custom: request.custom, resolvedRuleId: request.resolvedRuleId,
+        minutes: request.minutes, responseTo: request.responseTo,
+        countsAsQuestion: rule?.countsAsQuestion ?? (!request.responseTo && request.stance === 'question'),
         bodyCue: rule?.bodyCue || null,
+        reactionExpression: rule?.reactionExpression || null,
+        trustDelta: trust - state.trust,
+        satisfactionDelta: satisfaction - state.satisfaction,
         dialogue, behavior,
         ...notebookNote,
         disclosedNow: accepted, appraisal: response.appraisal,
@@ -224,6 +302,7 @@ export function consultationTransition(state, patient, action) {
     case 'begin-decision': {
       const error = requireStage(state, 'inquiry');
       if (error) return withError(state, error);
+      if (state.pendingResponseId) return withError(state, 'respond to the patient before concluding');
       const inquiryCount = state.history.filter((event) => ['speech', 'examination'].includes(event.kind)).length;
       return inquiryCount > 0 ? { ...state, stage: 'decision', mode: 'patient' } : withError(state, 'ask or examine before deciding');
     }
@@ -245,7 +324,20 @@ export function consultationTransition(state, patient, action) {
       const error = requireStage(state, 'decision');
       if (error) return withError(state, error);
       if (!state.diagnosisId || !state.treatmentId) return withError(state, 'select a diagnosis and treatment first');
-      return { ...state, stage: 'case-note' };
+      return { ...state, stage: 'case-note', caseRecordFactIds: [] };
+    }
+    case 'select-record-fact': {
+      const error = requireStage(state, 'case-note');
+      if (error) return withError(state, error);
+      const fact = factById(patient, action.id);
+      if (!fact || !state.disclosedFactIds.includes(action.id)) return withError(state, 'record only evidence discovered during the consultation');
+      const selected = state.caseRecordFactIds || [];
+      if (selected.includes(action.id)) {
+        return { ...state, caseRecordFactIds: selected.filter((id) => id !== action.id) };
+      }
+      const maximum = patient.caseNote?.maximumEvidenceSelections ?? 3;
+      if (selected.length >= maximum) return withError(state, `select no more than ${maximum} findings`);
+      return { ...state, caseRecordFactIds: [...selected, action.id] };
     }
     case 'write-case-note': {
       const error = requireStage(state, 'case-note');
@@ -254,18 +346,26 @@ export function consultationTransition(state, patient, action) {
     case 'submit-case-note': {
       const error = requireStage(state, 'case-note');
       if (error) return withError(state, error);
-      const minimum = patient.caseNote?.minimumWords ?? 20;
-      if (wordCount(state.caseNote) < minimum) return withError(state, `case note requires at least ${minimum} words`);
+      const minimum = patient.caseNote?.minimumWords ?? 0;
+      const minimumEvidence = patient.caseNote?.minimumEvidenceSelections ?? 0;
+      if (minimumEvidence > 0 && state.caseRecordFactIds.length < minimumEvidence) {
+        return withError(state, `select at least ${minimumEvidence} findings for the case record`);
+      }
+      if (minimum > 0 && wordCount(state.caseNote) < minimum) return withError(state, `case note requires at least ${minimum} words`);
       const diagnosis = patient.diagnoses.find((item) => item.id === state.diagnosisId);
       const treatment = patient.treatments.find((item) => item.id === state.treatmentId);
       const required = patient.caseNote?.requiredFactIds || [];
       const knownFacts = new Set([...state.disclosedFactIds, ...state.observedFactIds]);
       const mentioned = required.filter((factId) => {
         const fact = factById(patient, factId);
-        return knownFacts.has(factId)
-          && fact?.noteTerms?.some((term) => state.caseNote.toLowerCase().includes(term.toLowerCase()));
+        return state.caseRecordFactIds.includes(factId) || (
+          knownFacts.has(factId)
+          && fact?.noteTerms?.some((term) => state.caseNote.toLowerCase().includes(term.toLowerCase()))
+        );
       });
-      const noteRatio = required.length ? mentioned.length / required.length : 1;
+      const noteRatio = minimumEvidence > 0
+        ? Math.min(1, mentioned.length / Math.min(required.length || minimumEvidence, patient.caseNote?.maximumEvidenceSelections ?? minimumEvidence))
+        : required.length ? mentioned.length / required.length : 1;
       const noteCoverage = Math.round(noteRatio * 100);
       const authoredResult = resolveAuthoredOutcome(patient, state, noteCoverage);
       return record({
@@ -279,6 +379,27 @@ export function consultationTransition(state, patient, action) {
           treatmentId: treatment.id,
         },
       }, { kind: 'result', diagnosisId: diagnosis.id, treatmentId: treatment.id });
+    }
+    case 'continue-overtime': {
+      const error = requireStage(state, 'inquiry');
+      if (error) return withError(state, error);
+      const timing = consultationTiming(patient, state);
+      if (!timing.deadlineReached) return withError(state, 'overtime is available only when the appointment ends');
+      if (!timing.canExtendOvertime) return withError(state, 'no further overtime is available');
+      return record({
+        ...state,
+        overtimeExtensions: state.overtimeExtensions + 1,
+        satisfaction: Math.max(0, state.satisfaction - 3),
+      }, { kind: 'overtime', minutes: patient.appointment?.overtimeExtensionMinutes ?? OVERTIME_EXTENSION_MINUTES });
+    }
+    case 'schedule-follow-up': {
+      const error = requireStage(state, 'inquiry');
+      if (error) return withError(state, error);
+      const inquiryCount = state.history.filter((event) => ['speech', 'examination'].includes(event.kind)).length;
+      if (inquiryCount === 0) return withError(state, 'ask or examine before arranging follow-up');
+      const result = resolveFollowUpOutcome(patient, state);
+      if (!result) return withError(state, 'follow-up is unavailable for this patient');
+      return record({ ...state, stage: 'result', result }, { kind: 'result', deferred: true });
     }
     default:
       return withError(state, `unknown action ${action?.type}`);
@@ -365,15 +486,31 @@ export function actorCueForConsultation(state) {
   const last = state.history[state.history.length - 1];
   if (last?.kind === 'speech') {
     const difficult = ['prying', 'hostile'].includes(last.appraisal?.register);
+    const relationshipDelta = (last.trustDelta || 0) + (last.satisfactionDelta || 0);
+    const vulnerableBody = ['sitting-distressed', 'sitting-self-soothing', 'sitting-disbelief'].includes(last.bodyCue);
+    const expression = last.reactionExpression
+      || (difficult || relationshipDelta <= -4
+        ? 'frowning'
+        : relationshipDelta >= 5
+          ? 'smiling'
+          : vulnerableBody ? 'discouraged' : 'guarded');
+    const body = last.bodyCue
+      || (expression === 'frowning'
+        ? 'sitting-disapproval'
+        : expression === 'discouraged' ? 'sitting-distressed' : 'sitting-talking');
     return {
-      body: last.bodyCue || (difficult ? 'sitting-disapproval' : 'sitting-talking'),
-      expression: difficult ? 'distressed' : 'guarded',
-      gaze: difficult ? 'away' : 'doctor',
+      body,
+      expression,
+      // Every spoken response begins by addressing the doctor. Responsive
+      // cohort actors release this gaze when the gesture clip returns to idle.
+      gaze: 'doctor',
       speaking: true,
     };
   }
   if (last?.kind === 'examination') {
-    return { body: last.bodyCue || 'clinic-idle', expression: 'guarded', gaze: 'doctor', speaking: false };
+    const expression = last.reactionExpression
+      || ((last.trustDelta || 0) + (last.satisfactionDelta || 0) >= 5 ? 'smiling' : 'guarded');
+    return { body: last.bodyCue || 'clinic-idle', expression, gaze: 'doctor', speaking: false };
   }
   return { body: 'clinic-idle', expression: 'neutral', gaze: 'doctor', speaking: false };
 }

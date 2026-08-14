@@ -36,3 +36,19 @@ test('touch controls and mobile notices remain safe-area anchored', () => {
   assert.match(toasts, /env\(safe-area-inset-right/);
   assert.match(toasts, /@media \(max-width: 900px\) and \(max-height: 500px\)/);
 });
+
+test('an active mobile consultation compacts chrome without shrinking touch targets', () => {
+  const app = source('../src/hud/GameHud.jsx');
+  const consultation = source('../src/consultation/ConsultationView.jsx');
+  const hudStyles = source('../src/hud/hud.css');
+  const consultationStyles = source('../src/consultation/consultation.css');
+
+  assert.match(app, /quiet \? ' ghud--quiet' : ''/);
+  assert.match(app, /'Consulting Office': 'Consulting Rm\.'/);
+  assert.match(consultation, /patient && state \? ' gcon--active' : ''/);
+  assert.match(hudStyles, /\.ghud--quiet \.ghud-bar\s*\{[^}]*height:\s*64px;/s);
+  assert.match(hudStyles, /\.ghud--quiet \.ghud-mono-wrap\s*\{\s*display:\s*none;/);
+  assert.match(consultationStyles, /\.gcon--active \.gcon-rail\s*\{[^}]*height:\s*54px;/s);
+  assert.match(consultationStyles, /\.gcon--active \.gcon-rail-item\s*\{[^}]*min-height:\s*44px;/s);
+  assert.match(consultationStyles, /\.gcon--active \.gcon-card,[\s\S]*font-size:\s*12\.25px;/);
+});

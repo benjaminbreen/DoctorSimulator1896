@@ -3,10 +3,13 @@ export const FACIAL_EXPRESSION_RECIPES = Object.freeze({
   distressed: Object.freeze({ browInnerUp: 0.19, mouthFrownLeft: 0.15, mouthFrownRight: 0.15, eyeSquintLeft: 0.05, eyeSquintRight: 0.05 }),
   fatigued: Object.freeze({ eyeBlinkLeft: 0.09, eyeBlinkRight: 0.09, browInnerUp: 0.06, mouthFrownLeft: 0.05, mouthFrownRight: 0.05 }),
   relieved: Object.freeze({ mouthSmileLeft: 0.16, mouthSmileRight: 0.16, cheekSquintLeft: 0.06, cheekSquintRight: 0.06 }),
+  smiling: Object.freeze({ mouthSmileLeft: 0.19, mouthSmileRight: 0.19, cheekSquintLeft: 0.07, cheekSquintRight: 0.07, browInnerUp: 0.025 }),
+  frowning: Object.freeze({ browDownLeft: 0.15, browDownRight: 0.15, mouthFrownLeft: 0.12, mouthFrownRight: 0.12, mouthPressLeft: 0.05, mouthPressRight: 0.05 }),
+  discouraged: Object.freeze({ browInnerUp: 0.17, mouthFrownLeft: 0.10, mouthFrownRight: 0.10, eyeBlinkLeft: 0.055, eyeBlinkRight: 0.055 }),
 });
 
 export const FACIAL_GAZE_RECIPES = Object.freeze({
-  away: Object.freeze({ eyeLookOutLeft: 0.10, eyeLookInRight: 0.10 }),
+  away: Object.freeze({ eyeLookOutLeft: 0.18, eyeLookInRight: 0.18 }),
   down: Object.freeze({ eyeLookDownLeft: 0.10, eyeLookDownRight: 0.10 }),
 });
 
@@ -35,6 +38,9 @@ export const FACE_QA_STATES = Object.freeze([
   Object.freeze({ id: 'jaw-05', label: 'Jaw 0.05', weights: Object.freeze({ jawOpen: 0.05 }) }),
   Object.freeze({ id: 'guarded', label: 'Guarded', weights: FACIAL_EXPRESSION_RECIPES.guarded }),
   Object.freeze({ id: 'distressed', label: 'Distressed', weights: FACIAL_EXPRESSION_RECIPES.distressed }),
+  Object.freeze({ id: 'smiling', label: 'Smiling', weights: FACIAL_EXPRESSION_RECIPES.smiling }),
+  Object.freeze({ id: 'frowning', label: 'Frowning', weights: FACIAL_EXPRESSION_RECIPES.frowning }),
+  Object.freeze({ id: 'discouraged', label: 'Discouraged', weights: FACIAL_EXPRESSION_RECIPES.discouraged }),
 ]);
 
 const SPEECH_PULSES = Object.freeze([
@@ -50,7 +56,12 @@ function smoothstep(value) {
 }
 
 export function isSpeechIncompatible(name) {
-  return SPEECH_INCOMPATIBLE.has(name) || String(name).startsWith('mouth');
+  const id = String(name);
+  // Keep the emotional corners of the mouth visible while the restrained jaw
+  // envelope runs. Other mouth-shape morphs would compete with speech and are
+  // therefore suppressed until the patient settles.
+  if (id.startsWith('mouthSmile') || id.startsWith('mouthFrown')) return false;
+  return SPEECH_INCOMPATIBLE.has(name) || id.startsWith('mouth');
 }
 
 export function safeFaceWeight(name, value) {

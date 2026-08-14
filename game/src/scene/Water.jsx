@@ -6,6 +6,8 @@ import { moonState } from '../world/moon.js';
 import { environmentPalette } from '../world/skyPalette.js';
 import { terrainHeight } from '../world/terrain.js';
 import { gameDebug } from '../debug.js';
+import { identifyLandmark } from '../world/landmarkInformation.js';
+import { PARK_LANDMARKS } from '../world/parkLandmarks.js';
 
 // Pond surface. Bed depth is baked once into a texture (the bed never moves)
 // and drives absorption, the waterline fade, and shore foam per pixel. A
@@ -18,7 +20,9 @@ const DEPTH_RANGE = 2.5; // metres packed into one byte of the bake
 const MARGIN = 5; // bake/geometry margin beyond the outline, metres
 const CELL = 1.7; // surface grid cell, metres
 const MIRROR_RES = 512;
-const MIRROR_INTERVAL = 2; // re-render the mirror every Nth frame
+// The distorted, blurred surface hides intermediate reflection frames well.
+// Avoid redrawing the entire park for the mirror on half of all frames.
+const MIRROR_INTERVAL = 4;
 const MAX_IMPULSES = 8;
 const IMPULSE_LIFETIME = 5;
 
@@ -482,7 +486,11 @@ export default function Water({ runtime, outline, level = -0.5 }) {
     gameDebug.water = handle;
     const uniforms = material.uniforms;
     const values = runtime.values;
-    const ramps = solarRamps(values.timeOfDay, values.dayOfYear);
+    const ramps = solarRamps(
+      values.timeOfDay,
+      values.dayOfYear,
+      gameDebug.shotSunAzimuthDeg,
+    );
     const moon = moonState(values.timeOfDay, values.dayOfYear);
     const moonLight = moon.light * ramps.night * values.moonlightIntensity;
     const palette = environmentPalette(values.timeOfDay, values.dayOfYear, values);
@@ -651,6 +659,7 @@ export default function Water({ runtime, outline, level = -0.5 }) {
       geometry={geometry}
       material={material}
       position={[0, level, 0]}
+      onClick={(event) => identifyLandmark(PARK_LANDMARKS.pond, event)}
     />
   );
 }

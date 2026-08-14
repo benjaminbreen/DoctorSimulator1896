@@ -138,6 +138,7 @@ export default function TreeField({ items }) {
       for (const mesh of meshes) {
         mesh.geometry.dispose();
         mesh.material.dispose();
+        mesh.customDepthMaterial?.dispose();
         mesh.dispose();
       }
     },

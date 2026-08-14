@@ -13,13 +13,18 @@ const SUN_NIGHT = new THREE.Color('#41618f');
 const MOON_LIGHT = new THREE.Color('#9cbce8');
 const SUN_DAY = new THREE.Color('#ffe6b8');
 const SUN_GOLDEN = new THREE.Color('#ff9b4d');
-const HEMI_SKY = { night: new THREE.Color('#243b61'), day: new THREE.Color('#b9dfef'), golden: new THREE.Color('#9cc4ea') };
+const HEMI_SKY = { night: new THREE.Color('#3b5274'), day: new THREE.Color('#b9dfef'), golden: new THREE.Color('#9cc4ea') };
 // Day ground is sunlit grass, the main source of bounce light into shade.
-const HEMI_GROUND = { night: new THREE.Color('#111a29'), day: new THREE.Color('#93986b'), golden: new THREE.Color('#c2915d') };
+const HEMI_GROUND = { night: new THREE.Color('#1b2533'), day: new THREE.Color('#93986b'), golden: new THREE.Color('#c2915d') };
 const AMBIENT_NIGHT = new THREE.Color('#526b91');
 const AMBIENT_DAY = new THREE.Color('#e4e7de');
 const scratch = new THREE.Color();
-export default function SkyRig({ config, runtime, maxShadowMapSize = Infinity }) {
+export default function SkyRig({
+  config,
+  runtime,
+  maxShadowMapSize = Infinity,
+  maxShadowDistance = Infinity,
+}) {
   const scene = useThree((state) => state.scene);
   const sunRef = useRef();
   const ambientRef = useRef();
@@ -39,10 +44,9 @@ export default function SkyRig({ config, runtime, maxShadowMapSize = Infinity })
     () => ({
       uSkyGain: { value: 1 },
       uSkySaturation: { value: 1 },
-      uNightBlend: { value: 0 },
-      uNightZenith: { value: new THREE.Vector3(0.012, 0.024, 0.065) },
-      uNightHorizon: { value: new THREE.Vector3(0.035, 0.05, 0.085) },
-      uCityGlow: { value: 1 },
+      uAuthoredBlend: { value: 0 },
+      uAuthoredZenith: { value: new THREE.Vector3(0.012, 0.024, 0.065) },
+      uAuthoredHorizon: { value: new THREE.Vector3(0.035, 0.05, 0.085) },
       uMoonDir: { value: new THREE.Vector3(0, 1, 0) },
       uMoonLight: { value: 0 },
     }),
@@ -64,10 +68,9 @@ export default function SkyRig({ config, runtime, maxShadowMapSize = Infinity })
     dome.material.onBeforeCompile = (shader) => {
       shader.uniforms.uSkyGain = grade.uSkyGain;
       shader.uniforms.uSkySaturation = grade.uSkySaturation;
-      shader.uniforms.uNightBlend = grade.uNightBlend;
-      shader.uniforms.uNightZenith = grade.uNightZenith;
-      shader.uniforms.uNightHorizon = grade.uNightHorizon;
-      shader.uniforms.uCityGlow = grade.uCityGlow;
+      shader.uniforms.uAuthoredBlend = grade.uAuthoredBlend;
+      shader.uniforms.uAuthoredZenith = grade.uAuthoredZenith;
+      shader.uniforms.uAuthoredHorizon = grade.uAuthoredHorizon;
       shader.uniforms.uMoonDir = grade.uMoonDir;
       shader.uniforms.uMoonLight = grade.uMoonLight;
       shader.fragmentShader = shader.fragmentShader
@@ -75,10 +78,9 @@ export default function SkyRig({ config, runtime, maxShadowMapSize = Infinity })
           'void main() {',
           `uniform float uSkyGain;
 uniform float uSkySaturation;
-uniform float uNightBlend;
-uniform vec3 uNightZenith;
-uniform vec3 uNightHorizon;
-uniform float uCityGlow;
+uniform float uAuthoredBlend;
+uniform vec3 uAuthoredZenith;
+uniform vec3 uAuthoredHorizon;
 uniform vec3 uMoonDir;
 uniform float uMoonLight;
 void main() {`,
@@ -88,12 +90,10 @@ void main() {`,
           `{
           vec3 linear = pow(max(gl_FragColor.rgb, vec3(0.0)), vec3(2.4)) * uSkyGain * 0.125;
           float skyHeight = max(direction.y, 0.0);
-          vec3 nightLinear = mix(uNightHorizon, uNightZenith, smoothstep(0.02, 0.72, skyHeight));
-          float horizonGlow = pow(1.0 - smoothstep(0.0, 0.38, skyHeight), 3.0);
-          nightLinear += vec3(0.028, 0.014, 0.006) * horizonGlow * uCityGlow;
+          vec3 authoredLinear = mix(uAuthoredHorizon, uAuthoredZenith, smoothstep(0.02, 0.72, skyHeight));
           float moonHalo = pow(max(dot(direction, normalize(uMoonDir)), 0.0), 28.0);
-          nightLinear += vec3(0.07, 0.10, 0.17) * moonHalo * uMoonLight;
-          linear = mix(linear, nightLinear, uNightBlend);
+          authoredLinear += vec3(0.07, 0.10, 0.17) * moonHalo * uMoonLight;
+          linear = mix(linear, authoredLinear, uAuthoredBlend);
           float luma = dot(linear, vec3(0.2126, 0.7152, 0.0722));
           gl_FragColor.rgb = max(mix(vec3(luma), linear, uSkySaturation), vec3(0.0));
         }
@@ -114,10 +114,15 @@ void main() {`,
 
   useFrame((_, delta) => {
     const values = runtime.values;
-    const ramps = solarRamps(values.timeOfDay, values.dayOfYear);
+    const ramps = solarRamps(
+      values.timeOfDay,
+      values.dayOfYear,
+      gameDebug.shotSunAzimuthDeg,
+    );
     const { direction, daylight, golden } = ramps;
     const moon = moonState(values.timeOfDay, values.dayOfYear);
     const moonLight = moon.light * ramps.night * values.moonlightIntensity;
+    const palette = environmentPalette(values.timeOfDay, values.dayOfYear, values);
     gameDebug.stats.sunDir = direction;
     gameDebug.stats.moon = moon;
 
@@ -135,10 +140,9 @@ void main() {`,
     uniforms.sunPosition.value.set(direction[0], direction[1], direction[2]);
     grade.uSkyGain.value = values.skyGain * (0.12 + 0.88 * daylight);
     grade.uSkySaturation.value = values.skySaturation;
-    grade.uNightBlend.value = ramps.nauticalDark;
-    grade.uNightZenith.value.set(0.012, 0.024, 0.065).multiplyScalar(values.nightSkyBrightness);
-    grade.uNightHorizon.value.set(0.035, 0.05, 0.085).multiplyScalar(values.nightSkyBrightness);
-    grade.uCityGlow.value = values.citySkyGlow * ramps.night;
+    grade.uAuthoredBlend.value = palette.authoredBlend;
+    grade.uAuthoredZenith.value.fromArray(palette.top);
+    grade.uAuthoredHorizon.value.fromArray(palette.horizon);
     grade.uMoonDir.value.fromArray(moon.direction);
     grade.uMoonLight.value = moonLight;
 
@@ -150,7 +154,7 @@ void main() {`,
       // The distance slider is the half-width of the player-centred shadow
       // box. Changing it live also changes texel density, so nearby shadows
       // get softer as the range grows.
-      const shadowExtent = values.outdoorShadowDistance;
+      const shadowExtent = Math.min(values.outdoorShadowDistance, maxShadowDistance);
       if (shadowExtentRef.current !== shadowExtent) {
         shadowExtentRef.current = shadowExtent;
         const camera = sun.shadow.camera;
@@ -165,17 +169,20 @@ void main() {`,
       const anchorZ = Math.round(player[2] / texel) * texel;
       const daylightStrength = config.sun.intensity * values.sunIntensity * daylight;
       const moonStrength = config.sun.intensity * 0.14 * moonLight;
-      const keyDirection = daylightStrength >= moonStrength ? direction : moon.direction;
+      const moonIsKey = moonStrength > daylightStrength;
+      const keyDirection = moonIsKey ? moon.direction : direction;
+      const keyStrength = Math.max(daylightStrength, moonStrength);
       sun.position.set(
         anchorX + keyDirection[0] * 70,
         Math.max(keyDirection[1], 0.02) * 70,
         anchorZ + keyDirection[2] * 70,
       );
       sunTarget.position.set(anchorX, 0, anchorZ);
-      sun.intensity = daylightStrength + moonStrength;
-      sun.castShadow = values.shadowsEnabled && daylight > 0.02;
+      sun.intensity = keyStrength;
+      sun.castShadow = values.shadowsEnabled && keyStrength > 0.02;
       sun.shadow.radius = values.sunShadowRadius;
-      scratch.copy(MOON_LIGHT).lerp(SUN_NIGHT, daylight * 0.2).lerp(SUN_DAY, daylight).lerp(SUN_GOLDEN, golden * 0.95);
+      if (moonIsKey) scratch.copy(MOON_LIGHT);
+      else scratch.copy(SUN_NIGHT).lerp(SUN_DAY, daylight).lerp(SUN_GOLDEN, golden * 0.95);
       sun.color.copy(scratch);
     }
     // Golden hour trades fill for key: ambient and hemisphere drop as the
@@ -186,14 +193,15 @@ void main() {`,
       ambientRef.current.intensity = values.ambientIntensity * 0.15
         * (0.72 + 0.28 * daylight + moonLight * 0.18)
         * (daylight + (1 - daylight) * values.nightSkyBrightness)
-        * (1 - golden * 0.35);
+        * (1 - golden * 0.35)
+        * (1 + palette.authoredBlend * 0.45);
       ambientRef.current.color.copy(scratch.copy(AMBIENT_NIGHT).lerp(AMBIENT_DAY, daylight));
     }
     if (hemisphereRef.current) {
       const hemisphere = hemisphereRef.current;
       hemisphere.intensity =
         config.hemisphere.intensity * values.skyFill
-        * (0.48 + 0.52 * daylight + moonLight * 0.12)
+        * (0.58 + 0.42 * daylight + moonLight * 0.12)
         * (daylight + (1 - daylight) * values.nightSkyBrightness)
         * (1 - golden * 0.25);
       hemisphere.color.copy(scratch.copy(HEMI_SKY.night).lerp(HEMI_SKY.day, daylight).lerp(HEMI_SKY.golden, golden * 0.6));
@@ -206,8 +214,7 @@ void main() {`,
     if (scene.fog) {
       // Fog takes the sky palette's horizon colour, so dusk haze warms with
       // the sky instead of holding the daytime grey-blue.
-      const horizon = environmentPalette(values.timeOfDay, values.dayOfYear, values).horizon;
-      scene.fog.color.setRGB(horizon[0], horizon[1], horizon[2]);
+      scene.fog.color.setRGB(palette.horizon[0], palette.horizon[1], palette.horizon[2]);
       // Fade fog out as the camera climbs, so a zoomed-out overhead reads
       // like a map instead of a haze. Untouched below 45m.
       const camDistance = gameDebug.stats.cameraDistance || 0;
@@ -237,10 +244,10 @@ void main() {`,
         shadow-mapSize-height={shadowMapSize}
         shadow-camera-near={1}
         shadow-camera-far={160}
-        shadow-camera-left={-runtime.values.outdoorShadowDistance}
-        shadow-camera-right={runtime.values.outdoorShadowDistance}
-        shadow-camera-top={runtime.values.outdoorShadowDistance}
-        shadow-camera-bottom={-runtime.values.outdoorShadowDistance}
+        shadow-camera-left={-Math.min(runtime.values.outdoorShadowDistance, maxShadowDistance)}
+        shadow-camera-right={Math.min(runtime.values.outdoorShadowDistance, maxShadowDistance)}
+        shadow-camera-top={Math.min(runtime.values.outdoorShadowDistance, maxShadowDistance)}
+        shadow-camera-bottom={-Math.min(runtime.values.outdoorShadowDistance, maxShadowDistance)}
         shadow-bias={-0.0001}
         shadow-normalBias={0.012}
       />

@@ -4,9 +4,11 @@ import {
   CARRIAGE_TUNING,
   ROUTES,
   applyCarriageProjectileHit,
+  carriageDriverKind,
   createCarriageState,
   HORSELESS_TRAFFIC_ROSTER,
   sampleRoute,
+  STRAWHAT_DRIVER_RATE,
   stepCarriage,
 } from '../src/world/horselessCarriage.js';
 import { shortestArc } from '../src/movement/mathUtils.js';
@@ -28,7 +30,7 @@ function loopPoint(dist, lat) {
 }
 
 test('routes are closed and deterministic', () => {
-  assert.equal(ROUTES.length, 5);
+  assert.equal(ROUTES.length, 7);
   for (const route of ROUTES) {
     assert.ok(route.total > 150, `route length ${route.total}`);
     assert.deepEqual(sampleRoute(route, 37.5), sampleRoute(route, 37.5 + route.total));
@@ -48,6 +50,16 @@ test('the opening fleet is distributed across district and park-front routes', (
     entry.route === 4 ? 0.18 : 1.55,
   ));
   assert.ok(starts.some((state) => state.x < 96 && state.z > 86 && state.z < 96));
+});
+
+test('one quarter of uniform driver rolls select the Strawhat woman', () => {
+  assert.equal(STRAWHAT_DRIVER_RATE, 0.25);
+  assert.equal(carriageDriverKind(0), 'strawhat-woman');
+  assert.equal(carriageDriverKind(0.249999), 'strawhat-woman');
+  assert.equal(carriageDriverKind(0.25), 'coated-man');
+  assert.equal(carriageDriverKind(0.999999), 'coated-man');
+  const sample = Array.from({ length: 1000 }, (_, index) => carriageDriverKind((index + 0.5) / 1000));
+  assert.equal(sample.filter((kind) => kind === 'strawhat-woman').length, 250);
 });
 
 test('route tangents remain continuous through every corner', () => {
@@ -81,6 +93,22 @@ test('swerves around a figure standing in its lane', () => {
   }
   assert.ok(state.s > 45, `passed the blocker, s=${state.s}`);
   assert.ok(minDist > 1.0, `kept clear, min distance ${minDist}`);
+});
+
+test('a posted centre-line officer leaves both established traffic lanes flowing', () => {
+  const officer = { x: 92, z: 91, r: 0.42, trafficClearance: 0.72 };
+  for (const route of [2, 3]) {
+    let state = createCarriageState(route, route === 2 ? 302 : 30, 1.55);
+    let blockedFrames = 0;
+    let distance = 0;
+    for (let i = 0; i < 120 * 60; i += 1) {
+      state = stepCarriage(state, DT, [officer], { lane: 1.55 });
+      distance += state.speed * DT;
+      if (state.blocked) blockedFrames += 1;
+    }
+    assert.equal(blockedFrames, 0, `route ${route} never queues at the officer`);
+    assert.ok(distance > 300, `route ${route} keeps circulating, distance=${distance}`);
+  }
 });
 
 test('commits to a side and passes a multi-circle fallen cart without crawling', () => {

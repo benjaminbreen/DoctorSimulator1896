@@ -96,17 +96,41 @@ reference meshes and require fitting before they can follow the Renderer C rig.
 The MakeHuman pieces include MHCLO fit maps and are directly compatible with
 the existing MPFB fitting stage; generated characters export to GLB afterward.
 
+## Mixamo pedestrian sources
+
+| Piece | Creator / source | Licence / use |
+| --- | --- | --- |
+| Straw-hatted pedestrian | Project-provided character mesh; rig and motion processing through [Adobe Mixamo](https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html) | Project asset; Mixamo permits royalty-free incorporation into video games |
+
+The web build separates this character's mesh from its nineteen animation-only
+clips. The motion pack retains the common 65-bone Mixamo contract so it can be
+tested on the other pedestrian meshes before reuse.
+
 ## Surfaces — `game/public/textures/props/`
 
 | Texture | Author | Licence |
 | --- | --- | --- |
 | `Wallpaper_Vintage` | gre4esky | CC-BY-4.0 |
 
+## Metropolitan Club interior surfaces — `game/public/textures/metclub/`
+
+| Texture | Source | Licence |
+| --- | --- | --- |
+| `marble_*` | "Marble 012", [ambientCG](https://ambientcg.com) | CC0-1.0 |
+| `walnut_*` | "Wood 067", [ambientCG](https://ambientcg.com) | CC0-1.0 |
+| `wood-warm_*` | "Wood 026", [ambientCG](https://ambientcg.com) | CC0-1.0 |
+
 ## Procedural facade surfaces — `game/public/textures/facades/`
 
 | Texture | Creator / source | Licence |
 | --- | --- | --- |
 | `ashlar-gray.webp` | OpenAI ImageGen, directed for this project (2026) | Project-generated asset |
+
+## Architectural surfaces — `game/public/textures/architecture/`
+
+| Texture | Creator / source | Licence |
+| --- | --- | --- |
+| `buff-limestone_*` | OpenAI ImageGen albedo source, directed for this project; normal and roughness maps derived locally (2026) | Project-generated asset |
 
 ## Cattell laboratory wall images — `game/public/textures/cattell-lab/`
 

@@ -14,6 +14,7 @@ import { getPlayer, harm, pushcartImpactEffect } from '../world/player.js';
 import { removeThrowableSource, reportThrowableSource } from '../world/throwablePlay.js';
 import { removeAgent, reportAgent } from '../world/agents.js';
 import ThrowableProjectiles from './ThrowableProjectiles.jsx';
+import { reportMajorStreetEvent } from '../world/majorStreetEvents.js';
 
 // Dynamic vendor carts. Each is one rigid body: the player can shove it and
 // a carriage's kinematic collider can knock it over. The wheels only grip
@@ -125,6 +126,7 @@ function Pushcart({ spec }) {
   const body = useRef(null);
   const wheelRefs = useRef([]);
   const lastPlayerImpact = useRef(-Infinity);
+  const lastVehicleImpact = useRef(-Infinity);
   const [spilled, setSpilled] = useState(null);
   const [taken, setTaken] = useState(() => new Set());
   const sourceTransform = useRef([NaN, NaN, NaN, NaN, NaN, NaN, NaN]);
@@ -161,6 +163,26 @@ function Pushcart({ spec }) {
 
   const onCollisionEnter = ({ other }) => {
     const otherKind = other.rigidBodyObject?.userData?.gameKind;
+    const vehicleImpact = otherKind === 'horseless-carriage'
+      || otherKind === 'horse-drawn-vehicle'
+      || otherKind === 'horse-team';
+    if (vehicleImpact) {
+      const now = getPlayer().clock;
+      if (now - lastVehicleImpact.current >= 4) {
+        lastVehicleImpact.current = now;
+        const position = body.current?.translation?.();
+        if (position) {
+          reportMajorStreetEvent({
+            sourceId: other.rigidBodyObject?.userData?.carriageId
+              ?? other.rigidBodyObject?.userData?.vehicleId,
+            targetId: spec.id,
+            targetKind: 'pushcart',
+            x: position.x,
+            z: position.z,
+          });
+        }
+      }
+    }
     if (spec.id === OPENING_CHAOS_CART_ID && otherKind === 'horseless-carriage') {
       // Give the striking carriage time to clear the cart before avoidance
       // switches on. The dynamic body remains free to roll or tip differently

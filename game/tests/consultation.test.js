@@ -29,7 +29,45 @@ test('all three technical patients satisfy the consultation contract', () => {
     assert.deepEqual(validateConsultationPatient(fixture), []);
     assert.equal(fixture.actor.recipe.placement.position[0], 0.45);
     assert.equal(fixture.actor.recipe.placement.position[2], -1.7);
+    assert.equal(fixture.actor.recipe.placement.rotation[1], Math.PI);
   }
+});
+
+test('Samuel faces the doctor from the seated clinic pose with his tuned complexion', () => {
+  const samuel = TECHNICAL_PATIENTS[1];
+  assert.equal(samuel.label, 'Mr. Samuel Taylor');
+  assert.equal(samuel.actor.recipe.animation.body, 'clinic-idle');
+  assert.deepEqual(samuel.actor.recipe.placement, {
+    position: [0.45, 0.22, -1.7],
+    rotation: [0, Math.PI, 0],
+    scale: 1,
+  });
+  assert.equal(samuel.actor.recipe.values.skinTone, '#afa59b');
+  assert.equal(samuel.actor.recipe.presentation.performanceStyle, 'responsive-consultation');
+});
+
+test('Samuel reacts to painful questions and reassurance with authored performances', () => {
+  const samuel = TECHNICAL_PATIENTS[1];
+  let state = consultationTransition(startConsultation(samuel), samuel, { type: 'begin-inquiry' });
+  const painful = samuel.prompts.find((item) => item.id === 'b-ask-1');
+  let input = { promptId: painful.id, text: painful.text, stance: painful.stance };
+  state = consultationTransition(state, samuel, {
+    type: 'speech-response', input,
+    response: renderOfflineDialogue(buildDialogueRequest(samuel, state, input), samuel),
+  });
+  assert.deepEqual(actorCueForConsultation(state), {
+    body: 'sitting-distressed', expression: 'discouraged', gaze: 'doctor', speaking: true,
+  });
+
+  const reassurance = samuel.prompts.find((item) => item.id === 'b-reassure');
+  input = { promptId: reassurance.id, text: reassurance.text, stance: reassurance.stance };
+  state = consultationTransition(state, samuel, {
+    type: 'speech-response', input,
+    response: renderOfflineDialogue(buildDialogueRequest(samuel, state, input), samuel),
+  });
+  assert.deepEqual(actorCueForConsultation(state), {
+    body: 'sitting-talking', expression: 'smiling', gaze: 'doctor', speaking: true,
+  });
 });
 
 test('patient profile and appearance generation is reproducible but rerollable', () => {
@@ -80,6 +118,25 @@ test('private interpretation records a hypothesis without advancing time', () =>
   assert.equal(next.elapsedMinutes, 0);
   assert.deepEqual(next.interpretationIds, ['read-history-first']);
   assert.equal(next.history.at(-1).kind, 'interpretation');
+});
+
+test('an optional technical case note can be submitted with zero prose', () => {
+  let state = beginInquiry();
+  const prompt = patient.prompts[0];
+  const input = { promptId: prompt.id, text: prompt.text, stance: prompt.stance };
+  state = consultationTransition(state, patient, {
+    type: 'speech-response', input,
+    response: renderOfflineDialogue(buildDialogueRequest(patient, state, input), patient),
+  });
+  state = consultationTransition(state, patient, { type: 'begin-decision' });
+  state = consultationTransition(state, patient, { type: 'select-diagnosis', id: patient.diagnoses[0].id });
+  state = consultationTransition(state, patient, { type: 'select-treatment', id: patient.treatments[0].id });
+  state = consultationTransition(state, patient, { type: 'begin-case-note' });
+  assert.equal(patient.caseNote.minimumWords, 0);
+  assert.equal(state.caseNote, '');
+  state = consultationTransition(state, patient, { type: 'submit-case-note' });
+  assert.equal(state.stage, 'result');
+  assert.equal(state.errors.length, 0);
 });
 
 test('case notebook starts with identity only and grows from player actions', () => {

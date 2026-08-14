@@ -1,0 +1,17 @@
+{
+  "paths": {
+    "hopper-diversified-pilot-2026-08-13/frames/00023.png": "Airborne player from the pre-fix shot harness",
+    "hopper-diversified-pilot-2026-08-13/frames/00080.png": "Airborne player from the pre-fix shot harness",
+    "hopper-diversified-pilot-2026-08-13/frames/00092.png": "Airborne player from the pre-fix shot harness",
+    "hopper-diversified-pilot-2026-08-13/frames/00125.png": "Airborne player from the pre-fix shot harness",
+    "hopper-diversified-pilot-2026-08-13/frames/00173.png": "Airborne player from the pre-fix shot harness",
+    "hopper-diversified-pilot-2026-08-13/frames/00187.png": "Airborne player from the pre-fix shot harness",
+    "hopper-diversified-pilot-2026-08-13/frames/00241.png": "Airborne player from the pre-fix shot harness",
+    "hopper-diversified-pilot-2026-08-13/frames/00250.png": "Airborne player from the pre-fix shot harness",
+    "hopper-diversified-pilot-2026-08-13/frames/00296.png": "Airborne player from the pre-fix shot harness",
+    "hopper-diversified-pilot-2026-08-13/frames/00319.png": "Airborne player from the pre-fix shot harness",
+    "hopper-diversified-pilot-2026-08-13/frames/00331.png": "Airborne player from the pre-fix shot harness",
+    "hopper-diversified-pilot-2026-08-13/frames/00351.png": "Airborne player from the pre-fix shot harness"
+  },
+  "note": "Raw ratings are preserved. These labels reflect a fixed rendering defect and should not teach the Hopper taste model to reject otherwise valid still figures."
+}

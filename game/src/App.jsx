@@ -14,7 +14,7 @@ import { createKeyboard } from './input/keyboard.js';
 import { createLook } from './input/pointerLook.js';
 import { gameDebug, installDebugHandle } from './debug.js';
 import { installShotHarness } from './shots/harness.js';
-import { preservePose } from './world/travel.js';
+import { preservePose, requestFastTravel } from './world/travel.js';
 import { isFocusedInteraction, subscribe } from './world/interaction.js';
 import { createActorRuntime } from './world/characters/actors.js';
 import { phase1Cast } from './content/clinic1896/phase1Cast.js';
@@ -41,7 +41,13 @@ const ConsultationView = lazy(() => import('./consultation/ConsultationView.jsx'
 const pageParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
 // ?shot=1 strips the panel and HUD so the canvas fills the window: the shot
 // search screenshots whatever is on screen.
-const shotMode = Boolean(pageParams?.has('shot'));
+// ?hotelReview=1 uses the same clean canvas plus a fixed full-building camera
+// for the New Netherland Hotel massing loop.
+const hotelReviewMode = Boolean(pageParams?.has('hotelReview'));
+// ?gerryReview=1 provides the same deterministic art-review framing for the
+// Elbridge T. Gerry Mansion at Fifth Avenue and East 61st Street.
+const gerryReviewMode = pageParams?.get('gerryReview') ?? false;
+const shotMode = Boolean(pageParams?.has('shot') || hotelReviewMode || gerryReviewMode);
 // ?devconsult=1 keeps the raw engine fixture panel for testing.
 const devConsult = Boolean(pageParams?.has('devconsult'));
 // A test or art-review URL can boot one zone directly. Normal play still opens
@@ -54,6 +60,11 @@ export default function App() {
     const next = applyGameStart(createTuningRuntime(settingsSchema));
     const zoneDefinition = next.definitions.find((item) => item.id === 'zone');
     if (bootZone && zoneDefinition?.options?.includes(bootZone)) next.set('zone', bootZone);
+    if (hotelReviewMode || gerryReviewMode) {
+      next.values.fov = gerryReviewMode === 'detail' ? 60 : (gerryReviewMode === 'close' ? 50 : (gerryReviewMode ? 42 : 40));
+      next.values.showAvatarGlb = false;
+      next.values.timeOfDay = 10.25;
+    }
     const time = worldClock.getSnapshot();
     next.values.timeOfDay = time.hours;
     next.values.dayOfYear = time.dayOfYear;
@@ -83,7 +94,9 @@ export default function App() {
   const [propsOpen, setPropsOpen] = useState(
     () => new URLSearchParams(window.location.search).has('prop'),
   );
-  const [npcOpen, setNpcOpen] = useState(false);
+  // Direct review URLs make asset QA reproducible without synthesizing the
+  // Shift+2 shortcut in a screenshot runner.
+  const [npcOpen, setNpcOpen] = useState(() => Boolean(pageParams?.has('npcReview')));
   // The tuning rail is a development tool, not part of the game. Keep it out
   // of the default presentation; Shift+` opens it and its performance readout.
   const [tuningOpen, setTuningOpen] = useState(false);
@@ -140,6 +153,21 @@ export default function App() {
   useEffect(() => {
     installDebugHandle(runtime);
     installShotHarness(runtime);
+    if (hotelReviewMode) {
+      gameDebug.freeCamera = {
+        position: [54, 6.5, 103],
+        yaw: -1.135,
+        pitch: 0.17,
+      };
+      gameDebug.player.visible = false;
+    } else if (gerryReviewMode) {
+      gameDebug.freeCamera = gerryReviewMode === 'detail'
+        ? { position: [102, 2, 27.5], yaw: -1.49776, pitch: 0.30628 }
+        : (gerryReviewMode === 'close'
+          ? { position: [100, 2, -2], yaw: -2.41861, pitch: 0.23104 }
+          : { position: [88, 3, -13], yaw: -2.38436, pitch: 0.13457 });
+      gameDebug.player.visible = false;
+    }
     gameDebug.look = look.look;
     gameDebug.setLook = look.set;
     keyboard.attach();
@@ -190,10 +218,30 @@ export default function App() {
       window.removeEventListener('keydown', onKey);
       keyboard.detach();
       detachSound();
+      if (hotelReviewMode || gerryReviewMode) gameDebug.freeCamera = null;
       setGamePaused(false);
       offRebuild();
     };
   }, [runtime, keyboard, look, togglePause]);
+
+  const clearConsultation = useCallback(() => {
+    consultationRuntime.reset();
+    actorRuntime.setSingle(null);
+  }, [actorRuntime, consultationRuntime]);
+
+  const leaveConsultation = useCallback((destination) => {
+    clearConsultation();
+    const zoneId = destination === 'street' ? 'central-park' : 'waiting-room';
+    const arrival = requestFastTravel(runtime, zoneId);
+    if (!arrival) return;
+    worldClock.advanceMinutes(2, { reason: 'leaving consultation' });
+    notice(
+      destination === 'street'
+        ? 'You leave the practice and step out into the street.'
+        : 'You return to the waiting room.',
+      { key: 'consultation-exit' },
+    );
+  }, [clearConsultation, runtime, worldClock]);
 
   return (
     <>
@@ -208,6 +256,7 @@ export default function App() {
           look={look}
           actors={actors}
           consultationActive={consultActive}
+          shotMode={shotMode}
           onReadyForReveal={setParkReady}
         />
         {!shotMode && (
@@ -231,6 +280,8 @@ export default function App() {
                     runtime={consultationRuntime}
                     onRegenerate={() => setPatientSeeds((current) => current.map(nextSeed))}
                     onDismissPatient={() => actorRuntime.setSingle(null)}
+                    onNextPatient={clearConsultation}
+                    onLeaveConsultation={leaveConsultation}
                   />
                 )}
               </Suspense>

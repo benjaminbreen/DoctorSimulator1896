@@ -249,9 +249,22 @@ export default function PlayerRig({
       const [x, y, z] = gameDebug.pendingTeleport;
       gameDebug.pendingTeleport = null;
       state.velocity = [0, 0, 0];
+      state.grounded = true;
       climbRef.current = null;
       carriageSupportRef.current = null;
       gameDebug.player.climbing = false;
+      // Keep the public state in sync on the teleport frame. PlayerAvatar
+      // otherwise sees the previous airborne state and starts a jump clip
+      // before physics gets a chance to report the new grounded position.
+      gameDebug.player.position[0] = x;
+      gameDebug.player.position[1] = y;
+      gameDebug.player.position[2] = z;
+      gameDebug.player.velocity[0] = 0;
+      gameDebug.player.velocity[1] = 0;
+      gameDebug.player.velocity[2] = 0;
+      gameDebug.player.grounded = true;
+      gameDebug.player.running = false;
+      gameDebug.player.posture = 'normal';
       body.setNextKinematicTranslation({ x, y, z });
       return;
     }

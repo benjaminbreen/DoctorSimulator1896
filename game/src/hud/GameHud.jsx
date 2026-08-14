@@ -59,6 +59,7 @@ function compactPlaceLine(place) {
     'Central Park': 'Central Pk.',
     'Cattell’s Psychology Lab': 'Cattell Lab',
     'Your Waiting Room': 'Waiting Room',
+    'Consulting Office': 'Consulting Rm.',
     'Your Consulting Room': 'Consulting Rm.',
   }[zone] ?? zone.replace(/^Your /, '');
 }
@@ -270,7 +271,10 @@ export default function GameHud({ runtime, worldClock, quiet = false }) {
     : '';
 
   return (
-    <div className={`ghud${overlay ? ' ghud--overlay-open' : ''}`} aria-label="Practice chrome">
+    <div
+      className={`ghud${overlay ? ' ghud--overlay-open' : ''}${quiet ? ' ghud--quiet' : ''}`}
+      aria-label="Practice chrome"
+    >
       <header className="ghud-bar">
         <div className="ghud-mono-wrap">
           {/* Keep the painted cartouche, then cover its old letter with the DS seal. */}

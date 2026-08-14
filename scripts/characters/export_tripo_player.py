@@ -228,10 +228,8 @@ def repair_tripo_material(material):
     base_color = image_for("basecolor", srgb=True)
     normal = image_for("normal")
     roughness = image_for("roughness")
-    metallic = image_for("metallic")
     normal.colorspace_settings.name = "Non-Color"
     roughness.colorspace_settings.name = "Non-Color"
-    metallic.colorspace_settings.name = "Non-Color"
 
     material.use_nodes = True
     nodes = material.node_tree.nodes
@@ -254,14 +252,12 @@ def repair_tripo_material(material):
 
     base_node = texture_node(base_color, (-520, 260))
     roughness_node = texture_node(roughness, (-520, 20))
-    metallic_node = texture_node(metallic, (-520, -180))
     normal_node = texture_node(normal, (-520, -400))
     normal_map = nodes.new("ShaderNodeNormalMap")
     normal_map.location = (40, -320)
 
     links.new(base_node.outputs["Color"], shader.inputs["Base Color"])
     links.new(roughness_node.outputs["Color"], shader.inputs["Roughness"])
-    links.new(metallic_node.outputs["Color"], shader.inputs["Metallic"])
     links.new(normal_node.outputs["Color"], normal_map.inputs["Color"])
     links.new(normal_map.outputs["Normal"], shader.inputs["Normal"])
 

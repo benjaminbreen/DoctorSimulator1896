@@ -103,7 +103,18 @@ export function createTuningRuntime(schema) {
   }
 
   function resetToDefaults() {
-    applyPreset({ values: Object.fromEntries(definitions.map((d) => [d.id, d.default])) });
+    const zone = values.zone;
+    const timeOfDay = values.timeOfDay;
+    const categoryPreset = isOutdoorZone(zone) ? outdoorPreset : indoorPreset;
+    applyPreset({
+      values: {
+        ...Object.fromEntries(definitions.map((definition) => [definition.id, definition.default])),
+        ...categoryPreset.values,
+        // Zone and clock belong to the running game, not the tuning preset.
+        zone,
+        timeOfDay,
+      },
+    });
   }
 
   function toPreset() {

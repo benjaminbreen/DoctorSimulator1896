@@ -16,6 +16,7 @@ import {
 } from '../world/throwablePlay.js';
 import { throwableDefinition } from '../world/throwables.js';
 import ThrowableVisual from './ThrowableVisual.jsx';
+import { normalizeNonmetallicCharacterMaterials } from './characterMaterials.js';
 import { BOARDING_CLIMB_SECONDS } from '../world/carriageBoarding.js';
 
 // The rigged player: a Tripo-authored figure with Mixamo idle and walk clips,
@@ -100,6 +101,7 @@ export default function PlayerAvatar({ runtime, onReady }) {
       // A skinned figure's bounds are its bind pose, which the walk leaves.
       object.frustumCulled = false;
     });
+    normalizeNonmetallicCharacterMaterials(root);
     const animations = new THREE.AnimationMixer(root);
     const clip = (name) => {
       const found = gltf.animations.find((entry) => entry.name === name);
@@ -193,10 +195,60 @@ export default function PlayerAvatar({ runtime, onReady }) {
   const activeReactionKey = useRef('normal');
   const activeClimb = useRef(false);
   const lastClimbSerial = useRef(0);
+  const wasShotPose = useRef(false);
   useFrame((_, delta) => {
     const group = groupRef.current;
     if (!group) return;
     const [x, y, z] = gameDebug.player.position;
+    // Visibility is independent of animation state. Architecture and
+    // shot-only-subject compositions deliberately hide the player without
+    // entering the player's still-pose branch.
+    group.visible = gameDebug.player.visible !== false;
+
+    // Composition search teleports the real player for every candidate. Lock
+    // it to one reproducible, quiet standing pose instead of letting the
+    // locomotion state machine interpret those teleports as jumps or falls.
+    const shotPose = gameDebug.shotPose === 'still';
+    if (shotPose) {
+      if (!wasShotPose.current) {
+        for (const action of [
+          walk, run, carryIdle, carryWalk, carryRun, throwReady,
+          jump, standingJump, smoking, throwAction, pickUpAction,
+          climbCarriage, edgeSlip, fallShoulder, fallGeneric, fallenIdle,
+          riseFromFall,
+        ]) action?.stop();
+        activeJump.current = null;
+        activeReaction.current = null;
+        activeThrow.current = false;
+        activePickup.current = false;
+        activeClimb.current = false;
+        idle?.reset().setEffectiveWeight(1).play();
+        if (idle) {
+          idle.time = Math.min(0.65, idle.getClip().duration * 0.35);
+          idle.paused = true;
+        }
+        mixer.update(0);
+      }
+      wasShotPose.current = true;
+      last.current = [x, z];
+      wasGrounded.current = true;
+      group.position.set(x, y, z);
+      group.rotation.y = gameDebug.player.yaw + FACING;
+      if (heldObjectRef.current) heldObjectRef.current.visible = false;
+      group.updateMatrixWorld(true);
+      return;
+    }
+    if (wasShotPose.current) {
+      wasShotPose.current = false;
+      if (idle) idle.paused = false;
+      idle?.play().setEffectiveWeight(1);
+      walk?.play().setEffectiveWeight(0);
+      run?.play().setEffectiveWeight(0);
+      carryIdle?.play().setEffectiveWeight(0);
+      carryWalk?.play().setEffectiveWeight(0);
+      carryRun?.play().setEffectiveWeight(0);
+      throwReady?.play().setEffectiveWeight(0);
+    }
 
     const reaction = getPlayer().reaction;
     const reactionBusy = reaction.phase !== REACTION_PHASE.NORMAL;
@@ -346,7 +398,10 @@ export default function PlayerAvatar({ runtime, onReady }) {
     group.position.set(x, y, z);
     group.rotation.y = gameDebug.player.yaw + FACING;
     group.visible = gameDebug.player.visible !== false;
-    mixer.update(delta);
+    // Match the physics controller's hitch protection. Advancing a one-shot
+    // by an entire stalled frame can skip its contact pose and make the body
+    // appear to snap between upright, prone, pickup, or climbing states.
+    mixer.update(Math.min(delta, 0.1));
     group.updateMatrixWorld(true);
 
     if (activeThrow.current && throwAction && !throwAction.isRunning()) {

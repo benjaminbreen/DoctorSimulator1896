@@ -24,13 +24,38 @@ test('the solar ramps describe the full astronomical night', () => {
   assert.ok(midnight.daylight < 0.001);
 });
 
+test('the authored twilight handoff covers the analytic-sky trough', () => {
+  const before = solarRamps(18.75, START_DAY_OF_YEAR);
+  const horizon = solarRamps(19, START_DAY_OF_YEAR);
+  const after = solarRamps(19.5, START_DAY_OF_YEAR);
+  assert.ok(before.twilight < horizon.twilight);
+  assert.ok(horizon.twilight > 0 && horizon.twilight < 1);
+  assert.ok(after.twilight > 0.99);
+  assert.equal(environmentPalette(19, START_DAY_OF_YEAR).authoredBlend, horizon.twilight);
+});
+
 test('night environment retains authored fill but stays darker than noon', () => {
   const night = environmentPalette(22, START_DAY_OF_YEAR);
   const noon = environmentPalette(12, START_DAY_OF_YEAR);
-  assert.ok(night.intensity >= 0.16);
+  assert.ok(night.intensity >= 0.28);
   assert.ok(night.intensity < noon.intensity);
   assert.ok(night.top.every((channel) => channel > 0));
   assert.ok(night.horizon[2] > night.horizon[0]);
+});
+
+test('existing city and moon paths strengthen the night environment', () => {
+  const base = environmentPalette(22, START_DAY_OF_YEAR, {
+    nightSkyBrightness: 1,
+    citySkyGlow: 0,
+    moonlightIntensity: 0,
+  });
+  const city = environmentPalette(22, START_DAY_OF_YEAR, {
+    nightSkyBrightness: 1,
+    citySkyGlow: 2.2,
+    moonlightIntensity: 0,
+  });
+  assert.ok(city.intensity > base.intensity);
+  assert.ok(city.horizon[0] > base.horizon[0]);
 });
 
 test('time tuning exposes every hour of the day', () => {

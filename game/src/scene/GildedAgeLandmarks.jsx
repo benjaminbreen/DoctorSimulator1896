@@ -1,7 +1,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { useLoader } from '@react-three/fiber';
 import { createFacadeMaterial } from './facadeMaterials.js';
-import { notice } from '../world/notices.js';
+import NewNetherlandHotel from './NewNetherlandHotel.jsx';
+import { identifyLandmark } from '../world/landmarkInformation.js';
 
 const SUPPORTED_MODELS = new Set([
   'vanderbilt-mansion',
@@ -19,8 +21,10 @@ const SHADOW_STONE = '#a99f8e';
 const DARK_STONE = '#746b61';
 const BRICK = '#805143';
 const BRICK_LIGHT = '#a36d54';
-const SLATE = '#343c40';
-const SLATE_LIGHT = '#475257';
+// These are deliberately pale tints: the authored slate albedo supplies the
+// charcoal value and the instance colour only grades one roof against another.
+const SLATE = '#d2d7d9';
+const SLATE_LIGHT = '#eef1f2';
 const COPPER = '#4d766d';
 const GLASS = '#35464d';
 const GLASS_LIGHT = '#687675';
@@ -29,6 +33,14 @@ const IRON = '#252a29';
 const DOOR = '#3a2b24';
 
 const NO_RAYCAST = () => {};
+const STONE_TEXTURE_URLS = [
+  '/textures/architecture/buff-limestone_col.webp',
+  '/textures/architecture/buff-limestone_nrm.webp',
+  '/textures/architecture/buff-limestone_rough.webp',
+];
+const ROOF_TEXTURE_URL = '/textures/new-netherland/slate-shingles.png';
+const STONE_METRES_PER_REPEAT = 2.25;
+const ROOF_METRES_PER_REPEAT = 3.2;
 
 export function isGildedAgeLandmark(item) {
   return SUPPORTED_MODELS.has(item?.landmarkModel);
@@ -81,60 +93,305 @@ function createGableGeometry() {
   return geometry;
 }
 
+// A round-headed opening reads clearly from a very small silhouette. The fan
+// and its stone crown are shared by every Gerry opening; scaling instances is
+// much cheaper than cutting curved holes into the building shell.
+function createArchFanGeometry(segments = 12) {
+  const positions = [0, 0, 0];
+  for (let index = 0; index <= segments; index += 1) {
+    const angle = (index / segments) * Math.PI;
+    positions.push(Math.cos(angle) * 0.5, Math.sin(angle) * 0.5, 0);
+  }
+  const indices = [];
+  for (let index = 0; index < segments; index += 1) {
+    indices.push(0, index + 1, index + 2);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+function createArchCrownGeometry(segments = 12) {
+  const positions = [];
+  const outerRadius = 0.5;
+  const innerRadius = 0.37;
+  for (let index = 0; index <= segments; index += 1) {
+    const angle = (index / segments) * Math.PI;
+    positions.push(
+      Math.cos(angle) * outerRadius,
+      Math.sin(angle) * outerRadius,
+      0,
+      Math.cos(angle) * innerRadius,
+      Math.sin(angle) * innerRadius,
+      0,
+    );
+  }
+  const indices = [];
+  for (let index = 0; index < segments; index += 1) {
+    const outer = index * 2;
+    const inner = outer + 1;
+    const nextOuter = outer + 2;
+    const nextInner = outer + 3;
+    indices.push(outer, nextOuter, nextInner, outer, nextInner, inner);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+function createHipRoofGeometry() {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute([
+    -0.5, -0.5, -0.5,
+    0.5, -0.5, -0.5,
+    0.5, -0.5, 0.5,
+    -0.5, -0.5, 0.5,
+    0, 0.5, 0,
+  ], 3));
+  geometry.setIndex([
+    0, 4, 1,
+    1, 4, 2,
+    2, 4, 3,
+    3, 4, 0,
+    0, 1, 2, 0, 2, 3,
+  ]);
+  const flatGeometry = geometry.toNonIndexed();
+  geometry.dispose();
+  flatGeometry.computeVertexNormals();
+  flatGeometry.computeBoundingSphere();
+  return flatGeometry;
+}
+
+// Gerry's pavilion needs the tall four-plane silhouette of a French chateau
+// roof, but a pointed pyramid reads too much like a church steeple. This
+// twelve-triangle frustum leaves a small crown platform for the finial while
+// remaining cheaper than a tiled or subdivided roof mesh.
+function createTruncatedHipRoofGeometry(topScale = 0.22) {
+  const halfTop = topScale / 2;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute([
+    -0.5, -0.5, -0.5,
+    0.5, -0.5, -0.5,
+    0.5, -0.5, 0.5,
+    -0.5, -0.5, 0.5,
+    -halfTop, 0.5, -halfTop,
+    halfTop, 0.5, -halfTop,
+    halfTop, 0.5, halfTop,
+    -halfTop, 0.5, halfTop,
+  ], 3));
+  geometry.setIndex([
+    0, 4, 5, 0, 5, 1,
+    1, 5, 6, 1, 6, 2,
+    2, 6, 7, 2, 7, 3,
+    3, 7, 4, 3, 4, 0,
+    4, 7, 6, 4, 6, 5,
+    0, 1, 2, 0, 2, 3,
+  ]);
+  const flatGeometry = geometry.toNonIndexed();
+  geometry.dispose();
+  flatGeometry.computeVertexNormals();
+  flatGeometry.computeBoundingSphere();
+  return flatGeometry;
+}
+
+function createCornerNotchedHipRoofGeometry() {
+  const geometry = new THREE.BufferGeometry();
+  // The missing -x/-z corner seats the roof against the Savoy's round turret
+  // instead of drawing a roof plane through the middle of it.
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute([
+    -0.27, -0.5, -0.5,
+    0.5, -0.5, -0.5,
+    0.5, -0.5, 0.5,
+    -0.5, -0.5, 0.5,
+    -0.5, -0.5, -0.21,
+    -0.27, -0.5, -0.21,
+    0, 0.5, 0,
+  ], 3));
+  geometry.setIndex([
+    0, 6, 1,
+    1, 6, 2,
+    2, 6, 3,
+    3, 6, 4,
+    4, 6, 5,
+    5, 6, 0,
+    0, 1, 2,
+    0, 2, 5,
+    5, 2, 3,
+    5, 3, 4,
+  ]);
+  const flatGeometry = geometry.toNonIndexed();
+  geometry.dispose();
+  flatGeometry.computeVertexNormals();
+  flatGeometry.computeBoundingSphere();
+  return flatGeometry;
+}
+
 function useSharedGeometry() {
   const geometry = useMemo(() => ({
     box: new THREE.BoxGeometry(1, 1, 1),
     pyramid: new THREE.ConeGeometry(1, 1, 4),
+    hipRoof: createHipRoofGeometry(),
+    truncatedHipRoof: createTruncatedHipRoofGeometry(),
+    cornerNotchedHipRoof: createCornerNotchedHipRoofGeometry(),
     cone: new THREE.ConeGeometry(1, 1, 14),
     cylinder: new THREE.CylinderGeometry(1, 1, 1, 16),
     gable: createGableGeometry(),
+    archFan: createArchFanGeometry(),
+    archCrown: createArchCrownGeometry(),
   }), []);
   useEffect(() => () => Object.values(geometry).forEach((entry) => entry.dispose()), [geometry]);
   return geometry;
 }
 
-// Near-white grain with faint joint lines; instance colors multiply on top,
-// so one texture serves marble, brownstone, and granite trim alike.
-function makeStoneTexture() {
-  const size = 128;
-  const data = new Uint8Array(size * size * 4);
-  for (let y = 0; y < size; y += 1) {
-    for (let x = 0; x < size; x += 1) {
-      const index = (y * size + x) * 4;
-      const hash = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
-      const noise = (hash - Math.floor(hash)) * 16 - 8;
-      const wave = Math.sin(x * 0.35 + Math.sin(y * 0.22) * 2.2) * 4;
-      const joint = y % 32 < 2 ? -18 : 0;
-      const value = 234 + noise + wave + joint;
-      data[index] = value;
-      data[index + 1] = value - 2;
-      data[index + 2] = value - 5;
-      data[index + 3] = 255;
-    }
-  }
-  const map = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
-  map.colorSpace = THREE.SRGBColorSpace;
-  map.wrapS = THREE.RepeatWrapping;
-  map.wrapT = THREE.RepeatWrapping;
-  map.needsUpdate = true;
-  return map;
+function prepareStoneTexture(source, color = false) {
+  const texture = source.clone();
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.colorSpace = color ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = true;
+  texture.anisotropy = 8;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+// Instanced box UVs otherwise stretch one 0..1 sample over every object,
+// which made the old 128px procedural texture visibly pixelated on a large
+// podium wall. Project in instance/world metres instead, keeping one shared
+// PBR set while maintaining about 228 source texels per metre.
+function applyMetreScaledStoneUvs(material) {
+  material.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <uv_vertex>',
+      `#include <uv_vertex>
+      vec3 stonePosition = position;
+      vec3 stoneNormal = normal;
+      #ifdef USE_INSTANCING
+        stonePosition = (instanceMatrix * vec4(position, 1.0)).xyz;
+        stoneNormal = normalize(mat3(instanceMatrix) * normal);
+      #endif
+      vec3 stoneAbsNormal = abs(stoneNormal);
+      vec2 stoneSurfaceUv;
+      if (stoneAbsNormal.y >= max(stoneAbsNormal.x, stoneAbsNormal.z)) {
+        stoneSurfaceUv = vec2(stonePosition.x, -stonePosition.z);
+      } else if (stoneAbsNormal.x >= stoneAbsNormal.z) {
+        stoneSurfaceUv = vec2(-stonePosition.z * sign(stoneNormal.x), stonePosition.y);
+      } else {
+        stoneSurfaceUv = vec2(stonePosition.x * sign(stoneNormal.z), stonePosition.y);
+      }
+      stoneSurfaceUv /= ${STONE_METRES_PER_REPEAT.toFixed(2)};
+      #ifdef USE_MAP
+        vMapUv = stoneSurfaceUv;
+      #endif
+      #ifdef USE_NORMALMAP
+        vNormalMapUv = stoneSurfaceUv;
+      #endif
+      #ifdef USE_ROUGHNESSMAP
+        vRoughnessMapUv = stoneSurfaceUv;
+      #endif`,
+    );
+  };
+  material.customProgramCacheKey = () => 'landmark-stone-metre-uv-v1';
+  return material;
+}
+
+// The custom hip, mansard, cone, and gable geometries do not share useful UVs.
+// Project the slate in instance-scaled metres so one real tile field keeps a
+// consistent size across roofs instead of stretching once over an entire wing.
+function applyMetreScaledRoofUvs(material) {
+  material.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <uv_vertex>',
+      `#include <uv_vertex>
+      vec3 roofPosition = position;
+      vec3 roofNormal = normal;
+      #ifdef USE_INSTANCING
+        roofPosition = (instanceMatrix * vec4(position, 1.0)).xyz;
+        roofNormal = normalize(mat3(instanceMatrix) * normal);
+      #endif
+      vec3 roofAbsNormal = abs(roofNormal);
+      vec2 roofSurfaceUv;
+      if (roofAbsNormal.y >= max(roofAbsNormal.x, roofAbsNormal.z)) {
+        roofSurfaceUv = vec2(roofPosition.x, -roofPosition.z);
+      } else if (roofAbsNormal.x >= roofAbsNormal.z) {
+        roofSurfaceUv = vec2(-roofPosition.z * sign(roofNormal.x), roofPosition.y);
+      } else {
+        roofSurfaceUv = vec2(roofPosition.x * sign(roofNormal.z), roofPosition.y);
+      }
+      roofSurfaceUv /= ${ROOF_METRES_PER_REPEAT.toFixed(2)};
+      #ifdef USE_MAP
+        vMapUv = roofSurfaceUv;
+      #endif`,
+    );
+  };
+  material.customProgramCacheKey = () => 'landmark-roof-metre-uv-v1';
+  return material;
 }
 
 function useSharedMaterials() {
+  const [stoneColorSource, stoneNormalSource, stoneRoughnessSource, roofColorSource] = useLoader(
+    THREE.TextureLoader,
+    [...STONE_TEXTURE_URLS, ROOF_TEXTURE_URL],
+  );
   // No vertexColors flag: the shared geometries carry no color attribute, so
   // enabling it multiplied every instance by black. Per-instance color comes
   // from setColorAt alone.
   const materials = useMemo(() => {
-    const stoneMap = makeStoneTexture();
+    const stoneMap = prepareStoneTexture(stoneColorSource, true);
+    const stoneNormalMap = prepareStoneTexture(stoneNormalSource);
+    const stoneRoughnessMap = prepareStoneTexture(stoneRoughnessSource);
+    const roofMap = prepareStoneTexture(roofColorSource, true);
+    const conservatoryGlass = new THREE.MeshPhysicalMaterial({
+      color: '#9ab6be',
+      roughness: 0.14,
+      metalness: 0,
+      clearcoat: 0.72,
+      clearcoatRoughness: 0.18,
+      envMapIntensity: 1.35,
+      reflectivity: 0.72,
+      ior: 1.46,
+      specularIntensity: 0.72,
+      specularColor: '#d9f2f7',
+      transparent: true,
+      opacity: 0.42,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      forceSinglePass: true,
+    });
     return {
       stoneMap,
-      stone: new THREE.MeshStandardMaterial({ color: '#ffffff', map: stoneMap, bumpMap: stoneMap, bumpScale: 0.02, roughness: 0.9 }),
-      roof: new THREE.MeshStandardMaterial({ color: '#ffffff', map: stoneMap, bumpMap: stoneMap, bumpScale: 0.012, roughness: 0.78, metalness: 0.04 }),
+      stoneNormalMap,
+      stoneRoughnessMap,
+      roofMap,
+      stone: applyMetreScaledStoneUvs(new THREE.MeshStandardMaterial({
+        color: '#ffffff',
+        map: stoneMap,
+        normalMap: stoneNormalMap,
+        normalScale: new THREE.Vector2(0.34, 0.34),
+        roughnessMap: stoneRoughnessMap,
+        roughness: 1,
+        metalness: 0,
+      })),
+      roof: applyMetreScaledRoofUvs(new THREE.MeshStandardMaterial({
+        color: '#ffffff',
+        map: roofMap,
+        roughness: 0.76,
+        metalness: 0.015,
+        envMapIntensity: 0.82,
+      })),
       glass: new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.4, metalness: 0.02 }),
+      conservatoryGlass,
       iron: new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.54, metalness: 0.68 }),
       copper: new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.58, metalness: 0.48 }),
     };
-  }, []);
+  }, [roofColorSource, stoneColorSource, stoneNormalSource, stoneRoughnessSource]);
   useEffect(() => () => Object.values(materials).forEach((entry) => entry.dispose()), [materials]);
   return materials;
 }
@@ -196,11 +453,8 @@ function ShellBatch({ entries, facadeTextures, style }) {
     mesh.computeBoundingSphere();
   }, [dummy, entries, tint]);
   const identify = (event) => {
-    if ((event.delta ?? 0) > 5) return;
     const item = entries[event.instanceId]?.item;
-    if (!item?.landmarkLabel) return;
-    event.stopPropagation();
-    notice(item.landmarkLabel, { key: 'building-identification', seconds: 4, detail: 'Landmark' });
+    identifyLandmark(item, event);
   };
   if (!entries.length) return null;
   return (
@@ -209,6 +463,7 @@ function ShellBatch({ entries, facadeTextures, style }) {
       name={`landmark-shell-style-${style}`}
       args={[undefined, undefined, entries.length]}
       material={material}
+      castShadow
       receiveShadow
       onClick={identify}
     >
@@ -288,11 +543,249 @@ function addDoor(batches, item, face, along, y, width = 1.7, height = 3.1, canop
   }
 }
 
-function addDormer(batches, item, face, along, y, width = 1.2, height = 1.5) {
+function addDormer(batches, item, face, along, y, width = 1.2, height = 1.5, options = {}) {
+  const housingDepth = options.housingDepth ?? 0;
+  if (housingDepth > 0) {
+    const housing = facePlacement(
+      item,
+      face,
+      along,
+      y,
+      0.12 - housingDepth / 2,
+      width + 0.38,
+      height + 0.28,
+      housingDepth,
+    );
+    housing.color = options.housingColor ?? PALE_STONE;
+    batches.stone.push(housing);
+  }
   addWindow(batches, item, face, along, y, width, height, { stone: LIGHT_STONE });
+  if (housingDepth > 0) {
+    const [sx, , sz] = item.size;
+    const roofY = y + height / 2 + 0.35;
+    const roofDepth = housingDepth + 0.35;
+    if (face === '-x' || face === '+x') {
+      const sign = face === '-x' ? -1 : 1;
+      batches.roofGables.push(worldPart(
+        item,
+        [sign * (sx / 2 - housingDepth / 2 + 0.12), roofY, along],
+        [width + 0.5, 0.85, roofDepth],
+        SLATE,
+        [0, Math.PI / 2, 0],
+      ));
+    } else {
+      const sign = face === '-z' ? -1 : 1;
+      batches.roofGables.push(worldPart(
+        item,
+        [along, roofY, sign * (sz / 2 - housingDepth / 2 + 0.12)],
+        [width + 0.5, 0.85, roofDepth],
+        SLATE,
+      ));
+    }
+    return;
+  }
   const roof = facePlacement(item, face, along, y + height / 2 + 0.48, 0.28, width * 0.86, 0.72, 0.7);
   roof.color = SLATE;
   batches.roofBoxes.push(roof);
+}
+
+function faceOrientedPart(item, face, along, y, out, width, height, color) {
+  const [sx, , sz] = item.size;
+  if (face === '+x') {
+    return worldPart(item, [sx / 2 + out, y, along], [width, height, 1], color, [0, Math.PI / 2, 0]);
+  }
+  if (face === '-x') {
+    return worldPart(item, [-sx / 2 - out, y, along], [width, height, 1], color, [0, -Math.PI / 2, 0]);
+  }
+  if (face === '+z') return worldPart(item, [along, y, sz / 2 + out], [width, height, 1], color);
+  return worldPart(item, [along, y, -sz / 2 - out], [width, height, 1], color, [0, Math.PI, 0]);
+}
+
+// Gerry's round-headed ground-floor openings use two tiny shared meshes: a
+// glass semicircle and a flat stone archivolt. This gives the facade its most
+// recognisable motif without boolean-cut walls or one mesh per arch.
+function addArchedOpening(batches, item, face, along, bottomY, width, totalHeight, options = {}) {
+  const radius = width / 2;
+  const straightHeight = totalHeight - radius;
+  const springY = bottomY + straightHeight;
+  const crownWidth = width / 0.74;
+  const jambWidth = (crownWidth - width) / 2;
+  const stone = options.stone ?? LIGHT_STONE;
+  const openingColor = options.door ? DOOR : (options.lit ? GLASS_LIGHT : GLASS);
+
+  for (const offset of [-1, 1]) {
+    const jamb = facePlacement(
+      item,
+      face,
+      along + offset * (width / 2 + jambWidth / 2),
+      bottomY + straightHeight / 2,
+      0.2,
+      jambWidth,
+      straightHeight,
+      0.2,
+    );
+    jamb.color = stone;
+    batches.stone.push(jamb);
+  }
+  const sill = facePlacement(item, face, along, bottomY - 0.08, 0.2, crownWidth, 0.2, 0.22);
+  sill.color = options.sill ?? SHADOW_STONE;
+  batches.stone.push(sill);
+
+  const lower = facePlacement(item, face, along, bottomY + straightHeight / 2, 0.22, width, straightHeight, 0.08);
+  lower.color = openingColor;
+  batches[options.door ? 'iron' : 'glass'].push(lower);
+  batches.archGlass.push(faceOrientedPart(item, face, along, springY, 0.265, width, width, openingColor));
+  batches.archStone.push(faceOrientedPart(item, face, along, springY, 0.29, crownWidth, crownWidth, stone));
+  const keystone = facePlacement(item, face, along, springY + radius * 0.9, 0.34, 0.2, 0.3, 0.16);
+  keystone.color = options.keystone ?? '#d5c6aa';
+  batches.stone.push(keystone);
+
+  const vertical = facePlacement(item, face, along, bottomY + totalHeight * 0.52, 0.32, 0.065, totalHeight * 0.88, 0.045);
+  vertical.color = SASH;
+  batches.iron.push(vertical);
+  const springRail = facePlacement(item, face, along, springY, 0.325, width, 0.065, 0.045);
+  springRail.color = SASH;
+  batches.iron.push(springRail);
+}
+
+// Four narrow pieces read as a dressed opening without the thick, solid slab
+// used by the district's generic windows. Gerry's tall lights need more brick
+// visible between them or the pavilion collapses into a grid of white boxes.
+function addGerryWindow(batches, item, face, along, y, width, height, options = {}) {
+  const stone = options.stone ?? '#dfd3bd';
+  const jambWidth = 0.14;
+  for (const offset of [-1, 1]) {
+    const jamb = facePlacement(item, face, along + offset * (width / 2 + jambWidth / 2), y, 0.08, jambWidth, height + 0.18, 0.13);
+    jamb.color = stone;
+    batches.stone.push(jamb);
+  }
+  const lintel = facePlacement(item, face, along, y + height / 2 + 0.07, 0.09, width + 0.42, 0.18, 0.16);
+  lintel.color = stone;
+  batches.stone.push(lintel);
+  const sill = facePlacement(item, face, along, y - height / 2 - 0.07, 0.09, width + 0.32, 0.14, 0.15);
+  sill.color = options.sill ?? '#c9bba3';
+  batches.stone.push(sill);
+
+  // Keep glazing behind the stone reveal. The old pane and sash sat a few
+  // millimetres in front of the jamb outer face, producing close-range seams
+  // and depth-order artifacts along the frame.
+  const pane = facePlacement(item, face, along, y, 0.035, width + 0.025, height + 0.025, 0.055);
+  pane.color = options.lit ? GLASS_LIGHT : GLASS;
+  batches.glass.push(pane);
+  const vertical = facePlacement(item, face, along, y, 0.074, 0.055, height + 0.02, 0.038);
+  vertical.color = SASH;
+  batches.iron.push(vertical);
+  const horizontal = facePlacement(item, face, along, y - height * 0.08, 0.076, width + 0.02, 0.055, 0.038);
+  horizontal.color = SASH;
+  batches.iron.push(horizontal);
+
+  if (options.hood) {
+    const hood = facePlacement(item, face, along, y + height / 2 + 0.24, 0.18, width + 0.58, 0.14, 0.28);
+    hood.color = options.hoodStone ?? LIGHT_STONE;
+    batches.stone.push(hood);
+    const hoodKey = facePlacement(item, face, along, y + height / 2 + 0.34, 0.2, 0.16, 0.28, 0.24);
+    hoodKey.color = options.hoodStone ?? '#d6c7ab';
+    batches.stone.push(hoodKey);
+  }
+}
+
+function addGerryDormer(batches, item, face, along, y, width = 0.95, height = 1.35, depth = 2.35) {
+  const housing = facePlacement(item, face, along, y, 0.12 - depth / 2, width + 0.28, height + 0.18, depth);
+  housing.color = '#bfaf94';
+  batches.stone.push(housing);
+  addGerryWindow(batches, item, face, along, y, width, height, { stone: '#e3d8c3' });
+
+  const [sx, , sz] = item.size;
+  const roofY = y + height / 2 + 0.42;
+  const roofDepth = depth + 0.32;
+  if (face === '-x' || face === '+x') {
+    const sign = face === '-x' ? -1 : 1;
+    batches.roofGables.push(worldPart(
+      item,
+      [sign * (sx / 2 - depth / 2 + 0.12), roofY, along],
+      [width + 0.42, 0.95, roofDepth],
+      SLATE,
+      [0, Math.PI / 2, 0],
+    ));
+  } else {
+    const sign = face === '-z' ? -1 : 1;
+    batches.roofGables.push(worldPart(
+      item,
+      [along, roofY, sign * (sz / 2 - depth / 2 + 0.12)],
+      [width + 0.42, 0.95, roofDepth],
+      SLATE,
+    ));
+  }
+
+  // A shared triangular limestone face changes the read from a generic box
+  // dormer to the large stone-gabled form in the reference. One extra
+  // instanced batch serves all of these gables.
+  const gableHeight = Math.max(1.0, width * 0.92);
+  if (face === '-x' || face === '+x') {
+    const sign = face === '-x' ? -1 : 1;
+    batches.stoneGables.push(worldPart(
+      item,
+      [sign * (sx / 2 + 0.28), y + height / 2 + gableHeight / 2 - 0.02, along],
+      [width + 0.74, gableHeight, 0.2],
+      '#d1c1a6',
+      [0, Math.PI / 2, 0],
+    ));
+  } else {
+    const sign = face === '-z' ? -1 : 1;
+    batches.stoneGables.push(worldPart(
+      item,
+      [along, y + height / 2 + gableHeight / 2 - 0.02, sign * (sz / 2 + 0.28)],
+      [width + 0.74, gableHeight, 0.2],
+      '#d1c1a6',
+    ));
+  }
+
+  // Two thin sloped bars complete the visible stone pediment. They use the
+  // existing box instance batch; the triangular backing alone was mostly
+  // hidden by the dark dormer housing at street angles and read as two forks.
+  const pedimentHalf = width / 2 + 0.32;
+  const pedimentRise = gableHeight * 0.86;
+  const pedimentLength = Math.hypot(pedimentHalf, pedimentRise);
+  const pedimentAngle = Math.atan2(pedimentRise, pedimentHalf);
+  const pedimentBaseY = y + height / 2 + 0.02;
+  if (face === '-x' || face === '+x') {
+    const sign = face === '-x' ? -1 : 1;
+    for (const direction of [-1, 1]) {
+      addBox(
+        batches,
+        'stone',
+        item,
+        [sign * (sx / 2 + 0.4), pedimentBaseY + pedimentRise / 2, along + direction * pedimentHalf / 2],
+        [0.16, 0.14, pedimentLength],
+        '#d8c9ad',
+        [direction * pedimentAngle, 0, 0],
+      );
+    }
+  } else {
+    const sign = face === '-z' ? -1 : 1;
+    for (const direction of [-1, 1]) {
+      addBox(
+        batches,
+        'stone',
+        item,
+        [along + direction * pedimentHalf / 2, pedimentBaseY + pedimentRise / 2, sign * (sz / 2 + 0.4)],
+        [pedimentLength, 0.14, 0.16],
+        '#d8c9ad',
+        [0, 0, -direction * pedimentAngle],
+      );
+    }
+  }
+
+  // Tiny crocketed posts are silhouette cues, not literal carved replicas.
+  // They share the stone box batch and give each dormer a château character.
+  for (const offset of [-1, 1]) {
+    const post = facePlacement(item, face, along + offset * (width / 2 + 0.21), y + height / 2 + 0.34, 0.31, 0.11, 0.86, 0.11);
+    post.color = '#d1c1a6';
+    batches.stone.push(post);
+    const cap = facePlacement(item, face, along + offset * (width / 2 + 0.21), y + height / 2 + 0.8, 0.32, 0.21, 0.12, 0.15);
+    cap.color = '#d8c9ad';
+    batches.stone.push(cap);
+  }
 }
 
 function buildVanderbilt(item, batches) {
@@ -623,9 +1116,11 @@ function buildSavoy(item, batches) {
     const x = -sx * 0.42 + i * sx * 0.84 / 11;
     addBox(batches, 'stone', item, [x, sy / 2 - 3.05, -sz / 2 - 0.3], [0.28, 0.28, 0.24], '#d8cbb0');
   }
-  batches.roofPyramids.push(worldPart(item, [0, sy / 2 + 2.2, 0], [sx * 0.66, 4.2, sz * 0.7], SLATE, [0, Math.PI / 4, 0]));
+  // Its eaves meet the top of the shell; the notched corner butts cleanly into
+  // the turret rather than intersecting it.
+  batches.roofNotchedHips.push(worldPart(item, [0, sy / 2 + 0.8, 0], [sx + 1.2, 4.2, sz + 1.2], SLATE));
   batches.towers.push(worldPart(item, [-sx * 0.39, sy / 2 - 0.8, -sz * 0.38], [1.7, 4.0, 1.7], PALE_STONE));
-  batches.roofCones.push(worldPart(item, [-sx * 0.39, sy / 2 + 2.65, -sz * 0.38], [2.0, 2.8, 2.0], COPPER));
+  batches.roofCopperCones.push(worldPart(item, [-sx * 0.39, sy / 2 + 2.65, -sz * 0.38], [2.0, 2.8, 2.0], COPPER));
 }
 
 function buildBolkenhayn(item, batches) {
@@ -640,8 +1135,14 @@ function buildBolkenhayn(item, batches) {
   addDoor(batches, item, '-x', sz * 0.22, bottom + 1.85, 1.75, 3.0, true);
   // Full-footprint hip so the dormers sit against roof instead of floating
   // as detached boxes on the skyline.
-  batches.roofPyramids.push(worldPart(item, [0, sy / 2 + 1.95, 0], [sx * 0.71, 3.9, sz * 0.74], SLATE_LIGHT, [0, Math.PI / 4, 0]));
-  for (const z of [-sz * 0.25, 0, sz * 0.25]) addDormer(batches, item, '-x', z, sy / 2 + 0.55, 1.0, 1.15);
+  // The shell ends at sy / 2 - 0.8, so a 3.9-unit roof centered here places
+  // its eaves directly on the masonry instead of leaving a strip of sky.
+  batches.roofHips.push(worldPart(item, [0, sy / 2 + 1.15, 0], [sx + 1.0, 3.9, sz + 1.0], SLATE_LIGHT));
+  for (const z of [-sz * 0.25, 0, sz * 0.25]) {
+    // These deep housings disappear into the receding hip plane; a shallow
+    // box ends in mid-air when seen obliquely from Fifth Avenue.
+    addDormer(batches, item, '-x', z, sy / 2 + 0.55, 1.0, 1.15, { housingDepth: 4.9 });
+  }
 }
 
 function buildMarbleRow(item, batches) {
@@ -680,36 +1181,259 @@ function buildHuntington(item, batches) {
   addDoor(batches, item, '+z', -sx * 0.22, bottom + 2.35, 2.15, 3.7, true);
   batches.roofGables.push(worldPart(item, [0, sy / 2 + 2.65, 0], [sz, 5.2, sx], SLATE, [0, Math.PI / 2, 0]));
   batches.towers.push(worldPart(item, [-sx * 0.41, sy / 2 - 0.8, sz * 0.35], [2.0, 4.0, 2.0], PALE_STONE));
-  batches.roofCones.push(worldPart(item, [-sx * 0.41, sy / 2 + 2.8, sz * 0.35], [2.35, 3.2, 2.35], COPPER));
+  batches.roofCopperCones.push(worldPart(item, [-sx * 0.41, sy / 2 + 2.8, sz * 0.35], [2.35, 3.2, 2.35], COPPER));
 }
 
 function buildGerry(item, batches) {
   const [sx, sy, sz] = item.size;
   const bottom = -sy / 2;
-  addShell(batches, item, [0, -0.5, 0], [sx, sy - 1.0, sz], 2, '#d7cdbc');
-  addBox(batches, 'stone', item, [0, bottom + 2.15, 0], [sx + 0.35, 4.3, sz + 0.35], DARK_STONE);
-  addCourse(batches, item, bottom + 4.55, PALE_STONE, 0.6, 0.3);
-  addCourse(batches, item, sy / 2 - 1.25, LIGHT_STONE, 1.1, 0.55);
-  const floors = [bottom + 5.8, bottom + 9.2, bottom + 12.55];
-  addWindowGrid(batches, item, ['-x'], () => [-sz * 0.3, -sz * 0.06, sz * 0.2], floors, { width: 1.28, height: 2.0, hood: true });
-  addWindowGrid(batches, item, ['-z'], () => [-sx * 0.33, -sx * 0.12, sx * 0.1, sx * 0.32], floors, { width: 1.18, height: 1.92 });
-  addDoor(batches, item, '-z', -sx * 0.2, bottom + 2.25, 2.0, 3.5, true);
-  // One continuous main roof replaces the two full-size wedges that used to
-  // intersect and produce a jagged, partly transparent silhouette.
-  batches.roofGables.push(worldPart(item, [0, sy / 2 + 2.45, 0], [sx + 0.45, 4.9, sz + 0.5], SLATE_LIGHT));
-  // A smaller cross-gable marks the Fifth Avenue pavilion without cutting
-  // through the complete depth of the main roof.
+  const overlap = 0.28;
+  const cornerWidth = sx * 0.46;
+  const cornerDepth = sz * 0.76;
+  const cornerX = -sx / 2 + cornerWidth / 2;
+  const cornerZ = -sz / 2 + cornerDepth / 2;
+  const cornerHeight = 14.4;
+  const cornerTop = bottom + cornerHeight;
+
+  const frontWidth = sx - cornerWidth + overlap;
+  const frontDepth = sz * 0.7;
+  const frontX = -sx / 2 + cornerWidth - overlap + frontWidth / 2;
+  const frontZ = -sz / 2 + frontDepth / 2;
+  const frontHeight = 11.1;
+  const frontTop = bottom + frontHeight;
+
+  const sideWidth = cornerWidth;
+  const sideDepth = sz - cornerDepth + overlap;
+  const sideX = cornerX;
+  const sideZ = -sz / 2 + cornerDepth - overlap + sideDepth / 2;
+  const sideHeight = 10.75;
+  const sideTop = bottom + sideHeight;
+
+  // The pavilion now owns the composition. Its warm brick is shared with the
+  // lower wings, but their much lower cornices prevent the previous single-
+  // apartment-block read.
+  addShell(batches, item, [cornerX, bottom + cornerHeight / 2, cornerZ], [cornerWidth, cornerHeight, cornerDepth], 1, '#d9a58b');
+  addShell(batches, item, [frontX, bottom + frontHeight / 2, frontZ], [frontWidth, frontHeight, frontDepth], 1, '#d19b81');
+  addShell(batches, item, [sideX, bottom + sideHeight / 2, sideZ], [sideWidth, sideHeight, sideDepth], 1, '#d19b81');
+
+  const baseHeight = 3.95;
+  addShell(batches, item, [cornerX, bottom + baseHeight / 2, cornerZ], [cornerWidth + 0.18, baseHeight, cornerDepth + 0.18], 2, '#b8aa96');
+  addShell(batches, item, [frontX, bottom + baseHeight / 2, frontZ], [frontWidth + 0.18, baseHeight, frontDepth + 0.18], 2, '#ad9e8b');
+  addShell(batches, item, [sideX, bottom + baseHeight / 2, sideZ], [sideWidth + 0.18, baseHeight, sideDepth + 0.18], 2, '#ad9e8b');
+
+  const massCourse = (x, z, width, depth, y, thickness, extension, color) => {
+    addBox(batches, 'stone', item, [x, y, z], [width + extension, thickness, depth + extension], color);
+  };
+  for (const mass of [
+    [cornerX, cornerZ, cornerWidth, cornerDepth],
+    [frontX, frontZ, frontWidth, frontDepth],
+    [sideX, sideZ, sideWidth, sideDepth],
+  ]) {
+    massCourse(...mass, bottom + baseHeight + 0.06, 0.28, 0.28, '#d9cbb1');
+    massCourse(...mass, bottom + 7.72, 0.16, 0.18, '#c6b69e');
+  }
+  massCourse(cornerX, cornerZ, cornerWidth, cornerDepth, cornerTop - 0.08, 0.38, 0.78, '#d8c9ad');
+  massCourse(cornerX, cornerZ, cornerWidth, cornerDepth, cornerTop - 0.43, 0.18, 0.48, '#bfae92');
+  massCourse(cornerX, cornerZ, cornerWidth, cornerDepth, cornerTop - 0.68, 0.14, 0.3, '#d9cbb1');
+  massCourse(frontX, frontZ, frontWidth, frontDepth, frontTop - 0.08, 0.32, 0.55, '#d5c5a9');
+  massCourse(sideX, sideZ, sideWidth, sideDepth, sideTop - 0.08, 0.3, 0.52, '#d5c5a9');
+
+  // Tall arched openings form a calm rusticated base on both streets.
+  [-4.75, -2.0, 0.75, 4.85].forEach((z, index) => {
+    addArchedOpening(batches, item, '-x', z, bottom + 0.52, 1.2, 3.12, { lit: index === 1 });
+  });
+  [-10.1, -7.25, -4.4, -0.15, 3.1, 6.35, 9.65].forEach((x, index) => {
+    addArchedOpening(batches, item, '-z', x, bottom + 0.52, 1.18, 3.12, { lit: index === 4 });
+  });
+
+  // The large upper loggia is a layered dark opening, not a pasted ground-
+  // floor doorway. A projecting sill and short baluster row make its depth
+  // legible without a boolean cut or unique material.
+  const loggiaX = -2.8;
+  const loggiaBottom = bottom + 7.95;
+  addArchedOpening(batches, item, '-z', loggiaX, loggiaBottom, 2.2, 4.05, { stone: '#d5c5aa' });
+  addBox(batches, 'stone', item, [loggiaX, loggiaBottom - 0.2, -sz / 2 - 0.58], [3.25, 0.3, 1.02], '#d8cab1');
+  for (let index = 0; index < 7; index += 1) {
+    addBox(batches, 'stone', item, [loggiaX - 1.25 + index * 0.416, loggiaBottom + 0.32, -sz / 2 - 1.0], [0.1, 0.9, 0.1], '#d9cbb1');
+  }
+  addBox(batches, 'stone', item, [loggiaX, loggiaBottom + 0.76, -sz / 2 - 1.0], [2.85, 0.12, 0.12], '#d9cbb1');
+
+  const pavilionFloors = [bottom + 6.5, bottom + 10.32];
+  [-4.5, -1.25, 1.95].forEach((z, column) => {
+    pavilionFloors.forEach((y, floor) => addGerryWindow(batches, item, '-x', z, y, 0.92, 2.14, {
+      hood: floor === 1,
+      lit: column === 1 && floor === 0,
+      stone: '#ded0b8',
+    }));
+  });
+  [-9.45, -6.2].forEach((x, column) => {
+    pavilionFloors.forEach((y, floor) => addGerryWindow(batches, item, '-z', x, y, 0.94, 2.12, {
+      hood: floor === 1,
+      lit: column === 0 && floor === 1,
+      stone: '#ded0b8',
+    }));
+  });
+  const wingFloors = [bottom + 6.42, bottom + 9.55];
+  [0.4, 3.7, 7.0, 10.25].forEach((x, column) => {
+    wingFloors.forEach((y, floor) => addGerryWindow(batches, item, '-z', x, y, 0.9, floor ? 1.82 : 2.02, {
+      hood: floor === 1,
+      lit: column === 2 && floor === 0,
+      stone: '#d8cab1',
+    }));
+  });
+  [4.6].forEach((z) => wingFloors.forEach((y, floor) => addGerryWindow(
+    batches, item, '-x', z, y, 0.88, floor ? 1.78 : 1.98, { hood: floor === 1, stone: '#d8cab1' },
+  )));
+
+  // Alternating quoins stay shallow enough to read as masonry, not teeth.
+  const cornerEast = -sx / 2 + cornerWidth;
+  const cornerSouth = -sz / 2 + cornerDepth;
+  for (let level = 0; level < 9; level += 1) {
+    const y = bottom + 4.72 + level * 1.02;
+    const long = level % 2 === 0;
+    const length = long ? 0.68 : 0.52;
+    addBox(batches, 'stone', item, [-sx / 2 - 0.07, y, -sz / 2 + length / 2], [0.14, 0.46, length], '#ded0b8');
+    addBox(batches, 'stone', item, [-sx / 2 + length / 2, y, -sz / 2 - 0.07], [length, 0.46, 0.14], '#ded0b8');
+    const returnLength = long ? 0.58 : 0.44;
+    const northReturn = facePlacement(item, '-z', cornerEast, y, 0.075, returnLength, 0.44, 0.14);
+    northReturn.color = '#d3c3a9';
+    batches.stone.push(northReturn);
+    const westReturn = facePlacement(item, '-x', cornerSouth, y, 0.075, returnLength, 0.44, 0.14);
+    westReturn.color = '#d3c3a9';
+    batches.stone.push(westReturn);
+  }
+
+  // A shallow iron-and-glass conservatory attaches to the side wing and stays
+  // within the sidewalk budget. Its panes use one shared, single-pass physical
+  // material so the close view gets reflections and transparency without a
+  // transmission/refraction pass per panel.
+  const conservatoryZ = Math.min(sz / 2 - 1.72, cornerSouth + 1.65);
+  const conservatoryX = -sx / 2 - 0.78;
+  const conservatoryWidth = 4.12;
+  const conservatoryHalf = conservatoryWidth / 2;
+  const conservatoryFrontX = -sx / 2 - 1.68;
+  const glazingBottom = bottom + 1.12;
+  const glazingTop = bottom + 3.82;
+  const glazingHeight = glazingTop - glazingBottom;
+  const glazingY = (glazingBottom + glazingTop) / 2;
+  addBox(batches, 'stone', item, [conservatoryX, bottom + 0.58, conservatoryZ], [1.76, 1.16, conservatoryWidth], '#918675');
+  addBox(batches, 'stone', item, [conservatoryX, bottom + 1.16, conservatoryZ], [1.92, 0.14, conservatoryWidth + 0.18], '#b6a78f');
+
+  // Four front bays and two return bays overlap their iron rebates. Every
+  // panel now reaches the base and eave, eliminating the daylight slits and
+  // tan wall fragments visible in the earlier close view.
+  const frontBays = 4;
+  const frontPitch = conservatoryWidth / frontBays;
+  for (let index = 0; index < frontBays; index += 1) {
+    const z = conservatoryZ - conservatoryHalf + frontPitch * (index + 0.5);
+    addBox(batches, 'conservatoryGlass', item, [conservatoryFrontX, glazingY, z], [0.065, glazingHeight + 0.06, frontPitch - 0.045], '#d9e4e6');
+  }
+  for (const direction of [-1, 1]) {
+    const z = conservatoryZ + direction * conservatoryHalf;
+    for (const xOffset of [0.43, 1.28]) {
+      addBox(batches, 'conservatoryGlass', item, [-sx / 2 - xOffset, glazingY, z], [0.82, glazingHeight + 0.06, 0.065], '#d4e1e4');
+    }
+    for (const xOffset of [0.04, 0.86, 1.7]) {
+      addBox(batches, 'iron', item, [-sx / 2 - xOffset, glazingY, z + direction * 0.045], [0.07, glazingHeight + 0.14, 0.07], IRON);
+    }
+    for (const railY of [glazingBottom + 0.04, bottom + 2.52, glazingTop - 0.04]) {
+      addBox(batches, 'iron', item, [conservatoryX, railY, z + direction * 0.05], [1.76, 0.07, 0.07], IRON);
+    }
+  }
+  for (let index = 0; index <= frontBays; index += 1) {
+    const z = conservatoryZ - conservatoryHalf + frontPitch * index;
+    addBox(batches, 'iron', item, [conservatoryFrontX - 0.045, glazingY, z], [0.07, glazingHeight + 0.14, 0.07], IRON);
+  }
+  for (const railY of [glazingBottom + 0.04, bottom + 2.52, glazingTop - 0.04]) {
+    addBox(batches, 'iron', item, [conservatoryFrontX - 0.05, railY, conservatoryZ], [0.07, 0.07, conservatoryWidth + 0.08], IRON);
+  }
+  addBox(batches, 'iron', item, [conservatoryFrontX - 0.08, bottom + 2.48, conservatoryZ + 0.28], [0.08, 0.08, 0.08], '#b89a62');
+  batches.roofHips.push(worldPart(item, [conservatoryX, bottom + 4.2, conservatoryZ], [2.16, 0.82, conservatoryWidth + 0.45], '#cbd2d4'));
+  addBox(batches, 'iron', item, [conservatoryFrontX - 0.05, bottom + 3.84, conservatoryZ], [0.09, 0.16, conservatoryWidth + 0.22], IRON);
+
+  // The twelve-triangle truncated hip supplies the target's tower-like roof
+  // without dense slate geometry. Lower gables overlap the pavilion so no sky
+  // cracks appear between the three masses.
+  const mainRoofHeight = 8.65;
+  batches.roofTruncatedHips.push(worldPart(
+    item,
+    [cornerX, cornerTop + mainRoofHeight / 2 - 0.04, cornerZ],
+    [cornerWidth + 1.0, mainRoofHeight, cornerDepth + 1.0],
+    '#d7dcde',
+  ));
   batches.roofGables.push(worldPart(
     item,
-    [-sx * 0.3, sy / 2 + 2.9, -sz * 0.16],
-    [sz * 0.48, 5.55, sx * 0.36],
-    SLATE,
+    [frontX, frontTop + 1.85, frontZ],
+    [frontDepth + 0.45, 3.72, frontWidth + 0.48],
+    '#e2e6e7',
     [0, Math.PI / 2, 0],
   ));
-  for (const x of [-sx * 0.25, sx * 0.18]) addBox(batches, 'stone', item, [x, sy / 2 + 3.1, -sz * 0.15], [0.75, 5.4, 0.75], BRICK);
-  // One very low-cost iron run gives the Fifth Avenue areaway its period edge.
-  for (let index = 0; index < 12; index += 1) {
-    addBox(batches, 'iron', item, [-sx / 2 - 0.35, bottom + 0.8, -sz * 0.42 + index * sz * 0.84 / 11], [0.055, 1.5, 0.055], IRON);
+  batches.roofGables.push(worldPart(
+    item,
+    [sideX, sideTop + 1.68, sideZ],
+    [sideWidth + 0.46, 3.4, sideDepth + 0.42],
+    '#e2e6e7',
+  ));
+
+  [-3.65, 0.0].forEach((z) => addGerryDormer(batches, item, '-x', z, cornerTop + 2.0, 1.15, 1.68, 2.35));
+  [-9.15, -5.35].forEach((x) => addGerryDormer(batches, item, '-z', x, cornerTop + 2.0, 1.15, 1.68, 2.35));
+  [1.55, 5.35, 9.15].forEach((x) => addGerryDormer(batches, item, '-z', x, frontTop + 0.48, 0.84, 1.12, 1.75));
+  [4.55].forEach((z) => addGerryDormer(batches, item, '-x', z, sideTop + 0.5, 0.82, 1.1, 1.65));
+
+  for (const [x, z, roofTop] of [
+    [cornerX + 4.05, cornerZ + 2.55, cornerTop + 0.65],
+    [frontX + 4.5, frontZ + 1.2, frontTop + 0.35],
+    [frontX - 3.5, frontZ + 1.25, frontTop + 0.35],
+    [sideX - 3.7, sideZ, sideTop + 0.25],
+    [sideX + 3.6, sideZ, sideTop + 0.25],
+  ]) {
+    addBox(batches, 'stone', item, [x, roofTop + 3.0, z], [0.72, 4.4, 0.72], '#bd765d');
+    addBox(batches, 'stone', item, [x, roofTop + 5.26, z], [0.98, 0.22, 0.98], '#d0c0a5');
+    addBox(batches, 'stone', item, [x, roofTop + 4.97, z], [0.82, 0.18, 0.82], '#b9a78b');
+  }
+
+  const mainApex = cornerTop + mainRoofHeight - 0.04;
+  addBox(batches, 'stone', item, [cornerX, mainApex + 0.04, cornerZ], [2.35, 0.22, 1.98], '#cbbb9f');
+  for (const [dx, dz] of [[-0.82, -0.66], [0.82, -0.66], [-0.82, 0.66], [0.82, 0.66]]) {
+    addBox(batches, 'stone', item, [cornerX + dx, mainApex + 0.5, cornerZ + dz], [0.12, 0.86, 0.12], '#d9cbb1');
+    addBox(batches, 'stone', item, [cornerX + dx, mainApex + 0.96, cornerZ + dz], [0.23, 0.12, 0.23], '#e1d4bd');
+  }
+  addBox(batches, 'iron', item, [cornerX, mainApex + 1.3, cornerZ], [0.075, 2.15, 0.075], IRON);
+  addBox(batches, 'iron', item, [cornerX, mainApex + 1.66, cornerZ], [0.7, 0.065, 0.065], IRON);
+  addBox(batches, 'iron', item, [cornerX, mainApex + 1.66, cornerZ], [0.065, 0.065, 0.7], IRON);
+
+  // The areaway stops cleanly at the conservatory instead of passing through
+  // its glazing. Two rails, a low crossed lattice, heavier interval posts,
+  // and shared pyramid finials create a period wrought-iron read while every
+  // straight member remains part of the existing iron box instance batch.
+  const fenceStart = -sz * 0.43;
+  const fenceEnd = conservatoryZ - conservatoryHalf - 0.18;
+  const fenceBays = 9;
+  const fencePitch = (fenceEnd - fenceStart) / fenceBays;
+  const fenceX = -sx / 2 - 0.38;
+  const lowerRailY = bottom + 0.48;
+  const upperRailY = bottom + 1.38;
+  for (let index = 0; index <= fenceBays; index += 1) {
+    const z = fenceStart + fencePitch * index;
+    const principal = index % 3 === 0;
+    const height = principal ? 1.78 : 1.55;
+    addBox(batches, 'iron', item, [fenceX, bottom + height / 2 + 0.04, z], [principal ? 0.09 : 0.06, height, principal ? 0.09 : 0.06], IRON);
+    batches.ironFinials.push(worldPart(item, [fenceX, bottom + height + 0.17, z], [principal ? 0.13 : 0.1, 0.27, principal ? 0.13 : 0.1], IRON, [0, Math.PI / 4, 0]));
+  }
+  const fenceCenterZ = (fenceStart + fenceEnd) / 2;
+  const fenceLength = fenceEnd - fenceStart;
+  for (const y of [lowerRailY, upperRailY]) {
+    addBox(batches, 'iron', item, [fenceX, y, fenceCenterZ], [0.07, 0.07, fenceLength + 0.08], IRON);
+  }
+  const latticeHeight = upperRailY - lowerRailY;
+  const latticeLength = Math.hypot(fencePitch, latticeHeight);
+  const latticeAngle = Math.atan2(latticeHeight, fencePitch);
+  for (let index = 0; index < fenceBays; index += 1) {
+    const z = fenceStart + fencePitch * (index + 0.5);
+    const y = (lowerRailY + upperRailY) / 2;
+    for (const direction of [-1, 1]) {
+      addBox(batches, 'iron', item, [fenceX, y, z], [0.045, 0.045, latticeLength], IRON, [direction * latticeAngle, 0, 0]);
+    }
   }
 }
 
@@ -728,36 +1452,66 @@ function buildDistrict(items) {
     shells: new Map(),
     stone: [],
     glass: [],
+    conservatoryGlass: [],
+    archStone: [],
+    archGlass: [],
     iron: [],
+    ironFinials: [],
     copper: [],
     roofBoxes: [],
+    roofHips: [],
+    roofTruncatedHips: [],
+    roofNotchedHips: [],
     roofPyramids: [],
     roofCones: [],
+    roofCopperCones: [],
     roofGables: [],
+    stoneGables: [],
     towers: [],
   };
-  items.filter(isGildedAgeLandmark).forEach((item) => BUILDERS[item.landmarkModel](item, batches));
+  items
+    .filter((item) => isGildedAgeLandmark(item) && item.landmarkModel !== 'new-netherland-hotel')
+    .forEach((item) => BUILDERS[item.landmarkModel](item, batches));
   return batches;
 }
 
-export default function GildedAgeLandmarks({ items, facadeTextures }) {
+export default function GildedAgeLandmarks({ items, facadeTextures, runtime }) {
   const batches = useMemo(() => buildDistrict(items), [items]);
+  const newNetherlandItems = useMemo(
+    () => items.filter((item) => item.landmarkModel === 'new-netherland-hotel'),
+    [items],
+  );
   const geometry = useSharedGeometry();
   const materials = useSharedMaterials();
   return (
     <group name="1896 Gilded Age landmark district">
+      {newNetherlandItems.map((item) => (
+        <NewNetherlandHotel key={item.id} item={item} facadeTextures={facadeTextures} runtime={runtime} />
+      ))}
       {[...batches.shells.entries()].map(([style, entries]) => (
         <ShellBatch key={style} entries={entries} facadeTextures={facadeTextures} style={style} />
       ))}
-      <InstancedParts name="landmark-stone-and-trim" parts={batches.stone} geometry={geometry.box} material={materials.stone} />
+      {/* Main stone bases, cylindrical towers, and box roofs contribute to
+          several landmark silhouettes. They share one draw apiece, so casting
+          them is inexpensive and prevents a roof-only shadow. */}
+      <InstancedParts name="landmark-stone-and-trim" parts={batches.stone} geometry={geometry.box} material={materials.stone} shadows />
       <InstancedParts name="landmark-window-depth" parts={batches.glass} geometry={geometry.box} material={materials.glass} />
+      <InstancedParts name="gerry-conservatory-glass" parts={batches.conservatoryGlass} geometry={geometry.box} material={materials.conservatoryGlass} />
+      <InstancedParts name="landmark-arched-stone-crowns" parts={batches.archStone} geometry={geometry.archCrown} material={materials.stone} />
+      <InstancedParts name="landmark-round-headed-glass" parts={batches.archGlass} geometry={geometry.archFan} material={materials.glass} />
       <InstancedParts name="landmark-sash-and-ironwork" parts={batches.iron} geometry={geometry.box} material={materials.iron} />
+      <InstancedParts name="landmark-wrought-iron-finials" parts={batches.ironFinials} geometry={geometry.pyramid} material={materials.iron} />
       <InstancedParts name="landmark-aged-copper" parts={batches.copper} geometry={geometry.box} material={materials.copper} />
-      <InstancedParts name="landmark-roof-boxes" parts={batches.roofBoxes} geometry={geometry.box} material={materials.roof} />
-      <InstancedParts name="landmark-round-towers" parts={batches.towers} geometry={geometry.cylinder} material={materials.stone} />
+      <InstancedParts name="landmark-roof-boxes" parts={batches.roofBoxes} geometry={geometry.box} material={materials.roof} shadows />
+      <InstancedParts name="landmark-rectangular-hip-roofs" parts={batches.roofHips} geometry={geometry.hipRoof} material={materials.roof} shadows />
+      <InstancedParts name="landmark-truncated-hip-roofs" parts={batches.roofTruncatedHips} geometry={geometry.truncatedHipRoof} material={materials.roof} shadows />
+      <InstancedParts name="landmark-notched-hip-roofs" parts={batches.roofNotchedHips} geometry={geometry.cornerNotchedHipRoof} material={materials.roof} shadows />
+      <InstancedParts name="landmark-round-towers" parts={batches.towers} geometry={geometry.cylinder} material={materials.stone} shadows />
       <InstancedParts name="landmark-hipped-roofs" parts={batches.roofPyramids} geometry={geometry.pyramid} material={materials.roof} shadows />
       <InstancedParts name="landmark-conical-roofs" parts={batches.roofCones} geometry={geometry.cone} material={materials.roof} shadows />
+      <InstancedParts name="landmark-copper-conical-roofs" parts={batches.roofCopperCones} geometry={geometry.cone} material={materials.copper} shadows />
       <InstancedParts name="landmark-gabled-roofs" parts={batches.roofGables} geometry={geometry.gable} material={materials.roof} shadows />
+      <InstancedParts name="landmark-stone-gable-faces" parts={batches.stoneGables} geometry={geometry.gable} material={materials.stone} />
     </group>
   );
 }

@@ -52,7 +52,9 @@ export default function CameraRig({ room, runtime, look, keyboard, heightAt = nu
       ...(room.ceiling ? [room.ceiling] : []),
       // Dynamic pieces are left out: these boxes are read as fixed, and a
       // pushed chair would occlude from where it used to stand.
-      ...room.furnitureBoxes.filter((item) => item.collider !== false && !item.dynamic),
+      ...room.furnitureBoxes.filter(
+        (item) => item.collider !== false && !item.dynamic && item.cameraOccluder !== false,
+      ),
     ],
     [room],
   );

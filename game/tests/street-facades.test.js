@@ -1,7 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { facadeWindowAt } from '../src/world/projectileImpacts.js';
-import { facadeLayout, facadeWidth, FACES } from '../src/world/facade.js';
+import {
+  facadeEntranceLayout,
+  facadeLayout,
+  facadeLayoutForFace,
+  facadeWidth,
+  FACES,
+} from '../src/world/facade.js';
 import { streetItems } from '../src/world/streetGrid.js';
 
 const ROWS = [
@@ -43,7 +49,7 @@ function windowCenter(building, token, win) {
   const [cx, cy, cz] = building.position;
   const [sx, sy, sz] = building.size;
   const width = facadeWidth(building.size, token);
-  const layout = facadeLayout(width, sy);
+  const layout = facadeLayoutForFace(building, token);
   const halfDepth = face.normal[2] !== 0 ? sz / 2 : sx / 2;
   const u = (win.x + win.w / 2) / layout.texW;
   return [
@@ -92,6 +98,72 @@ test('an exposed end uses its centered ground bay as a window, not a second door
   assert.equal(pane.id, `${building.id}:${token}:ground:${centerBay.col}`);
 });
 
+test('procedural entrances vary by parcel but remain deterministic', () => {
+  const buildings = streetItems.filter(
+    (item) => item.kind === 'backdrop' && item.frontageFamily && !item.landmarkModel,
+  );
+  const entrances = buildings.map((building) => facadeEntranceLayout(building));
+
+  assert.ok(buildings.length > 100, 'the full procedural frontage participates');
+  buildings.forEach((building, index) => {
+    assert.deepEqual(entrances[index], facadeEntranceLayout(building), `${building.id} is repeatable`);
+  });
+  assert.deepEqual(new Set(entrances.map((entry) => entry.railStyle)), new Set(['none', 'iron', 'stone']));
+  assert.deepEqual(new Set(entrances.map((entry) => entry.surround)), new Set(['plain', 'corniced', 'transom']));
+  assert.deepEqual(new Set(entrances.map((entry) => entry.stepCount)), new Set([1, 2, 4, 5, 6]));
+  assert.ok(new Set(entrances.map((entry) => entry.doorColor)).size >= 4, 'painted doors vary');
+  assert.ok(entrances.some((entry) => entry.bootScraper), 'some raised entries get boot scrapers');
+  assert.ok(entrances.some((entry) => entry.hood), 'some low entries get projecting hoods');
+
+  const sideBayCount = entrances.filter(
+    (entry) => entry.door.col === 0 || entry.door.col === entry.layout.cols - 1,
+  ).length;
+  assert.ok(sideBayCount > buildings.length / 2, 'attached-house doors usually occupy a side bay');
+});
+
+function rotateByQuaternion([x, y, z], [qx, qy, qz, qw]) {
+  const ix = qw * x + qy * z - qz * y;
+  const iy = qw * y + qz * x - qx * z;
+  const iz = qw * z + qx * y - qy * x;
+  const iw = -qx * x - qy * y - qz * z;
+  return [
+    ix * qw + iw * -qx + iy * -qz - iz * -qy,
+    iy * qw + iw * -qy + iz * -qx - ix * -qz,
+    iz * qw + iw * -qz + ix * -qy - iy * -qx,
+  ];
+}
+
+test('stoop collision uses one smooth ramp and at most two side blockers', () => {
+  const buildings = streetItems.filter(
+    (item) => item.kind === 'backdrop' && item.frontageFamily && !item.landmarkModel,
+  );
+  const colliderItems = streetItems.filter((item) => item.kind === 'entrance-collider');
+
+  assert.ok(colliderItems.length <= buildings.length * 3, 'collision stays bounded');
+  for (const building of buildings) {
+    const entrance = facadeEntranceLayout(building);
+    const colliders = colliderItems.filter((item) => item.entranceBuildingId === building.id);
+    assert.equal(colliders.length, entrance.colliders.length, `${building.id} shares the visual layout`);
+    assert.equal(colliders.filter((item) => item.entranceColliderRole === 'ramp').length, 1);
+    assert.equal(colliders.length, entrance.raised ? 3 : 1);
+
+    for (const collider of colliders) {
+      assert.equal(collider.render, false);
+      assert.equal(collider.cameraOccluder, false, 'fixed stoops avoid the per-frame camera scan');
+      assert.ok(collider.size.every((value) => Number.isFinite(value) && value > 0));
+      const length = Math.hypot(...collider.colliderQuaternion);
+      assert.ok(Math.abs(length - 1) < 1e-8, 'collider rotation is normalized');
+    }
+
+    const ramp = colliders.find((item) => item.entranceColliderRole === 'ramp');
+    const outward = rotateByQuaternion([0, 0, 1], ramp.colliderQuaternion);
+    const horizontalDot = outward[0] * entrance.face.normal[0]
+      + outward[2] * entrance.face.normal[2];
+    assert.ok(horizontalDot > 0.7, `${building.id} ramp descends out from its door`);
+    assert.ok(outward[1] < 0, `${building.id} ramp falls toward the pavement`);
+  }
+});
+
 function wallFaces(building) {
   const [x, y, z] = building.position;
   const [sx, sy, sz] = building.size;
@@ -126,11 +198,27 @@ test('separate building masses do not render overlapping coplanar walls', () => 
 
 test('authored landmarks carry click labels while procedural rows remain anonymous', () => {
   for (const [id, label] of NAMED_BUILDINGS) {
-    assert.equal(streetItems.find((item) => item.id === id)?.landmarkLabel, label);
+    const landmark = streetItems.find((item) => item.id === id);
+    assert.equal(landmark?.landmarkLabel, label);
+    assert.ok(landmark?.landmarkLocation, `${id} has a cross-street location`);
   }
   for (const [prefix] of ROWS) {
     for (const building of rowBuildings(prefix)) assert.equal(building.landmarkLabel, undefined);
   }
+});
+
+test('only verified landmark articles are mapped to Wikipedia titles', () => {
+  const mapped = streetItems
+    .filter((item) => item.wikipediaTitle)
+    .map((item) => item.id)
+    .sort();
+  assert.deepEqual(mapped, [
+    'gerry-mansion',
+    'hotel-new-netherland',
+    'metropolitan-club',
+    'plaza-hotel-1890',
+    'vanderbilt-mansion',
+  ]);
 });
 
 test('the Fifth Avenue mansion blocks use authored parcels instead of generic frontage rows', () => {

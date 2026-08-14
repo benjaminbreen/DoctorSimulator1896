@@ -1,0 +1,142 @@
+{
+  "id": "MET_CLUB_LOBBY_DAY",
+  "ambient": {
+    "color": "#6f6758",
+    "intensity": 0.22,
+    "scale": 0.6
+  },
+  "hemisphere": {
+    "skyColor": "#a9b2c6",
+    "groundColor": "#4a4238",
+    "intensity": 0.3,
+    "scale": 0.62
+  },
+  "windowSky": "#aebbd1",
+  "windowPortals": [
+    {
+      "windowId": "window-stair-1",
+      "color": "#c7d3e8",
+      "intensity": 1.5,
+      "elevationDeg": 38,
+      "azimuthDeg": -14,
+      "castShadow": false
+    },
+    {
+      "windowId": "window-stair-2",
+      "color": "#c7d3e8",
+      "intensity": 1.6,
+      "elevationDeg": 38,
+      "azimuthDeg": -7,
+      "castShadow": false
+    },
+    {
+      "windowId": "window-stair-3",
+      "color": "#cfd9ec",
+      "intensity": 2.2,
+      "elevationDeg": 38,
+      "azimuthDeg": 0,
+      "castShadow": true
+    },
+    {
+      "windowId": "window-stair-4",
+      "color": "#c7d3e8",
+      "intensity": 1.6,
+      "elevationDeg": 38,
+      "azimuthDeg": 7,
+      "castShadow": false
+    },
+    {
+      "windowId": "window-stair-5",
+      "color": "#c7d3e8",
+      "intensity": 1.5,
+      "elevationDeg": 38,
+      "azimuthDeg": 14,
+      "castShadow": false
+    }
+  ],
+  "gaslights": [
+    {
+      "propId": "gaslight-lantern",
+      "color": "#ffbd69",
+      "intensity": 7.5,
+      "distance": 13,
+      "decay": 2,
+      "flicker": 0.05,
+      "castShadow": true
+    },
+    {
+      "propId": "gaslight-sconce-north-e",
+      "color": "#ffb45e",
+      "intensity": 3.2,
+      "distance": 6,
+      "decay": 2,
+      "flicker": 0.08,
+      "castShadow": false
+    },
+    {
+      "propId": "gaslight-sconce-north-w",
+      "color": "#ffb45e",
+      "intensity": 3.2,
+      "distance": 6,
+      "decay": 2,
+      "flicker": 0.08,
+      "castShadow": false
+    },
+    {
+      "propId": "gaslight-sconce-south-e",
+      "color": "#ffb45e",
+      "intensity": 3.2,
+      "distance": 6,
+      "decay": 2,
+      "flicker": 0.08,
+      "castShadow": false
+    },
+    {
+      "propId": "gaslight-sconce-south-w",
+      "color": "#ffb45e",
+      "intensity": 3.2,
+      "distance": 6,
+      "decay": 2,
+      "flicker": 0.08,
+      "castShadow": false
+    },
+    {
+      "propId": "gaslight-torchere-north",
+      "color": "#ffc176",
+      "intensity": 3.6,
+      "distance": 6.5,
+      "decay": 2,
+      "flicker": 0.09,
+      "castShadow": false
+    },
+    {
+      "propId": "gaslight-torchere-south",
+      "color": "#ffc176",
+      "intensity": 3.6,
+      "distance": 6.5,
+      "decay": 2,
+      "flicker": 0.09,
+      "castShadow": false
+    },
+    {
+      "propId": "gaslight-landing",
+      "color": "#ffbd69",
+      "intensity": 3.0,
+      "distance": 7,
+      "decay": 2,
+      "flicker": 0.06,
+      "castShadow": false
+    }
+  ],
+  "exposureBase": 0.94,
+  "materials": {
+    "wall": "#dfd8ca",
+    "floor": "#ddd6c8",
+    "ceiling": "#463222",
+    "trim": "#8a6a30",
+    "wallTexture": "procedural/marble",
+    "floorTexture": "procedural/marble",
+    "wallRoughness": 0.95,
+    "floorRoughness": 0.95
+  }
+}

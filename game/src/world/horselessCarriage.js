@@ -20,6 +20,7 @@ const FIFTH = roadCenter('fifth-ave');
 const MADISON = roadCenter('madison-ave');
 const SIXTH = roadCenter('sixth-ave');
 const CPS = roadCenter('cps');
+const EAST_SIXTIETH = roadCenter('east-sixtieth');
 const FIFTY_EIGHTH = roadCenter('fifty-eighth');
 const FIFTY_SEVENTH = roadCenter('fifty-seventh');
 const PORTAL_WEST = WORLD_BOUNDS.minX - 12;
@@ -29,6 +30,7 @@ const PORTAL_EAST = WORLD_BOUNDS.maxX + 12;
 // the traffic coordinator merges its westbound trace with the nearby local
 // lane using physical position and heading.
 const CPS_LANE_OFFSET = 2.25;
+const FIFTY_EIGHTH_LANE_OFFSET = 2.25;
 
 const waypoint = (x, z, id = `${x},${z}`) => ({ position: [x, z], id });
 
@@ -68,6 +70,30 @@ export const TRAFFIC_ROUTE_SPECS = Object.freeze([
       waypoint(FIFTH, CPS - CPS_LANE_OFFSET, `${FIFTH},${CPS}`),
       waypoint(SIXTH, CPS - CPS_LANE_OFFSET, `${SIXTH},${CPS}`),
       waypoint(PORTAL_WEST, CPS - CPS_LANE_OFFSET, 'cps-west-portal-b'),
+    ],
+  },
+  {
+    id: 'east-sixtieth',
+    corners: [
+      [FIFTH, CPS],
+      [FIFTH, EAST_SIXTIETH],
+      [MADISON, EAST_SIXTIETH],
+      [MADISON, CPS],
+    ],
+  },
+  {
+    id: 'fifty-eighth-through',
+    corners: [
+      waypoint(PORTAL_WEST, FIFTY_EIGHTH + FIFTY_EIGHTH_LANE_OFFSET, '58th-west-portal-a'),
+      waypoint(SIXTH, FIFTY_EIGHTH + FIFTY_EIGHTH_LANE_OFFSET, `${SIXTH},${FIFTY_EIGHTH}`),
+      waypoint(FIFTH, FIFTY_EIGHTH + FIFTY_EIGHTH_LANE_OFFSET, `${FIFTH},${FIFTY_EIGHTH}`),
+      waypoint(MADISON, FIFTY_EIGHTH + FIFTY_EIGHTH_LANE_OFFSET, `${MADISON},${FIFTY_EIGHTH}`),
+      waypoint(PORTAL_EAST, FIFTY_EIGHTH + FIFTY_EIGHTH_LANE_OFFSET, '58th-east-portal-a'),
+      waypoint(PORTAL_EAST, FIFTY_EIGHTH - FIFTY_EIGHTH_LANE_OFFSET, '58th-east-portal-b'),
+      waypoint(MADISON, FIFTY_EIGHTH - FIFTY_EIGHTH_LANE_OFFSET, `${MADISON},${FIFTY_EIGHTH}`),
+      waypoint(FIFTH, FIFTY_EIGHTH - FIFTY_EIGHTH_LANE_OFFSET, `${FIFTH},${FIFTY_EIGHTH}`),
+      waypoint(SIXTH, FIFTY_EIGHTH - FIFTY_EIGHTH_LANE_OFFSET, `${SIXTH},${FIFTY_EIGHTH}`),
+      waypoint(PORTAL_WEST, FIFTY_EIGHTH - FIFTY_EIGHTH_LANE_OFFSET, '58th-west-portal-b'),
     ],
   },
 ]);
@@ -192,6 +218,14 @@ export const HORSELESS_TRAFFIC_ROSTER = Object.freeze([
   { id: 1, route: 3, start: 30 },
   { id: 2, route: 2, start: 302 },
 ]);
+
+// Driver identity is cosmetic, but the rate is a plain simulation input so
+// tests and future procedural spawners share the same one-in-four contract.
+export const STRAWHAT_DRIVER_RATE = 0.25;
+
+export function carriageDriverKind(roll) {
+  return roll < STRAWHAT_DRIVER_RATE ? 'strawhat-woman' : 'coated-man';
+}
 
 function curveTAtDistance(segment, target) {
   for (let i = 0; i < segment.arc.length - 1; i += 1) {
@@ -330,9 +364,14 @@ export function stepCarriage(state, dt, obstacles = [], params = {}) {
     // into someone it is still passing.
     if (ahead < -p.rearClearance || ahead > look + r) continue;
     if (Math.abs(side) > p.maxLat + p.clearance + r) continue;
-    relevant.push({ ahead, side, r, soft });
+    const trafficClearance = Number.isFinite(ob.trafficClearance)
+      ? Math.max(0, ob.trafficClearance)
+      : null;
+    relevant.push({ ahead, side, r, soft, trafficClearance });
   }
-  const obstacleClearance = (ob) => (ob.soft ? p.clearance * 0.62 : p.clearance) + ob.r;
+  const obstacleClearance = (ob) => (
+    ob.trafficClearance ?? (ob.soft ? p.clearance * 0.62 : p.clearance)
+  ) + ob.r;
   const blocks = (latLine, ob, slack = 1) => Math.abs(latLine - ob.side) < obstacleClearance(ob) * slack;
   const inLine = relevant.filter((ob) => ob.ahead > 0.3 && blocks(state.lat, ob, 0.95));
   const laneThreats = relevant.filter((ob) => ob.ahead > -p.rearClearance && blocks(p.lane, ob, 0.95));

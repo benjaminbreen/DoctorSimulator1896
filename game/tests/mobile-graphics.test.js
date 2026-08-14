@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   graphicsSettingsForDevice,
+  isSafariUserAgent,
   MOBILE_CONTEXT_RECYCLE_DELAY_MS,
   shouldRecycleWebGLContextOnTravel,
   webGLContextKey,
@@ -62,6 +63,7 @@ test('constrained mobile graphics avoid the destination allocation spike', () =>
     postEnabled: false,
     pixelRatioCap: 1.25,
     maxShadowMapSize: 1024,
+    maxOutdoorShadowDistance: 30,
     deferIdleActors: true,
   });
   assert.deepEqual(graphicsSettingsForDevice(authored, false), {
@@ -69,6 +71,33 @@ test('constrained mobile graphics avoid the destination allocation spike', () =>
     postEnabled: true,
     pixelRatioCap: 2,
     maxShadowMapSize: Infinity,
+    maxOutdoorShadowDistance: Infinity,
     deferIdleActors: false,
   });
+});
+
+test('desktop Safari caps Retina rendering without disabling effects', () => {
+  const authored = {
+    antialias: true,
+    postEnabled: true,
+    pixelRatioCap: 2,
+  };
+
+  assert.deepEqual(graphicsSettingsForDevice(authored, false, true), {
+    antialias: true,
+    postEnabled: true,
+    pixelRatioCap: 1.5,
+    maxShadowMapSize: 2048,
+    maxOutdoorShadowDistance: Infinity,
+    deferIdleActors: false,
+  });
+  assert.equal(isSafariUserAgent(
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.6 Safari/605.1.15',
+  ), true);
+  assert.equal(isSafariUserAgent(
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/139.0.0.0 Safari/537.36',
+  ), false);
+  assert.equal(isSafariUserAgent(
+    'Mozilla/5.0 (iPhone) AppleWebKit/605.1.15 FxiOS/141.0 Mobile/15E148 Safari/605.1.15',
+  ), false);
 });

@@ -5,6 +5,8 @@ import { buildGapstow, walkY, localToWorld, GAPSTOW, RUN_W } from '../world/gaps
 import { terrainHeight } from '../world/terrain.js';
 import { makeCraggyRockGeometry, makeHeroCraggyRockGeometry, makeSchistMaterial } from './rockGeometry.js';
 import { fillInstances } from './lib/instances.js';
+import { identifyLandmark } from '../world/landmarkInformation.js';
+import { PARK_LANDMARKS } from '../world/parkLandmarks.js';
 
 // Gapstow Bridge rendered from the placed-stone layout in world/gapstow.js:
 // instanced textured masonry, craggy abutment boulders, the vault soffit,
@@ -120,7 +122,11 @@ export default function GapstowBridge() {
   }, [rockCol, rockNrm, pathCol]);
 
   return (
-    <group position={[GAPSTOW.x, 0, GAPSTOW.z]} rotation={[0, GAPSTOW.yaw, 0]}>
+    <group
+      position={[GAPSTOW.x, 0, GAPSTOW.z]}
+      rotation={[0, GAPSTOW.yaw, 0]}
+      onClick={(event) => identifyLandmark(PARK_LANDMARKS.gapstow, event)}
+    >
       {meshes.map((mesh, index) => (
         <primitive key={index} object={mesh} />
       ))}

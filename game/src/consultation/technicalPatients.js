@@ -71,17 +71,25 @@ function expressionFor(profile) {
   return 'guarded';
 }
 
+const SAMUEL_TAYLOR_APPEARANCE = Object.freeze({
+  // A light, neutral-brown complexion for Samuel that removes the generated
+  // red cast. Keep it local so rerolled patients retain their generated palette.
+  skinTone: '#afa59b',
+});
+
 function generatedActor(profile, id) {
-  const female = profile.identity.sex === 'female';
-  const recipe = patientToRendererCRecipe(profile, {
+  const generatedRecipe = patientToRendererCRecipe(profile, {
     id,
     animation: { body: 'clinic-idle', expression: expressionFor(profile), gaze: 'doctor', speaking: false },
-    // The two cohort masters currently use opposite forward axes. Keep that
-    // asset correction here and lift both figures to the chair's seat height.
-    placement: female
-      ? { position: [0.45, 0.22, -1.7], rotation: [0, Math.PI, 0], scale: 1 }
-      : { position: [0.45, 0.22, -1.7], rotation: [0, 0, 0], scale: 1 },
+    // Both current cohort masters share the same forward axis. ClinicIdle is
+    // the seated pose; this places its hips on the consultation chair and
+    // turns the patient toward the doctor across the desk.
+    placement: { position: [0.45, 0.22, -1.7], rotation: [0, Math.PI, 0], scale: 1 },
   });
+  const samuel = profile.seed === 4819 && profile.identity.fullName === 'Mr. Samuel Taylor';
+  const recipe = samuel
+    ? { ...generatedRecipe, values: { ...generatedRecipe.values, ...SAMUEL_TAYLOR_APPEARANCE } }
+    : generatedRecipe;
   return createActorInstance({ id, recipe });
 }
 
@@ -140,12 +148,24 @@ function examinationsFor(prefix, signs) {
   ];
 }
 
-function makePrompt(prefix, fact, index) {
+function reactionForFact(profile, fact) {
+  const subject = `${fact.label} ${fact.value}`.toLowerCase();
+  if (profile.clinical.affect === 'sad' || /guilt|withdrawal|appetite|shame/.test(subject)) {
+    return { reactionExpression: 'discouraged', bodyCue: 'sitting-distressed' };
+  }
+  if (profile.clinical.affect === 'concerned' || /fear|trembling|palpitation/.test(subject)) {
+    return { reactionExpression: 'frowning', bodyCue: 'sitting-disapproval' };
+  }
+  return { reactionExpression: 'guarded', bodyCue: 'sitting-talking' };
+}
+
+function makePrompt(prefix, fact, index, profile) {
   const topic = fact.releaseOn[0] || fact.label.toLowerCase();
   return {
     id: `${prefix}-ask-${index + 1}`,
     text: `Tell me more about the ${topic}.`,
     stance: 'question',
+    ...reactionForFact(profile, fact),
   };
 }
 
@@ -173,8 +193,15 @@ function consultationFor(profile, index) {
     facts,
     examinations: examinationsFor(prefix, signs),
     prompts: [
-      ...withheld.slice(0, 3).map((fact, factIndex) => makePrompt(prefix, fact, factIndex)),
-      { id: `${prefix}-reassure`, text: 'You may speak plainly here; nothing leaves this room.', stance: 'reassure' },
+      ...withheld.slice(0, 3).map((fact, factIndex) => makePrompt(prefix, fact, factIndex, profile)),
+      {
+        id: `${prefix}-reassure`,
+        text: 'You may speak plainly here; nothing leaves this room.',
+        stance: 'reassure',
+        reactionExpression: 'smiling',
+        bodyCue: 'sitting-talking',
+        effects: { trust: 2, satisfaction: 3 },
+      },
     ],
     diagnoses: diagnoses.map((label, diagnosisIndex) => ({
       id: `${prefix}-diagnosis-${diagnosisIndex + 1}`,
@@ -204,7 +231,7 @@ function technicalPatient(seed, index, sex) {
     profile,
     actor: generatedActor(profile, id),
     interpretations: commonInterpretations,
-    caseNote: { minimumWords: 12, requiredFactIds: consultation.requiredFactIds },
+    caseNote: { minimumWords: 0, requiredFactIds: consultation.requiredFactIds },
     ...consultation,
     label: profile.identity.fullName,
   });

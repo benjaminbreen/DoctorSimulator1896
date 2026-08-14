@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { useLoader } from '@react-three/fiber';
 import { RigidBody, TrimeshCollider } from '@react-three/rapier';
 import { GRAND_ARMY_APRON } from '../world/heroStreetLayout.js';
+import { identifyLandmark } from '../world/landmarkInformation.js';
+import { PARK_LANDMARKS } from '../world/parkLandmarks.js';
 import { ROAD_TOP, STREET_SURFACES, WALK_TOP } from '../world/streetGrid.js';
 
 const ROAD_TILE = 3.0;
@@ -191,7 +193,7 @@ function StreetPlane({ surface, y, tile, material }) {
   return <mesh geometry={geometry} material={material} receiveShadow />;
 }
 
-function ShapeSurface({ points, holes = EMPTY_HOLES, y, tile, angle = 0, material, collider = false }) {
+function ShapeSurface({ points, holes = EMPTY_HOLES, y, tile, angle = 0, material, collider = false, onClick }) {
   const geometry = useMemo(
     () => shapeGeometry(points, holes, y, tile, angle),
     [points, holes, y, tile, angle],
@@ -205,7 +207,7 @@ function ShapeSurface({ points, holes = EMPTY_HOLES, y, tile, angle = 0, materia
   useEffect(() => () => geometry.dispose(), [geometry]);
   return (
     <>
-      <mesh geometry={geometry} material={material} receiveShadow />
+      <mesh geometry={geometry} material={material} receiveShadow onClick={onClick} />
       {collider && colliderIndices && (
         <TrimeshCollider args={[geometry.attributes.position.array, colliderIndices]} />
       )}
@@ -213,7 +215,7 @@ function ShapeSurface({ points, holes = EMPTY_HOLES, y, tile, angle = 0, materia
   );
 }
 
-function RingSurface({ outer, inner, y, tile, angle = 0, material, collider = false }) {
+function RingSurface({ outer, inner, y, tile, angle = 0, material, collider = false, onClick }) {
   const geometry = useMemo(
     () => ringGeometry(outer, inner, y, tile, angle),
     [outer, inner, y, tile, angle],
@@ -222,7 +224,7 @@ function RingSurface({ outer, inner, y, tile, angle = 0, material, collider = fa
   useEffect(() => () => geometry.dispose(), [geometry]);
   return (
     <>
-      <mesh geometry={geometry} material={material} receiveShadow />
+      <mesh geometry={geometry} material={material} receiveShadow onClick={onClick} />
       {collider && <TrimeshCollider args={[geometry.attributes.position.array, colliderIndices]} />}
     </>
   );
@@ -250,6 +252,10 @@ function Curb({ curb, material }) {
 }
 
 export default function StreetSurfaces() {
+  const identifyFifthAvenuePlaza = (event) => identifyLandmark(
+    PARK_LANDMARKS.fifthAvenuePlaza,
+    event,
+  );
   const textures = useLoader(THREE.TextureLoader, [
     '/textures/street/carriage-setts_col.webp',
     '/textures/street/carriage-setts_nrm.webp',
@@ -409,6 +415,7 @@ export default function StreetSurfaces() {
         tile={WALK_TILE}
         material={materials.promenade}
         collider
+        onClick={identifyFifthAvenuePlaza}
       />
       <ShapeSurface
         points={GRAND_ARMY_APRON.inner}
@@ -417,6 +424,7 @@ export default function StreetSurfaces() {
         angle={-0.24}
         material={materials.apron}
         collider
+        onClick={identifyFifthAvenuePlaza}
       />
       <ShapeSurface
         points={GRAND_ARMY_APRON.driveThroat}
@@ -425,6 +433,7 @@ export default function StreetSurfaces() {
         angle={-0.36}
         material={materials.transition}
         collider
+        onClick={identifyFifthAvenuePlaza}
       />
       <ShapeSurface
         points={GRAND_ARMY_APRON.streetMouth}
@@ -433,6 +442,7 @@ export default function StreetSurfaces() {
         angle={-0.72}
         material={materials.transition}
         collider
+        onClick={identifyFifthAvenuePlaza}
       />
       <RingSurface
         outer={GRAND_ARMY_APRON.outer}
@@ -440,6 +450,7 @@ export default function StreetSurfaces() {
         y={PLAZA_TOP + 0.01}
         tile={WALK_TILE}
         material={materials.edge}
+        onClick={identifyFifthAvenuePlaza}
       />
       <StoneFace
         points={GRAND_ARMY_APRON.outer}

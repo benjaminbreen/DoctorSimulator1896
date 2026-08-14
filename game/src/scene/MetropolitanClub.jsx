@@ -1,11 +1,14 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useLoader } from '@react-three/fiber';
-import { notice } from '../world/notices.js';
+import { identifyLandmark } from '../world/landmarkInformation.js';
 
-const MARBLE = '#dedbd0';
-const MARBLE_LIGHT = '#f4f0e6';
-const MARBLE_SHADOW = '#c5c2b8';
+// In 1894 the clubhouse was a deliberately dazzling composition of Vermont
+// and Tuckahoe marble. Keep enough value separation for the mouldings, but let
+// the whole building read as warm white stone rather than gray limestone.
+const MARBLE = '#f4f1e8';
+const MARBLE_LIGHT = '#fffaf0';
+const MARBLE_SHADOW = '#d9d5ca';
 const SASH = '#353a38';
 const IRON = '#202826';
 const COPPER = '#5b8c7c';
@@ -91,7 +94,7 @@ function InstancedColumns({ columns }) {
   return (
     <instancedMesh ref={ref} name="paired-marble-court-columns" args={[undefined, undefined, columns.length]} castShadow receiveShadow>
       <cylinderGeometry args={[0.5, 0.58, 1, 12]} />
-      <meshStandardMaterial color={MARBLE_LIGHT} roughness={0.88} />
+      <meshStandardMaterial color={MARBLE_LIGHT} roughness={0.68} envMapIntensity={1.08} />
     </instancedMesh>
   );
 }
@@ -263,10 +266,20 @@ function MarbleShell({ centerX, width, height, depth }) {
     map.colorSpace = THREE.SRGBColorSpace;
     map.needsUpdate = true;
     const base = new THREE.MeshStandardMaterial({
-      map, bumpMap: map, bumpScale: 0.014, color: '#e0ddd3', roughness: 0.91,
+      map,
+      bumpMap: map,
+      bumpScale: 0.012,
+      color: '#faf6eb',
+      roughness: 0.7,
+      envMapIntensity: 1.05,
     });
     const upper = new THREE.MeshStandardMaterial({
-      map, bumpMap: map, bumpScale: 0.012, color: '#f3efe5', roughness: 0.88,
+      map,
+      bumpMap: map,
+      bumpScale: 0.01,
+      color: '#fffaf0',
+      roughness: 0.64,
+      envMapIntensity: 1.12,
     });
     return [base, upper, map];
   }, [height, limestoneSource, width]);
@@ -671,9 +684,7 @@ export default function MetropolitanClub({ item }) {
     [height, siteDepth, siteWidth],
   );
   const identify = (event) => {
-    if ((event.delta ?? 0) > 5) return;
-    event.stopPropagation();
-    notice(item.landmarkLabel, { key: 'building-identification', seconds: 4, detail: 'Landmark' });
+    identifyLandmark(item, event);
   };
 
   return (
@@ -686,7 +697,14 @@ export default function MetropolitanClub({ item }) {
     >
       <MarbleShell centerX={batches.main.centerX} width={batches.main.width} height={height} depth={batches.main.depth} />
       <CourtPaving position={batches.court.position} size={batches.court.size} />
-      <InstancedBoxes name="marble-massing-and-ornament" parts={batches.stone} color={MARBLE_LIGHT} shadows />
+      <InstancedBoxes
+        name="marble-massing-and-ornament"
+        parts={batches.stone}
+        color={MARBLE_LIGHT}
+        roughness={0.68}
+        envMapIntensity={1.08}
+        shadows
+      />
       <InstancedBoxes name="wooden-sash" parts={batches.sash} color={SASH} roughness={0.74} />
       <InstancedBoxes name="reflected-window-glass" parts={batches.glass} color={GLASS[0]} roughness={0.32} metalness={0.04} envMapIntensity={0.95} />
       <InstancedBoxes name="curtains-and-room-depth" parts={batches.rooms} color={ROOMS[0]} roughness={0.92} emissive="#312b21" emissiveIntensity={0.055} />

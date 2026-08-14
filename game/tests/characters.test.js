@@ -19,6 +19,7 @@ test('the Phase 1 technical cast contains two valid distinct Renderer C actors',
   assert.equal(new Set(phase1Cast.map((actor) => actor.recipe.cohort)).size, 2);
   assert.equal(new Set(phase1Cast.map((actor) => `${actor.recipe.cohort}:${actor.recipe.anchor.index}`)).size, 2);
   assert.ok(phase1Cast.every((actor) => actor.recipe.placement.position[0] === 0.45));
+  assert.ok(phase1Cast.every((actor) => actor.recipe.placement.rotation[1] === Math.PI));
 });
 
 test('actor cues update immutably through the shared vocabulary', () => {

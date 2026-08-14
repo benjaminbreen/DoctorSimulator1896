@@ -1,0 +1,502 @@
+{
+  "id": "MET_CLUB_LOBBY",
+  "label": "Metropolitan Club",
+  "schemaVersion": 1,
+  "dimensions": {
+    "width": 17.4,
+    "depth": 16.0,
+    "ceiling": 9.0,
+    "floorY": 0
+  },
+  "outline": [
+    [-8.7, 8],
+    [8.7, 8],
+    [8.7, -8],
+    [-8.7, -8]
+  ],
+  "navigation": {
+    "defaultSpawn": [6.2, 0, 0],
+    "defaultFacing": [-1, 0, 0]
+  },
+  "walls": [
+    {
+      "id": "west-wall",
+      "position": [-8.5, 4.5, 0],
+      "size": [0.4, 9.0, 16.0],
+      "yaw": 0,
+      "openings": [
+        {
+          "id": "door-club-inner",
+          "type": "door",
+          "center": [0, 1.3],
+          "size": [1.5, 2.6],
+          "sillHeight": 0,
+          "blocked": true
+        },
+        {
+          "id": "window-stair-1",
+          "type": "window",
+          "center": [-4.6, 7.0],
+          "size": [1.35, 2.4],
+          "sillHeight": 5.8
+        },
+        {
+          "id": "window-stair-2",
+          "type": "window",
+          "center": [-2.3, 7.0],
+          "size": [1.35, 2.4],
+          "sillHeight": 5.8
+        },
+        {
+          "id": "window-stair-3",
+          "type": "window",
+          "center": [0, 7.0],
+          "size": [1.35, 2.4],
+          "sillHeight": 5.8
+        },
+        {
+          "id": "window-stair-4",
+          "type": "window",
+          "center": [2.3, 7.0],
+          "size": [1.35, 2.4],
+          "sillHeight": 5.8
+        },
+        {
+          "id": "window-stair-5",
+          "type": "window",
+          "center": [4.6, 7.0],
+          "size": [1.35, 2.4],
+          "sillHeight": 5.8
+        }
+      ]
+    },
+    {
+      "id": "east-wall",
+      "position": [8.5, 4.5, 0],
+      "size": [0.4, 9.0, 16.0],
+      "yaw": 0,
+      "openings": [
+        {
+          "id": "door-street",
+          "type": "door",
+          "center": [0, 1.6],
+          "size": [1.8, 3.2],
+          "sillHeight": 0,
+          "blocked": true,
+          "open": true
+        }
+      ]
+    },
+    {
+      "id": "north-wall",
+      "position": [0, 4.5, -8],
+      "size": [17.4, 9.0, 0.4],
+      "yaw": 0,
+      "openings": []
+    },
+    {
+      "id": "south-wall",
+      "position": [0, 4.5, 8],
+      "size": [17.4, 9.0, 0.4],
+      "yaw": 0,
+      "openings": []
+    }
+  ],
+  "transitions": [
+    {
+      "id": "to-park",
+      "label": "Out to the carriage court",
+      "position": [7.6, 0],
+      "radius": 1.2,
+      "to": {
+        "zone": "central-park",
+        "spawn": [131.4, 1.29, 43.45],
+        "facing": [1, 0]
+      }
+    }
+  ],
+  "furniture": [
+    {
+      "id": "club-chair-north-1",
+      "kind": "furniture",
+      "model": "chair_big_01",
+      "position": [3.4, 0, -5.6],
+      "size": [0.9736, 1.3672, 0.9543],
+      "yaw": 2.9,
+      "dynamic": true,
+      "mass": 13
+    },
+    {
+      "id": "club-chair-north-2",
+      "kind": "furniture",
+      "model": "chair_big_01",
+      "position": [4.9, 0, -5.3],
+      "size": [0.9736, 1.3672, 0.9543],
+      "yaw": -2.7,
+      "dynamic": true,
+      "mass": 13
+    },
+    {
+      "id": "club-table-north",
+      "kind": "furniture",
+      "model": "Table_02",
+      "position": [4.1, 0, -6.5],
+      "size": [1.1225, 1.0588, 0.7619],
+      "yaw": 0
+    },
+    {
+      "id": "club-chair-south-1",
+      "kind": "furniture",
+      "model": "chair_big_01",
+      "position": [3.4, 0, 5.6],
+      "size": [0.9736, 1.3672, 0.9543],
+      "yaw": 0.25,
+      "dynamic": true,
+      "mass": 13
+    },
+    {
+      "id": "club-chair-south-2",
+      "kind": "furniture",
+      "model": "chair_big_01",
+      "position": [4.9, 0, 5.3],
+      "size": [0.9736, 1.3672, 0.9543],
+      "yaw": -0.5,
+      "dynamic": true,
+      "mass": 13
+    },
+    {
+      "id": "club-table-south",
+      "kind": "furniture",
+      "model": "Table_02",
+      "position": [4.1, 0, 6.5],
+      "size": [1.1225, 1.0588, 0.7619],
+      "yaw": 0
+    },
+    {
+      "id": "club-bust-north",
+      "kind": "furniture",
+      "model": "Bust_Pilar_01",
+      "position": [-7.85, 0, -3.1],
+      "size": [0.5238, 1.759, 0.5238],
+      "yaw": 1.5708
+    },
+    {
+      "id": "club-bust-south",
+      "kind": "furniture",
+      "model": "Bust_Pilar_01",
+      "position": [-7.85, 0, 3.1],
+      "size": [0.5238, 1.759, 0.5238],
+      "yaw": 1.5708
+    },
+    {
+      "id": "club-clock",
+      "kind": "furniture",
+      "model": "Clock",
+      "position": [8.2, 0, -2.8],
+      "size": [0.5669, 1.3793, 0.2205],
+      "yaw": -1.5708
+    },
+    {
+      "id": "balcony-column-n-0",
+      "kind": "furniture",
+      "model": "PilarConcrete",
+      "position": [-2.4, 5.02, -7.45],
+      "size": [0.5564, 3.9997, 0.54],
+      "modelScale": 0.86,
+      "yaw": 0,
+      "collider": false
+    },
+    {
+      "id": "balcony-column-n-1",
+      "kind": "furniture",
+      "model": "PilarConcrete",
+      "position": [1.6, 5.02, -7.45],
+      "size": [0.5564, 3.9997, 0.54],
+      "modelScale": 0.86,
+      "yaw": 0,
+      "collider": false
+    },
+    {
+      "id": "balcony-column-n-2",
+      "kind": "furniture",
+      "model": "PilarConcrete",
+      "position": [5.6, 5.02, -7.45],
+      "size": [0.5564, 3.9997, 0.54],
+      "modelScale": 0.86,
+      "yaw": 0,
+      "collider": false
+    },
+    {
+      "id": "balcony-column-s-0",
+      "kind": "furniture",
+      "model": "PilarConcrete",
+      "position": [-2.4, 5.02, 7.45],
+      "size": [0.5564, 3.9997, 0.54],
+      "modelScale": 0.86,
+      "yaw": 3.1416,
+      "collider": false
+    },
+    {
+      "id": "balcony-column-s-1",
+      "kind": "furniture",
+      "model": "PilarConcrete",
+      "position": [1.6, 5.02, 7.45],
+      "size": [0.5564, 3.9997, 0.54],
+      "modelScale": 0.86,
+      "yaw": 3.1416,
+      "collider": false
+    },
+    {
+      "id": "balcony-column-s-2",
+      "kind": "furniture",
+      "model": "PilarConcrete",
+      "position": [5.6, 5.02, 7.45],
+      "size": [0.5564, 3.9997, 0.54],
+      "modelScale": 0.86,
+      "yaw": 3.1416,
+      "collider": false
+    },
+    {
+      "id": "balcony-column-e-0",
+      "kind": "furniture",
+      "model": "PilarConcrete",
+      "position": [7.95, 5.02, -2.6],
+      "size": [0.5564, 3.9997, 0.54],
+      "modelScale": 0.86,
+      "yaw": -1.5708,
+      "collider": false
+    },
+    {
+      "id": "balcony-column-e-1",
+      "kind": "furniture",
+      "model": "PilarConcrete",
+      "position": [7.95, 5.02, 2.6],
+      "size": [0.5564, 3.9997, 0.54],
+      "modelScale": 0.86,
+      "yaw": -1.5708,
+      "collider": false
+    },
+    {
+      "id": "painting-north-w",
+      "kind": "furniture",
+      "model": "Painting",
+      "position": [0.2, 2.1, -7.77],
+      "size": [1.1245, 0.7898, 0.0174],
+      "modelScale": 1.8,
+      "yaw": 0,
+      "collider": false
+    },
+    {
+      "id": "painting-north-e",
+      "kind": "furniture",
+      "model": "Painting",
+      "position": [2.9, 2.1, -7.77],
+      "size": [1.1245, 0.7898, 0.0174],
+      "modelScale": 1.8,
+      "yaw": 0,
+      "collider": false
+    },
+    {
+      "id": "painting-south-w",
+      "kind": "furniture",
+      "model": "Painting",
+      "position": [0.2, 2.1, 7.77],
+      "size": [1.1245, 0.7898, 0.0174],
+      "modelScale": 1.8,
+      "yaw": 3.1416,
+      "collider": false
+    },
+    {
+      "id": "painting-south-e",
+      "kind": "furniture",
+      "model": "Painting",
+      "position": [2.9, 2.1, 7.77],
+      "size": [1.1245, 0.7898, 0.0174],
+      "modelScale": 1.8,
+      "yaw": 3.1416,
+      "collider": false
+    },
+    {
+      "id": "sconce-north-e",
+      "kind": "furniture",
+      "model": "Sconce",
+      "position": [4.2, 2.2, -7.78],
+      "size": [0.7618, 0.5782, 0.3609],
+      "yaw": 0,
+      "collider": false
+    },
+    {
+      "id": "sconce-north-w",
+      "kind": "furniture",
+      "model": "Sconce",
+      "position": [-1.2, 2.2, -7.78],
+      "size": [0.7618, 0.5782, 0.3609],
+      "yaw": 0,
+      "collider": false
+    },
+    {
+      "id": "sconce-south-e",
+      "kind": "furniture",
+      "model": "Sconce",
+      "position": [4.2, 2.2, 7.78],
+      "size": [0.7618, 0.5782, 0.3609],
+      "yaw": 3.1416,
+      "collider": false
+    },
+    {
+      "id": "sconce-south-w",
+      "kind": "furniture",
+      "model": "Sconce",
+      "position": [-1.2, 2.2, 7.78],
+      "size": [0.7618, 0.5782, 0.3609],
+      "yaw": 3.1416,
+      "collider": false
+    }
+  ],
+  "props": [
+    {
+      "id": "gaslight-lantern",
+      "kind": "lightMarker",
+      "position": [0, 5.6, 0],
+      "fixture": false
+    },
+    {
+      "id": "flame-lantern-1",
+      "kind": "flame",
+      "position": [0.13, 5.58, 0],
+      "radius": 0.032
+    },
+    {
+      "id": "flame-lantern-2",
+      "kind": "flame",
+      "position": [-0.13, 5.58, 0],
+      "radius": 0.032
+    },
+    {
+      "id": "flame-lantern-3",
+      "kind": "flame",
+      "position": [0, 5.58, 0.13],
+      "radius": 0.032
+    },
+    {
+      "id": "flame-lantern-4",
+      "kind": "flame",
+      "position": [0, 5.58, -0.13],
+      "radius": 0.032
+    },
+    {
+      "id": "gaslight-sconce-north-e",
+      "kind": "lightMarker",
+      "position": [4.2, 2.58, -7.6],
+      "fixture": false
+    },
+    {
+      "id": "flame-sconce-north-e-a",
+      "kind": "flame",
+      "position": [3.95, 2.58, -7.6],
+      "radius": 0.028
+    },
+    {
+      "id": "flame-sconce-north-e-b",
+      "kind": "flame",
+      "position": [4.45, 2.58, -7.6],
+      "radius": 0.028
+    },
+    {
+      "id": "gaslight-sconce-north-w",
+      "kind": "lightMarker",
+      "position": [-1.2, 2.58, -7.6],
+      "fixture": false
+    },
+    {
+      "id": "flame-sconce-north-w-a",
+      "kind": "flame",
+      "position": [-1.45, 2.58, -7.6],
+      "radius": 0.028
+    },
+    {
+      "id": "flame-sconce-north-w-b",
+      "kind": "flame",
+      "position": [-0.95, 2.58, -7.6],
+      "radius": 0.028
+    },
+    {
+      "id": "gaslight-sconce-south-e",
+      "kind": "lightMarker",
+      "position": [4.2, 2.58, 7.6],
+      "fixture": false
+    },
+    {
+      "id": "flame-sconce-south-e-a",
+      "kind": "flame",
+      "position": [3.95, 2.58, 7.6],
+      "radius": 0.028
+    },
+    {
+      "id": "flame-sconce-south-e-b",
+      "kind": "flame",
+      "position": [4.45, 2.58, 7.6],
+      "radius": 0.028
+    },
+    {
+      "id": "gaslight-sconce-south-w",
+      "kind": "lightMarker",
+      "position": [-1.2, 2.58, 7.6],
+      "fixture": false
+    },
+    {
+      "id": "flame-sconce-south-w-a",
+      "kind": "flame",
+      "position": [-1.45, 2.58, 7.6],
+      "radius": 0.028
+    },
+    {
+      "id": "flame-sconce-south-w-b",
+      "kind": "flame",
+      "position": [-0.95, 2.58, 7.6],
+      "radius": 0.028
+    },
+    {
+      "id": "gaslight-torchere-north",
+      "kind": "lightMarker",
+      "position": [-0.5, 1.95, -7.0],
+      "fixture": false
+    },
+    {
+      "id": "flame-torchere-north",
+      "kind": "flame",
+      "position": [-0.5, 1.95, -7.0],
+      "radius": 0.032
+    },
+    {
+      "id": "gaslight-torchere-south",
+      "kind": "lightMarker",
+      "position": [-0.5, 1.95, 7.0],
+      "fixture": false
+    },
+    {
+      "id": "flame-torchere-south",
+      "kind": "flame",
+      "position": [-0.5, 1.95, 7.0],
+      "radius": 0.032
+    },
+    {
+      "id": "gaslight-landing",
+      "kind": "lightMarker",
+      "position": [-6.72, 5.7, 0],
+      "fixture": false
+    },
+    {
+      "id": "flame-landing-north",
+      "kind": "flame",
+      "position": [-6.72, 5.62, -1.6],
+      "radius": 0.028
+    },
+    {
+      "id": "flame-landing-south",
+      "kind": "flame",
+      "position": [-6.72, 5.62, 1.6],
+      "radius": 0.028
+    }
+  ]
+}

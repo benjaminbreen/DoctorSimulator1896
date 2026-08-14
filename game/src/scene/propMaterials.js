@@ -13,6 +13,7 @@
 
 import * as THREE from 'three';
 import { labelFont } from '../world/labelFonts.js';
+import { marbleSurface, stainedGlassTexture, delftTileTexture, harborMuralTexture } from './textures.js';
 
 const cache = new Map();
 const labels = new Map();
@@ -564,6 +565,63 @@ function mapsFor(spec, size) {
   return sized.get(key);
 }
 
+// Metropolitan Club surfaces: downloaded PBR sets rather than canvas art.
+// `tile` follows the FINISH convention — metres per repeat.
+const METCLUB_SOURCES = {
+  // marble is procedural (marbleSurface); see the branch in materialFor.
+  walnut: { base: '/textures/metclub/walnut', tile: 0.9, roughness: 0.5 },
+  oak: { base: '/textures/metclub/wood-warm', tile: 0.55, roughness: 0.55 },
+  carpet: { base: '/textures/renderer-c/fabrics/velvet', tile: 0.6, roughness: 0.97, fabric: true },
+};
+const metclubSourceSets = new Map();
+const metclubSized = new Map();
+const netherlandSized = new Map();
+
+function metclubMaps(name, size) {
+  const spec = METCLUB_SOURCES[name];
+  if (!spec) return null;
+  if (!metclubSourceSets.has(name)) {
+    const loader = new THREE.TextureLoader();
+    const load = (file, color = false) => {
+      const texture = loader.load(file);
+      texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+      texture.anisotropy = 8;
+      if (color) texture.colorSpace = THREE.SRGBColorSpace;
+      return texture;
+    };
+    // The fabric set uses the renderer-c naming; the metclub sets use _col.
+    const suffix = spec.fabric
+      ? { map: '-albedo.png', normal: '-normal.png', rough: '-roughness.png' }
+      : { map: '_col.webp', normal: '_nrm.webp', rough: '_rough.webp' };
+    metclubSourceSets.set(name, {
+      map: load(spec.base + suffix.map, true),
+      normalMap: load(spec.base + suffix.normal),
+      roughnessMap: spec.rough || spec.fabric ? load(spec.base + suffix.rough) : null,
+    });
+  }
+  const source = metclubSourceSets.get(name);
+  const [sx, sy, sz] = size ?? [1, 1, 1];
+  const across = Math.max(sx, sz);
+  const key = `${name}:${across.toFixed(3)}:${sy.toFixed(3)}`;
+  if (!metclubSized.has(key)) {
+    const u = Math.max(across / spec.tile, 0.35);
+    const v = Math.max(sy / spec.tile, 0.35);
+    const clone = (texture) => {
+      if (!texture) return null;
+      const copy = texture.clone();
+      copy.repeat.set(u, v);
+      copy.needsUpdate = true;
+      return copy;
+    };
+    metclubSized.set(key, {
+      map: clone(source.map),
+      normalMap: clone(source.normalMap),
+      roughnessMap: clone(source.roughnessMap),
+    });
+  }
+  return metclubSized.get(key);
+}
+
 function laboratoryBenchSourceMaps() {
   if (laboratoryBenchSource) return laboratoryBenchSource;
   const loader = new THREE.TextureLoader();
@@ -1019,6 +1077,86 @@ export function materialFor(item) {
       envMapIntensity: 1.7,
       specularIntensity: 1,
     };
+  }
+  if (item.finish === 'netherland:delft') {
+    // Glazed Dutch tile: the map repeats at about 1.1m; glaze keeps it glossy.
+    const [sx, sy, sz] = item.size ?? [1, 1, 1];
+    const across = Math.max(sx, sz);
+    const key = `delft:${across.toFixed(2)}:${sy.toFixed(2)}`;
+    if (!netherlandSized.has(key)) {
+      const copy = delftTileTexture().clone();
+      copy.repeat.set(Math.max(across / 1.1, 0.3), Math.max(sy / 1.1, 0.3));
+      copy.needsUpdate = true;
+      netherlandSized.set(key, copy);
+    }
+    return {
+      color: '#ffffff',
+      map: netherlandSized.get(key),
+      roughness: 0.22,
+      metalness: 0,
+      envMapIntensity: 1.1,
+    };
+  }
+  if (item.finish === 'netherland:mural') {
+    return {
+      color: '#ffffff',
+      map: harborMuralTexture(),
+      roughness: 0.5,
+      metalness: 0,
+      envMapIntensity: 0.55,
+    };
+  }
+  if (item.finish === 'metclub:stainedglass') {
+    const texture = stainedGlassTexture(item.seed ?? 1);
+    return {
+      color: '#ffffff',
+      map: texture,
+      emissive: '#ffffff',
+      emissiveMap: texture,
+      emissiveIntensity: item.emissiveIntensity ?? 0.85,
+      roughness: 0.3,
+      metalness: 0,
+      envMapIntensity: 0.6,
+    };
+  }
+  if (item.finish === 'metclub:marble') {
+    // The same procedural marble the room shell draws, sized to the piece,
+    // so the stair masses match the walls and floor and nothing tiles.
+    const [sx, sy, sz] = item.size ?? [1, 1, 1];
+    const set = marbleSurface(Math.max(sx, sz), Math.max(sy, 0.2), {
+      seed: 29 + Math.round(Math.max(sx, sz) * 7 + sy * 13),
+      base: item.tint ?? '#ddd6c8',
+      roughnessBase: 0.4,
+    });
+    return {
+      color: '#ffffff',
+      map: set.map,
+      roughnessMap: set.roughnessMap,
+      roughness: item.roughness ?? 0.95,
+      metalness: 0,
+      envMapIntensity: item.envMapIntensity ?? 0.9,
+      emissive: '#000000',
+      emissiveIntensity: 0,
+    };
+  }
+  if (item.finish?.startsWith('metclub:')) {
+    const name = item.finish.slice('metclub:'.length);
+    const spec = METCLUB_SOURCES[name];
+    const set = metclubMaps(name, item.size);
+    if (spec && set) {
+      return {
+        color: item.tint ?? '#ffffff',
+        map: set.map,
+        normalMap: set.normalMap,
+        normalScale: new THREE.Vector2(0.5, 0.5),
+        ...(set.roughnessMap ? { roughnessMap: set.roughnessMap } : {}),
+        roughness: item.roughness ?? spec.roughness,
+        metalness: item.metalness ?? 0,
+        envMapIntensity: item.envMapIntensity ?? 0.9,
+        emissive: item.emissive ?? '#000000',
+        emissiveIntensity: item.emissive ? 1.6 : 0,
+      };
+    }
   }
   const spec = FINISH[item.finish] ?? null;
   const set = spec?.texture ? mapsFor(spec, item.size) : null;

@@ -9,6 +9,9 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
+    <!-- The opening reveal waits for this avatar; start its 7.5 MB fetch
+         while the JavaScript bundle initializes instead of after it. -->
+    <link rel="preload" href="/models/tripo-victorian-player.glb?v=carriage-climb-2" as="fetch" crossorigin />
     <title>Ghosts of the Machine Age — Dev Slice</title>
   </head>
   <body>

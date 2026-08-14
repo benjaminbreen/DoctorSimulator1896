@@ -26,6 +26,16 @@ export const gameDebug = {
   // Set by the shot harness to take the camera away from CameraRig:
   // { position: [x,y,z], yaw, pitch, fov }.
   freeCamera: null,
+  // Set only by the headless shot harness. The avatar freezes in a quiet idle
+  // pose so teleporting between candidate compositions cannot leak a jump,
+  // fall, climb, or run animation into the captured frame.
+  shotPose: null,
+  // A screenshot-search-only rotation of the physically derived outdoor sun.
+  // Normal gameplay leaves this null and therefore keeps the historical sky.
+  shotSunAzimuthDeg: null,
+  // Incremented when the shot harness applies a candidate so the PMREM probe
+  // updates before capture instead of retaining the previous candidate's sky.
+  shotEnvironmentRevision: 0,
   camera: null,
   scene: null,
   renderer: null,
@@ -63,12 +73,22 @@ export const gameDebug = {
   },
   room: null,
   actors: { requested: [], loaded: [] },
+  // Live, existing crowd positions exposed for the screenshot harness. The
+  // ordinary game does not read these; Hopper shots use them as composition
+  // anchors instead of inventing extra people.
+  pedestrians: [],
+  shotTrackedPersonId: null,
+  // A shot-only placement of the existing working-woman pedestrian model.
+  // It is mounted only on ?shot=1 pages and never changes normal gameplay.
+  shotWoman: { visible: false, position: [0, 0, 0], yaw: 0 },
+  shotWomanReady: false,
   // Written by HorselessCarriage every frame: carriages is one state
   // {route, x, z, s, lat, speed, yaw} per vehicle; carriage is the first.
   carriage: null,
   carriages: [],
   horseDrawnTraffic: [],
   pushcarts: {},
+  streetPolice: [],
   // Set by PlayerRig so the debug handle can enter instrument mode directly.
   enterInstrument: null,
   // Present while the mobile controls are mounted; the screenshot harness

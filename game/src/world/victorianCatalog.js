@@ -264,5 +264,7 @@ export function pickSurfaces(wealth, wallRoll, floorRoll) {
   };
 }
 
+// A name with an extension is a literal file path; the pack convention
+// appends the channel suffix.
 export const surfaceUrl = (name, kind = 'AlbedoTransparency') =>
-  `/textures/${name}_${kind}.jpg`;
+  /\.(jpg|jpeg|png|webp)$/.test(name) ? `/textures/${name}` : `/textures/${name}_${kind}.jpg`;

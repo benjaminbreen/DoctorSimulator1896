@@ -49,9 +49,7 @@ export const phase1Cast = Object.freeze([
       presentation: { outfitId: 'sack-suit' },
       animation: { body: 'sitting-talking', expression: 'guarded', gaze: 'away', speaking: false },
       asset: { path: '/models/characters/renderer-c-men.glb' },
-      // The current male master faces the opposite direction from the female
-      // master. Keep that asset correction in the recipe until export aligns it.
-      placement: { position: [0.45, 0, -1.7], rotation: [0, 0, 0], scale: 1 },
+      placement: { position: [0.45, 0, -1.7], rotation: [0, Math.PI, 0], scale: 1 },
     }),
   }),
 ]);

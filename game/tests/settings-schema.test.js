@@ -68,6 +68,40 @@ test('ambient occlusion stays off outdoors', () => {
   assert.equal(runtime.values.aoEnabled, false);
 });
 
+test('Central Park starts with the approved outdoor art direction', () => {
+  const runtime = createTuningRuntime(settingsSchema);
+  assert.equal(runtime.values.ambientIntensity, 0.28);
+  assert.equal(runtime.values.sunIntensity, 1.25);
+  assert.equal(runtime.values.skyTurbidity, 6.45);
+  assert.equal(runtime.values.skySaturation, 0.75);
+  assert.equal(runtime.values.skyFill, 1.4);
+  assert.equal(runtime.values.groundBounce, 0.3);
+  assert.equal(runtime.values.outdoorShadowDistance, 50);
+  assert.equal(runtime.values.exposure, 1.0);
+  assert.equal(runtime.values.toneMapping, 'ACESFilmic');
+});
+
+test('reset restores the outdoor preset without changing the game clock', () => {
+  const runtime = createTuningRuntime(settingsSchema);
+  runtime.set('toneMapping', 'AgX');
+  runtime.set('sunIntensity', 2);
+  runtime.set('skyFill', 2);
+  runtime.set('groundBounce', 2);
+  runtime.set('outdoorShadowDistance', 70);
+  runtime.set('exposure', 2);
+  runtime.set('timeOfDay', 12.3);
+
+  runtime.resetToDefaults();
+
+  assert.equal(runtime.values.toneMapping, 'ACESFilmic');
+  assert.equal(runtime.values.sunIntensity, 1.25);
+  assert.equal(runtime.values.skyFill, 1.4);
+  assert.equal(runtime.values.groundBounce, 0.3);
+  assert.equal(runtime.values.outdoorShadowDistance, 50);
+  assert.equal(runtime.values.exposure, 1.0);
+  assert.equal(runtime.values.timeOfDay, 12.3);
+});
+
 test('hero camera has an independent follow profile', () => {
   const byId = new Map(parameters.map((parameter) => [parameter.id, parameter]));
   assert.equal(byId.get('heroSide').default, 0.25);

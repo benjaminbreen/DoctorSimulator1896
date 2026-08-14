@@ -152,6 +152,14 @@ Speech advances the clock and may change disclosure, satisfaction, and the
 patient's willingness to continue. Custom speech is genuine open inquiry. It
 may pursue a subject that none of the three displayed choices mentions.
 
+The appointment has a visible 30-minute action budget. Each card displays its
+cost. The meter changes from gold to amber with ten minutes left, red with five
+minutes left, and purple in overtime. Hovering or focusing a card previews its
+cost on the meter. When authorized time is exhausted, ordinary inquiry is
+replaced by a closing decision: diagnose, deliberately take one five-minute
+overtime period, or arrange a follow-up. A direct patient question must still
+be answered before the player may change the subject or conclude.
+
 No essential diagnosis may depend on guessing a special custom question. The
 required evidence must also be reachable through ordinary questions or
 examination. A custom question may find it sooner, find it by another route,
@@ -167,9 +175,12 @@ such.
 
 ### 5. Diagnosis, treatment, and case record
 
-When the player selects **Consider Treatment**, period diagnoses and treatments
-become available. The player chooses a diagnosis, treatment, and directions,
-then completes the formal case note.
+When the player selects **Consider Treatment**, the three diagnoses and
+treatments most relevant to discovered evidence are shown first. The player
+may expand the complete lists. The player chooses a diagnosis and treatment,
+then signs the record by selecting two or three findings that best support the
+decision. Free prose is optional for authored cases that use this concise
+record format.
 
 The case notebook begins with name, age, and residence. It adds only information
 earned through player actions:
@@ -180,13 +191,17 @@ earned through player actions:
 - possible diagnoses after treatment consideration begins;
 - player-written notes.
 
-The notebook opens automatically when a new patient response or examination
-adds an entry. Repeated questions do not create duplicate entries. Player notes
+New evidence marks the notebook as updated without opening it over the next
+decision. Repeated questions do not create duplicate entries. Player notes
 remain editable and removable and are saved locally.
 
 ### 6. Immediate result
 
-The visit ends with a compact prose card describing the patient's reaction.
+The visit ends with a modal describing the patient's spoken departure and
+reaction. It shows the fee actually received, a color-coded satisfaction score
+out of ten, questions asked, examinations performed, minutes used, and one
+focused strength and improvement. The modal links to the separate one-month
+outcome.
 For example, it may state that the patient felt heard but considered the fee
 poor value and is unlikely to recommend the practice.
 
@@ -327,13 +342,11 @@ adherence, and social consequences.
 
 ## Current implementation
 
-As of 2026-08-12, the game has:
+As of 2026-08-13, the game has:
 
 - a mounted consultation view in the consulting office;
-- Nora Byrne, a playable research-draft authored composite with source
-  provenance and deterministic etiology;
-- two seeded technical patients with deterministic identity, appearance, and
-  draft clinical presentations;
+- Nora Byrne, Samuel Taylor, and Carmela Russo, playable research-draft
+  authored composites with source provenance and deterministic etiologies;
 - fixed interpretation, speech, examination, diagnosis, treatment, and case
   note stages;
 - state-based authored prompt selection, three written speech choices, custom
@@ -343,15 +356,18 @@ As of 2026-08-12, the game has:
 - a case notebook that grows from player actions and opens when a new clinical
   entry is recorded;
 - editable local player notes;
-- an immediate patient-reaction card and a separate one-month outcome for Nora;
+- an immediate patient-reaction card and a separate one-month outcome for each
+  authored case;
 - deterministic local versions of the James assessment and modern debrief;
 - keyboard, pointer, and narrow-screen support.
 
-Nora's source and design record is in [patients/nora-byrne.md](patients/nora-byrne.md).
-Her connective story and modern ground truth are fictional. The technical
-patients and their diagnosis and treatment mappings are test
-fixtures, not verified historical or medical content. Animation parameters are
-not valid clinical observations by themselves.
+The source and design records are in
+[patients/nora-byrne.md](patients/nora-byrne.md),
+[patients/samuel-taylor.md](patients/samuel-taylor.md), and
+[patients/carmela-russo.md](patients/carmela-russo.md). Their connective stories
+and modern ground truths are fictional. The separate procedural records remain
+test fixtures, not verified historical or medical content.
+Animation parameters are not valid clinical observations by themselves.
 
 The following parts of the final design are not yet implemented:
 
@@ -360,7 +376,7 @@ The following parts of the final design are not yet implemented:
 - persistent practice-wide reputation effects;
 - the multi-day practice economy;
 - model-rendered James letters and modern debriefs;
-- additional researched authored patients;
+- additional researched authored patients beyond Nora, Samuel, and Carmela;
 - the future patient role.
 
 ## Acceptance conditions

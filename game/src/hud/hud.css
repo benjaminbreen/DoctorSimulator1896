@@ -2432,6 +2432,41 @@ button.ghud-plate--letters:focus-visible {
   .ghud-clock-hit { min-width: 44px; min-height: 44px; }
 
   .ghud-gauge { min-height: 20px; padding-block: 2px; }
+
+  /* A consultation already owns the lower screen, so its status band keeps
+     only the live information and moves it into one compact row. Ordinary
+     exploration retains the more decorative two-row phone composition. */
+  .ghud--quiet .ghud-bar {
+    box-sizing: border-box;
+    height: 64px;
+    grid-template-columns: 50px auto minmax(46px, 1fr) auto 44px auto;
+    grid-template-areas: 'clock time loc queue letters gauges';
+    align-items: center;
+    row-gap: 0;
+    padding: 5px 8px;
+  }
+
+  .ghud--quiet .ghud-mono-wrap { display: none; }
+  .ghud--quiet .ghud-clock-wrap { width: 50px; padding: 0; }
+  .ghud--quiet .ghud-plate { padding-inline: 3px; }
+  .ghud--quiet .ghud-plate--time,
+  .ghud--quiet .ghud-plate--loc { align-items: center; }
+  .ghud--quiet .ghud-time-big { font-size: 18px; }
+  .ghud--quiet .ghud-time-period { font-size: 7.5px; letter-spacing: 0.1em; }
+  .ghud--quiet .ghud-loc-line { gap: 3px; }
+  .ghud--quiet .ghud-loc-line svg { width: 14px; height: 14px; }
+  .ghud--quiet .ghud-loc-text { font-size: 10.5px; letter-spacing: 0.03em; }
+  .ghud--quiet .ghud-plate--queue { gap: 0; }
+  .ghud--quiet .ghud-count-word { display: none; }
+  .ghud--quiet .ghud-count-badge { width: 22px; height: 22px; font-size: 12px; }
+  .ghud--quiet .ghud-plate--letters { gap: 3px; padding-inline: 2px; }
+  .ghud--quiet .ghud-envelope-img { height: 21px; }
+  .ghud--quiet .ghud-letters-count { font-size: 16px; }
+  .ghud--quiet .ghud-gauges { gap: 4px; padding: 0 2px; }
+  .ghud--quiet .ghud-gauge { min-height: 17px; gap: 4px; padding: 0; }
+  .ghud--quiet .ghud-gauge-icon { width: 14px; }
+  .ghud--quiet .ghud-gauge-icon svg { width: 14px; height: 14px; }
+  .ghud--quiet .ghud-track { width: 54px; height: 7px; }
 }
 
 @container (max-width: 640px) {

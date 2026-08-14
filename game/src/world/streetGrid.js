@@ -4,6 +4,7 @@
 // visible blocks without pretending this is a survey-accurate city model.
 
 import { gasLamp } from './parkCatalog.js';
+import { facadeEntranceLayout } from './facade.js';
 import { buildStreetSurfaceLayout } from './streetSurfaceLayout.js';
 
 export const WORLD_BOUNDS = { minX: -100, maxX: 230, minZ: -85, maxZ: 186 };
@@ -70,7 +71,9 @@ export const STREET_LAMP_SITES = [
   { id: 'plaza-south', x: 79.0, z: 80.5, yaw: Math.PI / 2 },
   { id: 'plaza-east', x: 95.0, z: 76.0, yaw: Math.PI },
   ...[-68, -42, -16, 20, 36, 50].map((z, index) => ({ id: `fifth-park-${index}`, x: 98.0, z, yaw: Math.PI })),
-  ...[-70, -44, -20, 4, 28, 46, 72, 110, 120, 154, 170].map((z, index) => ({ id: `fifth-built-${index}`, x: 108.0, z, yaw: 0 })),
+  // The New Netherland entrance supplies its own paired lamps; keep its stoop
+  // and doorway axis clear instead of dropping a generic city lamp at z=72.
+  ...[-70, -44, -20, 4, 28, 46, 110, 120, 154, 170].map((z, index) => ({ id: `fifth-built-${index}`, x: 108.0, z, yaw: 0 })),
   ...[-84, -62, -6, 22, 50].map((x, index) => ({ id: `cps-park-${index}`, x, z: 85.0, yaw: Math.PI / 2 })),
   ...[-84, -66, -14, 12, 38, 64, 82, 124, 150, 176, 202].map((x, index) => ({ id: `cps-built-${index}`, x, z: 97.0, yaw: -Math.PI / 2 })),
 ];
@@ -386,25 +389,37 @@ function buildStreets() {
     building('hotel-new-netherland', 120.5, 72, 20.6, 36, 17.6, {
       facadeStyle: 1, roof: 'cone', awnings: true,
       landmarkLabel: 'New Netherland Hotel', landmarkModel: 'new-netherland-hotel',
+      landmarkLocation: 'Fifth Avenue at East 59th Street',
+      wikipediaTitle: 'Hotel New Netherland',
       shadows: false, ...ALL_FACES,
     }),
     building('hotel-savoy', 119.5, 105.9, 18.6, 32, 13.4, {
       facadeStyle: 1, roof: 'mansard', awnings: true,
       landmarkLabel: 'Hotel Savoy', landmarkModel: 'savoy-hotel',
+      landmarkLocation: 'Fifth Avenue at East 59th Street',
       shadows: false, ...ALL_FACES,
     }),
     building('bolkenhayn-apartments', 119, 120.4, 17.6, 22, 12.8, {
       facadeStyle: 2, roof: 'mansard', awnings: true,
       landmarkLabel: 'The Bolkenhayn Apartments', landmarkModel: 'bolkenhayn-apartments',
+      landmarkLocation: 'Fifth Avenue near East 58th Street',
       shadows: false, ...ALL_FACES,
     }),
     building('plaza-hotel-1890', 84.8, 107.1, 22, 17, 15.8, {
       facadeStyle: 2, roof: 'mansard',
-      landmarkLabel: 'The Plaza Hotel (1890)', ...ALL_FACES,
+      landmarkLabel: 'The Plaza Hotel (1890)',
+      landmarkLocation: 'Fifth Avenue between West 58th and 59th Streets',
+      // Wikipedia's Plaza Hotel article covers the later 1907 building on
+      // the same site as well as the first hotel represented in this scene.
+      wikipediaTitle: 'Plaza Hotel',
+      wikipediaContext: 'The article covers both Plaza hotels built on this site; the game shows the first, completed in 1890.',
+      ...ALL_FACES,
     }),
     building('metropolitan-club', 122, 42, 25, 17, 16, {
       facadeStyle: 4, landmarkLabel: 'Metropolitan Club',
       landmarkModel: 'metropolitan-club',
+      landmarkLocation: 'Fifth Avenue at East 60th Street',
+      wikipediaTitle: 'Metropolitan Club (New York City)',
       // The main block occupies the west side; these proxies preserve the
       // open landscaped setback and eastern entrance court for collision.
       colliderBoxes: [
@@ -418,6 +433,8 @@ function buildStreets() {
     building('vanderbilt-mansion', 84.8, 157, 22, 19, 27.6, {
       facadeStyle: 2, roof: 'mansard', frontageFamily: 'mansion',
       landmarkLabel: 'Cornelius Vanderbilt II Mansion', landmarkModel: 'vanderbilt-mansion',
+      landmarkLocation: 'Fifth Avenue between West 57th and 58th Streets',
+      wikipediaTitle: 'Cornelius Vanderbilt II House',
       shadows: false, ...ALL_FACES,
     }),
     // The 57th-to-58th Street block keeps a compressed portion of Mary Mason
@@ -427,11 +444,13 @@ function buildStreets() {
     building('marble-row', 122.2, 149.5, 24, 15.5, 12.6, {
       facadeStyle: 4, frontageFamily: 'marble', rowCount: 4,
       landmarkLabel: 'Marble Row', landmarkModel: 'marble-row',
+      landmarkLocation: 'Fifth Avenue between East 57th and 58th Streets',
       shadows: false, ...ALL_FACES,
     }),
     building('huntington-mansion', 122.2, 163.5, 24, 18.5, 14.8, {
       facadeStyle: 0, frontageFamily: 'mansion',
       landmarkLabel: 'Collis P. Huntington Mansion', landmarkModel: 'huntington-mansion',
+      landmarkLocation: 'Fifth Avenue at East 57th Street',
       shadows: false, ...ALL_FACES,
     }),
     // The Gerry house closes the Fifth/61st corner immediately north of the
@@ -439,18 +458,26 @@ function buildStreets() {
     building('gerry-mansion', 122.5, 23.5, 24.6, 18.5, 12.6, {
       facadeStyle: 2, frontageFamily: 'mansion',
       landmarkLabel: 'Elbridge T. Gerry Mansion', landmarkModel: 'gerry-mansion',
+      landmarkLocation: 'Fifth Avenue at East 61st Street',
+      wikipediaTitle: 'Elbridge T. Gerry Mansion',
       shadows: false, ...ALL_FACES,
     }),
     // Three wings and two narrow courts suggest the larger Navarro complex
     // beside the new Seventh Avenue edge without building all eight houses.
     building('navarro-flats-a', -78, 107.2, 13, 21, 16, {
-      facadeStyle: 1, roof: 'cone', landmarkLabel: 'Navarro Flats', ...ALL_FACES,
+      facadeStyle: 1, roof: 'cone', landmarkLabel: 'Navarro Flats',
+      landmarkLocation: 'Central Park South between Sixth and Seventh Avenues',
+      ...ALL_FACES,
     }),
     building('navarro-flats-b', -64.5, 107.2, 12, 22, 16, {
-      facadeStyle: 1, roof: 'mansard', landmarkLabel: 'Navarro Flats', ...ALL_FACES,
+      facadeStyle: 1, roof: 'mansard', landmarkLabel: 'Navarro Flats',
+      landmarkLocation: 'Central Park South between Sixth and Seventh Avenues',
+      ...ALL_FACES,
     }),
     building('navarro-flats-c', -52.6, 107.2, 10.8, 20, 16, {
-      facadeStyle: 1, roof: 'cone', landmarkLabel: 'Navarro Flats', ...ALL_FACES,
+      facadeStyle: 1, roof: 'cone', landmarkLabel: 'Navarro Flats',
+      landmarkLocation: 'Central Park South between Sixth and Seventh Avenues',
+      ...ALL_FACES,
     }),
   );
 
@@ -511,6 +538,30 @@ function buildStreets() {
   serviceCourt(items, 'marble-row-yards', 141, 149.5, 13.2, 12.6, { divisions: 1, houses: 1 });
   serviceCourt(items, 'huntington-rear-court', 141, 163.5, 13.2, 14.8, { divisions: 1, houses: 0 });
   serviceCourt(items, 'madison-south-yards', 206.2, 157, 39.2, 9.6, { divisions: 2, houses: 2 });
+
+  // One smooth ramp plus, on raised stoops, two side blockers. These records
+  // are generated from the exact entrance layout WindowField draws: no
+  // per-tread or triangle-mesh collision, and no visual/collider drift.
+  for (const entry of items.filter(
+    (item) => item.kind === 'backdrop' && item.frontageFamily && !item.landmarkModel,
+  )) {
+    const entrance = facadeEntranceLayout(entry);
+    if (!entrance) continue;
+    for (const collider of entrance.colliders) {
+      items.push({
+        id: `${entry.id}-entrance-${collider.role}`,
+        kind: 'entrance-collider',
+        position: collider.position,
+        size: collider.size,
+        colliderQuaternion: collider.quaternion,
+        render: false,
+        absoluteY: true,
+        cameraOccluder: false,
+        entranceBuildingId: entry.id,
+        entranceColliderRole: collider.role,
+      });
+    }
+  }
 
   for (const site of STREET_LAMP_SITES) items.push(...lamp(site.id, site.x, site.z, site.yaw));
 

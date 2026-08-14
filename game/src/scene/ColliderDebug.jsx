@@ -10,7 +10,7 @@ export default function ColliderDebug({ room, runtime }) {
   // Furniture may be several boxes; draw what the colliders actually are.
   for (const item of room.furnitureBoxes) {
     if (item.collider === false || item.dynamic) continue;
-    if (item.shape || item.rotation) {
+    if (item.shape || item.rotation || item.colliderQuaternion) {
       boxes.push(item);
       continue;
     }
@@ -32,7 +32,12 @@ export default function ColliderDebug({ room, runtime }) {
   return (
     <group ref={groupRef} visible={false}>
       {boxes.map((box) => (
-        <mesh key={box.id} position={box.position} rotation={[0, box.yaw ?? 0, 0]}>
+        <mesh
+          key={box.id}
+          position={box.position}
+          rotation={box.colliderQuaternion ? undefined : [0, box.yaw ?? 0, 0]}
+          quaternion={box.colliderQuaternion}
+        >
           <boxGeometry args={box.size} />
           <meshBasicMaterial color="#3ddc84" wireframe depthTest={false} />
         </mesh>

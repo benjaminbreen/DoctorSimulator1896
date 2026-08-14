@@ -2,10 +2,12 @@ import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import {
+  facadeEntranceLayout,
   facadeFaceRole,
-  facadeLayout,
+  facadeLayoutForFace,
   facadeWidth,
   facadeWindowEntries,
+  FACES,
 } from '../world/facade.js';
 import { solarRamps } from '../world/solar.js';
 import { ALLEY_LINES } from '../world/streetGrid.js';
@@ -16,15 +18,6 @@ import { terrainHeight } from '../world/terrain.js';
 // bucketed into a handful of InstancedMeshes, so the whole street costs
 // single-digit draw calls. Positions follow facadeLayout, so the openings and
 // their dressing always agree without baking them into a low-resolution map.
-
-// Outward normal and the axis u runs along, matching BoxGeometry UVs
-// (side faces mirror horizontally).
-const FACES = {
-  '+z': { normal: [0, 0, 1], right: [1, 0, 0], yaw: 0 },
-  '-z': { normal: [0, 0, -1], right: [-1, 0, 0], yaw: Math.PI },
-  '+x': { normal: [1, 0, 0], right: [0, 0, -1], yaw: Math.PI / 2 },
-  '-x': { normal: [-1, 0, 0], right: [0, 0, 1], yaw: -Math.PI / 2 },
-};
 
 // Sash and stone tones per facade style (brownstone, red brick, pale stone,
 // dark brownstone, marble, gray ashlar). Sashes are painted wood, dark in
@@ -48,6 +41,7 @@ const LOWER_GLASS_TINTS = ['#525b58', '#4f5755', '#59605b', '#4b5352', '#5d5e57'
 const ROOM_GLASS_TINTS = ['#5e5a50', '#57554d', '#625d51', '#53534c', '#675f51'];
 const DEEP_ROOM_TINTS = ['#494b47', '#454943', '#514d43', '#403f3a'];
 const FURNITURE_COLORS = ['#302821', '#392d24', '#282622', '#423429'];
+const DOOR_COLORS = ['#35261d', '#3d2920', '#28342d', '#432626', '#302b3b'];
 // Splay per sash, in radians. Old windows never sat flush in their openings,
 // and non-aligned reflections are the whole difference between a wall of
 // glass and a painted grid of rectangles. Keep it under a degree: much more
@@ -197,6 +191,22 @@ function makeAwningTexture(stripe) {
   return texture;
 }
 
+// A unit stone cheek wall whose top falls toward the pavement. It shares one
+// InstancedMesh across every entrance, preserving the batched facade budget.
+function makeCheekGeometry() {
+  const geometry = new THREE.BoxGeometry(1, 1, 1);
+  const positions = geometry.attributes.position;
+  for (let index = 0; index < positions.count; index += 1) {
+    if (positions.getY(index) < 0) positions.setY(index, 0);
+    else positions.setY(index, positions.getZ(index) < 0 ? 1 : 0.2);
+  }
+  positions.needsUpdate = true;
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
 const scratchMatrix = new THREE.Matrix4();
 const scratchPos = new THREE.Vector3();
 const scratchQuat = new THREE.Quaternion();
@@ -246,6 +256,7 @@ export default function WindowField({ items, runtime }) {
     const cloths = [];
     const bayBodies = [];
     const railings = [];
+    const cheekWalls = [];
     const awningsRed = [];
     const awningsGreen = [];
     const plants = [];
@@ -272,7 +283,8 @@ export default function WindowField({ items, runtime }) {
         const serviceFace = faceRole === 'rear' || faceRole === 'end';
         const ornateFace = !serviceFace;
         const faceWidth = facadeWidth(item.size, token);
-        const layout = facadeLayout(faceWidth, sy);
+        const entrance = streetFront ? facadeEntranceLayout(item, token) : null;
+        const layout = entrance?.layout ?? facadeLayoutForFace(item, token);
         const halfDepth = (token === '+z' || token === '-z' ? sz : sx) / 2;
         const place = (u, vPx, out) => [
           cx + face.right[0] * (u - 0.5) * faceWidth + face.normal[0] * (halfDepth + out),
@@ -547,9 +559,8 @@ export default function WindowField({ items, runtime }) {
 
         // Iron areaway railing along the front, broken at the stoop.
         if (canShutter && streetFront) {
-          const door = layout.ground.find((win) => win.isDoor);
-          const doorU = door ? (door.x + door.w / 2) / layout.texW : 0.5;
-          const gapU = door ? (((door.doorW ?? door.w) / layout.texW) * 1.6) : 0;
+          const doorU = entrance?.u ?? 0.5;
+          const gapU = entrance ? (entrance.stepWidth / 2 + 0.15) / faceWidth : 0;
           const railOut = 1.15;
           const railH = 0.78;
           const baseY = cy - sy / 2;
@@ -592,62 +603,116 @@ export default function WindowField({ items, runtime }) {
           }
         }
 
-        // Entrance on the street face: brownstone rows get a high stoop with
-        // cheek walls; the landmarks get a low platform. Both get a stone
-        // door surround.
-        if (streetFront) {
-          const door = layout.ground.find((win) => win.isDoor);
-          if (door) {
-            const uDoor = (door.x + door.w / 2) / layout.texW;
-            const doorW = ((door.doorW ?? door.w) / layout.texW) * faceWidth;
-            const baseY = cy - sy / 2;
-            const stone = jitterColor(sillColor, seed * 1.7, 0.08);
-            const stoop = canShutter;
-            if (stoop) {
-              for (let step = 0; step < 5; step += 1) {
-                const depth = 1.5 - step * 0.24;
-                const height = 0.19 * (step + 1);
-                const [px, , pz] = place(uDoor, 0, depth / 2);
-                pushInstance(trimBoxes, px, baseY + height / 2, pz, face.yaw, doorW * 1.6, height, depth, stone);
-              }
-              for (const side of [-1, 1]) {
-                const uSide = uDoor + (side * doorW * 0.95) / faceWidth;
-                const [wx, , wz] = place(uSide, 0, 0.8);
-                pushInstance(trimBoxes, wx, baseY + 0.55, wz, face.yaw, 0.14, 1.1, 1.6, stone);
-              }
-            } else {
-              for (let step = 0; step < 2; step += 1) {
-                const depth = 1.2 - step * 0.5;
-                const height = 0.16 * (step + 1);
-                const [px, , pz] = place(uDoor, 0, depth / 2);
-                pushInstance(trimBoxes, px, baseY + height / 2, pz, face.yaw, doorW * 2.2, height, depth, stone);
-              }
-            }
-            const doorBase = baseY + (stoop ? 0.95 : 0.32);
-            const pilasterH = stoop ? 2.4 : 2.8;
-            const [dx, , dz] = place(uDoor, 0, 0.025);
-            const doorColor = jitterColor('#35261d', seed * 4.7, 0.08);
-            pushInstance(openings, dx, doorBase + pilasterH / 2, dz, face.yaw, doorW, pilasterH, 1, doorColor);
+        // Every generated entrance comes from the same deterministic record
+        // used by physics. All pieces join existing instance batches except
+        // the tapered stone cheeks, which cost one draw call for the street.
+        if (entrance) {
+          const {
+            u: uDoor, baseY, rise, doorWidth: doorW, stepWidth,
+            doorHeight, transomHeight, surround, panelRows, panelColumns,
+          } = entrance;
+          const stone = jitterColor(sillColor, seed * 1.7, 0.08);
+          const iron = '#26292c';
 
-            // Shallow rails and stiles keep the entrance readable at close
-            // range without adding a door material or draw call.
-            const panelColor = jitterColor(frameColor, seed * 6.1, 0.05);
-            for (const y of [0.22, 0.5, 0.78]) {
-              const [rx, , rz] = place(uDoor, 0, 0.075);
-              pushInstance(trimBoxes, rx, doorBase + pilasterH * y, rz, face.yaw, doorW * 0.78, 0.055, 0.055, panelColor);
-            }
+          for (const step of entrance.steps) {
+            pushInstance(
+              trimBoxes, ...step.position, step.yaw,
+              ...step.size, stone,
+            );
+          }
+          for (const cheek of entrance.stoneCheeks) {
+            pushInstance(
+              cheekWalls, ...cheek.position, cheek.yaw,
+              ...cheek.size, stone,
+            );
+          }
+          for (const rail of entrance.rails) {
+            pushInstance(
+              railings, ...rail.position, rail.yaw,
+              ...rail.size, iron, 0, rail.pitch,
+            );
+          }
+
+          const doorBase = baseY + rise;
+          const woodHeight = doorHeight - transomHeight;
+          const [dx, , dz] = place(uDoor, 0, 0.025);
+          const doorColor = jitterColor(
+            DOOR_COLORS[entrance.doorColor % DOOR_COLORS.length], seed * 4.7, 0.07,
+          );
+          pushInstance(openings, dx, doorBase + woodHeight / 2, dz, face.yaw, doorW, woodHeight, 1, doorColor);
+
+          // Panel rails, edge stiles, and the occasional centre stile all use
+          // the ordinary trim batch rather than a door-specific material.
+          const panelColor = jitterColor(frameColor, seed * 6.1, 0.05);
+          for (const y of panelRows) {
+            const [rx, , rz] = place(uDoor, 0, 0.075);
+            pushInstance(trimBoxes, rx, doorBase + woodHeight * y, rz, face.yaw, doorW * 0.78, 0.055, 0.055, panelColor);
+          }
+          for (const side of [-1, 1]) {
+            const uStile = uDoor + (side * doorW * 0.39) / faceWidth;
+            const [px, , pz] = place(uStile, 0, 0.075);
+            pushInstance(trimBoxes, px, doorBase + woodHeight / 2, pz, face.yaw, 0.055, woodHeight * 0.9, 0.055, panelColor);
+          }
+          if (panelColumns === 2) {
+            const [px, , pz] = place(uDoor, 0, 0.076);
+            pushInstance(trimBoxes, px, doorBase + woodHeight / 2, pz, face.yaw, 0.05, woodHeight * 0.72, 0.055, panelColor);
+          }
+
+          const pilasterW = surround === 'corniced' ? 0.22 : 0.17;
+          for (const side of [-1, 1]) {
+            const uP = uDoor + (side * doorW * 0.62) / faceWidth;
+            const [px, , pz] = place(uP, 0, 0.07);
+            pushInstance(trimBoxes, px, doorBase + doorHeight / 2, pz, face.yaw, pilasterW, doorHeight, 0.14, stone);
+          }
+          const [ex, , ez] = place(uDoor, 0, 0.09);
+          const headH = surround === 'corniced' ? 0.34 : 0.25;
+          pushInstance(trimBoxes, ex, doorBase + doorHeight + headH / 2, ez, face.yaw, doorW * 1.65, headH, 0.18, stone);
+          if (surround === 'corniced') {
+            const [cx2, , cz2] = place(uDoor, 0, 0.15);
+            pushInstance(trimBoxes, cx2, doorBase + doorHeight + headH + 0.06, cz2, face.yaw, doorW * 1.95, 0.12, 0.3, stone);
+          }
+
+          if (transomHeight > 0) {
+            const transomY = doorBase + woodHeight + transomHeight / 2;
+            const [tx, , tz] = place(uDoor, 0, 0.035);
+            pushInstance(openings, tx, transomY, tz, face.yaw, doorW, transomHeight, 1, '#141713');
+            const [glassX, , glassZ] = place(uDoor, 0, 0.051);
+            pushInstance(glass, glassX, transomY, glassZ, face.yaw, doorW * 0.84, transomHeight * 0.65, 1, '#626a63');
             for (const side of [-1, 1]) {
-              const uPanel = uDoor + (side * doorW * 0.34) / faceWidth;
-              const [px, , pz] = place(uPanel, 0, 0.075);
-              pushInstance(trimBoxes, px, doorBase + pilasterH / 2, pz, face.yaw, 0.055, pilasterH * 0.72, 0.055, panelColor);
+              const uBar = uDoor + (side * doorW * 0.44) / faceWidth;
+              const [bx, , bz] = place(uBar, 0, 0.065);
+              pushInstance(trimBoxes, bx, transomY, bz, face.yaw, 0.045, transomHeight * 0.86, 0.045, panelColor);
             }
+          }
+
+          // Brass plate, knob, and occasional boot scraper are tiny boxes in
+          // the existing ironwork batch, so their variety has no draw-call cost.
+          const hardwareU = uDoor + (entrance.brassSide * doorW * 0.3) / faceWidth;
+          const [hx, , hz] = place(hardwareU, 0, 0.095);
+          pushInstance(railings, hx, doorBase + woodHeight * 0.48, hz, face.yaw, 0.075, 0.2, 0.04, '#b59a54');
+          const [knobX, , knobZ] = place(hardwareU, 0, 0.14);
+          pushInstance(railings, knobX, doorBase + woodHeight * 0.45, knobZ, face.yaw, 0.06, 0.06, 0.07, '#d0b563');
+
+          if (entrance.bootScraper) {
+            const scraperU = uDoor - (entrance.brassSide * stepWidth * 0.37) / faceWidth;
             for (const side of [-1, 1]) {
-              const uP = uDoor + (side * doorW * 0.62) / faceWidth;
-              const [px, , pz] = place(uP, 0, 0.07);
-              pushInstance(trimBoxes, px, doorBase + pilasterH / 2, pz, face.yaw, 0.2, pilasterH, 0.14, stone);
+              const uLeg = scraperU + (side * 0.1) / faceWidth;
+              const [sx2, , sz2] = place(uLeg, 0, 0.2);
+              pushInstance(railings, sx2, doorBase + 0.11, sz2, face.yaw, 0.025, 0.22, 0.025, iron);
             }
-            const [ex, , ez] = place(uDoor, 0, 0.09);
-            pushInstance(trimBoxes, ex, doorBase + pilasterH + 0.17, ez, face.yaw, doorW * 1.7, 0.34, 0.18, stone);
+            const [sx2, , sz2] = place(scraperU, 0, 0.2);
+            pushInstance(railings, sx2, doorBase + 0.21, sz2, face.yaw, 0.24, 0.025, 0.03, iron);
+          }
+
+          if (entrance.hood) {
+            const hoodY = doorBase + doorHeight + 0.36;
+            const [canopyX, , canopyZ] = place(uDoor, 0, 0.34);
+            pushInstance(trimBoxes, canopyX, hoodY, canopyZ, face.yaw, doorW * 1.65, 0.11, 0.72, stone);
+            for (const side of [-1, 1]) {
+              const supportU = uDoor + (side * doorW * 0.68) / faceWidth;
+              const [supportX, , supportZ] = place(supportU, 0, 0.34);
+              pushInstance(railings, supportX, hoodY - 0.2, supportZ, face.yaw, 0.035, 0.035, 0.72, iron, 0, 0.58);
+            }
           }
         }
 
@@ -762,6 +827,9 @@ export default function WindowField({ items, runtime }) {
         color: '#ffffff', map: frameTexture, alphaTest: 0.4, roughness: 0.85,
       })),
       buildMesh(trimBoxes, box, new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.9 }), true),
+      buildMesh(cheekWalls, makeCheekGeometry(), new THREE.MeshStandardMaterial({
+        color: '#ffffff', roughness: 0.9,
+      }), true),
       buildMesh(shutters, box, new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.9 }), true),
       buildMesh(ropes, box, new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.95 })),
       buildMesh(bayBodies, box, new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.85 }), true),

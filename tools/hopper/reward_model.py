@@ -15,22 +15,36 @@ import numpy as np
 
 
 class RewardModel:
-    def __init__(self, weights, bias, low, high, samples, holdout_r):
+    def __init__(self, weights, bias, low, high, samples, holdout_r, training_zones=None):
         self.weights = np.asarray(weights, dtype=np.float64)
         self.bias = float(bias)
         self.low = float(low)
         self.high = float(high)
         self.samples = int(samples)
         self.holdout_r = float(holdout_r)
+        self.training_zones = sorted(set(str(zone) for zone in (training_zones or [])))
 
     @classmethod
-    def fit(cls, embeddings, ratings, alpha=1.0, holdout=0.2, seed=0):
+    def fit(cls, embeddings, ratings, alpha=1.0, holdout=0.2, seed=0, groups=None):
         x = np.asarray(embeddings, dtype=np.float64)
         y = np.asarray(ratings, dtype=np.float64)
         rng = np.random.default_rng(seed)
         order = rng.permutation(len(y))
-        cut = max(1, int(len(y) * holdout))
-        test, train = order[:cut], order[cut:]
+        if groups is None:
+            cut = max(1, int(len(y) * holdout))
+            test, train = order[:cut], order[cut:]
+            training_zones = []
+        else:
+            groups = np.asarray(groups, dtype=str)
+            test_rows = []
+            for group in sorted(set(groups)):
+                rows = rng.permutation(np.flatnonzero(groups == group))
+                count = min(len(rows) - 1, max(1, int(len(rows) * holdout))) if len(rows) > 1 else 0
+                test_rows.extend(rows[:count])
+            test = np.asarray(sorted(test_rows), dtype=int)
+            test_set = set(test_rows)
+            train = np.asarray([row for row in order if row not in test_set], dtype=int)
+            training_zones = sorted(set(groups))
 
         def solve(rows):
             design = np.hstack([x[rows], np.ones((len(rows), 1))])
@@ -48,7 +62,7 @@ class RewardModel:
             holdout_r = float("nan")
 
         final = solve(order)
-        return cls(final[:-1], final[-1], y.min(), y.max(), len(y), holdout_r)
+        return cls(final[:-1], final[-1], y.min(), y.max(), len(y), holdout_r, training_zones)
 
     def score(self, embedding):
         """0..1, with the rating scale's own range as the endpoints."""
@@ -57,7 +71,8 @@ class RewardModel:
         return float(np.clip((raw - self.low) / span, 0.0, 1.0))
 
     def describe(self):
-        return f"{self.samples} ratings, holdout r={self.holdout_r:.2f}"
+        coverage = f", {len(self.training_zones)} zones" if self.training_zones else ""
+        return f"{self.samples} ratings, holdout r={self.holdout_r:.2f}{coverage}"
 
     def save(self, path):
         with open(path, "w") as handle:
@@ -68,6 +83,7 @@ class RewardModel:
                 "high": self.high,
                 "samples": self.samples,
                 "holdout_r": self.holdout_r,
+                "training_zones": self.training_zones,
             }, handle)
 
     @classmethod
@@ -75,4 +91,4 @@ class RewardModel:
         with open(path) as handle:
             data = json.load(handle)
         return cls(data["weights"], data["bias"], data["low"], data["high"],
-                   data["samples"], data["holdout_r"])
+                   data["samples"], data["holdout_r"], data.get("training_zones"))

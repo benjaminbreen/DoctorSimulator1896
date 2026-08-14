@@ -8,7 +8,7 @@ import PropMaterial from './PropMaterial.jsx';
 import MetropolitanClub from './MetropolitanClub.jsx';
 import GildedAgeLandmarks, { isGildedAgeLandmark } from './GildedAgeLandmarks.jsx';
 import { getInteraction, subscribe } from '../world/interaction.js';
-import { notice } from '../world/notices.js';
+import { identifyLandmark } from '../world/landmarkInformation.js';
 import {
   createFacadeMaterial,
   FACADE_TEXTURE_URLS,
@@ -55,17 +55,7 @@ function Backdrop({ item, facadeTextures }) {
   const chimneys = 1 + (seed % 3);
   const castsShadow = item.shadows ?? true;
   const identify = item.landmarkLabel
-    ? (event) => {
-        // React Three Fiber measures pointer travel between down and up. A
-        // camera-turn drag can end on a building, but is not an identification.
-        if ((event.delta ?? 0) > 5) return;
-        event.stopPropagation();
-        notice(item.landmarkLabel, {
-          key: 'building-identification',
-          seconds: 4,
-          detail: 'Landmark',
-        });
-      }
+    ? (event) => identifyLandmark(item, event)
     : undefined;
   return (
     <group
@@ -163,7 +153,17 @@ function FacadeBatch({ entries, facadeTextures }) {
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   }, [dummy, entries]);
   return (
-    <instancedMesh ref={meshRef} args={[undefined, undefined, entries.length]} receiveShadow>
+    // These 131 street buildings collapse to seven material batches, so the
+    // complete masses can afford to cast. Leaving this off did not remove
+    // building shadows altogether: WindowField's projecting trim still cast,
+    // producing stray sill-and-stoop marks with no wall silhouette around
+    // them.
+    <instancedMesh
+      ref={meshRef}
+      args={[undefined, undefined, entries.length]}
+      castShadow
+      receiveShadow
+    >
       <boxGeometry args={[1, 1, 1]} />
       <primitive attach="material" object={material} />
     </instancedMesh>
@@ -191,7 +191,7 @@ function MansardBatch({ entries }) {
     mesh.instanceMatrix.needsUpdate = true;
   }, [dummy, entries]);
   return (
-    <instancedMesh ref={meshRef} args={[undefined, undefined, entries.length]} receiveShadow>
+    <instancedMesh ref={meshRef} args={[undefined, undefined, entries.length]} castShadow receiveShadow>
       <coneGeometry args={[1, 1, 4]} />
       <meshStandardMaterial color="#43454c" roughness={0.9} />
     </instancedMesh>
@@ -296,6 +296,15 @@ function ItemCollider({ item }) {
   if (item.shape === 'cylinder' || item.shape === 'tree') {
     return <CylinderCollider args={[item.size[1] / 2, item.size[0] / 2]} position={item.position} />;
   }
+  if (item.colliderQuaternion) {
+    return (
+      <CuboidCollider
+        args={[item.size[0] / 2, item.size[1] / 2, item.size[2] / 2]}
+        position={item.position}
+        quaternion={item.colliderQuaternion}
+      />
+    );
+  }
   // Tilted props (planks, awnings) keep a single box: the compound offsets
   // below only rotate about Y.
   if (item.rotation) {
@@ -373,7 +382,7 @@ function DynamicItem({ item, material }) {
 // Placeholder props: box, cylinder, sphere, or cone per blueprint entry, mesh
 // and collider from the same data. `collider: false` marks decor, `dynamic`
 // marks a piece loose enough to push around.
-export default function Furniture({ items }) {
+export default function Furniture({ items, runtime }) {
   const hiddenGroup = useHiddenGroup();
   const [barkCol, barkNrm, brickCol, pavingCol, ...facadeSources] = useLoader(THREE.TextureLoader, [
     '/textures/bark_col.webp',
@@ -451,7 +460,7 @@ export default function Furniture({ items }) {
     <group>
       <BlockInfill items={items} />
       <ProceduralFacades items={items} facadeTextures={maps.facades} />
-      <GildedAgeLandmarks items={items} facadeTextures={maps.facades} />
+      <GildedAgeLandmarks items={items} facadeTextures={maps.facades} runtime={runtime} />
       <RigidBody type="fixed" colliders={false}>
         {solid.map((item) => (
           <ItemCollider key={item.id} item={item} />
@@ -490,6 +499,9 @@ export default function Furniture({ items }) {
             key={item.id}
             position={item.position}
             rotation={item.rotation ?? [0, item.yaw ?? 0, 0]}
+            onClick={item.landmarkLabel
+              ? (event) => identifyLandmark(item, event)
+              : undefined}
             castShadow={item.collider !== false || item.shape === 'sphere'}
             receiveShadow
           >

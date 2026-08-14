@@ -42,13 +42,55 @@
   "walls": [],
   "transitions": [
     {
-      "id": "to-foyer",
-      "label": "Back to the practice (Scholars' Gate)",
+      "id": "to-metropolitan-club",
+      "label": "Enter the Metropolitan Club",
       "position": [
-        90,
-        74
+        129.4,
+        43.45
       ],
-      "radius": 3.5,
+      "radius": 1.7,
+      "to": {
+        "zone": "metropolitan-club-lobby",
+        "spawn": [
+          6.2,
+          0,
+          0
+        ],
+        "facing": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "to-new-netherland",
+      "label": "Enter the New Netherland Hotel",
+      "position": [
+        109.2,
+        70.9
+      ],
+      "radius": 1.7,
+      "to": {
+        "zone": "new-netherland-lobby",
+        "spawn": [
+          -5.4,
+          0,
+          0
+        ],
+        "facing": [
+          1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "to-foyer",
+      "label": "Enter the lobby of your building",
+      "position": [
+        54.3,
+        97.9
+      ],
+      "radius": 1.5,
       "to": {
         "zone": "foyer",
         "spawn": [

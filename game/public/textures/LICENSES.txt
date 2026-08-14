@@ -14,6 +14,15 @@ OpenAI ImageGen, generated for this project on August 11, 2026
   textures/street/gutter-stones_*
   Source swatches and prompt summary: assets/source/street-materials/
 
+OpenAI ImageGen, generated for this project on August 13, 2026
+  textures/architecture/buff-limestone_*
+  The color source was made seamless and used to derive the normal and
+  roughness maps locally.
+
+textures/metclub/marble_* — "Marble 012", ambientCG (ambientcg.com), CC0 (1K JPG source).
+textures/metclub/walnut_* — "Wood 067", ambientCG (ambientcg.com), CC0 (1K JPG source).
+textures/metclub/wood-warm_* — "Wood 026", ambientCG (ambientcg.com), CC0 (1K JPG source).
+
 slate_col.jpg / slate_nrm.jpg — "Roof Slates 02", Poly Haven (polyhaven.com/a/roof_slates_02), CC0.
 planks_col.jpg / planks_nrm.jpg — "Old Planks 02", Poly Haven (polyhaven.com/a/old_planks_02), CC0.
 shingle_col.jpg / shingle_nrm.jpg — "Wood Siding 010", ambientCG (ambientcg.com), CC0.

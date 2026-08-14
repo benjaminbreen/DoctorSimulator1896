@@ -9,6 +9,7 @@
 import * as THREE from 'three';
 import { gameDebug } from '../debug.js';
 import { terrainHeight, pondDepth, pathsDistance } from '../world/terrain.js';
+import { constructedSurfaceAt } from '../world/constructedSurfaces.js';
 
 const FIGURE_HEIGHT = 1.72;
 const CAMERA_MARGIN = 0.45;
@@ -19,9 +20,15 @@ const FIGURE_MARGIN = 0.5;
 export const TUNABLE_IDS = [
   'timeOfDay', 'exposure', 'ambientIntensity', 'hemisphereIntensity',
   'windowIntensity', 'windowElevationDeg', 'windowColor',
-  'gaslightIntensity', 'gaslightFlicker', 'shadowRadius',
+  'gaslightIntensity', 'gaslightFlicker', 'gaslightColor', 'shadowRadius',
   'fogDensity', 'envIntensity', 'skyBrightness', 'skyHaze',
-  'bloomIntensity', 'aoIntensity',
+  'skyLitWindows', 'shaftIntensity', 'moteDensity',
+  'sunIntensity', 'sunDiscSize', 'sunGlow', 'sunShadowRadius',
+  'skyTurbidity', 'skyRayleigh', 'skyMie', 'skyGain', 'skySaturation',
+  'nightSkyBrightness', 'citySkyGlow', 'starBrightness', 'moonlightIntensity',
+  'cloudCover', 'cloudCumulus', 'cloudScale', 'cloudSpeed',
+  'skyFill', 'groundBounce',
+  'bloomIntensity', 'bloomThreshold', 'aoIntensity',
 ];
 
 function roomBounds(room) {
@@ -59,8 +66,35 @@ function insideBox(x, z, box, pad) {
   return Math.abs(lx) <= box.size[0] / 2 + pad && Math.abs(lz) <= box.size[2] / 2 + pad;
 }
 
+function insideBox3D(x, y, z, box, pad) {
+  return insideBox(x, z, box, pad)
+    && Math.abs(y - box.position[1]) <= box.size[1] / 2 + pad;
+}
+
 function blockers(room) {
   return [...room.wallBoxes, ...room.blockerBoxes, ...room.furnitureBoxes.filter((i) => i.collider !== false)];
+}
+
+// Existing city blocks are ordinary collider-backed furniture entries. Their
+// top faces and façades make useful photographic vantages without introducing
+// a second set of Hopper-only geometry.
+function architectureBoxes(room) {
+  if (!room.exterior) return [];
+  return room.furnitureBoxes
+    .filter((item) => (
+      item.collider !== false
+      && (item.kind === 'backdrop' || item.kind === 'block-infill')
+      && item.size?.[0] >= 3
+      && item.size?.[1] >= 6
+      && item.size?.[2] >= 3
+    ))
+    .map((item) => ({
+      id: item.id,
+      position: item.position,
+      size: item.size,
+      yaw: item.yaw ?? 0,
+      roofY: item.position[1] + item.size[1] / 2,
+    }));
 }
 
 // Projects a world point to fractional screen coordinates: [0,1] from the top
@@ -80,6 +114,13 @@ export function installShotHarness(runtime) {
       return Boolean(gameDebug.room && gameDebug.camera);
     },
 
+    // The tuning schema is the single zone registry visible to the running
+    // game, including generated interiors. `--zone all` uses this rather than
+    // making the search driver maintain a second list.
+    zones() {
+      return runtime.definitions.find((definition) => definition.id === 'zone')?.options ?? [];
+    },
+
     // Legal sampling volume plus the fixed scene facts the sampler needs.
     world() {
       const room = gameDebug.room;
@@ -94,6 +135,19 @@ export function installShotHarness(runtime) {
           height: h.height,
           normal: h.normal,
         })),
+        architecture: architectureBoxes(room),
+        people: room.exterior
+          ? gameDebug.pedestrians.map((person) => ({
+            id: person.id,
+            gender: person.gender,
+            position: [...person.position],
+            yaw: person.yaw,
+            setting: constructedSurfaceAt(person.position[0], person.position[2]) > 0.5
+              ? 'street'
+              : 'park',
+          }))
+          : [],
+        shotWomanReady: gameDebug.shotWomanReady,
       };
     },
 
@@ -115,27 +169,77 @@ export function installShotHarness(runtime) {
         if (room.exterior && pondDepth(x, z) < 0.3) return { legal: false };
         return {
           legal: true,
-          ground: room.exterior ? clearanceAt(x, z) : groundAt(room, x, z),
+          // Cameras need conservative slope clearance; figures need the
+          // exact terrain under their feet. Reusing the camera clearance for
+          // figures made them hover above uneven outdoor ground.
+          ground: room.exterior && kind === 'camera'
+            ? clearanceAt(x, z)
+            : groundAt(room, x, z),
           // Distance to the nearest path: the park is 330m across and mostly
           // lawn, so the sampler leans toward where people would be.
           pathDistance: room.exterior ? pathsDistance(x, z) : 0,
+          setting: room.exterior && constructedSurfaceAt(x, z) > 0.5 ? 'street' : 'park',
         };
+      });
+    },
+
+    // Elevated cameras are validated in all three dimensions. The ordinary
+    // sampler rejects every x/z inside a building, which is correct for a
+    // walking figure but would also reject a lens safely above a roof.
+    sampleCameraPositions(points) {
+      const room = gameDebug.room;
+      if (!room?.exterior) return points.map(() => ({ legal: false }));
+      const b = roomBounds(room);
+      const boxes = blockers(room);
+      return points.map(([x, y, z]) => {
+        if (![x, y, z].every(Number.isFinite)) return { legal: false };
+        if (x < b.minX + CAMERA_MARGIN || x > b.maxX - CAMERA_MARGIN) return { legal: false };
+        if (z < b.minZ + CAMERA_MARGIN || z > b.maxZ - CAMERA_MARGIN) return { legal: false };
+        const ground = clearanceAt(x, z);
+        if (y < ground + 0.8 || y > ground + 65) return { legal: false };
+        if (boxes.some((box) => insideBox3D(x, y, z, box, CAMERA_MARGIN * 0.7))) {
+          return { legal: false };
+        }
+        return { legal: true, ground, pathDistance: pathsDistance(x, z) };
       });
     },
 
     // One shot: tuning values, then the figure, then the camera.
     apply(shot) {
-      for (const [id, value] of Object.entries(shot.tuning ?? {})) runtime.set(id, value);
+      gameDebug.shotEnvironmentRevision += 1;
+      const shotAzimuth = Number(shot.tuning?.sunAzimuthDeg);
+      gameDebug.shotSunAzimuthDeg = Number.isFinite(shotAzimuth)
+        ? ((shotAzimuth % 360) + 360) % 360
+        : null;
+      for (const [id, value] of Object.entries(shot.tuning ?? {})) {
+        if (id !== 'sunAzimuthDeg') runtime.set(id, value);
+      }
       if (shot.figure) {
-        // Teleport to the capsule's resting height: a few settle frames are
-        // not enough for gravity to bring a figure down, so it would hang in
-        // air. Outdoors that height follows the terrain.
+        // Architecture and window studies should not acquire an accidental
+        // player merely because every candidate carries a legal anchor point.
+        // Older saved figure shots have no `visible` field, so retain their
+        // original behaviour unless their composition identifies them.
+        const visible = shot.figure.visible
+          ?? (shot.meta?.composition ? shot.meta.composition === 'figure' : true);
+        gameDebug.player.visible = visible;
+        gameDebug.shotPose = visible ? (shot.figure.pose ?? 'still') : null;
+        // PlayerRig's rigid-body origin is at the feet; its capsule collider
+        // is already offset upward internally. Adding the capsule height here
+        // used to suspend every searched figure about 0.84m above the floor.
         const [fx, fz] = shot.figure.position;
         const ground = gameDebug.room ? groundAt(gameDebug.room, fx, fz) : 0;
-        const standing = runtime.values.capsuleHalfHeight + runtime.values.capsuleRadius;
-        gameDebug.teleport(fx, ground + standing, fz);
+        gameDebug.teleport(fx, ground, fz);
         gameDebug.pendingYaw = shot.figure.yaw ?? 0;
       }
+      const woman = shot.subject?.kind === 'woman' && shot.subject.visible !== false;
+      gameDebug.shotWoman.visible = woman;
+      if (woman) {
+        gameDebug.shotWoman.position = [...shot.subject.position];
+        gameDebug.shotWoman.yaw = shot.subject.yaw ?? 0;
+      }
+      gameDebug.shotTrackedPersonId = shot.subject?.kind === 'pedestrian'
+        ? shot.subject.id
+        : null;
       if (shot.camera) {
         runtime.set('fov', shot.camera.fov);
         gameDebug.freeCamera = {
@@ -151,13 +255,19 @@ export function installShotHarness(runtime) {
       const camera = gameDebug.camera;
       const room = gameDebug.room;
       if (!camera || !room) return null;
-      const p = gameDebug.player.position;
+      const trackedPerson = gameDebug.shotTrackedPersonId
+        ? gameDebug.pedestrians.find((person) => person.id === gameDebug.shotTrackedPersonId)
+        : null;
+      const woman = gameDebug.shotWoman.visible ? gameDebug.shotWoman : null;
+      const p = woman?.position ?? trackedPerson?.position ?? gameDebug.player.position;
+      const subjectYaw = woman?.yaw ?? trackedPerson?.yaw ?? gameDebug.player.yaw;
       const feet = project(camera, [p[0], p[1], p[2]]);
       const head = project(camera, [p[0], p[1] + FIGURE_HEIGHT, p[2]]);
       const onScreen =
         feet.inFront && head.x > -0.15 && head.x < 1.15 && (head.y < 1.1 || feet.y > -0.1);
       const eye = camera.position;
       const distance = Math.hypot(p[0] - eye.x, p[1] - eye.y, p[2] - eye.z);
+      const visible = Boolean(woman || trackedPerson || gameDebug.player.visible !== false);
 
       const windows = room.windowHoles
         .map((h) => {
@@ -169,14 +279,16 @@ export function installShotHarness(runtime) {
 
       return {
         figure: {
-          onScreen,
+          visible,
+          onScreen: visible && onScreen,
+          grounded: woman || trackedPerson ? true : gameDebug.player.grounded,
           x: feet.x,
           footY: feet.y,
           headY: head.y,
           heightFrac: Math.abs(feet.y - head.y),
           distance,
           // Positive when the figure faces roughly away from the camera.
-          awayness: Math.cos(gameDebug.player.yaw - Math.atan2(p[0] - eye.x, p[2] - eye.z)),
+          awayness: Math.cos(subjectYaw - Math.atan2(p[0] - eye.x, p[2] - eye.z)),
         },
         windows,
         camera: {
@@ -188,6 +300,11 @@ export function installShotHarness(runtime) {
 
     clear() {
       gameDebug.freeCamera = null;
+      gameDebug.shotPose = null;
+      gameDebug.shotSunAzimuthDeg = null;
+      gameDebug.shotTrackedPersonId = null;
+      gameDebug.shotWoman.visible = false;
+      gameDebug.player.visible = true;
     },
 
     // Reads the current framing back out as a shot file, so a found shot you
@@ -205,8 +322,18 @@ export function installShotHarness(runtime) {
           pitch: free ? free.pitch : gameDebug.look?.pitch ?? 0,
           fov: camera.fov,
         },
-        figure: { position: [player.position[0], player.position[2]], yaw: player.yaw },
-        tuning: Object.fromEntries(TUNABLE_IDS.map((id) => [id, runtime.values[id]])),
+        figure: {
+          position: [player.position[0], player.position[2]],
+          yaw: player.yaw,
+          visible: player.visible !== false,
+          pose: gameDebug.shotPose ?? undefined,
+        },
+        tuning: {
+          ...Object.fromEntries(TUNABLE_IDS.map((id) => [id, runtime.values[id]])),
+          ...(Number.isFinite(gameDebug.shotSunAzimuthDeg)
+            ? { sunAzimuthDeg: gameDebug.shotSunAzimuthDeg }
+            : {}),
+        },
       };
     },
   };

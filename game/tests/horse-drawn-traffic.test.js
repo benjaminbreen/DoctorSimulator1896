@@ -22,7 +22,7 @@ test('street roster is deterministic, bounded, and uses distinct routes', () => 
   const second = createHorseDrawnRoster();
   assert.deepEqual(first, second);
   assert.equal(first.length, HORSE_DRAWN_MAX_ACTIVE);
-  assert.ok(first.length <= 3, 'first pass keeps at most three active rigs');
+  assert.ok(first.length <= 5, 'the expanded street pass keeps at most five active rigs');
   assert.equal(new Set(first.map((unit) => unit.route)).size, first.length);
   assert.equal(new Set(first.map((unit) => unit.start)).size, first.length);
 });

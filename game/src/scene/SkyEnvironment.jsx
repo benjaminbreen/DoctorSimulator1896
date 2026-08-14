@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import { environmentPalette, paletteDistance } from '../world/skyPalette.js';
+import { gameDebug } from '../debug.js';
 
 // Image-based light for the outdoors, taken from a three-stop gradient rather
 // than a captured HDRI. A photograph is fixed at one hour; this tracks the sun,
@@ -32,6 +33,7 @@ export default function SkyEnvironment({ runtime }) {
   const scene = useThree((state) => state.scene);
   const clock = useRef(REFRESH_SECONDS);
   const previous = useRef(null);
+  const shotRevision = useRef(gameDebug.shotEnvironmentRevision);
 
   const probe = useMemo(() => {
     const uniforms = {
@@ -88,10 +90,12 @@ export default function SkyEnvironment({ runtime }) {
     // near zero (see SkyRig).
     scene.environmentIntensity = values.envIntensity * 1.4 * palette.intensity;
     clock.current += delta;
-    if (clock.current < REFRESH_SECONDS) return;
-    if (previous.current && paletteDistance(previous.current, palette) < CHANGE_THRESHOLD) return;
+    const shotChanged = shotRevision.current !== gameDebug.shotEnvironmentRevision;
+    if (!shotChanged && clock.current < REFRESH_SECONDS) return;
+    if (!shotChanged && previous.current && paletteDistance(previous.current, palette) < CHANGE_THRESHOLD) return;
     probe.render?.(palette);
     previous.current = palette;
+    shotRevision.current = gameDebug.shotEnvironmentRevision;
     clock.current = 0;
   });
 

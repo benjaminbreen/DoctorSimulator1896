@@ -4,6 +4,12 @@
 import * as THREE from 'three';
 
 const cache = new Map();
+// Interior marble is viewed at room scale and does not need the old 130 px/m,
+// 2K-per-surface ceiling. The authored lobby props alone produced 88 unique
+// color/roughness pairs; this budget cuts their estimated mipmapped GPU cost
+// from about 40 MiB to 19 MiB while preserving the no-repeat slab treatment.
+const MARBLE_PIXELS_PER_METRE = 80;
+const MARBLE_MAX_DIMENSION = 1024;
 
 function makeCanvas(size) {
   const canvas = document.createElement('canvas');
@@ -97,6 +103,480 @@ export function lobbyMosaicTexture() {
       context.restore();
     }
   }
+
+  const texture = finish(canvas);
+  texture.anisotropy = 8;
+  cache.set(key, texture);
+  return texture;
+}
+
+// Deterministic rng for the marble fields, so a wall looks the same on
+// every visit.
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function dataTexture(canvas) {
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.colorSpace = THREE.NoColorSpace;
+  return texture;
+}
+
+// One wandering vein: a momentum walk across the slab, drawn segment by
+// segment onto both the colour and roughness canvases.
+function drawVein(rng, contexts, ppm, w, h, major) {
+  const [color, rough] = contexts;
+  let x = rng() * w;
+  let y = rng() * h;
+  // Veins run mostly diagonal, the way the reference slabs read.
+  let angle = (rng() < 0.5 ? 1 : -1) * (0.5 + rng() * 0.7) + (rng() < 0.5 ? 0 : Math.PI);
+  const steps = Math.floor((1.2 + rng() * 3.2) * ppm / 8);
+  const width = major ? (0.9 + rng() * 1.6) * (ppm / 110) : (0.4 + rng() * 0.6) * (ppm / 110);
+  const alpha = major ? 0.14 + rng() * 0.2 : 0.05 + rng() * 0.09;
+  const tone = 120 + Math.floor(rng() * 40);
+  for (let i = 0; i < steps; i += 1) {
+    const step = ppm * (0.05 + rng() * 0.07);
+    const nx = x + Math.cos(angle) * step;
+    const ny = y + Math.sin(angle) * step;
+    const taper = 0.5 + 0.5 * Math.sin((i / steps) * Math.PI);
+    color.strokeStyle = `rgba(${tone - 20},${tone - 18},${tone - 28},${alpha * taper})`;
+    color.lineWidth = Math.max(0.6, width * taper);
+    color.beginPath();
+    color.moveTo(x, y);
+    color.lineTo(nx, ny);
+    color.stroke();
+    // Veins are slightly duller than the polished field.
+    rough.strokeStyle = `rgba(255,255,255,${alpha * taper * 0.5})`;
+    rough.lineWidth = Math.max(0.8, width * taper * 1.6);
+    rough.beginPath();
+    rough.moveTo(x, y);
+    rough.lineTo(nx, ny);
+    rough.stroke();
+    x = nx;
+    y = ny;
+    angle += (rng() - 0.5) * 0.55;
+    if (x < -w * 0.1 || x > w * 1.1 || y < -h * 0.1 || y > h * 1.1) break;
+  }
+}
+
+// A marble field drawn at the surface's real size, so nothing tiles. Returns
+// a colour map and a matching roughness map (veins duller, field polished).
+// Cached and shared: callers must not dispose these.
+export function marbleSurface(widthM, heightM, options = {}) {
+  const { seed = 1, base = '#e6dfd2', slabGrid = 0, roughnessBase = 0.42 } = options;
+  const key = `marble:${widthM.toFixed(2)}:${heightM.toFixed(2)}:${seed}:${base}:${slabGrid}:${roughnessBase}`;
+  if (cache.has(key)) return cache.get(key);
+
+  const ppm = Math.min(
+    MARBLE_PIXELS_PER_METRE,
+    MARBLE_MAX_DIMENSION / Math.max(widthM, heightM),
+  );
+  const w = Math.max(64, Math.round(widthM * ppm));
+  const h = Math.max(64, Math.round(heightM * ppm));
+  const colorCanvas = document.createElement('canvas');
+  colorCanvas.width = w;
+  colorCanvas.height = h;
+  const roughCanvas = document.createElement('canvas');
+  roughCanvas.width = w;
+  roughCanvas.height = h;
+  const color = colorCanvas.getContext('2d');
+  const rough = roughCanvas.getContext('2d');
+  const rng = mulberry32(seed * 2654435761 + w * 31 + h);
+
+  const baseColor = new THREE.Color(base);
+  color.fillStyle = `#${baseColor.getHexString()}`;
+  color.fillRect(0, 0, w, h);
+  const roughValue = Math.floor(roughnessBase * 255);
+  rough.fillStyle = `rgb(${roughValue},${roughValue},${roughValue})`;
+  rough.fillRect(0, 0, w, h);
+
+  // Soft mineral clouds under the veining.
+  const clouds = Math.max(6, Math.floor(widthM * heightM * 0.55));
+  for (let i = 0; i < clouds; i += 1) {
+    const cx = rng() * w;
+    const cy = rng() * h;
+    const radius = (0.3 + rng() * 0.9) * ppm;
+    const gradient = color.createRadialGradient(cx, cy, 0, cx, cy, radius);
+    const dark = rng() < 0.5;
+    gradient.addColorStop(0, dark ? 'rgba(148,146,132,0.10)' : 'rgba(244,240,230,0.10)');
+    gradient.addColorStop(1, 'rgba(0,0,0,0)');
+    color.fillStyle = gradient;
+    color.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+  }
+
+  const majors = Math.max(5, Math.floor(widthM * heightM * 0.3));
+  for (let i = 0; i < majors; i += 1) drawVein(rng, [color, rough], ppm, w, h, true);
+  for (let i = 0; i < majors * 2.5; i += 1) drawVein(rng, [color, rough], ppm, w, h, false);
+
+  // Slab joints for floors: a grid of fine dark seams, each slab with its
+  // own faint tone shift.
+  if (slabGrid > 0) {
+    const step = slabGrid * ppm;
+    for (let x = step; x < w; x += step) {
+      color.fillStyle = 'rgba(60,56,48,0.30)';
+      color.fillRect(x - 1, 0, 2, h);
+      rough.fillStyle = 'rgba(255,255,255,0.35)';
+      rough.fillRect(x - 1.5, 0, 3, h);
+    }
+    for (let y = step; y < h; y += step) {
+      color.fillStyle = 'rgba(60,56,48,0.30)';
+      color.fillRect(0, y - 1, w, 2);
+      rough.fillStyle = 'rgba(255,255,255,0.35)';
+      rough.fillRect(0, y - 1.5, w, 3);
+    }
+    for (let x = 0; x < w; x += step) {
+      for (let y = 0; y < h; y += step) {
+        color.fillStyle = `rgba(120,116,104,${rng() * 0.06})`;
+        color.fillRect(x, y, step, step);
+      }
+    }
+  }
+
+  const map = finish(colorCanvas);
+  map.anisotropy = 8;
+  const roughnessMap = dataTexture(roughCanvas);
+  roughnessMap.anisotropy = 8;
+  const set = { map, roughnessMap, shared: true };
+  cache.set(key, set);
+  return set;
+}
+
+// A leaded stained-glass light: small blue quarries in a lead grid, a gilt
+// double border, and a pale heraldic medallion. Drawn once per seed and used
+// as both colour and emissive map, so the window glows rather than showing
+// sky.
+export function stainedGlassTexture(seed = 1) {
+  const key = `stained-glass:${seed}`;
+  if (cache.has(key)) return cache.get(key);
+  const w = 288;
+  const h = 512;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const context = canvas.getContext('2d');
+  const rng = mulberry32(seed * 747796405 + 11);
+
+  // Quarry field.
+  const cols = 5;
+  const rows = 9;
+  const cw = w / cols;
+  const ch = h / rows;
+  const blues = ['#2c4a86', '#33538f', '#3d5f9e', '#294478', '#4a6aa6'];
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < cols; column += 1) {
+      const accent = rng() < 0.06;
+      context.fillStyle = accent ? '#8f86b8' : blues[Math.floor(rng() * blues.length)];
+      context.fillRect(column * cw, row * ch, cw, ch);
+      // A wash within each quarry: hand-blown glass is not one colour.
+      const gradient = context.createLinearGradient(column * cw, row * ch, column * cw + cw, row * ch + ch);
+      gradient.addColorStop(0, 'rgba(255,255,255,0.10)');
+      gradient.addColorStop(1, 'rgba(10,14,30,0.16)');
+      context.fillStyle = gradient;
+      context.fillRect(column * cw, row * ch, cw, ch);
+    }
+  }
+  // Lead cames.
+  context.strokeStyle = '#20232a';
+  context.lineWidth = 3;
+  for (let column = 0; column <= cols; column += 1) {
+    context.beginPath();
+    context.moveTo(column * cw, 0);
+    context.lineTo(column * cw, h);
+    context.stroke();
+  }
+  for (let row = 0; row <= rows; row += 1) {
+    context.beginPath();
+    context.moveTo(0, row * ch);
+    context.lineTo(w, row * ch);
+    context.stroke();
+  }
+
+  // Central medallion.
+  const cx = w / 2;
+  const cy = h * 0.44;
+  const radius = w * 0.27;
+  context.fillStyle = '#e9dfc2';
+  context.beginPath();
+  context.arc(cx, cy, radius, 0, Math.PI * 2);
+  context.fill();
+  context.lineWidth = 7;
+  context.strokeStyle = '#b08c3c';
+  context.stroke();
+  context.lineWidth = 3;
+  context.strokeStyle = '#8a6b2e';
+  context.beginPath();
+  context.arc(cx, cy, radius * 0.72, 0, Math.PI * 2);
+  context.stroke();
+  // Scrollwork suggestion: petal arcs and a red boss.
+  context.strokeStyle = '#a5843a';
+  context.lineWidth = 4;
+  for (let petal = 0; petal < 8; petal += 1) {
+    const angle = (petal / 8) * Math.PI * 2;
+    context.beginPath();
+    context.arc(cx + Math.cos(angle) * radius * 0.45, cy + Math.sin(angle) * radius * 0.45, radius * 0.2, 0, Math.PI * 2);
+    context.stroke();
+  }
+  context.fillStyle = '#7a2020';
+  context.beginPath();
+  context.arc(cx, cy, radius * 0.16, 0, Math.PI * 2);
+  context.fill();
+
+  // Gilt double border with red corner squares.
+  context.strokeStyle = '#8a6b2e';
+  context.lineWidth = 12;
+  context.strokeRect(6, 6, w - 12, h - 12);
+  context.strokeStyle = '#c9a44e';
+  context.lineWidth = 3;
+  context.strokeRect(16, 16, w - 32, h - 32);
+  context.fillStyle = '#7a2020';
+  for (const [x, y] of [[6, 6], [w - 26, 6], [6, h - 26], [w - 26, h - 26]]) {
+    context.fillRect(x, y, 20, 20);
+  }
+
+  const texture = finish(canvas);
+  texture.anisotropy = 8;
+  cache.set(key, texture);
+  return texture;
+}
+
+// New Netherland lobby floor: green encaustic tile with a quatrefoil motif,
+// after the hotel's palm-court postcard. One repeat is about a metre;
+// seamless at every edge.
+export function netherlandMosaicTexture() {
+  const key = 'netherland-mosaic';
+  if (cache.has(key)) return cache.get(key);
+  const size = 256;
+  const cell = 32;
+  const canvas = makeCanvas(size);
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#cfc8ab';
+  context.fillRect(0, 0, size, size);
+  for (let row = 0; row < size / cell; row += 1) {
+    for (let column = 0; column < size / cell; column += 1) {
+      const x = column * cell;
+      const y = row * cell;
+      const even = (row + column) % 2 === 0;
+      // Alternating green diamonds on cream, a dark dot at each crossing.
+      context.fillStyle = even ? '#4a7159' : '#5d8266';
+      context.beginPath();
+      context.moveTo(x + cell / 2, y + 3);
+      context.lineTo(x + cell - 3, y + cell / 2);
+      context.lineTo(x + cell / 2, y + cell - 3);
+      context.lineTo(x + 3, y + cell / 2);
+      context.closePath();
+      context.fill();
+      const haze = Math.abs(Math.sin((row * 13 + column * 7) * 1.93)) * 0.06;
+      context.fillStyle = `rgba(30,50,38,${haze})`;
+      context.fill();
+      context.fillStyle = '#2e4436';
+      context.beginPath();
+      context.arc(x, y, 3.2, 0, Math.PI * 2);
+      context.fill();
+      context.beginPath();
+      context.arc(x + cell / 2, y + cell / 2, 2.2, 0, Math.PI * 2);
+      context.fill();
+    }
+  }
+  // Grout grid.
+  context.strokeStyle = 'rgba(60,58,48,0.5)';
+  context.lineWidth = 1;
+  for (let line = 0; line <= size; line += cell) {
+    context.beginPath();
+    context.moveTo(line, 0);
+    context.lineTo(line, size);
+    context.stroke();
+    context.beginPath();
+    context.moveTo(0, line);
+    context.lineTo(size, line);
+    context.stroke();
+  }
+  const texture = finish(canvas);
+  texture.anisotropy = 8;
+  cache.set(key, texture);
+  return texture;
+}
+
+// Dutch blue tiles for the dado bands: white glaze, blue borders, and a
+// small blue motif per tile — windmill, tulip, or ship. Seamless.
+export function delftTileTexture() {
+  const key = 'delft-tiles';
+  if (cache.has(key)) return cache.get(key);
+  const size = 256;
+  const cell = 42.67;
+  const canvas = makeCanvas(size);
+  const context = canvas.getContext('2d');
+  const blue = '#2b4f8e';
+  context.fillStyle = '#eee9dc';
+  context.fillRect(0, 0, size, size);
+  const rng = mulberry32(97);
+  for (let row = 0; row < 6; row += 1) {
+    for (let column = 0; column < 6; column += 1) {
+      const x = column * cell;
+      const y = row * cell;
+      context.strokeStyle = blue;
+      context.lineWidth = 1.4;
+      context.strokeRect(x + 2, y + 2, cell - 4, cell - 4);
+      // Corner motifs.
+      context.fillStyle = blue;
+      for (const [dx, dy] of [[6, 6], [cell - 6, 6], [6, cell - 6], [cell - 6, cell - 6]]) {
+        context.beginPath();
+        context.arc(x + dx, y + dy, 1.8, 0, Math.PI * 2);
+        context.fill();
+      }
+      const cx = x + cell / 2;
+      const cy = y + cell / 2;
+      const kind = Math.floor(rng() * 3);
+      context.strokeStyle = blue;
+      context.lineWidth = 1.8;
+      if (kind === 0) {
+        // Windmill: a post and four angled blades.
+        context.beginPath();
+        context.moveTo(cx, cy + 9);
+        context.lineTo(cx, cy - 2);
+        context.stroke();
+        for (const angle of [0.5, 2.1, 3.6, 5.2]) {
+          context.beginPath();
+          context.moveTo(cx, cy - 2);
+          context.lineTo(cx + Math.cos(angle) * 8, cy - 2 + Math.sin(angle) * 8);
+          context.stroke();
+        }
+      } else if (kind === 1) {
+        // Tulip: a stem and two petal arcs.
+        context.beginPath();
+        context.moveTo(cx, cy + 9);
+        context.quadraticCurveTo(cx + 2, cy + 2, cx, cy - 1);
+        context.stroke();
+        context.beginPath();
+        context.arc(cx - 3, cy - 4, 4, Math.PI * 0.4, Math.PI * 1.6);
+        context.stroke();
+        context.beginPath();
+        context.arc(cx + 3, cy - 4, 4, Math.PI * 1.4, Math.PI * 0.6);
+        context.stroke();
+      } else {
+        // Ship: a hull arc and a triangular sail.
+        context.beginPath();
+        context.arc(cx, cy + 1, 7, Math.PI * 0.15, Math.PI * 0.85);
+        context.stroke();
+        context.beginPath();
+        context.moveTo(cx, cy + 2);
+        context.lineTo(cx, cy - 8);
+        context.lineTo(cx + 6, cy - 1);
+        context.closePath();
+        context.stroke();
+      }
+    }
+  }
+  const texture = finish(canvas);
+  texture.anisotropy = 8;
+  cache.set(key, texture);
+  return texture;
+}
+
+// The lobby's great oil painting, suggested rather than reproduced: a warm
+// varnished harbour scene — sky, water, a tall ship, figures on the shore —
+// that reads as an immense history painting from across the room.
+export function harborMuralTexture() {
+  const key = 'harbor-mural';
+  if (cache.has(key)) return cache.get(key);
+  const w = 1024;
+  const h = 512;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const context = canvas.getContext('2d');
+  const rng = mulberry32(1626);
+
+  // Sky.
+  const sky = context.createLinearGradient(0, 0, 0, h * 0.62);
+  sky.addColorStop(0, '#c7b98f');
+  sky.addColorStop(0.6, '#ddc9a0');
+  sky.addColorStop(1, '#e8d3a6');
+  context.fillStyle = sky;
+  context.fillRect(0, 0, w, h * 0.62);
+  // Clouds: soft warm blobs.
+  for (let i = 0; i < 22; i += 1) {
+    const cx = rng() * w;
+    const cy = rng() * h * 0.4 + 20;
+    const radius = 30 + rng() * 70;
+    const cloud = context.createRadialGradient(cx, cy, 0, cx, cy, radius);
+    cloud.addColorStop(0, 'rgba(240,228,198,0.5)');
+    cloud.addColorStop(1, 'rgba(240,228,198,0)');
+    context.fillStyle = cloud;
+    context.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+  }
+  // Water.
+  const water = context.createLinearGradient(0, h * 0.55, 0, h * 0.8);
+  water.addColorStop(0, '#8b9678');
+  water.addColorStop(1, '#5f6d55');
+  context.fillStyle = water;
+  context.fillRect(0, h * 0.55, w, h * 0.25);
+  for (let i = 0; i < 60; i += 1) {
+    context.fillStyle = `rgba(230,215,175,${0.05 + rng() * 0.1})`;
+    context.fillRect(rng() * w, h * (0.56 + rng() * 0.22), 20 + rng() * 60, 2);
+  }
+  // Tall ship at anchor, silhouetted.
+  const shipX = w * 0.68;
+  const shipY = h * 0.62;
+  context.fillStyle = '#3a3226';
+  context.beginPath();
+  context.moveTo(shipX - 60, shipY);
+  context.quadraticCurveTo(shipX, shipY + 26, shipX + 62, shipY - 4);
+  context.lineTo(shipX + 54, shipY - 16);
+  context.lineTo(shipX - 52, shipY - 12);
+  context.closePath();
+  context.fill();
+  context.strokeStyle = '#3a3226';
+  context.lineWidth = 3;
+  for (const [dx, mastH] of [[-28, 95], [4, 120], [36, 85]]) {
+    context.beginPath();
+    context.moveTo(shipX + dx, shipY - 10);
+    context.lineTo(shipX + dx, shipY - mastH);
+    context.stroke();
+    // Furled sails: short cross-yards.
+    for (let yard = 1; yard <= 3; yard += 1) {
+      const yardY = shipY - mastH + yard * (mastH / 4.2);
+      context.beginPath();
+      context.moveTo(shipX + dx - 14, yardY);
+      context.lineTo(shipX + dx + 14, yardY);
+      context.stroke();
+    }
+  }
+  // Foreground shore.
+  context.fillStyle = '#4c452f';
+  context.beginPath();
+  context.moveTo(0, h * 0.78);
+  context.quadraticCurveTo(w * 0.35, h * 0.72, w, h * 0.82);
+  context.lineTo(w, h);
+  context.lineTo(0, h);
+  context.closePath();
+  context.fill();
+  // Two clusters of figures, silhouetted.
+  for (const [groupX, count] of [[w * 0.24, 7], [w * 0.44, 6]]) {
+    for (let i = 0; i < count; i += 1) {
+      const figureX = groupX + i * 14 + rng() * 6;
+      const figureY = h * 0.76 + rng() * 14;
+      context.fillStyle = i % 2 ? '#2e2a1e' : '#3d3020';
+      context.fillRect(figureX, figureY - 22, 6, 22);
+      context.beginPath();
+      context.arc(figureX + 3, figureY - 25, 3.5, 0, Math.PI * 2);
+      context.fill();
+    }
+  }
+  // Varnish vignette.
+  const vignette = context.createRadialGradient(w / 2, h / 2, h * 0.3, w / 2, h / 2, w * 0.62);
+  vignette.addColorStop(0, 'rgba(80,50,20,0)');
+  vignette.addColorStop(1, 'rgba(60,38,14,0.4)');
+  context.fillStyle = vignette;
+  context.fillRect(0, 0, w, h);
 
   const texture = finish(canvas);
   texture.anisotropy = 8;

@@ -157,7 +157,9 @@ export default function ConsultationDevPanel({ runtime, onRegenerate }) {
         <div className="grid gap-2">
           <textarea
             className="min-h-32 rounded border border-neutral-600 bg-neutral-900 p-2 text-xs"
-            placeholder={`At least ${patient.caseNote.minimumWords} words`}
+            placeholder={patient.caseNote.minimumWords > 0
+              ? `At least ${patient.caseNote.minimumWords} words`
+              : 'Optional note in your own words'}
             value={state.caseNote}
             onChange={(event) => runtime.dispatch({ type: 'write-case-note', text: event.target.value })}
           />

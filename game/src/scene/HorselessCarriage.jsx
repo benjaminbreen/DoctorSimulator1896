@@ -9,11 +9,16 @@ import { RigidBody, CuboidCollider, useRapier } from '@react-three/rapier';
 import { handlesAlive } from '../physics/useCharacterController.js';
 import {
   applyCarriageProjectileHit,
+  carriageDriverKind,
   createCarriageState,
   HORSELESS_TRAFFIC_ROSTER,
   stepCarriage,
   RIDE_HEIGHT,
 } from '../world/horselessCarriage.js';
+import {
+  PEDESTRIAN_ARCHETYPES,
+  PEDESTRIAN_STRAWHAT_MOTION_FILE,
+} from '../world/pedestrianCatalog.js';
 import { takeCarriageProjectileHit } from '../world/carriageImpacts.js';
 import { queueActorImpact } from '../world/actorImpacts.js';
 import { getPlayer, harm } from '../world/player.js';
@@ -28,14 +33,15 @@ import {
   trafficCircleChain,
 } from '../world/trafficContacts.js';
 import { gameDebug } from '../debug.js';
+import { reportMajorStreetEvent } from '../world/majorStreetEvents.js';
 
 // A small fleet of 1895 electric road wagons (after the Morris & Salom
 // Electrobat press photograph) working the streets outside the park. Each
 // spawn draws a period livery and its own pace and lane manner, so no two
-// sessions run the same traffic. The driver is the coated Tripo model
-// rigged onto the pedestrian skeleton (Blender weight transfer; see
-// carriage-driver.glb). The deterministic route/steering sim lives in
-// world/horselessCarriage.js; this component owns only the looks.
+// sessions run the same traffic. Drivers are either the coated Tripo model
+// (carriage-driver.glb) or, one time in four, the Strawhat woman with her
+// purpose-made driving motions. The deterministic route/steering sim lives
+// in world/horselessCarriage.js; this component owns only the looks.
 
 const MAX_DT = 1 / 30;
 // Vehicle local frame: +z forward, y up from the roadbed.
@@ -207,9 +213,9 @@ function buildChassis() {
   return { paint, leather, iron, brass, trim, umbrellas };
 }
 
-// Which driver clip fits which situation. Escalation while blocked:
+// Which coated-driver clip fits which situation. Escalation while blocked:
 // gesturing first, anger if whoever it is still will not move.
-const MOODS = [
+const COATED_DRIVER_MOODS = [
   { key: 'angry', match: /angry/i, when: (state, blockedTime) => blockedTime > 7 },
   { key: 'gesture', match: /gestur/i, when: (state, blockedTime) => blockedTime > 2.5 },
   {
@@ -219,6 +225,14 @@ const MOODS = [
   },
   { key: 'idle', match: /pose/i, when: () => true },
 ];
+
+// The Strawhat rig has purpose-made seated driving and horn gestures. She
+// keeps driving through ordinary steering and honks only after being held by
+// traffic long enough for the gesture to read as a response, not a tic.
+const STRAWHAT_DRIVER_MOODS = [
+  { key: 'honk', match: /^HonkingHorn$/, when: (state, blockedTime) => state.blocked && blockedTime > 1.25 },
+  { key: 'drive', match: /^Driving$/, when: () => true },
+];
 const MOOD_FADE = 0.35;
 const MOOD_HOLD = 1.4;
 
@@ -227,13 +241,17 @@ const MOOD_HOLD = 1.4;
 // scale is a constant, tuned against the bench.
 const DRIVER_SCALE = 1.6;
 
-// A driver cloned from the rigged coat figure, with one action per mood.
-function makeDriver(source, animations, phase, spheres) {
+// A skeleton-safe driver clone with one action per state-driven mood.
+function makeDriver(source, animations, phase, spheres, {
+  kind = 'coated-man',
+  moods = COATED_DRIVER_MOODS,
+  rotationX = -Math.PI / 2,
+} = {}) {
   const figure = cloneSkeleton(source);
   figure.scale.setScalar(DRIVER_SCALE);
   // The export loses Blender's Y-up conversion for the applied armature:
   // the file's figure lies on its face. Stand it up here.
-  figure.rotation.x = -Math.PI / 2;
+  figure.rotation.x = rotationX;
   figure.traverse((node) => {
     if (!node.isMesh && !node.isSkinnedMesh) return;
     node.castShadow = true;
@@ -252,16 +270,17 @@ function makeDriver(source, animations, phase, spheres) {
   });
   const mixer = new THREE.AnimationMixer(figure);
   const actions = {};
-  for (const mood of MOODS) {
+  for (const mood of moods) {
     const clip = animations.find((entry) => mood.match.test(entry.name)) ?? animations[0];
     if (clip) actions[mood.key] = mixer.clipAction(clip);
   }
-  const idle = actions.idle;
-  if (idle) {
-    idle.play();
-    mixer.setTime(phase * idle.getClip().duration);
+  const initialMood = moods.at(-1)?.key;
+  const initial = actions[initialMood];
+  if (initial) {
+    initial.play();
+    mixer.setTime(phase * initial.getClip().duration);
   }
-  return { figure, mixer, actions, mood: 'idle', hold: 0, blockedTime: 0 };
+  return { figure, mixer, actions, kind, moods, mood: initialMood, hold: 0, blockedTime: 0 };
 }
 
 // Pick the driver's action from what the sim reports, with a short hold so
@@ -269,7 +288,7 @@ function makeDriver(source, animations, phase, spheres) {
 function updateDriverMood(driver, state, dt) {
   driver.blockedTime = state.blocked ? driver.blockedTime + dt : Math.max(0, driver.blockedTime - dt * 2);
   driver.hold -= dt;
-  const next = MOODS.find((mood) => mood.when(state, driver.blockedTime))?.key ?? 'idle';
+  const next = driver.moods.find((mood) => mood.when(state, driver.blockedTime))?.key ?? driver.mood;
   if (next === driver.mood || driver.hold > 0) return;
   const from = driver.actions[driver.mood];
   const to = driver.actions[next];
@@ -284,6 +303,16 @@ function updateDriverMood(driver, state, dt) {
 export default function HorselessCarriage({ runtime }) {
   const driverGltf = useLoader(GLTFLoader, '/models/carriage-driver.glb', (loader) =>
     loader.setMeshoptDecoder(MeshoptDecoder),
+  );
+  const strawhatDriverGltf = useLoader(
+    GLTFLoader,
+    PEDESTRIAN_ARCHETYPES.h.modelPath,
+    (loader) => loader.setMeshoptDecoder(MeshoptDecoder),
+  );
+  const strawhatMotionGltf = useLoader(
+    GLTFLoader,
+    PEDESTRIAN_STRAWHAT_MOTION_FILE,
+    (loader) => loader.setMeshoptDecoder(MeshoptDecoder),
   );
   const { world, rapier } = useRapier();
 
@@ -311,13 +340,14 @@ export default function HorselessCarriage({ runtime }) {
   // The fleet roster: livery, route, pace, drawn once per session.
   const fleet = useMemo(() => {
     const rand = mulberry32(Date.now() & 0xffffffff);
-    const source = driverGltf.scene;
     const spheres = new Map();
 
     return HORSELESS_TRAFFIC_ROSTER.map((roster) => {
       const index = roster.id;
       const livery = LIVERIES[Math.floor(rand() * LIVERIES.length)];
       const lane = roster.route === 4 ? 0.18 : 1.35 + rand() * 0.4;
+      const driverKind = carriageDriverKind(rand());
+      const strawhat = driverKind === 'strawhat-woman';
       return {
         id: index,
         params: {
@@ -329,7 +359,15 @@ export default function HorselessCarriage({ runtime }) {
           priority: 10 + index,
         },
         state: createCarriageState(roster.route, roster.start, lane),
-        driver: makeDriver(source, driverGltf.animations, rand(), spheres),
+        driver: makeDriver(
+          strawhat ? strawhatDriverGltf.scene : driverGltf.scene,
+          strawhat ? strawhatMotionGltf.animations : driverGltf.animations,
+          rand(),
+          spheres,
+          strawhat
+            ? { kind: driverKind, moods: STRAWHAT_DRIVER_MOODS, rotationX: 0 }
+            : { kind: driverKind },
+        ),
         umbrellas: rand() < 0.5,
         materials: {
           paint: new THREE.MeshStandardMaterial({ color: livery.body, roughness: 0.35, metalness: 0.1 }),
@@ -344,7 +382,7 @@ export default function HorselessCarriage({ runtime }) {
         lastActorImpacts: new Map(),
       };
     });
-  }, [driverGltf, shared]);
+  }, [driverGltf, shared, strawhatDriverGltf, strawhatMotionGltf]);
 
   // Flat mesh lists for the distance-gated shadow toggle.
   useEffect(() => {
@@ -488,6 +526,7 @@ export default function HorselessCarriage({ runtime }) {
     gameDebug.carriages = fleet.map((unit) => unit.state);
     gameDebug.carriage = gameDebug.carriages[0];
     gameDebug.carriageMoods = fleet.map((unit) => unit.driver.mood);
+    gameDebug.carriageDriverKinds = fleet.map((unit) => unit.driver.kind);
   });
 
   const wheelPositions = [
@@ -499,7 +538,8 @@ export default function HorselessCarriage({ runtime }) {
 
   return fleet.map((unit) => {
     const onActorImpact = ({ other }) => {
-      const actorId = other.rigidBodyObject?.userData?.actorId;
+      const otherData = other.rigidBodyObject?.userData;
+      const actorId = otherData?.actorId;
       if (!actorId) return;
       const state = unit.state;
       const carriageVx = Math.sin(state.yaw) * state.speed;
@@ -513,6 +553,15 @@ export default function HorselessCarriage({ runtime }) {
         sourceVelocity: [carriageVx, 0, carriageVz],
         direction: [carriageVx, carriageVz],
       });
+      if (otherData.gameKind === 'player' || otherData.gameKind === 'pedestrian') {
+        reportMajorStreetEvent({
+          sourceId: `carriage-${unit.id}`,
+          targetId: actorId,
+          targetKind: otherData.gameKind,
+          x: state.x,
+          z: state.z,
+        });
+      }
     };
     const wheel = (index) => (
       <group key={index} ref={(node) => (unit.refs.wheels[index] = node)}>

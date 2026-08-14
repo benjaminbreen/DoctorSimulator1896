@@ -66,6 +66,7 @@ const WallArt = lazy(() => import('./WallArt.jsx'));
 const InstrumentStage = lazy(() => import('./InstrumentStage.jsx'));
 const LightShafts = lazy(() => import('./LightShafts.jsx'));
 const ActorLayer = lazy(() => import('./characters/ActorLayer.jsx'));
+const ShotWoman = lazy(() => import('./ShotWoman.jsx'));
 
 // Frozen with stable identity: a fresh object here makes R3F re-assert the
 // shadow type on every re-render (Darwin's hard-won gotcha).
@@ -91,6 +92,11 @@ const PARK_STAGE_LABELS = [
 const PARK_FINAL_STAGE = PARK_STAGE_LABELS.length - 1;
 const PARK_LIFE_FEATURES = new Set([
   'pedestrians',
+  'dandies',
+  'street-speaker',
+  'park-gardener',
+  'hotel-doormen',
+  'street-police',
   'horseless-carriage',
   'horse-drawn-traffic',
   'pigeon-flock',
@@ -227,6 +233,7 @@ export default function GameCanvas({
   look,
   actors = [],
   consultationActive = false,
+  shotMode = false,
   rebuildVersion = 0,
   onReadyForReveal,
 }) {
@@ -277,6 +284,7 @@ export default function GameCanvas({
         look={look}
         actors={actors}
         consultationActive={consultationActive}
+        shotMode={shotMode}
         graphics={graphics}
         onReadyForReveal={onReadyForReveal}
       />
@@ -302,6 +310,7 @@ function SceneContents({
   look,
   actors,
   consultationActive,
+  shotMode,
   graphics,
   onReadyForReveal,
 }) {
@@ -466,6 +475,7 @@ function SceneContents({
                 config={lighting}
                 runtime={runtime}
                 maxShadowMapSize={graphics.maxShadowMapSize}
+                maxShadowDistance={graphics.maxOutdoorShadowDistance}
               />
               <StarField runtime={runtime} />
               <SunDisc runtime={runtime} />
@@ -494,7 +504,7 @@ function SceneContents({
 
               <ParkStage active={parkStage >= 1} stage={1} onRendered={onParkStageRendered}>
                 <Room room={room} lighting={lighting} />
-                <Furniture items={room.furnitureBoxes} />
+                <Furniture items={room.furnitureBoxes} runtime={runtime} />
                 <SkyEnvironment runtime={runtime} />
               </ParkStage>
 
@@ -553,7 +563,7 @@ function SceneContents({
           <Suspense fallback={null}>
             <Physics gravity={[0, -9.81, 0]}>
             <Room room={room} lighting={lighting} />
-            <Furniture items={room.furnitureBoxes} />
+            <Furniture items={room.furnitureBoxes} runtime={runtime} />
             <PropModels items={room.furnitureBoxes.filter((item) => item.model)} />
             <>
               <LightingRig
@@ -570,7 +580,7 @@ function SceneContents({
               {/* A room placed in the built world sees the real thing; a
                   standalone one gets a procedural sky and skyline. */}
               {!zone.interior?.building && (
-                <WindowSky holes={room.windowHoles} room={room} runtime={runtime} />
+                <WindowSky holes={room.openingHoles} room={room} runtime={runtime} />
               )}
               {zone.interior?.building && (
                 <WindowView
@@ -597,9 +607,11 @@ function SceneContents({
               motionAffordances={zone.motionAffordances}
             />
             {values.showAvatarGlb && <PlayerAvatar runtime={runtime} />}
+            {shotMode && <ShotWoman />}
             <CameraRig room={room} runtime={runtime} look={look} keyboard={keyboard} heightAt={null} />
             <ColliderDebug room={room} runtime={runtime} />
             <InstrumentStage />
+            <ZoneFeatures zone={zone} runtime={runtime} />
             {blueprint.id === 'CONSULTING_OFFICE' && <OpiumRitual />}
             {blueprint.id === 'CONSULTING_OFFICE'
               && actors.length > 0

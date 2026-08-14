@@ -7,7 +7,7 @@ function loadBlueprint(id) {
   return JSON.parse(readFileSync(new URL(`../src/world/${id}.blueprint.json`, import.meta.url), 'utf8'));
 }
 
-const ZONE_IDS = ['consulting-office', 'waiting-room', 'foyer', 'cattell-lab', 'central-park'];
+const ZONE_IDS = ['consulting-office', 'waiting-room', 'foyer', 'cattell-lab', 'metropolitan-club-lobby', 'new-netherland-lobby', 'central-park'];
 const blueprint = loadBlueprint('consulting-office');
 
 test('every zone blueprint validates', () => {

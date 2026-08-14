@@ -18,6 +18,13 @@ python3 tools/hopper/score_server.py
 node tools/hopper/search.mjs --zone consulting-office --samples 400
 ```
 
+For a balanced pass over every registered interior and exterior, including
+dawn, sunset and evening:
+
+```bash
+node tools/hopper/search.mjs --zone all --samples 300 --time-bands all --keep 30
+```
+
 The search starts the dev server if one is not already up, drives a headless
 Chrome at `?shot=1`, and writes `tools/hopper/out/<run>/`:
 
@@ -27,9 +34,52 @@ Chrome at `?shot=1`, and writes `tools/hopper/out/<run>/`:
 - `all.jsonl` -- every sample, for plotting or re-ranking
 - `contact-sheet.png` -- all the winners on one page
 
-Flags: `--zone`, `--samples`, `--climb`, `--keep`, `--seed`, `--width`,
-`--height`, `--no-frames`, `--headed` (watch it work). About 2 samples a
-second. First run needs `pip install open_clip_torch` for the CLIP term.
+Search writes every result immediately. If a long run is interrupted, finish
+its deliverables without restarting Chrome, WebGL, CLIP, or the scorer:
+
+```bash
+npm run hopper:finalize -- \
+  --run rooftop-pilot-180 --keep 30 --requested-samples 180
+```
+
+This selects winners from the frames already present, writes a manifest that
+records whether the render budget completed, and creates the contact sheet.
+
+Flags: `--zone` (a comma list or `all`), `--samples`, `--climb`, `--keep`,
+`--seed`, `--width`, `--height`, `--time-bands`, `--vibes`, `--compositions`,
+`--camera-strata`, `--shadow-families`, `--sun-azimuths`,
+`--leaders-per-zone`,
+`--run-name`, `--no-frames`, `--headed` (watch it work). Time bands are
+`dawn,morning,midday,afternoon,sunset,evening`; `all` balances all six. About
+2 samples a second. First run needs `pip install open_clip_torch` for CLIP.
+
+Lighting is sampled in six coherent vibe families: `raking-clarity`,
+`soft-overcast`, `warm-afterglow`, `quiet-fill`, `practical-nocturne`, and
+`luminous-haze`. A family correlates direct-light strength and elevation,
+ambient/environment fill, shadow softness, bounce, bloom, glow, haze, cloud
+cover, window color, and practical light. `--vibes all` balances all six.
+Composition strata are `figure,window,architecture`; outdoor runs omit the
+impossible window stratum automatically.
+
+Outdoor cameras default to `--camera-strata ground` for reproducibility. Use
+`--camera-strata all` to balance ground, raised façade/fire-escape and rooftop
+vantages derived from existing building collider boxes. Elevated lenses are
+validated in 3D and become architecture studies with the player hidden. They
+do not change player navigation or add special scene assets.
+
+The ordinary game keeps its historically calculated solar direction. Shot
+search can rotate the whole outdoor sun/sky system with `--sun-azimuths all`,
+which balances four 90-degree sectors. `--shadow-families all` balances hard,
+medium and soft outdoor shadows. The defaults `physical` and `profile` retain
+the former behaviour. Camera height, shadow family and azimuth are scheduled
+in shuffled full-factorial blocks so none of those controls becomes a proxy
+for another one in a rating pass.
+
+Camera candidates are aimed toward a nearby figure, a window, or the room's
+architectural centre. Outdoors, the figure is sampled near its camera instead
+of independently across the whole park. Final winners are balanced across
+zones, time bands, vibes and composition families before local near-duplicates
+are removed.
 
 ## The reward
 
@@ -93,6 +143,26 @@ you see the bottom of the range as well as the top. Keys 1-5 to rate, `u` to
 undo, `s` to skip. Ratings go to `out/ratings.json`, keyed by frame path, and
 survive re-runs.
 
+`ratings.json`, `rating-exclusions.json`, and `reward-model.json` are the small
+durable record of the experiment and are not ignored by Git. Exclusions keep a
+raw answer while preventing a known rendering defect from becoming a taste
+preference. Rendered frames, embedding caches and rating-session manifests
+remain local because they are large or reproducible.
+
+For a fixed, blind 30-frame pass from one run:
+
+```bash
+python3 tools/hopper/rate.py \
+  --run mixed-pilot \
+  --session pilot-30 \
+  --session-size 30
+```
+
+The saved session balances zone, time of day, lighting vibe, automatic-score
+strata and composition family. The UI hides both automatic score and vibe label
+while you rate. Named sessions live in `out/rating-sessions/` and resume after
+the server restarts.
+
 ```bash
 python3 tools/hopper/train_reward.py
 ```
@@ -105,6 +175,75 @@ about 0.4, rate more frames or rate more consistently.
 
 A couple of hundred ratings is enough. The input is already a good
 representation and the target is one number.
+
+## Comparing a widened search
+
+For a camera-space experiment, A/B choices are easier to interpret than more
+absolute 1-5 labels:
+
+```bash
+python3 tools/hopper/compare.py \
+  --run rooftop-pilot-120 \
+  --session rooftop-pilot-40 \
+  --session-size 40
+```
+
+The durable session balances ground/raised, ground/rooftop,
+raised/rooftop and within-elevated pairs. Click either image or use the arrow
+keys; `n` means neither, `u` undoes and `s` skips. Votes are written separately
+to `out/comparisons.json`, without mixing them ambiguously into the 1-5 scale.
+
+After a completed pass, fit the reversible A/B adapter:
+
+```bash
+python3 tools/hopper/train_pairwise.py --session rooftop-pilot-40
+```
+
+The adapter learns only a regularized delta from winner-minus-loser CLIP
+embeddings. The 1-5 reward model stays unchanged underneath it. Training uses
+family-stratified cross-validation against the complete automatic score and
+refuses to write `out/pairwise-adapter.json` unless held-out choices improve
+without materially damaging agreement with the scalar ratings. The scorer and
+`score_gamut.py` load a compatible adapter automatically; a base-model
+fingerprint prevents an old adapter from being applied after scalar retraining.
+
+For the full scene gamut rather than the camera-height diagnostic, use the
+memory-separated pipeline. Capture four small batches first (the game closes
+after each), then score them only after WebGL is gone:
+
+```bash
+node tools/hopper/gamut_search.mjs --run hopper-gamut-60 --batch-index 0 --reset
+node tools/hopper/gamut_search.mjs --run hopper-gamut-60 --batch-index 1
+node tools/hopper/gamut_search.mjs --run hopper-gamut-60 --batch-index 2
+node tools/hopper/gamut_search.mjs --run hopper-gamut-60 --batch-index 3
+python3 tools/hopper/score_gamut.py --run hopper-gamut-60
+npm run hopper:finalize -- --run hopper-gamut-60 --keep 30 --requested-samples 60
+```
+
+The 60-frame plan fixes the proportions at 20% park landscapes/people, 25%
+street people, 25% women at windows, 15% other interiors, and only 15%
+raised/rooftop architecture. It reuses the game's existing pedestrians and
+rooms. A family-balanced comparison pass is:
+
+```bash
+python3 tools/hopper/compare.py --profile gamut --run hopper-gamut-60 \
+  --session hopper-gamut-30 --session-size 30
+```
+
+For a fresh blind check that concentrates ten of its thirty comparisons on
+woman-at-window compositions and assigns four to every other family:
+
+```bash
+python3 tools/hopper/compare.py --profile window-validation \
+  --run hopper-gamut-holdout-60 --session hopper-window-holdout-30 \
+  --session-size 30
+```
+
+Embeddings are cached in `out/.embedding-cache-v2.npz`, so scalar or pairwise
+retraining after a new pass only embeds new or changed frames. Mixed-zone
+models use a stratified holdout and record their zone coverage. Until a zone
+appears in the training data, the scorer uses only 35% of the taste term's
+normal weight there.
 
 ## Walking into a found shot
 
@@ -136,12 +275,9 @@ Three hooks, all inert unless the page is loaded with `?shot=1`:
 
 ## Not done yet
 
-- Exterior zones. `search.mjs` refuses them; sampling needs terrain height and
-  a legality test that is not a room AABB.
-- Figure legality is a 2D test, so the figure can end up standing on a desk.
-- Pedestrians as figures. `probe()` only knows about the player.
+- Figure legality is still a 2D collider test; elevated shot cameras use their
+  own 3D check, but figures remain on authored walkable ground.
+- Existing pedestrians are selectable exterior anchors. Window studies reuse
+  the existing working-woman model in `?shot=1`; neither changes ordinary play.
 - CMA-ES instead of random search plus hill-climb. Worth it above ~1000
   samples; not worth it below.
-- A reward model trained on your own ratings of `all.jsonl`. This is the only
-  way to capture what *you* mean by Hopper, and the frames are already saved
-  for it.

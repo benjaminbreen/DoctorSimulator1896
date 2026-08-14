@@ -1,15 +1,37 @@
 import { buildCoachworkPreset, COACHWORKS_PRESETS } from './coachworks.js';
 import { clamp, dampAngle, shortestArc } from '../movement/mathUtils.js';
-import { createCarriageState, ROUTES, stepCarriage } from './horselessCarriage.js';
+import { createCarriageState, ROUTES, sampleRoute, stepCarriage } from './horselessCarriage.js';
 
-// One vehicle per route keeps this first street pass legible and bounded.
-// The opening electric carriage remains on its existing roster and timings.
+function routeStartNear(routeIndex, targetX, targetZ, headingX = null) {
+  const route = ROUTES[routeIndex];
+  let best = { distance: Infinity, s: 0 };
+  for (let s = 0; s < route.total; s += 0.25) {
+    const [x, z, tx] = sampleRoute(route, s);
+    if (headingX !== null && Math.sign(tx) !== Math.sign(headingX)) continue;
+    const distance = Math.hypot(x - targetX, z - targetZ);
+    if (distance < best.distance) best = { distance, s };
+  }
+  return best.s;
+}
+
+// Five active rigs keep the original three-route spread and add working
+// wagons to the two underused road stretches marked in the overhead review.
 export const HORSE_DRAWN_ROSTER = Object.freeze([
   { id: 'hansom', type: 'hansom', route: 0, start: 78, lane: -1.45, cruise: 2.8 },
   { id: 'brougham', type: 'brougham', route: 1, start: 230, lane: 1.5, cruise: 2.45 },
   {
     id: 'omnibus', type: 'omnibus', route: 4,
     start: ROUTES[4].total * 0.86, lane: 0.18, cruise: 2.15,
+  },
+  {
+    id: 'east-sixtieth-delivery', type: 'utility', route: 5,
+    // Keep the long articulated rig close to the road centre so its coach
+    // stays inside East 60th while the horse begins the Madison Avenue turn.
+    start: routeStartNear(5, 140, 56, 1), lane: 0.18, cruise: 2.25,
+  },
+  {
+    id: 'west-fifty-eighth-delivery', type: 'utility', route: 6,
+    start: routeStartNear(6, -65, 137.25, 1), lane: 0.18, cruise: 2.35,
   },
 ]);
 
@@ -33,6 +55,11 @@ function axleMeasurements(type) {
 }
 
 export const HORSE_RIG_CONFIG = Object.freeze({
+  utility: {
+    ...axleMeasurements('utility'),
+    drawbarLength: 2.55, maxSteer: 0.34,
+    maxHorseAngle: 0.15, drawTurnRate: 1.02, shaftSpread: 0.6,
+  },
   hansom: {
     ...axleMeasurements('hansom'),
     drawbarLength: 2.45, maxSteer: 0.43,
@@ -333,6 +360,9 @@ export function horseDrawnCollider(type) {
   }
   if (type === 'brougham') {
     return { coachHalf: [1.5, 1.23, 0.96], horseHalf: [1.15, 0.95, 0.46], coachY: 1.23, horseY: 0.95 };
+  }
+  if (type === 'utility') {
+    return { coachHalf: [1.58, 1.2, 0.96], horseHalf: [1.15, 0.95, 1.12], coachY: 1.2, horseY: 0.95 };
   }
   return { coachHalf: [1.48, 1.2, 0.96], horseHalf: [1.15, 0.95, 0.46], coachY: 1.2, horseY: 0.95 };
 }

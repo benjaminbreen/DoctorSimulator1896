@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import * as THREE from 'three';
 import { useLoader } from '@react-three/fiber';
 import { buildDairy, DAIRY } from '../world/dairy.js';
+import { identifyLandmark } from '../world/landmarkInformation.js';
+import { PARK_LANDMARKS } from '../world/parkLandmarks.js';
 import { instanced } from './lib/instances.js';
 import StaticColliders from './lib/StaticColliders.jsx';
 
@@ -168,7 +170,11 @@ export default function DairyCottage() {
 
   return (
     <>
-      <group position={[DAIRY.x, ground, DAIRY.z]} rotation={[0, DAIRY.yaw, 0]}>
+      <group
+        position={[DAIRY.x, ground, DAIRY.z]}
+        rotation={[0, DAIRY.yaw, 0]}
+        onClick={(event) => identifyLandmark(PARK_LANDMARKS.dairy, event)}
+      >
         {meshes.map((mesh, index) => (
           <primitive key={index} object={mesh} />
         ))}

@@ -9,6 +9,8 @@ import { canopyTexture, friezeTexture, drumTexture, platformTexture, valanceText
 import { getInteraction, useInstrument, stopUsing } from '../world/interaction.js';
 import { gameDebug } from '../debug.js';
 import { recover } from '../world/player.js';
+import { identifyLandmark } from '../world/landmarkInformation.js';
+import { PARK_LANDMARKS } from '../world/parkLandmarks.js';
 
 // The 1871 carousel: static pavilion (posts, rails, rounding boards,
 // scallop valance, striped canopy, pennant) around the rotating machine —
@@ -413,7 +415,11 @@ export default function Carousel() {
 
   return (
     <>
-      <group position={[CAROUSEL.x, built.ground, CAROUSEL.z]} rotation={[0, CAROUSEL.yaw, 0]}>
+      <group
+        position={[CAROUSEL.x, built.ground, CAROUSEL.z]}
+        rotation={[0, CAROUSEL.yaw, 0]}
+        onClick={(event) => identifyLandmark(PARK_LANDMARKS.carousel, event)}
+      >
         <primitive object={parts.pavilion} />
         <primitive object={parts.rounding} />
         <primitive object={parts.valance} />

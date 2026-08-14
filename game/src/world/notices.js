@@ -35,8 +35,11 @@ export function getNotices() {
  * rather than stacking, so holding a control that fires every frame does not
  * bury the screen.
  */
-export function notice(text, { tone = 'plain', key = null, seconds = 5, detail = null } = {}) {
-  const entry = { id: nextId++, text, tone, key, detail, until: 0, seconds };
+export function notice(
+  text,
+  { tone = 'plain', key = null, seconds = 5, detail = null, landmark = null } = {},
+) {
+  const entry = { id: nextId++, text, tone, key, detail, landmark, until: 0, seconds };
   notices = key ? notices.filter((item) => item.key !== key) : notices.slice();
   // Newest last: the list renders bottom-up, so the new one appears nearest
   // the player's hands.

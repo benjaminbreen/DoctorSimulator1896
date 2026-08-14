@@ -53,6 +53,13 @@ export function classifyPedestrianImpact({ cause, relativeSpeed = 0, running = f
   return null;
 }
 
+// Ordinary pedestrians only startle. Preserve the old impact thresholds, but
+// collapse what used to be a knockdown into the same upright reaction so a
+// route walker can never resume while a prone animation is still displayed.
+export function classifyPedestrianStartle(event) {
+  return classifyPedestrianImpact(event) ? 'stagger' : null;
+}
+
 function normalizedDirection(direction) {
   const x = Number(direction?.[0]) || 0;
   const z = Number(direction?.[1]) || 0;
@@ -175,4 +182,3 @@ export function reactionLocksMovement(reaction) {
 export function reactionUsesProneCollider(reaction) {
   return reaction?.phase === REACTION_PHASE.PRONE;
 }
-

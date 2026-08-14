@@ -9,6 +9,10 @@ import foyerBlueprint from './foyer.blueprint.json' with { type: 'json' };
 import foyerLighting from './foyer.lighting.json' with { type: 'json' };
 import labBlueprint from './cattell-lab.blueprint.json' with { type: 'json' };
 import labLighting from './cattell-lab.lighting.json' with { type: 'json' };
+import metClubBlueprint from './metropolitan-club-lobby.blueprint.json' with { type: 'json' };
+import metClubLighting from './metropolitan-club-lobby.lighting.json' with { type: 'json' };
+import newNetherlandBlueprint from './new-netherland-lobby.blueprint.json' with { type: 'json' };
+import newNetherlandLighting from './new-netherland-lobby.lighting.json' with { type: 'json' };
 import parkBlueprint from './central-park.blueprint.json' with { type: 'json' };
 import parkLighting from './central-park.lighting.json' with { type: 'json' };
 import {
@@ -24,6 +28,8 @@ import { bookcase, vaseOfFlowers, labeledBottle, reagentBottleRack, opiumPipe } 
 import { labBench } from './instruments.js';
 import { cattellLabItems } from './cattellLab.js';
 import { lobbyItems } from './lobby.js';
+import { metClubLobbyItems } from './metClubLobby.js';
+import { newNetherlandLobbyItems } from './newNetherlandLobby.js';
 import { blueprintMouldings, friezeBand, ceilingPanel } from './mouldings.js';
 
 export const zones = {
@@ -91,6 +97,25 @@ export const zones = {
     blueprint: foyerBlueprint,
     lighting: foyerLighting,
     extraItems: lobbyItems(foyerBlueprint),
+    features: ['dandies'],
+  },
+  // The Metropolitan Club's main hall: marble double stair, balcony landing,
+  // stained glass, coffered ceiling. Blocked out from photographs of the
+  // Stanford White interior; ornament still to come.
+  'metropolitan-club-lobby': {
+    blueprint: metClubBlueprint,
+    lighting: metClubLighting,
+    extraItems: metClubLobbyItems(metClubBlueprint),
+    features: ['dandies', 'street-speaker'],
+  },
+  // The New Netherland Hotel's lobby: a Romanesque palm court with Dutch
+  // blue tile, Numidian red marble, and electric light. Composed from the
+  // hotel's postcard and 1893 press descriptions; ornament still to come.
+  'new-netherland-lobby': {
+    blueprint: newNetherlandBlueprint,
+    lighting: newNetherlandLighting,
+    extraItems: newNetherlandLobbyItems(newNetherlandBlueprint),
+    features: ['hotel-doormen', 'dandies'],
   },
   // Cattell's laboratory. A working room, so the windows take plain shades
   // and nothing else, and the walls are distempered plaster rather than
@@ -112,7 +137,14 @@ export const zones = {
     features: [
       'backdrop',
       'street-surfaces',
+      'street-dressing',
       'pedestrians',
+      'dandies',
+      'street-speaker',
+      'park-gardener',
+      'sailor-boy',
+      'hotel-doormen',
+      'street-police',
       'gapstow-bridge',
       'schist-outcrops',
       'rustic-shelters',

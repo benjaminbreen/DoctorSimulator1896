@@ -25,3 +25,7 @@ mockups/character-engine-comparison/mhr-anatomical-eyes-contact-sheet-*.png
 # Purchased asset sources (CGTrader Victorian pack, etc). Converted GLBs are
 # tracked under game/public/models/; the multi-GB sources stay local.
 assets-src/
+
+# Local authoring inputs not intended for distribution. Export scripts may
+# read from here, but only their converted runtime assets belong in Git.
+assets-local/

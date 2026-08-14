@@ -4,7 +4,7 @@ function containsAny(text, terms) {
 }
 
 export function renderOfflineDialogue(request, patient) {
-  const disclosedNow = request.allowedDisclosureIds.slice(0, 1);
+  const disclosedNow = request.allowedDisclosureIds.slice(0, request.maxDisclosures || 1);
   const disclosed = patient.facts.find((fact) => fact.id === disclosedNow[0]);
   const rule = [...(patient.prompts || []), ...(patient.inquiryIntents || [])]
     .find((candidate) => candidate.id === request.resolvedRuleId);

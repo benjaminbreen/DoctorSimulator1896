@@ -41,7 +41,10 @@ export function validateConsultationPatient(patient) {
     }
   };
   for (const examination of patient.examinations || []) {
-    if (!factIds.has(examination.factId)) errors.push(`examination ${examination.id} has unknown fact ${examination.factId}`);
+    const references = examination.factIds || [examination.factId];
+    for (const factId of references.filter(Boolean)) {
+      if (!factIds.has(factId)) errors.push(`examination ${examination.id} has unknown fact ${factId}`);
+    }
   }
   for (const factId of patient.caseNote?.requiredFactIds || []) {
     if (!factIds.has(factId)) errors.push(`case note requires unknown fact ${factId}`);

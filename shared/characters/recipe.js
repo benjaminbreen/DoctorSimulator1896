@@ -8,6 +8,7 @@ export const CHARACTER_BODY_CUES = Object.freeze([
 ]);
 export const CHARACTER_EXPRESSIONS = Object.freeze([
   'neutral', 'guarded', 'distressed', 'fatigued', 'relieved',
+  'smiling', 'frowning', 'discouraged',
 ]);
 export const CHARACTER_GAZES = Object.freeze(['doctor', 'away', 'down', 'neutral']);
 
@@ -17,7 +18,7 @@ export const BODY_CUE_CLIPS = Object.freeze({
   'sitting-distressed': 'SittingDejected',
   'sitting-disapproval': 'SittingDejected',
   'sitting-disbelief': 'SittingDejected',
-  'sitting-self-soothing': 'ClinicIdle',
+  'sitting-self-soothing': 'SittingTalking',
   'sit-down': 'SitDown',
   'stand-up': 'StandUp',
   'standing-idle': 'StandingIdle',

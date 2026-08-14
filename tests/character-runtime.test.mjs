@@ -69,7 +69,12 @@ test('Renderer C recipes contain only supported live values', () => {
   const allowed = new Set([
     'rendererCAnchor', ...RENDERER_C_VALUE_IDS,
     'skinTone', 'eyeColor', 'hairColor', 'browColor', 'lashColor',
-    'dressColor', 'trimColor', 'skinRoughness', 'fabricRoughness', 'greyPattern',
+    'dressColor', 'secondaryColor', 'trimColor', 'skinRoughness',
+    'fabricRoughness', 'greyPattern', 'fabricType', 'womenPalette',
+    'womenGarmentMode', 'dressDetailPattern', 'fabricScale', 'fabricRelief',
+    'fabricSheen', 'necklineHeight', 'cuffWidth', 'trimWidth', 'placketWidth',
+    'collarHeight', 'collarThickness', 'cuffThickness', 'buttonCount',
+    'buttonSpacing', 'waistHeight', 'dressDetailAmount', 'dressDetailScale',
   ]);
   for (const id of Object.keys(preset.characterRecipe.values)) assert.ok(allowed.has(id), `unsupported value ${id}`);
   assert.equal(preset.characterRecipe.values.headAngle, undefined);
@@ -158,6 +163,7 @@ test('Renderer C identity grids randomize complexion and eye colour within each 
 test('the fixed face review matrix covers the Phase 1 safety states', () => {
   assert.deepEqual(FACE_QA_STATES.map((state) => state.id), [
     'neutral', 'blink', 'jaw-025', 'jaw-05', 'guarded', 'distressed',
+    'smiling', 'frowning', 'discouraged',
   ]);
   assert.equal(safeFaceWeight('jawOpen', 0.05), FACE_WEIGHT_LIMITS.jawOpen);
   for (const state of FACE_QA_STATES) {

@@ -1,6 +1,6 @@
 import {
   facadeFaceRole,
-  facadeLayout,
+  facadeLayoutForFace,
   facadeWidth,
   facadeWindowEntries,
   FACES,
@@ -63,7 +63,7 @@ export function facadeWindowAt(position, buildings = [], margin = WINDOW_SLOP) {
       const face = FACES[token];
       if (!face) continue;
       const faceWidth = facadeWidth(building.size, token);
-      const layout = facadeLayout(faceWidth, sy);
+      const layout = facadeLayoutForFace(building, token);
       const halfDepth = (face.normal[2] !== 0 ? sz : sx) / 2;
       const planeX = cx + face.normal[0] * halfDepth;
       const planeZ = cz + face.normal[2] * halfDepth;

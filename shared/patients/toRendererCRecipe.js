@@ -108,8 +108,12 @@ export function patientToRendererCRecipe(patient, options = {}) {
     anchorCount: options.anchorCount ?? 8,
     animation: options.animation,
     asset: options.asset,
+    // The shared cohort masters can complete a spoken gesture and release
+    // their gaze locally. Authored one-off assets keep their existing timing
+    // unless they explicitly opt in.
+    performanceStyle: options.performanceStyle
+      || (options.asset ? null : 'responsive-consultation'),
     lod: options.lod || 'consultation',
-    asset: options.asset,
     placement: options.placement,
   });
 }

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import { solarRamps, smoothstep } from '../world/solar.js';
+import { gameDebug } from '../debug.js';
 
 // Sun body: a disc with two additive halos around it, all camera-facing and
 // depth-tested, so a building or a tree cuts them off the way it should. Held
@@ -88,7 +89,11 @@ export default function SunDisc({ runtime }) {
 
   useFrame(() => {
     const values = runtime.values;
-    const { direction, daylight, golden, altitude } = solarRamps(values.timeOfDay, values.dayOfYear);
+    const { direction, daylight, golden, altitude } = solarRamps(
+      values.timeOfDay,
+      values.dayOfYear,
+      gameDebug.shotSunAzimuthDeg,
+    );
     const group = groupRef.current;
     if (!group) return;
 

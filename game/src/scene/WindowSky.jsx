@@ -184,7 +184,11 @@ const SUN_HIGH = new THREE.Color('#ffd9a0');
 const SUN_LOW = new THREE.Color('#ff9440');
 
 export default function WindowSky({ holes, room, runtime }) {
-  const windows = useMemo(() => holes.filter((hole) => hole.type === 'window'), [holes]);
+  // Open blocked doors show the same sky a window does.
+  const windows = useMemo(
+    () => holes.filter((hole) => hole.type === 'window' || (hole.type === 'door' && hole.open && hole.blocked)),
+    [holes],
+  );
   const floorY = room.floor.position[1] + room.floor.size[1] / 2;
 
   // Sample count is a compile-time constant, so it is the one control that

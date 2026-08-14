@@ -26,7 +26,12 @@ const CITY_GLOW = [0.028, 0.014, 0.006];
 const GROUND = { night: [0.01, 0.015, 0.024], day: [0.30, 0.32, 0.20], golden: [0.22, 0.14, 0.09] };
 
 export function environmentPalette(timeOfDay, dayOfYear, options = {}) {
-  const { daylight, golden, night } = solarRamps(timeOfDay, dayOfYear);
+  const {
+    daylight,
+    golden,
+    twilight,
+    night,
+  } = solarRamps(timeOfDay, dayOfYear);
   const moon = moonState(timeOfDay, dayOfYear);
   const nightBrightness = options.nightSkyBrightness ?? 1;
   const cityGlow = (options.citySkyGlow ?? 1) * night;
@@ -34,13 +39,22 @@ export function environmentPalette(timeOfDay, dayOfYear, options = {}) {
   const nightTop = scale(TOP.night, nightBrightness);
   const nightHorizon = add(scale(HORIZON.night, nightBrightness), scale(CITY_GLOW, cityGlow));
   const nightGround = scale(GROUND.night, nightBrightness);
-  const nightFill = nightBrightness * (0.16 + 0.2 * moonlight);
+  // Perceptual night adaptation keeps form readable even when the historical
+  // moon is absent. Moon and the existing low-horizon city palette add to the
+  // same probe rather than introducing separate fill lights.
+  const nightFill = Math.min(
+    1,
+    nightBrightness * (0.28 + 0.14 * moonlight) + 0.03 * cityGlow,
+  );
   return {
     top: mix(mix(nightTop, TOP.day, daylight), TOP.golden, golden),
     horizon: mix(mix(nightHorizon, HORIZON.day, daylight), HORIZON.golden, golden),
     ground: mix(mix(nightGround, GROUND.day, daylight), GROUND.golden, golden),
     // Sunlit air is orders brighter than moonlit air; the probe carries that.
     intensity: nightFill + daylight * (1 - nightFill),
+    // Sky and clouds consume this exact handoff while fog and the environment
+    // consume the palette above, keeping every outdoor layer on one timeline.
+    authoredBlend: twilight,
   };
 }
 

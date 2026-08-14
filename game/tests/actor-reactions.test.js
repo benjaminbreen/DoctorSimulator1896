@@ -5,6 +5,7 @@ import {
   REACTION_PHASE,
   beginReaction,
   classifyPedestrianImpact,
+  classifyPedestrianStartle,
   createReactionState,
   proneHoldSeconds,
   reactionLocksMovement,
@@ -23,6 +24,16 @@ test('walking bumps stagger while a real running hit knocks down', () => {
   assert.equal(classifyPedestrianImpact({ cause: 'player-body', relativeSpeed: 8, running: true }), 'knockdown');
   assert.equal(classifyPedestrianImpact({ cause: 'horseless-carriage', relativeSpeed: 0.79 }), null);
   assert.equal(classifyPedestrianImpact({ cause: 'horseless-carriage', relativeSpeed: 1 }), 'knockdown');
+});
+
+test('ordinary pedestrians convert every meaningful impact to an upright startle', () => {
+  assert.equal(classifyPedestrianStartle({ cause: 'player-body', relativeSpeed: 0.2 }), null);
+  assert.equal(classifyPedestrianStartle({ cause: 'player-body', relativeSpeed: 1 }), 'stagger');
+  assert.equal(
+    classifyPedestrianStartle({ cause: 'player-body', relativeSpeed: 8, running: true }),
+    'stagger',
+  );
+  assert.equal(classifyPedestrianStartle({ cause: 'horseless-carriage', relativeSpeed: 2 }), 'stagger');
 });
 
 test('prone recovery rises smoothly with chronological age', () => {
@@ -96,4 +107,3 @@ test('ledge affordances require a still actor facing the authored edge', () => {
   assert.equal(ledgeCandidate([edge], { position: [2.1, 8, 3], yaw: Math.PI, speed: 0 }), null);
   assert.equal(ledgeCandidate([edge], { position: [2.1, 8, 3], yaw: 0, speed: 1 }), null);
 });
-

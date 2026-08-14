@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import { solarRamps } from '../world/solar.js';
 import { moonState } from '../world/moon.js';
 import { environmentPalette } from '../world/skyPalette.js';
+import { gameDebug } from '../debug.js';
 
 // Darwin's CloudDeck idea at small scale: one BackSide dome, an fbm field
 // planar-projected onto the view direction, lit by a gradient probe toward
@@ -25,6 +26,7 @@ const FRAGMENT = /* glsl */ `
   uniform float uDayness;
   uniform float uGolden;
   uniform float uNight;
+  uniform float uAuthoredBlend;
   uniform vec3 uSunDir;
   uniform vec3 uMoonDir;
   uniform float uMoonLight;
@@ -88,14 +90,14 @@ const FRAGMENT = /* glsl */ `
     // lit flank has to go past it and a shaded one well under, or the cloud
     // disappears into the blue. Dusk warms the shaded flank too: grey
     // bellies over an orange horizon is the pasted-on look.
-    vec3 nightShaded = uFogColor * 0.16 + vec3(0.002, 0.004, 0.01);
-    vec3 nightLit = uFogColor * 0.7 + vec3(0.02, 0.035, 0.075);
-    vec3 nightColor = mix(nightShaded, nightLit, moonFacing * uMoonLight);
+    vec3 authoredShaded = uFogColor * 0.16 + vec3(0.002, 0.004, 0.01);
+    vec3 authoredLit = uFogColor * 0.7 + vec3(0.02, 0.035, 0.075);
+    vec3 authoredColor = mix(authoredShaded, authoredLit, moonFacing * uMoonLight);
     vec3 shaded = mix(uFogColor * 0.34, vec3(0.36, 0.21, 0.16), uGolden);
     vec3 lit = mix(vec3(1.1), vec3(1.7, 1.66, 1.58), uDayness);
     lit = mix(lit, vec3(1.7, 1.0, 0.55), uGolden * 0.8);
     vec3 dayColor = mix(shaded, lit, sunFacing);
-    vec3 color = mix(nightColor, dayColor, uDayness);
+    vec3 color = mix(dayColor, authoredColor, uAuthoredBlend);
     // Rim past 1.0 on purpose: the one part of a cloud that should bloom.
     color += vec3(1.0, 0.9, 0.75) * pow(sunFacing, 3.0) * uDayness * 0.24;
 
@@ -121,6 +123,7 @@ export default function CloudDome({ config, runtime }) {
           uDayness: { value: 1 },
           uGolden: { value: 0 },
           uNight: { value: 0 },
+          uAuthoredBlend: { value: 0 },
           uSunDir: { value: new THREE.Vector3(0, 1, 0) },
           uMoonDir: { value: new THREE.Vector3(0, 1, 0) },
           uMoonLight: { value: 0 },
@@ -132,7 +135,11 @@ export default function CloudDome({ config, runtime }) {
 
   useFrame((state) => {
     const values = runtime.values;
-    const ramps = solarRamps(values.timeOfDay, values.dayOfYear);
+    const ramps = solarRamps(
+      values.timeOfDay,
+      values.dayOfYear,
+      gameDebug.shotSunAzimuthDeg,
+    );
     const moon = moonState(values.timeOfDay, values.dayOfYear);
     const palette = environmentPalette(values.timeOfDay, values.dayOfYear, values);
     const uniforms = material.uniforms;
@@ -143,6 +150,7 @@ export default function CloudDome({ config, runtime }) {
     uniforms.uDayness.value = ramps.daylight;
     uniforms.uGolden.value = ramps.golden;
     uniforms.uNight.value = ramps.night;
+    uniforms.uAuthoredBlend.value = palette.authoredBlend;
     uniforms.uSunDir.value.set(ramps.direction[0], ramps.direction[1], ramps.direction[2]);
     uniforms.uMoonDir.value.fromArray(moon.direction);
     uniforms.uMoonLight.value = moon.light * ramps.night * values.moonlightIntensity;

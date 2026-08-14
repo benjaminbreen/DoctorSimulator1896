@@ -1,0 +1,1491 @@
+{
+  "targetName": "Mockup-matched New Netherland Hotel",
+  "targetId": "mockup-matched-new-netherland-hotel",
+  "schemaVersion": "2.1",
+  "terminologyProfile": {
+    "domain": "real-time procedural Three.js asset",
+    "geometryTerms": [
+      "silhouette",
+      "topology",
+      "primitive",
+      "bevel",
+      "chamfer",
+      "taper",
+      "bend",
+      "boolean cut",
+      "edge loop",
+      "surface normal",
+      "displacement"
+    ],
+    "materialTerms": [
+      "albedo",
+      "baseColor",
+      "roughness",
+      "metalness",
+      "normal map",
+      "bump map",
+      "ambient occlusion",
+      "cavity dirt",
+      "edge wear",
+      "clearcoat"
+    ],
+    "lightingTerms": [
+      "key light",
+      "fill light",
+      "rim light",
+      "HDRI/environment reflection",
+      "contact shadow"
+    ],
+    "descriptionRule": "Use measurable 3D graphics terms. Avoid vague words unless they are paired with concrete geometry/material/shader parameters."
+  },
+  "sourceImage": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/new netherlands hero render mockup .jpg",
+  "referenceCamera": {
+    "solved": false,
+    "fovDegrees": 40.0,
+    "aspect": 1.0,
+    "orientation": {
+      "yaw": 0.0,
+      "pitch": 0.0,
+      "roll": 0.0
+    },
+    "positionHint": [
+      0.0,
+      0.0,
+      3.0
+    ],
+    "note": "For likeness work, solve the reference camera (forge/stage1_intake/solve_camera_pose.py) so the review render aligns with the photo and the reference can be projected. Confirm by overlay review."
+  },
+  "suitability": "conditional",
+  "scores": {
+    "object_isolation": 0,
+    "silhouette_readability": 0,
+    "depth_inference": 0,
+    "primitive_decomposition": 0,
+    "material_procedurality": 0,
+    "occlusion_risk": 0,
+    "interaction_fit": 0
+  },
+  "preSpecAssessment": {
+    "objectClass": {
+      "primaryType": "architectural hotel landmark",
+      "primaryDomain": "object",
+      "formLanguage": [
+        "hard-surface",
+        "architectural",
+        "geometric",
+        "curved-corner"
+      ],
+      "structureKind": [
+        "layered shell",
+        "compound object",
+        "repeated modules"
+      ],
+      "motionPotential": [
+        "static prop",
+        "clickable landmark",
+        "destructible hierarchy candidate"
+      ],
+      "materialFamilies": [
+        "brick",
+        "stone",
+        "slate",
+        "glass",
+        "iron"
+      ],
+      "notes": "The image-generated mockup is the visual source of truth. Historical survey accuracy is not required."
+    },
+    "complexity": {
+      "tier": "ultra-complex",
+      "scores": {
+        "silhouetteComplexity": 3,
+        "componentCount": 3,
+        "hierarchyDepth": 3,
+        "repetitionDensity": 3,
+        "materialLayerCount": 3,
+        "localDetailDensity": 3,
+        "occlusionRisk": 2,
+        "actionReadinessNeed": 1
+      },
+      "estimatedCounts": {
+        "macroComponents": 5,
+        "mesoComponents": 18,
+        "microFeatureGroups": 10,
+        "materialLayers": 5,
+        "repetitionSystems": 4
+      },
+      "reasoning": [
+        "The rounded footprint and continuous curved courses require custom continuous geometry.",
+        "The crown combines a hip roof, multiple wall gables, a turret, a conical roof, finials, and a sign.",
+        "Facade identity depends on repeated rectangular, arched, and curved window systems across multiple materials."
+      ]
+    },
+    "specDepthDecision": {
+      "requiredDepth": "ultra-complex",
+      "minimumComponentLevels": [
+        "macro",
+        "meso",
+        "micro"
+      ],
+      "needsRepetitionSystems": true,
+      "needsMaterialLocalOverrides": true,
+      "needsMultipleReviewViews": true,
+      "needsActionReadyHierarchy": true,
+      "rationale": "Choose simple/moderate/complex/ultra-complex from observed structure, not from a hardcoded domain."
+    },
+    "unknownsToResolveBeforeImplementation": [],
+    "detailInventory": {
+      "scanMethod": "component-zones",
+      "targetMinDetails": 16,
+      "note": "Phase 1 implements the listed macro and meso identity features. Carved ornament and weathering are retained for later passes.",
+      "details": [
+        {
+          "id": "rounded-corner",
+          "kind": "contour",
+          "description": "Continuous convex quarter-round corner through base and shaft",
+          "scale": "macro",
+          "affects": "silhouette",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "brick-shaft/rounded-corner"
+          },
+          "evidenceRef": "full-object",
+          "confidence": 0.98,
+          "realization": "unreported"
+        },
+        {
+          "id": "rusticated-podium",
+          "kind": "ridge",
+          "description": "Two-storey dark rusticated masonry podium",
+          "scale": "macro",
+          "affects": "geometry+material",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "stone-podium/rusticated-field"
+          },
+          "evidenceRef": "base-front",
+          "confidence": 0.96,
+          "realization": "unreported"
+        },
+        {
+          "id": "corner-window",
+          "kind": "hole",
+          "description": "Large curved street-level corner glazing",
+          "scale": "meso",
+          "affects": "geometry+material",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "corner-window/curved-opening"
+          },
+          "evidenceRef": "base-corner",
+          "confidence": 0.95,
+          "realization": "unreported"
+        },
+        {
+          "id": "entrance-portal",
+          "kind": "hole",
+          "description": "Deep central round-headed entrance portal",
+          "scale": "meso",
+          "affects": "geometry",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "entrance/portal-arch"
+          },
+          "evidenceRef": "base-front",
+          "confidence": 0.96,
+          "realization": "unreported"
+        },
+        {
+          "id": "entrance-steps",
+          "kind": "ridge",
+          "description": "Broad stairs projecting from the entrance",
+          "scale": "meso",
+          "affects": "silhouette",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "entrance-steps/projecting-steps"
+          },
+          "evidenceRef": "base-front",
+          "confidence": 0.94,
+          "realization": "unreported"
+        },
+        {
+          "id": "front-arcade",
+          "kind": "hole",
+          "description": "Three large round-headed brick arcade bays",
+          "scale": "meso",
+          "affects": "geometry+repetition",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "front-arcade/round-headed-bays"
+          },
+          "evidenceRef": "upper-front",
+          "confidence": 0.97,
+          "realization": "unreported"
+        },
+        {
+          "id": "curved-courses",
+          "kind": "ridge",
+          "description": "Horizontal stone courses continue around the rounded corner",
+          "scale": "meso",
+          "affects": "geometry",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "belt-courses/continuous-curves"
+          },
+          "evidenceRef": "full-object",
+          "confidence": 0.98,
+          "realization": "unreported"
+        },
+        {
+          "id": "upper-window-rhythm",
+          "kind": "hole",
+          "description": "Regular vertically aligned upper brick windows",
+          "scale": "meso",
+          "affects": "repetition",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "upper-windows/facade-grid"
+          },
+          "evidenceRef": "upper-front",
+          "confidence": 0.94,
+          "realization": "unreported"
+        },
+        {
+          "id": "corner-window-rhythm",
+          "kind": "hole",
+          "description": "Windows follow the curved corner surface",
+          "scale": "meso",
+          "affects": "geometry+repetition",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "corner-windows/radial-grid"
+          },
+          "evidenceRef": "upper-side",
+          "confidence": 0.92,
+          "realization": "unreported"
+        },
+        {
+          "id": "deep-cornice",
+          "kind": "ridge",
+          "description": "Deep cornice separates shaft and crown",
+          "scale": "meso",
+          "affects": "silhouette",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "upper-cornice/deep-projection"
+          },
+          "evidenceRef": "roof",
+          "confidence": 0.95,
+          "realization": "unreported"
+        },
+        {
+          "id": "main-hip-roof",
+          "kind": "contour",
+          "description": "Large steep charcoal hip roof",
+          "scale": "macro",
+          "affects": "silhouette+material",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "roof-field/steep-hip"
+          },
+          "evidenceRef": "roof",
+          "confidence": 0.94,
+          "realization": "unreported"
+        },
+        {
+          "id": "front-gables",
+          "kind": "contour",
+          "description": "Brick wall gables interrupt the front roofline",
+          "scale": "meso",
+          "affects": "silhouette",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "front-gables/wall-gable-set"
+          },
+          "evidenceRef": "roof",
+          "confidence": 0.92,
+          "realization": "unreported"
+        },
+        {
+          "id": "side-gables",
+          "kind": "contour",
+          "description": "Stepped series of brick side gables",
+          "scale": "meso",
+          "affects": "silhouette",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "side-gables/wall-gable-set"
+          },
+          "evidenceRef": "roof",
+          "confidence": 0.9,
+          "realization": "unreported"
+        },
+        {
+          "id": "corner-turret",
+          "kind": "contour",
+          "description": "Rounded upper corner turret integrated with the shaft",
+          "scale": "macro",
+          "affects": "silhouette",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "corner-turret/cylindrical-body"
+          },
+          "evidenceRef": "roof",
+          "confidence": 0.96,
+          "realization": "unreported"
+        },
+        {
+          "id": "conical-roof",
+          "kind": "contour",
+          "description": "Tall conical slate roof above the corner turret",
+          "scale": "macro",
+          "affects": "silhouette+material",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "corner-turret/conical-roof"
+          },
+          "evidenceRef": "roof",
+          "confidence": 0.97,
+          "realization": "unreported"
+        },
+        {
+          "id": "roof-sign",
+          "kind": "decal",
+          "description": "HOTEL NETHERLAND sign along the upper roof",
+          "scale": "meso",
+          "affects": "color+identity",
+          "mapsTo": {
+            "type": "component.localFeatures",
+            "ref": "roof-sign/lettered-board"
+          },
+          "evidenceRef": "roof",
+          "confidence": 0.98,
+          "realization": "unreported"
+        }
+      ]
+    },
+    "anatomy": {
+      "applies": false,
+      "styleHeads": 0.0,
+      "proportions": {
+        "headUnit": 0.0,
+        "torso": 0.0,
+        "legs": 0.0,
+        "shoulderWidth": 0.0,
+        "hipWidth": 0.0
+      },
+      "pose": {
+        "type": "unassessed",
+        "jointAngles": {}
+      },
+      "faceLandmarks": {
+        "eyeLine": 0.0,
+        "eyeSpacing": 0.0,
+        "noseBase": 0.0,
+        "mouthLine": 0.0,
+        "hairline": 0.0
+      },
+      "features": [],
+      "confidence": 0.0,
+      "note": "Only meaningful when objectClass.primaryDomain is character or hybrid. Set applies=true and fill from forge/stage1_intake/extract_landmarks.py. See grimoire/character/reconstruction.md and grimoire/character/likeness_maximization.md."
+    },
+    "sourceImage": "/Users/benjaminbreen/code/Ghosts of the Machine Age Game/new netherlands hero render mockup .jpg"
+  },
+  "qualityContract": {
+    "qualityBar": "ultra-complex",
+    "definitionOfDone": [
+      "Phase 1 is complete when the in-game building reads as the mockup before close ornament is considered: a broad rounded-corner hotel with a dark two-storey podium, brick shaft, central arched entrance and steps, large curved corner glazing, continuous belt courses, steep gabled roof, corner turret, cone, and roof sign.",
+      "The former sharp rectangular tower silhouette must no longer be visible.",
+      "The fixed hero approach and two off-axis street views must preserve the curved corner and coherent roof volume."
+    ],
+    "minimumSpecDepth": {
+      "macroComponents": 5,
+      "mesoComponents": 16,
+      "microFeatureGroups": 8,
+      "materialLayers": 4,
+      "repetitionSystems": 2,
+      "reviewViewpoints": 5
+    },
+    "featureGroups": [
+      {
+        "id": "overall-silhouette",
+        "name": "Overall silhouette and proportions",
+        "required": true,
+        "qualityCriteria": [
+          "Bounding shape, dominant curves, negative spaces, and scale relationships are explicitly described."
+        ],
+        "evidenceRefs": [
+          "full-object"
+        ],
+        "failureModes": [
+          "model reads as a generic placeholder instead of the reference object",
+          "major proportions are guessed without evidence"
+        ]
+      },
+      {
+        "id": "primary-structure",
+        "name": "Primary structure and hierarchy",
+        "required": true,
+        "qualityCriteria": [
+          "Major parts, joints, seams, contact points, and parent-child relationships are named before code generation."
+        ],
+        "evidenceRefs": [
+          "full-object"
+        ],
+        "failureModes": [
+          "large visible parts are merged into one mesh",
+          "component hierarchy is too shallow for the observed complexity"
+        ]
+      },
+      {
+        "id": "attachment-joint-correctness",
+        "name": "Attachment and joint correctness",
+        "required": true,
+        "qualityCriteria": [
+          "Every visible child appendage, branch, limb, handle, connector, tube, cable, horn, wing, leg, or hinged part has an attachment contract with parent socket, localStart/localEnd, contact type, embed/overlap, and gap tolerance."
+        ],
+        "evidenceRefs": [
+          "full-object"
+        ],
+        "failureModes": [
+          "child part root floats away from the parent",
+          "branch/limb/tube is centered in space instead of pivoting from its root",
+          "parent-child transform mixes world and local coordinates"
+        ]
+      },
+      {
+        "id": "surface-material-response",
+        "name": "Surface material response",
+        "required": true,
+        "qualityCriteria": [
+          "Albedo zones, roughness, normal/bump/displacement intent, cavity dirt, edge wear, and local overrides are specified where visible.",
+          "Important materials define independent albedo, roughness, height/normal, and AO responses instead of reusing one texture for unrelated PBR channels.",
+          "Surface response is decomposed into macro, meso, and micro frequency bands with scale and amplitude tied to object scale."
+        ],
+        "evidenceRefs": [
+          "full-object"
+        ],
+        "failureModes": [
+          "surface looks like flat plastic",
+          "local material variation is missing or not tied to image evidence"
+        ]
+      },
+      {
+        "id": "reference-lookdev",
+        "name": "Reference color, material, and lighting response",
+        "required": true,
+        "qualityCriteria": [
+          "Material-pass names the reference-derived albedo palette, roughness variation, tactile normal/bump/displacement response, and local masks.",
+          "When a source image is available, run reference PBR extraction and require confidence >= 0.7 before treating maps as implementation-ready.",
+          "Lighting-pass names key/fill/rim or environment light, exposure, tone mapping, background, and contact shadow behavior.",
+          "Neutral, grazing-angle, and reference-matched renders prove that surface relief survives relighting and is not painted into albedo."
+        ],
+        "evidenceRefs": [
+          "full-object"
+        ],
+        "failureModes": [
+          "model has acceptable shape but reads as flat shaded or plastic",
+          "colors are a generic average instead of reference-observed local color zones",
+          "lighting is evenly ambient and cannot reproduce the source value range"
+        ]
+      },
+      {
+        "id": "mockup-rounded-corner",
+        "name": "Continuous rounded corner and corner window",
+        "required": true,
+        "qualityCriteria": [
+          "The podium, shaft, courses, glazing, and turret read as one continuous curved corner rather than applied corner cylinders on a box."
+        ],
+        "evidenceRefs": [
+          "full-object",
+          "base-corner"
+        ],
+        "failureModes": [
+          "sharp box corner remains visible",
+          "curved window is flat",
+          "belt courses break at the corner"
+        ]
+      },
+      {
+        "id": "mockup-entrance",
+        "name": "Entrance portal and steps",
+        "required": true,
+        "qualityCriteria": [
+          "A deep round-headed entrance is visually dominant at street level and broad masonry steps project toward Fifth Avenue."
+        ],
+        "evidenceRefs": [
+          "base-front"
+        ],
+        "failureModes": [
+          "entrance reads as a rectangular black cutout",
+          "stairs are missing or too narrow"
+        ]
+      },
+      {
+        "id": "mockup-crown",
+        "name": "Gabled roof and turret crown",
+        "required": true,
+        "qualityCriteria": [
+          "The crown combines a steep hip, front and side wall gables, integrated rounded turret, tall cone, and readable roof sign."
+        ],
+        "evidenceRefs": [
+          "roof"
+        ],
+        "failureModes": [
+          "roof reads as rotated pyramids",
+          "turret floats",
+          "roofline is flat or generic"
+        ]
+      }
+    ],
+    "visualDeltaChecks": [
+      "silhouette and negative-space delta",
+      "component hierarchy depth delta",
+      "repetition density and distribution delta",
+      "material albedo/roughness/normal response delta",
+      "local feature placement and scale delta"
+    ],
+    "antiShallowSpecRules": [
+      "Do not proceed to code if qualityContract.qualityBar is unassessed.",
+      "Do not proceed to code if the spec only contains a root component for a moderate or complex object.",
+      "Do not proceed to code if required featureGroups are not represented by componentTree, materials, or repetitionSystems.",
+      "Do not proceed to code if visible local features are described only in prose and not attached to components/materials/evidenceRefs.",
+      "Do not proceed past structural-pass if attached child parts lack attachment.parentSocket, localStart, localEnd, embedDepth/overlap, and gapTolerance.",
+      "Do not pass material look-dev when albedo is reused as roughness, height, normal, or AO.",
+      "Do not pass material look-dev without macro, meso, and micro surface frequency bands for close-up materials.",
+      "Do not pass reference-fidelity material look-dev from a source image without usable referencePbr maps or an explicit documented limitation.",
+      "Do not patch a spec with extracted PBR maps when extraction confidence is below the target threshold unless the user explicitly accepts lower fidelity.",
+      "Do not place adjacent separate-geometry parts below 0.02 world-unit seam overlap (source: grimoire/build/geometry_patterns.md).",
+      "Do not satisfy raised or recessed relief, fasteners, or grip structure with a map alone when the feature affects form; use geometry or displacement (source: grimoire/build/geometry_patterns.md).",
+      "Adjacent components must overlap by at least 0.02 world units at shared seams (source: grimoire/build/geometry_patterns.md).",
+      "Raised or recessed relief and fasteners must be geometry, instanced micro-parts, or displacement; a map alone is an approximation (source: grimoire/build/geometry_patterns.md)."
+    ],
+    "mustNotDo": [
+      "Do not proceed to code if qualityContract.qualityBar is unassessed.",
+      "Do not proceed to code if the spec only contains a root component for a moderate or complex object.",
+      "Do not proceed to code if required featureGroups are not represented by componentTree, materials, or repetitionSystems.",
+      "Do not proceed to code if visible local features are described only in prose and not attached to components/materials/evidenceRefs.",
+      "Do not proceed past structural-pass if attached child parts lack attachment.parentSocket, localStart, localEnd, embedDepth/overlap, and gapTolerance.",
+      "Do not pass material look-dev when albedo is reused as roughness, height, normal, or AO.",
+      "Do not pass material look-dev without macro, meso, and micro surface frequency bands for close-up materials.",
+      "Do not pass reference-fidelity material look-dev from a source image without usable referencePbr maps or an explicit documented limitation.",
+      "Do not patch a spec with extracted PBR maps when extraction confidence is below the target threshold unless the user explicitly accepts lower fidelity.",
+      "Do not place adjacent separate-geometry parts below 0.02 world-unit seam overlap (source: grimoire/build/geometry_patterns.md).",
+      "Do not satisfy raised or recessed relief, fasteners, or grip structure with a map alone when the feature affects form; use geometry or displacement (source: grimoire/build/geometry_patterns.md).",
+      "Adjacent components must overlap by at least 0.02 world units at shared seams (source: grimoire/build/geometry_patterns.md).",
+      "Raised or recessed relief and fasteners must be geometry, instanced micro-parts, or displacement; a map alone is an approximation (source: grimoire/build/geometry_patterns.md)."
+    ]
+  },
+  "qualityTargets": {
+    "targetFidelity": 0.7,
+    "mustMatch": [
+      "macro silhouette and proportions",
+      "primary material albedo/roughness response",
+      "reference-derived PBR material response at or above 0.7 confidence when source pixels are usable",
+      "most recognizable local features"
+    ],
+    "niceToHave": [
+      "micro scratches, stains, chips, and dirt masks",
+      "secondary lighting match"
+    ],
+    "fpsTarget": 60,
+    "reviewViewpoints": [
+      "front",
+      "three-quarter",
+      "side",
+      "thickness-axis",
+      "long-axis"
+    ]
+  },
+  "selfCorrectLoop": {
+    "enabled": true,
+    "visualAcceptance": {
+      "reviewer": "ai-vision",
+      "threshold": 0.7,
+      "comparisonArtifactRequired": true,
+      "layerScoresRequired": true,
+      "codePixelDiffIsAcceptanceAuthority": false,
+      "scoringRule": "AI vision must inspect a side-by-side reference/render sheet and score the current pass from 0 to 1. Pixel-diff code may assist diagnostics but cannot approve a pass.",
+      "requiredLayerScores": [
+        "silhouetteProportion",
+        "componentStructure",
+        "formDetail",
+        "materialSurface",
+        "lightingCamera"
+      ],
+      "featureReviewPolicy": {
+        "enabled": true,
+        "reviewUnit": "semantic-subsystem",
+        "maxCriticalFeaturesPerPass": 5,
+        "maxImportantFeaturesPerPass": 3,
+        "criticalDefaultThreshold": 0.8,
+        "importantAverageThreshold": 0.65,
+        "adaptiveEscalation": true,
+        "singleImagePairOnly": true,
+        "selectionRule": "Choose only the most visually salient, identity-defining, user-prioritized, or high-risk semantic systems. Group repeated parts instead of reviewing every mesh. AI vision scores every selected feature from the same full reference/render pair."
+      }
+    },
+    "reviewAfterPasses": [
+      "blockout",
+      "structural-pass",
+      "form-refinement",
+      "material-pass",
+      "surface-pass",
+      "lighting-pass",
+      "interaction-pass",
+      "optimization-pass"
+    ],
+    "allowedActions": [
+      "continue",
+      "refine-spec",
+      "refine-code",
+      "request-input",
+      "stop"
+    ],
+    "specRefineTriggers": [
+      "missing component",
+      "wrong primitive family",
+      "wrong proportions",
+      "material layer under-specified",
+      "local feature not traceable to viewEvidence",
+      "reference ambiguity discovered during implementation"
+    ],
+    "codeRefineTriggers": [
+      "spec is adequate but generated geometry/material does not match",
+      "browser render differs from reference",
+      "performance budget exceeded",
+      "lighting hides geometry or material response"
+    ],
+    "stopCriteria": [
+      "target fidelity reached or user accepts current approximation",
+      "remaining gaps require new reference images or manual art"
+    ],
+    "screenshotPolicy": {
+      "requiredForPasses": [
+        "blockout",
+        "structural-pass",
+        "form-refinement",
+        "material-pass",
+        "surface-pass",
+        "lighting-pass",
+        "interaction-pass"
+      ],
+      "preferredCapture": "in-app-browser-screenshot",
+      "fallbackCapture": "user-supplied-screenshot-path",
+      "minimumEvidence": "Each visual pass needs a reference image, rendered screenshot, side-by-side comparison sheet, AI vision score, layer scores, and critique before choosing continue.",
+      "reviewPairRule": "Compare the same camera/viewpoint whenever possible; do not judge a front reference against a random render angle.",
+      "acceptanceAuthority": "AI vision review of the comparison sheet. Code-generated pixel similarity is not sufficient evidence."
+    }
+  },
+  "featureReviewTargets": [
+    {
+      "id": "rounded-corner-silhouette",
+      "name": "Continuous rounded footprint and corner silhouette",
+      "tier": "critical",
+      "passIds": [
+        "blockout"
+      ],
+      "minimumScore": 0.8,
+      "mustPass": true,
+      "componentRefs": [
+        "stone-podium",
+        "brick-shaft"
+      ],
+      "evidenceRefs": [
+        "full-object"
+      ]
+    },
+    {
+      "id": "arcade-portal-hierarchy",
+      "name": "Three-bay arcade and recessed entrance hierarchy",
+      "tier": "critical",
+      "passIds": [
+        "blockout",
+        "structural-pass"
+      ],
+      "minimumScore": 0.8,
+      "mustPass": true,
+      "componentRefs": [
+        "front-arcade",
+        "entrance",
+        "entrance-steps"
+      ],
+      "evidenceRefs": [
+        "full-object"
+      ]
+    },
+    {
+      "id": "occupied-roof-crown",
+      "name": "Occupied central pavilion, smaller left pavilion, and integrated turret crown",
+      "tier": "critical",
+      "passIds": [
+        "blockout",
+        "structural-pass"
+      ],
+      "minimumScore": 0.75,
+      "mustPass": true,
+      "componentRefs": [
+        "front-gables",
+        "corner-turret",
+        "roof-field"
+      ],
+      "evidenceRefs": [
+        "full-object"
+      ]
+    }
+  ],
+  "sculptPipeline": {
+    "passGateMode": "locked-sequential",
+    "passOrder": [
+      "blockout",
+      "structural-pass",
+      "form-refinement",
+      "material-pass",
+      "surface-pass",
+      "lighting-pass",
+      "interaction-pass",
+      "optimization-pass"
+    ],
+    "currentPass": "blockout",
+    "completedPasses": [],
+    "lastCompletedPass": "",
+    "blockedReason": "blockout requires a browser screenshot and self-correction review before structural-pass unlocks",
+    "nextRequiredEvidence": [
+      "blockout browser render screenshot from your agent's browser/screenshot tool",
+      "side-by-side reference/render comparison sheet",
+      "AI vision score >= 0.7 with layer scores and mismatch critique",
+      "critical semantic feature scores from the same image pair meeting their individual thresholds",
+      "reviewHistory entry for blockout with action=continue"
+    ]
+  },
+  "lookDevTargets": {
+    "qualityPriority": "reference-fidelity",
+    "materialPass": {
+      "albedoPaletteRequired": true,
+      "roughnessVariationRequired": true,
+      "normalOrBumpRequired": true,
+      "localOverridesRequired": true,
+      "minimumTextureResolution": 1024,
+      "preferredTextureResolution": 2048,
+      "independentMapChannels": [
+        "albedo",
+        "roughness",
+        "height",
+        "normal",
+        "ambient-occlusion"
+      ],
+      "requiredSurfaceFrequencyBands": [
+        "macro",
+        "meso",
+        "micro"
+      ],
+      "geometryReliefRequiredWhenSilhouetteAffected": true,
+      "referencePbrExtraction": {
+        "requiredWhenSourceImagePresent": true,
+        "targetThreshold": 0.7,
+        "stopOnLowConfidence": true,
+        "script": "forge/stage1_intake/extract_pbr_evidence.py",
+        "acceptedLimitation": "single-image extraction is reference-derived inference, not exact photogrammetry"
+      },
+      "mustAvoid": [
+        "single flat albedo per material",
+        "uniform roughness",
+        "albedo texture reused as roughness/height/normal/AO",
+        "single-frequency random noise",
+        "plastic-looking smooth bark, stone, cloth, foliage, or aged material",
+        "local color/detail described only in prose without material masks",
+        "claiming exact PBR recovery when confidence is below the target threshold"
+      ]
+    },
+    "lightingPass": {
+      "requiredTerms": [
+        "key light",
+        "fill light",
+        "rim or environment light",
+        "exposure",
+        "tone mapping",
+        "background",
+        "contact shadow"
+      ],
+      "mustAvoid": [
+        "ambient-only lighting",
+        "flat value range",
+        "missing contact shadow",
+        "reference lighting copied without separating material readability"
+      ]
+    },
+    "screenshotReview": [
+      "Compare albedo palette and local color zones.",
+      "Compare roughness/normal/bump response under light.",
+      "Compare cavity dirt, edge wear, stains, moss, scratches, or other local masks.",
+      "Compare key/fill/rim structure, exposure, tone mapping, background, and contact shadows.",
+      "Capture a neutral-light render to verify material readability without reference lighting.",
+      "Capture a grazing-light close-up to expose flat normals, uniform roughness, tiling, and plastic highlights.",
+      "Capture a reference-matched render from the same camera framing as the source."
+    ]
+  },
+  "actionReadiness": {
+    "contract": "Every macro/meso component should be generated as a stable named Object3D pivot node with a mesh child, action metadata, optional sockets, collider proxy, and destruction metadata.",
+    "defaultRigType": "action-ready-static-rig",
+    "rootMotionNode": "root",
+    "requiredComponentFields": [
+      "id",
+      "parent",
+      "transform",
+      "attachment for child appendages, connectors, limbs, tubes, handles, legs, horns, wings, branches, or cables",
+      "actionProfile.animationRole",
+      "actionProfile.pivot",
+      "actionProfile.collider",
+      "actionProfile.destruction"
+    ],
+    "transformChannels": [
+      "translate",
+      "rotate",
+      "scale",
+      "bend",
+      "twist",
+      "detach",
+      "visibility",
+      "material-state"
+    ],
+    "authoringRules": [
+      "Do not collapse independently movable parts into one mesh.",
+      "Put transforms on component pivot groups, not only on raw meshes.",
+      "For attached child parts, put the pivot at the semantic root/socket and build visible geometry from localStart to localEnd.",
+      "Represent hinge, socket, detachable, and breakable intent even when no animation is implemented yet.",
+      "Use simplified collider proxies for runtime physics instead of visual mesh colliders by default."
+    ],
+    "destructionPolicy": {
+      "defaultBreakable": false,
+      "fractureGroupNaming": "Use stable semantic names such as body-shell, left-hinge, glass-panel, branch-segment.",
+      "debrisStrategy": "Prefer detachable component groups and a small number of procedural fragments over random mesh explosion."
+    }
+  },
+  "assumptions": [
+    "The rear elevation is hidden and uses a simplified continuation of the visible side elevation.",
+    "Roof intersections hidden by the front pavilions are approximated to preserve the visible silhouette.",
+    "The exact focal length is unknown; review uses the closest achievable in-game three-quarter street view."
+  ],
+  "coordinateFrame": {
+    "front": "camera-facing side in the reference image",
+    "up": "image up direction",
+    "scaleReference": "unit scale; adjust after first browser render"
+  },
+  "silhouette": {
+    "boundingShape": "",
+    "aspectRatios": [],
+    "symmetry": "",
+    "dominantCurves": [],
+    "negativeSpaces": [],
+    "landmarks": []
+  },
+  "viewEvidence": [
+    {
+      "id": "full-object",
+      "view": "primary",
+      "imageRegion": {
+        "x": 0.0,
+        "y": 0.0,
+        "width": 1.0,
+        "height": 1.0,
+        "units": "normalized"
+      },
+      "observations": [],
+      "confidence": 0.5
+    }
+  ],
+  "componentTree": [
+    {
+      "id": "root",
+      "name": "New Netherland Hotel assembly",
+      "level": "macro",
+      "role": "assembly",
+      "importance": 1.0,
+      "confidence": 0.96,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "The landmark is a hierarchy of independently built facade, roof, opening, and trim systems.",
+      "parent": null,
+      "material": "brick",
+      "colorMaterialRecipe": {"dominantAlbedo": "rgba(193, 92, 60, 1.0)", "secondaryAlbedo": "rgba(151, 68, 47, 1.0)", "materialClass": "stone", "materialClassConfidence": 0.82},
+      "localFeatures": [],
+      "evidenceRefs": ["full-object"]
+    },
+    {
+      "id": "stone-podium",
+      "name": "Two-storey rusticated podium",
+      "level": "macro",
+      "role": "masonry mass",
+      "importance": 0.95,
+      "confidence": 0.96,
+      "primitive": "extrude",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "A continuous quarter-rounded footprint carries two storeys of visually heavy masonry.",
+      "parent": "root",
+      "material": "brownstone",
+      "colorMaterialRecipe": {"dominantAlbedo": "rgba(113, 79, 62, 1.0)", "secondaryAlbedo": "rgba(82, 55, 45, 1.0)", "materialClass": "stone", "materialClassConfidence": 0.88},
+      "localFeatures": [{"id": "rusticated-field", "description": "Dark block-scale base field with continuous rounded corner."}],
+      "evidenceRefs": ["full-object"]
+    },
+    {
+      "id": "brick-shaft",
+      "name": "Rounded brick hotel shaft",
+      "level": "macro",
+      "role": "masonry mass",
+      "importance": 1.0,
+      "confidence": 0.98,
+      "primitive": "extrude",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "The west and south elevations meet as one convex quarter-round wall rather than two box faces.",
+      "parent": "root",
+      "material": "brick",
+      "colorMaterialRecipe": {"dominantAlbedo": "rgba(193, 92, 60, 1.0)", "secondaryAlbedo": "rgba(151, 68, 47, 1.0)", "materialClass": "stone", "materialClassConfidence": 0.82},
+      "localFeatures": [{"id": "rounded-corner", "description": "Continuous convex quarter-round at the visible corner."}],
+      "evidenceRefs": ["full-object"]
+    },
+    {
+      "id": "roof-field",
+      "name": "Steep main slate roof field",
+      "level": "macro",
+      "role": "roof mass",
+      "importance": 0.92,
+      "confidence": 0.94,
+      "primitive": "extrude",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Four sloped roof planes form a tall hip behind the masonry pavilions.",
+      "parent": "root",
+      "material": "slate",
+      "colorMaterialRecipe": {"dominantAlbedo": "rgba(42, 52, 59, 1.0)", "secondaryAlbedo": "rgba(65, 71, 74, 1.0)", "materialClass": "stone", "materialClassConfidence": 0.74},
+      "localFeatures": [{"id": "steep-hip", "description": "Large charcoal roof volume with a long north-south ridge."}],
+      "evidenceRefs": ["full-object"]
+    },
+    {
+      "id": "corner-turret",
+      "name": "Integrated rounded corner turret",
+      "level": "macro",
+      "role": "corner crown",
+      "importance": 1.0,
+      "confidence": 0.97,
+      "primitive": "lathe",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "A two-stage cylindrical brick body rises from the rounded corner and terminates in a tall conical slate cap.",
+      "parent": "root",
+      "material": "brick",
+      "colorMaterialRecipe": {"dominantAlbedo": "rgba(193, 92, 60, 1.0)", "secondaryAlbedo": "rgba(151, 68, 47, 1.0)", "materialClass": "stone", "materialClassConfidence": 0.82},
+      "localFeatures": [
+        {"id": "cylindrical-body", "description": "Two occupied circular storeys with course rings."},
+        {"id": "conical-roof", "description": "Tall pointed slate cap with ball finial."}
+      ],
+      "evidenceRefs": ["full-object"]
+    },
+    {
+      "id": "front-arcade",
+      "name": "Three-bay two-storey front arcade",
+      "level": "meso",
+      "role": "facade bay system",
+      "importance": 1.0,
+      "confidence": 0.98,
+      "primitive": "extrude",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Three equal round-headed openings share a baseline, spring line, pier rhythm, and cornice datum.",
+      "parent": "brick-shaft",
+      "material": "glass",
+      "colorMaterialRecipe": {"dominantAlbedo": "rgba(28, 48, 58, 1.0)", "secondaryAlbedo": "rgba(51, 70, 77, 1.0)", "materialClass": "glass", "materialClassConfidence": 0.93},
+      "localFeatures": [{"id": "round-headed-bays", "description": "Three equal arches with common vertical mullion and transom geometry."}],
+      "evidenceRefs": ["full-object"]
+    },
+    {
+      "id": "entrance",
+      "name": "Deep arched entrance portal",
+      "level": "meso",
+      "role": "front portal",
+      "importance": 0.96,
+      "confidence": 0.96,
+      "primitive": "extrude",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "A projecting stone surround encloses a visibly recessed round-headed timber door.",
+      "parent": "stone-podium",
+      "material": "trim-stone",
+      "colorMaterialRecipe": {"dominantAlbedo": "rgba(181, 154, 121, 1.0)", "secondaryAlbedo": "rgba(142, 113, 88, 1.0)", "materialClass": "stone", "materialClassConfidence": 0.91},
+      "localFeatures": [{"id": "portal-arch", "description": "Deep round-headed surround with paired jambs."}],
+      "evidenceRefs": ["full-object"]
+    },
+    {
+      "id": "entrance-steps",
+      "name": "Broad descending entrance stairs",
+      "level": "meso",
+      "role": "front stair",
+      "importance": 0.86,
+      "confidence": 0.95,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Four overlapping treads descend and widen from the recessed door toward the pavement.",
+      "parent": "stone-podium",
+      "material": "brownstone",
+      "colorMaterialRecipe": {"dominantAlbedo": "rgba(113, 79, 62, 1.0)", "secondaryAlbedo": "rgba(82, 55, 45, 1.0)", "materialClass": "stone", "materialClassConfidence": 0.88},
+      "localFeatures": [{"id": "projecting-steps", "description": "Four treads, highest at the wall and widest at the sidewalk."}],
+      "evidenceRefs": ["full-object"]
+    },
+    {
+      "id": "corner-window",
+      "name": "Curved street-level corner glazing",
+      "level": "meso",
+      "role": "curved glazing",
+      "importance": 0.9,
+      "confidence": 0.95,
+      "primitive": "extrude",
+      "topologyClass": "conforming-shell",
+      "topologyRationale": "The glass follows the podium arc and is divided by masonry rather than reading as a flat panel.",
+      "parent": "stone-podium",
+      "material": "glass",
+      "colorMaterialRecipe": {"dominantAlbedo": "rgba(28, 48, 58, 1.0)", "secondaryAlbedo": "rgba(51, 70, 77, 1.0)", "materialClass": "glass", "materialClassConfidence": 0.93},
+      "localFeatures": [{"id": "curved-opening", "description": "Wide but bounded curved ground-floor window with masonry margins."}],
+      "evidenceRefs": ["full-object"]
+    },
+    {
+      "id": "belt-courses",
+      "name": "Continuous horizontal belt courses",
+      "level": "meso",
+      "role": "facade datum system",
+      "importance": 0.88,
+      "confidence": 0.98,
+      "primitive": "extrude",
+      "topologyClass": "surface-relief",
+      "topologyRationale": "Projected stone bands follow the same rounded perimeter as the masonry shell.",
+      "parent": "brick-shaft",
+      "material": "trim-stone",
+      "colorMaterialRecipe": {"dominantAlbedo": "rgba(181, 154, 121, 1.0)", "secondaryAlbedo": "rgba(142, 113, 88, 1.0)", "materialClass": "stone", "materialClassConfidence": 0.91},
+      "localFeatures": [{"id": "continuous-curves", "description": "All major floor bands remain continuous through the rounded corner."}],
+      "evidenceRefs": ["full-object"]
+    },
+    {
+      "id": "upper-windows",
+      "name": "Front upper window field",
+      "level": "meso",
+      "role": "facade window grid",
+      "importance": 0.78,
+      "confidence": 0.92,
+      "primitive": "instanced-cluster",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Repeated rectangular glazing modules align vertically across the west facade.",
+      "parent": "brick-shaft",
+      "material": "glass",
+      "colorMaterialRecipe": {"dominantAlbedo": "rgba(28, 48, 58, 1.0)", "secondaryAlbedo": "rgba(51, 70, 77, 1.0)", "materialClass": "glass", "materialClassConfidence": 0.93},
+      "localFeatures": [{"id": "facade-grid", "description": "Regular rectangular windows with aligned sills."}],
+      "evidenceRefs": ["full-object"]
+    },
+    {
+      "id": "side-windows",
+      "name": "South facade window field",
+      "level": "meso",
+      "role": "facade window grid",
+      "importance": 0.72,
+      "confidence": 0.89,
+      "primitive": "instanced-cluster",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Repeated window modules establish the long south elevation rhythm.",
+      "parent": "brick-shaft",
+      "material": "glass",
+      "colorMaterialRecipe": {"dominantAlbedo": "rgba(28, 48, 58, 1.0)", "secondaryAlbedo": "rgba(51, 70, 77, 1.0)", "materialClass": "glass", "materialClassConfidence": 0.93},
+      "localFeatures": [],
+      "evidenceRefs": ["full-object"]
+    },
+    {
+      "id": "corner-windows",
+      "name": "Radial rounded-corner window grid",
+      "level": "meso",
+      "role": "curved window grid",
+      "importance": 0.86,
+      "confidence": 0.92,
+      "primitive": "instanced-cluster",
+      "topologyClass": "conforming-shell",
+      "topologyRationale": "Paired window panels are tangent to successive points on the convex corner arc.",
+      "parent": "brick-shaft",
+      "material": "glass",
+      "colorMaterialRecipe": {"dominantAlbedo": "rgba(28, 48, 58, 1.0)", "secondaryAlbedo": "rgba(51, 70, 77, 1.0)", "materialClass": "glass", "materialClassConfidence": 0.93},
+      "localFeatures": [{"id": "radial-grid", "description": "Paired windows turn through the corner on every upper storey."}],
+      "evidenceRefs": ["full-object"]
+    },
+    {
+      "id": "upper-cornice",
+      "name": "Deep crown cornice",
+      "level": "meso",
+      "role": "crown datum",
+      "importance": 0.9,
+      "confidence": 0.95,
+      "primitive": "extrude",
+      "topologyClass": "surface-relief",
+      "topologyRationale": "A thick projecting band terminates the shaft and visually seats the roof pavilions and turret.",
+      "parent": "brick-shaft",
+      "material": "trim-stone",
+      "colorMaterialRecipe": {"dominantAlbedo": "rgba(181, 154, 121, 1.0)", "secondaryAlbedo": "rgba(142, 113, 88, 1.0)", "materialClass": "stone", "materialClassConfidence": 0.91},
+      "localFeatures": [{"id": "deep-projection", "description": "A two-step cornice projects beyond the wall and curves through the corner."}],
+      "evidenceRefs": ["full-object"]
+    },
+    {
+      "id": "front-gables",
+      "name": "Front occupied roof pavilions",
+      "level": "meso",
+      "role": "front crown pavilions",
+      "importance": 1.0,
+      "confidence": 0.95,
+      "primitive": "extrude",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "The central crown is a two-storey brick pavilion with two lower windows and one gable window; the left pavilion is smaller.",
+      "parent": "roof-field",
+      "material": "brick",
+      "colorMaterialRecipe": {"dominantAlbedo": "rgba(193, 92, 60, 1.0)", "secondaryAlbedo": "rgba(151, 68, 47, 1.0)", "materialClass": "stone", "materialClassConfidence": 0.82},
+      "localFeatures": [{"id": "wall-gable-set", "description": "One dominant two-storey central pavilion and one smaller left roof pavilion."}],
+      "evidenceRefs": ["full-object"]
+    },
+    {
+      "id": "side-gables",
+      "name": "South occupied wall gables",
+      "level": "meso",
+      "role": "side crown pavilions",
+      "importance": 0.82,
+      "confidence": 0.9,
+      "primitive": "extrude",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "A receding series of brick shoulders and triangular wall gables punctuates the long roof edge.",
+      "parent": "roof-field",
+      "material": "brick",
+      "colorMaterialRecipe": {"dominantAlbedo": "rgba(193, 92, 60, 1.0)", "secondaryAlbedo": "rgba(151, 68, 47, 1.0)", "materialClass": "stone", "materialClassConfidence": 0.82},
+      "localFeatures": [{"id": "wall-gable-set", "description": "Three smaller occupied south wall gables with consistent shoulders."}],
+      "evidenceRefs": ["full-object"]
+    },
+    {
+      "id": "turret-body",
+      "name": "Two-stage turret masonry",
+      "level": "meso",
+      "role": "corner crown body",
+      "importance": 0.96,
+      "confidence": 0.96,
+      "primitive": "lathe",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Stacked circular wall drums and separating rings make the turret read as occupied architecture rather than a floating cone.",
+      "parent": "corner-turret",
+      "material": "brick",
+      "colorMaterialRecipe": {"dominantAlbedo": "rgba(193, 92, 60, 1.0)", "secondaryAlbedo": "rgba(151, 68, 47, 1.0)", "materialClass": "stone", "materialClassConfidence": 0.82},
+      "localFeatures": [],
+      "evidenceRefs": ["full-object"]
+    },
+    {
+      "id": "turret-cone",
+      "name": "Tall turret slate cap",
+      "level": "meso",
+      "role": "corner crown cap",
+      "importance": 0.96,
+      "confidence": 0.97,
+      "primitive": "lathe",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "A steep conical cap continues the turret axis and terminates in a small finial.",
+      "parent": "corner-turret",
+      "material": "slate",
+      "colorMaterialRecipe": {"dominantAlbedo": "rgba(42, 52, 59, 1.0)", "secondaryAlbedo": "rgba(65, 71, 74, 1.0)", "materialClass": "stone", "materialClassConfidence": 0.74},
+      "localFeatures": [],
+      "evidenceRefs": ["full-object"]
+    },
+    {
+      "id": "roof-sign",
+      "name": "Hotel Netherland roof sign",
+      "level": "meso",
+      "role": "roof identity board",
+      "importance": 0.88,
+      "confidence": 0.98,
+      "primitive": "plane-card",
+      "topologyClass": "open-shell",
+      "topologyRationale": "A thin double-sided lettered board is mounted above the west roof slope.",
+      "parent": "roof-field",
+      "material": "sign-board",
+      "colorMaterialRecipe": {"dominantAlbedo": "rgba(43, 33, 30, 1.0)", "secondaryAlbedo": "rgba(216, 179, 111, 1.0)", "materialClass": "wood", "materialClassConfidence": 0.61},
+      "localFeatures": [{"id": "lettered-board", "description": "Readable HOTEL NETHERLAND wordmark in a framed dark board."}],
+      "evidenceRefs": ["full-object"]
+    },
+    {
+      "id": "base-openings",
+      "name": "Repeated podium window openings",
+      "level": "meso",
+      "role": "base window rhythm",
+      "importance": 0.66,
+      "confidence": 0.88,
+      "primitive": "instanced-cluster",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Small arched openings repeat along the stone podium without competing with the primary entrance.",
+      "parent": "stone-podium",
+      "material": "glass",
+      "colorMaterialRecipe": {"dominantAlbedo": "rgba(28, 48, 58, 1.0)", "secondaryAlbedo": "rgba(51, 70, 77, 1.0)", "materialClass": "glass", "materialClassConfidence": 0.93},
+      "localFeatures": [],
+      "evidenceRefs": ["full-object"]
+    },
+    {
+      "id": "arcade-mullions",
+      "name": "Arcade mullion and transom set",
+      "level": "meso",
+      "role": "glazing subdivision",
+      "importance": 0.78,
+      "confidence": 0.9,
+      "primitive": "instanced-cluster",
+      "topologyClass": "surface-relief",
+      "topologyRationale": "Dark vertical and horizontal bars subdivide all three large arch bays consistently.",
+      "parent": "front-arcade",
+      "material": "iron",
+      "colorMaterialRecipe": {"dominantAlbedo": "rgba(27, 31, 32, 1.0)", "secondaryAlbedo": "rgba(45, 50, 52, 1.0)", "materialClass": "metal", "materialClassConfidence": 0.9},
+      "localFeatures": [],
+      "evidenceRefs": ["full-object"]
+    }
+  ],
+  "materials": [
+    {"id": "brick", "name": "Temporary warm red brick", "type": "standard", "shaderModel": "MeshStandardMaterial", "baseColor": "#C15C3C", "qualityTier": "utility", "albedo": {"dominant": "#C15C3C", "secondary": ["#97442F", "#D47A58"]}, "roughness": {"base": 0.84, "variation": 0.08}, "metalness": {"base": 0.0}, "localOverrides": [{"id": "brick-shade-variation", "description": "Slightly darker pavilion and recessed wall zones."}]},
+    {"id": "brownstone", "name": "Temporary dark rusticated brownstone", "type": "standard", "shaderModel": "MeshStandardMaterial", "baseColor": "#714F3E", "qualityTier": "utility", "roughness": {"base": 0.91, "variation": 0.05}, "metalness": {"base": 0.0}, "localOverrides": [{"id": "base-cavity-darkening", "description": "Temporary darker recess response at the podium."}]},
+    {"id": "trim-stone", "name": "Temporary warm limestone trim", "type": "standard", "shaderModel": "MeshStandardMaterial", "baseColor": "#B59A79", "qualityTier": "utility", "roughness": {"base": 0.82, "variation": 0.04}, "metalness": {"base": 0.0}, "localOverrides": []},
+    {"id": "slate", "name": "Temporary charcoal slate", "type": "standard", "shaderModel": "MeshStandardMaterial", "baseColor": "#2A343B", "qualityTier": "utility", "roughness": {"base": 0.79, "variation": 0.06}, "metalness": {"base": 0.04}, "localOverrides": []},
+    {"id": "glass", "name": "Temporary blue-black glazing", "type": "standard", "shaderModel": "MeshStandardMaterial", "baseColor": "#1C303A", "qualityTier": "utility", "roughness": {"base": 0.24, "variation": 0.03}, "metalness": {"base": 0.08}, "localOverrides": []},
+    {"id": "iron", "name": "Temporary dark iron mullions", "type": "standard", "shaderModel": "MeshStandardMaterial", "baseColor": "#1B1F20", "qualityTier": "utility", "roughness": {"base": 0.48, "variation": 0.04}, "metalness": {"base": 0.62}, "localOverrides": []},
+    {"id": "sign-board", "name": "Temporary roof sign board", "type": "standard", "shaderModel": "MeshBasicMaterial", "baseColor": "#2B211E", "qualityTier": "utility", "doubleSided": true, "roughness": {"base": 0.7}, "metalness": {"base": 0.0}, "localOverrides": []}
+  ],
+  "repetitionSystems": [
+    {"id": "upper-window-grids", "description": "Vertically aligned rectangular west, south, and curved-corner window modules.", "buildsGeometry": true, "geometry": "instanced window and sill modules", "instances": 50},
+    {"id": "arcade-bay-rhythm", "description": "Three equal round-headed front bays share one baseline, spring line, and transom datum.", "buildsGeometry": true, "geometry": "reused extruded arch, pier, mullion, and transom geometry", "instances": 3},
+    {"id": "podium-opening-rhythm", "description": "Small arched openings repeat along both visible podium elevations.", "buildsGeometry": true, "geometry": "reused extruded arch modules", "instances": 8}
+  ],
+  "buildPasses": [
+    {
+      "id": "blockout",
+      "goal": "Match macro silhouette and proportions.",
+      "componentRefs": [
+        "root"
+      ],
+      "acceptance": [
+        "Silhouette reads correctly without materials.",
+        "Quality contract has named all required macro feature groups before code generation.",
+        "AI vision comparison score meets selfCorrectLoop.visualAcceptance.threshold."
+      ]
+    },
+    {
+      "id": "structural-pass",
+      "goal": "Build the component hierarchy implied by the pre-spec complexity assessment.",
+      "componentRefs": [
+        "root"
+      ],
+      "acceptance": [
+        "Macro, meso, and repeated structures meet qualityContract.minimumSpecDepth.",
+        "Parent-child relations, joints, seams, sockets, and contact points are explicit.",
+        "Every attached child appendage/connector has parentSocket, localStart/localEnd, contactType, embedDepth or overlap, and gapTolerance.",
+        "AI vision comparison score meets selfCorrectLoop.visualAcceptance.threshold."
+      ]
+    },
+    {
+      "id": "form-refinement",
+      "goal": "Refine shape, deformation, bevels, tapers, curves, asymmetry, and visible local geometry.",
+      "componentRefs": [
+        "root"
+      ],
+      "acceptance": [
+        "Important visible forms are represented in component geometryDescriptor, deformations, localFeatures, or repetitionSystems.",
+        "Endpoint-based child parts are rooted at their attachment sockets and do not visibly float away from parents.",
+        "AI vision comparison score meets selfCorrectLoop.visualAcceptance.threshold."
+      ]
+    },
+    {
+      "id": "material-pass",
+      "goal": "Match material color, roughness, bump, and local variation.",
+      "componentRefs": [
+        "root"
+      ],
+      "acceptance": [
+        "Reference-derived albedo palette records dominant, secondary, and accent colors per visible material.",
+        "Each important material defines roughness variation and at least one normal/bump/displacement response.",
+        "Local material overrides, dirt/wear/stains/moss/chips/scratches or equivalent masks are tied to evidenceRefs.",
+        "Thin, transparent, reflective, wet, or fibrous materials document alpha/transmission/clearcoat/metalness/fiber response when relevant.",
+        "Generated preview uses procedural albedo/roughness/bump texture or vertex color variation instead of one flat color.",
+        "Generated preview uses independent PBR maps at 1024px or higher for the quality-first tier.",
+        "If source pixels are available, referencePbr extraction passed at confidence >= 0.7 or the pass is stopped/requesting better references.",
+        "Macro, meso, and micro surface frequency bands are visible at the intended review distance without obvious tiling.",
+        "AI vision comparison score meets selfCorrectLoop.visualAcceptance.threshold."
+      ]
+    },
+    {
+      "id": "surface-pass",
+      "goal": "Add procedural surface locality such as normal/bump/displacement, AO, dirt, stains, chips, grain, moss, scratches, and wear.",
+      "componentRefs": [
+        "root"
+      ],
+      "acceptance": [
+        "Every required material feature group has local overrides or surfaceDetail tied to evidenceRefs.",
+        "A grazing-angle close-up proves that normal/height detail breaks highlights naturally and does not read as smooth plastic.",
+        "AI vision comparison score meets selfCorrectLoop.visualAcceptance.threshold."
+      ]
+    },
+    {
+      "id": "lighting-pass",
+      "goal": "Make material and form readable under neutral turntable lighting plus optional reference lighting.",
+      "componentRefs": [
+        "root"
+      ],
+      "acceptance": [
+        "lightingFromPhoto identifies key light direction/color/intensity, fill light, rim or environment light, and ambient color.",
+        "Exposure, tone mapping, background color/gradient, shadow softness, and contact shadow behavior are specified.",
+        "Lighting does not hide geometry/material gaps and screenshots can be compared fairly to the reference.",
+        "Neutral, grazing, and reference-matched lighting checks distinguish material errors from lighting errors.",
+        "AI vision comparison score meets selfCorrectLoop.visualAcceptance.threshold."
+      ]
+    },
+    {
+      "id": "interaction-pass",
+      "goal": "Make the model ready for future animation, transformation, physics, or destruction.",
+      "componentRefs": [
+        "root"
+      ],
+      "acceptance": [
+        "Macro and movable meso components have stable pivot nodes.",
+        "Sockets, collider proxies, and destruction metadata are present for future runtime actions.",
+        "AI vision comparison score meets selfCorrectLoop.visualAcceptance.threshold."
+      ]
+    },
+    {
+      "id": "optimization-pass",
+      "goal": "Protect runtime performance after visual fidelity is accepted.",
+      "componentRefs": [
+        "root"
+      ],
+      "acceptance": [
+        "Triangle count, draw calls, instancing, LOD strategy, and FPS target are documented or verified.",
+        "Repeated detail is instanced or simplified where possible without breaking silhouette/material believability."
+      ]
+    }
+  ],
+  "visualEvidence": [],
+  "reviewHistory": [],
+  "lodPlan": [
+    {
+      "tier": "near",
+      "distance": 0,
+      "strategy": "full component tree and material layers"
+    },
+    {
+      "tier": "far",
+      "distance": 30,
+      "strategy": "merge static components and reduce local feature geometry"
+    }
+  ],
+  "performanceBudget": {
+    "qualityPriority": "reference-fidelity",
+    "targetTriangles": 250000,
+    "maxDrawCalls": 160,
+    "textureSize": 2048,
+    "fpsTarget": 30,
+    "optimizationPolicy": "Reach accepted visual fidelity first, then optimize without removing reference-critical geometry or surface layers."
+  },
+  "lightingFromPhoto": [
+    "Key light: warm late-morning sun from camera-left and above, with soft-edged architectural shadows.",
+    "Fill light: cool blue sky hemisphere preserving detail on the rounded corner and south facade.",
+    "Environment rim: pale sky reflection separates the charcoal roof and turret cone from the blue background.",
+    "Exposure and tone mapping: retain the game's current exposure with filmic/ACES-style highlight compression; do not crush the dark podium glazing.",
+    "Ground and contact shadow: preserve contact shadows beneath stairs, projecting cornices, pavilions, and the turret junction."
+  ],
+  "proceduralStrategy": [
+    "Block out macro silhouette first.",
+    "Add component hierarchy and joints.",
+    "Create stable pivot groups, sockets, collider proxies, and destruction metadata before visual polish.",
+    "Refine forms with bevels, tapers, bends, and procedural noise.",
+    "Run reference PBR extraction for important source-image materials and stop when confidence is below the target threshold.",
+    "Add material variation before adding expensive micro-geometry."
+  ],
+  "animationAnchors": [
+    "root pivot node supports whole-object translation, rotation, scale, and visibility changes",
+    "component pivot groups support later local transforms without rebuilding geometry"
+  ],
+  "destructionAnchors": [
+    "actionProfile.destruction.fractureGroup marks detachable or breakable component sets",
+    "component seams and sockets define plausible break points instead of random explosions"
+  ],
+  "risks": [],
+  "localSpecSearch": {
+    "collection": "core_3d",
+    "query": "Mockup-matched New Netherland Hotel rounded corner architectural prism custom BufferGeometry cylindrical UV rusticated masonry PBR roughness normal map real-time steep slate roof gable turret procedural geometry",
+    "index": {
+      "status": "hit",
+      "reason": "current",
+      "fingerprint": "6857e5ab528b42ac12f4f411f862610a0bffce8e47aee3610a7603c318072fe8"
+    },
+    "matches": [
+      {
+        "record_id": "core.uv-strategy",
+        "file_path": "grimoire/glossary/3d_vocabulary.md",
+        "heading": "Geometry And Topology",
+        "key_path": null,
+        "score": 16.68739426526,
+        "snippets": [
+          "UV strategy can use generated procedural coordinates, cylindrical projection, triplanar-like mapping, or atlas-ready unwrapped regions."
+        ],
+        "source_refs": [
+          {
+            "path": "grimoire/glossary/3d_vocabulary.md",
+            "heading": "Geometry And Topology",
+            "key_path": null
+          }
+        ],
+        "evidence_refs": [
+          {
+            "kind": "source",
+            "ref": "grimoire/glossary/3d_vocabulary.md"
+          },
+          {
+            "kind": "notebooklm-research",
+            "ref": "notebooklm:4b03c2f9-8393-411f-b5b4-039ab9532843",
+            "note": "Validated generic schema vocabulary; numeric claims remain backed by local source_refs."
+          }
+        ]
+      },
+      {
+        "record_id": "core.pbr-hand-painted-vs-pbr-texture",
+        "file_path": "docs/raw/img2threejs-skill-dataset.json",
+        "heading": null,
+        "key_path": "categories.material_pbr[12]",
+        "score": 12.398238787938,
+        "snippets": [
+          "... baked directly into color (static, stylized) from textures that respond dynamically to scene lighting via separate PBR channels. Phân biệt kết cấu có ánh sáng được nướng trực tiếp vào màu (tĩnh, cách điệu) với kết cấu phản hồi động ..."
+        ],
+        "source_refs": [
+          {
+            "path": "docs/raw/img2threejs-skill-dataset.json",
+            "heading": null,
+            "key_path": "categories.material_pbr[12]"
+          }
+        ],
+        "evidence_refs": [
+          {
+            "kind": "source",
+            "ref": "docs/raw/img2threejs-skill-dataset.json",
+            "note": "img2threejs NotebookLM research distillation"
+          }
+        ]
+      },
+      {
+        "record_id": "core.shader-mapping-meshphysicalmaterial-core-pbr-fields",
+        "file_path": "docs/raw/img2threejs-skill-dataset.json",
+        "heading": null,
+        "key_path": "categories.rendering_shader_mapping[0]",
+        "score": 10.006330789795,
+        "snippets": [
+          "The baseline Three.js material exposing direct scalar/map fields for the standard PBR channel set. Vật liệu Three.js cơ bản cung cấp trực tiếp các trường vô hướng/bản đồ cho bộ kênh PBR tiêu chuẩn. Recognition cues: Use whenever a static ..."
+        ],
+        "source_refs": [
+          {
+            "path": "docs/raw/img2threejs-skill-dataset.json",
+            "heading": null,
+            "key_path": "categories.rendering_shader_mapping[0]"
+          }
+        ],
+        "evidence_refs": [
+          {
+            "kind": "source",
+            "ref": "docs/raw/img2threejs-skill-dataset.json",
+            "note": "img2threejs NotebookLM research distillation"
+          }
+        ]
+      }
+    ]
+  }
+}

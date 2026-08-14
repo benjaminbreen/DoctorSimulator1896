@@ -33,6 +33,9 @@ import {
   trafficCircleChain,
 } from '../world/trafficContacts.js';
 import { gameDebug } from '../debug.js';
+import { queueActorImpact } from '../world/actorImpacts.js';
+import { reportMajorStreetEvent } from '../world/majorStreetEvents.js';
+import { getPlayer } from '../world/player.js';
 
 const MAX_FRAME_DT = 0.1;
 const MAX_FIXED_STEPS = 6;
@@ -342,6 +345,7 @@ export default function HorseDrawnTraffic({ runtime }) {
         },
         shadowMeshes: [],
         shadowNear: true,
+        lastActorImpacts: new Map(),
       };
     });
   }, [driverGltf, horseGltf, materials]);
@@ -489,7 +493,7 @@ export default function HorseDrawnTraffic({ runtime }) {
         circles,
         vx: Math.sin(state.horseYaw) * state.speed,
         vz: Math.cos(state.horseYaw) * state.speed,
-        mass: unit.type === 'omnibus' ? 1550 : unit.type === 'brougham' ? 900 : 620,
+        mass: unit.type === 'omnibus' ? 1550 : ['brougham', 'utility'].includes(unit.type) ? 900 : 620,
         priority: trafficConfig.priority,
       }, trafficFrame);
       if (handlesAlive(world, unit.refs.body, unit.refs.coachCollider)) {
@@ -518,6 +522,32 @@ export default function HorseDrawnTraffic({ runtime }) {
 
   return fleet.map((unit) => {
     const collider = horseDrawnCollider(unit.type);
+    const onActorImpact = ({ other }) => {
+      const otherData = other.rigidBodyObject?.userData;
+      const actorId = otherData?.actorId;
+      if (!actorId) return;
+      const now = getPlayer().clock;
+      if (now - (unit.lastActorImpacts.get(actorId) ?? -Infinity) < 4) return;
+      unit.lastActorImpacts.set(actorId, now);
+      const state = unit.state;
+      const vx = Math.sin(state.horseYaw) * state.speed;
+      const vz = Math.cos(state.horseYaw) * state.speed;
+      queueActorImpact(actorId, {
+        cause: 'horse-drawn-vehicle',
+        sourceId: `horse-drawn-${unit.id}`,
+        sourceVelocity: [vx, 0, vz],
+        direction: [vx, vz],
+      });
+      if (otherData.gameKind === 'player' || otherData.gameKind === 'pedestrian') {
+        reportMajorStreetEvent({
+          sourceId: `horse-drawn-${unit.id}`,
+          targetId: actorId,
+          targetKind: otherData.gameKind,
+          x: state.horseX,
+          z: state.horseZ,
+        });
+      }
+    };
     return (
       <group key={unit.id} ref={(node) => (unit.refs.root = node)}>
         <group ref={(node) => (unit.refs.coach = node)}>
@@ -575,6 +605,7 @@ export default function HorseDrawnTraffic({ runtime }) {
           colliders={false}
           position={[0, -35, 0]}
           userData={{ gameKind: 'horse-drawn-vehicle', vehicleId: unit.id }}
+          onCollisionEnter={onActorImpact}
         >
           <CuboidCollider
             ref={(node) => (unit.refs.coachCollider = node)}
@@ -600,6 +631,7 @@ export default function HorseDrawnTraffic({ runtime }) {
           colliders={false}
           position={[0, -42, 0]}
           userData={{ gameKind: 'horse-team', vehicleId: unit.id }}
+          onCollisionEnter={onActorImpact}
         >
           <CuboidCollider
             ref={(node) => (unit.refs.horseCollider = node)}

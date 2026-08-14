@@ -1,4 +1,7 @@
-out/
+out/*
+!out/ratings.json
+!out/reward-model.json
+!out/rating-exclusions.json
 references/*.jpg
 references/*.jpeg
 references/*.png

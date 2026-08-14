@@ -59,6 +59,9 @@ export function deriveWallBoxes(wall) {
       id: opening.id,
       type: opening.type,
       blocked: Boolean(opening.blocked),
+      // An open blocked door shows its leaves swung inward and the sky
+      // beyond, instead of a closed leaf. The collider blocker stays.
+      open: Boolean(opening.open),
       position: holePosition,
       width,
       height,

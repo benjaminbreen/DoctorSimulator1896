@@ -40,7 +40,10 @@ def main(run_dir):
             with open(meta_path) as handle:
                 meta = json.load(handle)
             top_parts = sorted(meta["parts"].items(), key=lambda kv: -kv[1])[:3]
-            label = f"{label[:-4]}  {meta['total']:.3f}  " + " ".join(
+            context = " ".join(filter(None, [
+                meta.get("sceneFamily"), meta.get("zone"), meta.get("timeBand"), meta.get("cameraStratum"),
+            ]))
+            label = f"{label[:-4]}  {meta['total']:.3f}  {context}  " + " ".join(
                 f"{k}:{v:.2f}" for k, v in top_parts
             )
         draw.text((x + 2, y + cell_height + 6), label, fill=(190, 190, 195))
