@@ -253,8 +253,10 @@ def select_gamut_pairs(frames, size, seed=0, family_schedule=None):
     # pair. Alphabetical ordering put two dark roofs on the opening screen.
     preferred_order = [
         "window-figure",
+        "doorway-figure",
         "park-people",
         "street-people",
+        "rooftop-figure",
         "interior-room",
         "park-landscape",
         "elevated-architecture",
@@ -332,6 +334,29 @@ def select_window_validation_pairs(frames, size, seed=0):
     return select_gamut_pairs(frames, size, seed, family_schedule=schedule)
 
 
+def select_subject_validation_pairs(frames, size, seed=0):
+    """A 30-pair gamut weighted toward the three placed-woman scenarios."""
+    if size != 30:
+        raise ValueError("subject-validation profile requires --session-size 30")
+    remaining = {
+        "window-figure": 6,
+        "doorway-figure": 5,
+        "rooftop-figure": 5,
+        "street-people": 4,
+        "park-people": 3,
+        "interior-room": 3,
+        "park-landscape": 2,
+        "elevated-architecture": 2,
+    }
+    schedule = []
+    while len(schedule) < size:
+        for family in remaining:
+            if remaining[family] > 0:
+                schedule.append(family)
+                remaining[family] -= 1
+    return select_gamut_pairs(frames, size, seed, family_schedule=schedule)
+
+
 def load_or_create_session(out_dir, name, frames, size, seed, profile="height"):
     path = comparison_session_path(out_dir, name)
     if os.path.exists(path):
@@ -341,6 +366,7 @@ def load_or_create_session(out_dir, name, frames, size, seed, profile="height"):
         "height": select_comparison_pairs,
         "gamut": select_gamut_pairs,
         "window-validation": select_window_validation_pairs,
+        "subject-validation": select_subject_validation_pairs,
     }
     selector = selectors[profile]
     pairs = selector(frames, size, seed)
@@ -477,6 +503,16 @@ def summarize(pairs):
         "scene_families": dict(sorted(Counter(
             pair["left"].get("scene_family", "legacy") for pair in pairs
         ).items())),
+        "subject_archetypes": dict(sorted(Counter(
+            frame.get("subject_archetype")
+            for pair in pairs for frame in (pair["left"], pair["right"])
+            if frame.get("subject_archetype")
+        ).items())),
+        "subject_scenarios": dict(sorted(Counter(
+            frame.get("subject_scenario")
+            for pair in pairs for frame in (pair["left"], pair["right"])
+            if frame.get("subject_scenario")
+        ).items())),
     }
 
 
@@ -490,7 +526,7 @@ def main():
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
         "--profile",
-        choices=("height", "gamut", "window-validation"),
+        choices=("height", "gamut", "window-validation", "subject-validation"),
         default="height",
     )
     args = parser.parse_args()

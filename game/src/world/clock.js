@@ -7,9 +7,9 @@ const SECONDS_PER_MINUTE = 60;
 export const DEFAULT_CLOCK_RATE = 4;
 export const GAME_START = Object.freeze({
   year: 1896,
-  month: 8,
-  date: 3,
-  dayOfYear: 216,
+  month: 6,
+  date: 15,
+  dayOfYear: 167,
   hour: 9,
   minute: 30,
 });

@@ -7,7 +7,7 @@ history remain available in Git.
 
 - The game is a non-commercial teaching project about medicine, psychology, and
   patient experience in 1896.
-- The setting begins on August 3, 1896.
+- The setting begins on Monday, June 15, 1896.
 - The player is a fictional young physician. George Beard and William James are
   historical figures within the setting, not player characters.
 

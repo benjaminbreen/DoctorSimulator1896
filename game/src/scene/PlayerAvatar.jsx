@@ -18,13 +18,16 @@ import { throwableDefinition } from '../world/throwables.js';
 import ThrowableVisual from './ThrowableVisual.jsx';
 import { normalizeNonmetallicCharacterMaterials } from './characterMaterials.js';
 import { BOARDING_CLIMB_SECONDS } from '../world/carriageBoarding.js';
+import { shouldRecycleWebGLContextOnTravel } from './mobileGraphics.js';
 
 // The rigged player: a Tripo-authored figure with Mixamo idle and walk clips,
 // assembled by scripts/characters/export_tripo_player.py.
 // Mounted OUTSIDE the RigidBody — suspending a loader inside the physics
 // subtree crashed React's dev logging on the model's circular scene graph — so
 // it follows the capsule from the debug handle instead of being parented to it.
-const MODEL = '/models/tripo-victorian-player.glb?v=carriage-climb-2';
+const MODEL = shouldRecycleWebGLContextOnTravel()
+  ? '/models/tripo-victorian-player-mobile.glb?v=player-opt-1'
+  : '/models/tripo-victorian-player.glb?v=player-opt-1';
 
 // Ground the Mixamo walk covers per second at timeScale 1. Playback scales
 // with real speed so the feet roughly keep up, but the game's walk is far

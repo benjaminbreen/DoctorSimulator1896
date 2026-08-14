@@ -20,15 +20,24 @@ export const INTERIOR_ZONES = Object.freeze([
   'interior:navarro-flats-b',
 ]);
 
-// Sixty frames yield exactly 6, 6, 15, 15, 9 and 9 examples. Raised and
-// rooftop architecture together are capped at 15% of the whole experiment.
+// Existing standing-woman pedestrian models that can safely share the
+// screenshot-only placement harness. The seated archetype remains available
+// in the live park crowd but is not put upright on a stoop or roof.
+export const SHOT_SUBJECT_ARCHETYPES = Object.freeze(['w', 'd', 'f', 'h']);
+
+// Sixty frames span ordinary landscapes, people, interiors and architecture,
+// plus three distinct woman-in-place scenarios. Figure-bearing rooftops are
+// separate from the architecture-only elevated family so one cannot crowd out
+// the other during selection or evaluation.
 export const GAMUT_FAMILIES = Object.freeze([
   Object.freeze({ id: 'park-landscape', label: 'Park landscape', weight: 0.10, zone: 'central-park' }),
   Object.freeze({ id: 'park-people', label: 'People in the park', weight: 0.10, zone: 'central-park' }),
-  Object.freeze({ id: 'street-people', label: 'People on the street', weight: 0.25, zone: 'central-park' }),
-  Object.freeze({ id: 'window-figure', label: 'Woman at a window', weight: 0.25, zones: INTERIOR_ZONES }),
-  Object.freeze({ id: 'interior-room', label: 'Other interiors', weight: 0.15, zones: INTERIOR_ZONES }),
-  Object.freeze({ id: 'elevated-architecture', label: 'Raised and rooftop architecture', weight: 0.15, zone: 'central-park' }),
+  Object.freeze({ id: 'street-people', label: 'People on the street', weight: 0.20, zone: 'central-park' }),
+  Object.freeze({ id: 'window-figure', label: 'Woman at a window', weight: 0.15, zones: INTERIOR_ZONES }),
+  Object.freeze({ id: 'doorway-figure', label: 'Woman at a doorway or stoop', weight: 0.15, zone: 'central-park' }),
+  Object.freeze({ id: 'rooftop-figure', label: 'Woman on a rooftop', weight: 0.10, zone: 'central-park' }),
+  Object.freeze({ id: 'interior-room', label: 'Other interiors', weight: 0.10, zones: INTERIOR_ZONES }),
+  Object.freeze({ id: 'elevated-architecture', label: 'Raised and rooftop architecture', weight: 0.10, zone: 'central-park' }),
 ]);
 
 export function familyTargets(total, families = GAMUT_FAMILIES) {
@@ -66,18 +75,25 @@ export function buildGamutPlan(total = 60, seed = 1) {
   if (!Number.isInteger(total) || total <= 0) throw new Error('total must be a positive integer');
   const targets = familyTargets(total);
   const tasks = [];
+  let placedSubjectIndex = 0;
   for (const family of GAMUT_FAMILIES) {
     const count = targets[family.id];
     for (let familyIndex = 0; familyIndex < count; familyIndex += 1) {
       const zones = family.zones ?? [family.zone];
       const zone = zones[familyIndex % zones.length];
+      const placedSubject = ['window-figure', 'doorway-figure', 'rooftop-figure'].includes(family.id);
+      const subjectArchetype = placedSubject
+        ? SHOT_SUBJECT_ARCHETYPES[placedSubjectIndex++ % SHOT_SUBJECT_ARCHETYPES.length]
+        : null;
       tasks.push({
         family: family.id,
         familyLabel: family.label,
         familyIndex,
         zone,
-        cameraStratum: family.id === 'elevated-architecture'
-          ? CAMERA_STRATA[1 + (familyIndex % 2)].id
+        cameraStratum: family.id === 'rooftop-figure'
+          ? 'rooftop'
+          : family.id === 'elevated-architecture'
+            ? CAMERA_STRATA[1 + (familyIndex % 2)].id
           : CAMERA_STRATA[0].id,
         composition: family.id === 'park-landscape'
           ? 'landscape'
@@ -85,9 +101,20 @@ export function buildGamutPlan(total = 60, seed = 1) {
             ? 'people'
             : family.id === 'window-figure'
               ? 'window-figure'
+              : family.id === 'doorway-figure'
+                ? 'doorway-figure'
+                : family.id === 'rooftop-figure'
+                  ? 'rooftop-figure'
               : family.id === 'interior-room'
                 ? (familyIndex % 2 ? 'figure' : 'architecture')
                 : 'architecture',
+        ...(subjectArchetype ? {
+          subjectArchetype,
+          subjectScenario: family.id,
+        } : {}),
+        ...(['park-people', 'street-people'].includes(family.id) && familyIndex % 2 === 0
+          ? { subjectGender: 'female' }
+          : {}),
       });
     }
   }

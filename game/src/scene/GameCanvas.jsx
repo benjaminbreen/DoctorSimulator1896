@@ -493,6 +493,7 @@ function SceneContents({
                 motionAffordances={zone.motionAffordances}
                 forcePlaceholder={values.showAvatarGlb && !avatarReady}
               />
+              {shotMode && <ShotWoman />}
               <CameraRig
                 room={room}
                 runtime={runtime}

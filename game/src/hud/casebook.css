@@ -1,10 +1,20 @@
+/* Two facing pages in a bound book: a dark green index on the left, a loose
+   paper record on the right. Small caps come from the Playfair Display SC
+   face, so nothing here may set `text-transform: uppercase` — that would
+   flatten the caps to one height. Playfair SC has 400/700 only. */
+
 :root {
-  --casebook-green: #071b18;
-  --casebook-green-raised: #0d2923;
-  --casebook-gold: #c49a51;
+  --casebook-display: 'Playfair Display SC', 'Cormorant SC', Georgia, serif;
+  --casebook-body: 'Lora', 'Libre Caslon Text', Georgia, serif;
+  --casebook-green: #08201b;
+  --casebook-green-raised: #0e2c25;
+  --casebook-gold: #c9a464;
   --casebook-gold-soft: #8f774d;
-  --casebook-paper: #e9ddc3;
-  --casebook-ink: #201b16;
+  --casebook-paper: #ece0c2;
+  --casebook-paper-edge: #e0d2b1;
+  --casebook-ink: #241e17;
+  --casebook-ink-soft: #5f5340;
+  --casebook-rule: rgb(112 88 54 / 0.42);
   --casebook-red: #8d3f31;
 }
 
@@ -24,23 +34,26 @@
   animation: casebook-scrim-in 360ms ease-out both;
 }
 
+/* The book is roughly 4:3. Width follows height so a wide monitor cannot
+   stretch it into a letterbox and leave the right page half empty. */
 .casebook-shell {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(22rem, 41.5%) minmax(0, 58.5%);
-  width: min(94vw, 88rem);
-  height: min(91dvh, 57rem);
-  min-height: 38rem;
+  grid-template-columns: minmax(19rem, 40%) minmax(0, 60%);
+  height: min(90dvh, 52rem);
+  width: min(95vw, calc(min(90dvh, 52rem) * 1.4));
+  min-height: 33rem;
   overflow: hidden;
   border: 1px solid #d0a55e;
-  border-radius: 1.65rem;
+  border-radius: 1.35rem;
   background: #061714;
   box-shadow:
     0 2.2rem 6rem rgb(0 0 0 / 0.72),
-    0 0 0 5px #07100f,
-    0 0 0 7px #8b6a37,
+    0 0 0 4px #07100f,
+    0 0 0 6px #8b6a37,
     inset 0 0 0 2px rgb(229 184 102 / 0.34);
   color: #efe2c6;
+  container-type: inline-size;
   isolation: isolate;
   animation: casebook-open 620ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -48,51 +61,57 @@
 .casebook-shell::before {
   position: absolute;
   z-index: 8;
-  inset: 0.65rem;
+  inset: 0.55rem;
   border: 1px solid rgb(204 160 83 / 0.48);
-  border-radius: 1.1rem;
+  border-radius: 0.9rem;
   box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.7);
   pointer-events: none;
   content: '';
 }
 
+/* Gold brackets at the four corners of the inner frame. */
 .casebook-shell::after {
   position: absolute;
   z-index: 9;
-  inset: 0.85rem;
-  border-radius: 0.95rem;
+  inset: 0.9rem;
   background:
-    linear-gradient(135deg, var(--casebook-gold), transparent 2.2rem) top left / 3.2rem 1px no-repeat,
-    linear-gradient(225deg, var(--casebook-gold), transparent 2.2rem) top right / 3.2rem 1px no-repeat,
-    linear-gradient(45deg, var(--casebook-gold), transparent 2.2rem) bottom left / 3.2rem 1px no-repeat,
-    linear-gradient(315deg, var(--casebook-gold), transparent 2.2rem) bottom right / 3.2rem 1px no-repeat;
-  opacity: 0.75;
+    linear-gradient(var(--casebook-gold), var(--casebook-gold)) top left / 1.9rem 1px no-repeat,
+    linear-gradient(var(--casebook-gold), var(--casebook-gold)) top left / 1px 1.9rem no-repeat,
+    linear-gradient(var(--casebook-gold), var(--casebook-gold)) top right / 1.9rem 1px no-repeat,
+    linear-gradient(var(--casebook-gold), var(--casebook-gold)) top right / 1px 1.9rem no-repeat,
+    linear-gradient(var(--casebook-gold), var(--casebook-gold)) bottom left / 1.9rem 1px no-repeat,
+    linear-gradient(var(--casebook-gold), var(--casebook-gold)) bottom left / 1px 1.9rem no-repeat,
+    linear-gradient(var(--casebook-gold), var(--casebook-gold)) bottom right / 1.9rem 1px no-repeat,
+    linear-gradient(var(--casebook-gold), var(--casebook-gold)) bottom right / 1px 1.9rem no-repeat;
+  opacity: 0.78;
   pointer-events: none;
   content: '';
 }
 
+/* Straddles the top-right corner of the paper page: same offsets as the paper
+   board's padding, pulled back by part of the button. */
 .casebook-close {
   position: absolute;
   z-index: 20;
-  top: 1.35rem;
-  right: 1.45rem;
+  top: calc(clamp(1.35rem, 2.3vw, 2.1rem) - 0.6rem);
+  right: calc(clamp(1.5rem, 2.6vw, 2.4rem) - 0.6rem);
   display: grid;
-  width: 3.1rem;
-  height: 3.1rem;
+  width: 2.6rem;
+  height: 2.6rem;
   place-items: center;
   border: 1px solid #a57c3e;
   border-radius: 50%;
-  background: #071a18;
-  box-shadow: 0 0 0 3px #06100f, 0 0.45rem 1rem rgb(0 0 0 / 0.38);
-  color: #bd9352;
-  font: 300 2.1rem/1 'Cormorant', Georgia, serif;
+  background: #0a1a17;
+  box-shadow: 0 0 0 2px #06100f, 0 0.4rem 0.9rem rgb(0 0 0 / 0.45);
+  color: #efe3c9;
+  font: 400 1.5rem/1 var(--casebook-body);
   cursor: pointer;
   transition: color 180ms ease, border-color 180ms ease, transform 240ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .casebook-close:hover {
   border-color: #e0b569;
-  color: #f0c273;
+  color: #f7ecd6;
   transform: rotate(4deg) scale(1.06);
 }
 
@@ -104,6 +123,8 @@
   outline-offset: 3px;
 }
 
+/* ---- Left page: the index ------------------------------------------- */
+
 .casebook-index {
   position: relative;
   z-index: 2;
@@ -111,40 +132,47 @@
   min-width: 0;
   min-height: 0;
   flex-direction: column;
-  padding: clamp(2rem, 3.4vh, 3.1rem) clamp(1.75rem, 3vw, 3rem) 1.8rem;
+  padding: clamp(1.5rem, 2.8vh, 2.4rem) clamp(1.5rem, 2.4vw, 2.3rem) 1.35rem;
   overflow: hidden;
   border-right: 1px solid rgb(187 145 74 / 0.48);
   background:
-    radial-gradient(circle at 20% 0%, rgb(53 86 69 / 0.2), transparent 36%),
+    radial-gradient(circle at 20% 0%, rgb(53 86 69 / 0.22), transparent 40%),
     repeating-linear-gradient(27deg, rgb(255 255 255 / 0.009) 0 1px, transparent 1px 4px),
-    linear-gradient(145deg, #0a211d, #041310 74%);
+    linear-gradient(145deg, #0d2a23, #061a16 78%);
   box-shadow: inset -1.2rem 0 2.6rem rgb(0 0 0 / 0.22);
+}
+
+/* The green page carries its own rule inside the book frame. */
+.casebook-index::after {
+  position: absolute;
+  inset: 0.9rem;
+  border: 1px solid rgb(178 140 76 / 0.24);
+  pointer-events: none;
+  content: '';
 }
 
 .casebook-brand {
   display: block;
-  min-height: 8.3rem;
-  padding: 0.9rem 0.5rem 1.1rem;
+  padding: 0.35rem 0.4rem 0.9rem;
 }
 
 .casebook-brand h1 {
   margin: 0;
   color: #f2e5ca;
-  font-family: 'Cormorant SC', 'Cormorant', Georgia, serif;
-  font-size: clamp(2rem, 2.75vw, 2.7rem);
-  font-weight: 600;
-  line-height: 0.95;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
+  font-family: var(--casebook-display);
+  font-size: clamp(1.3rem, 2.7cqw, 2.45rem);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.05em;
   text-shadow: 0 1px 0 #000;
 }
 
 .casebook-brand p,
 .casebook-brand time {
   display: block;
-  margin: 0.45rem 0 0;
+  margin: 0.3rem 0 0;
   color: #b99b69;
-  font: italic 600 1.16rem/1.2 'Cormorant', Georgia, serif;
+  font: italic 400 clamp(0.8rem, 1.2cqw, 1.06rem)/1.25 var(--casebook-body);
   letter-spacing: 0.04em;
 }
 
@@ -152,8 +180,8 @@
   display: flex;
   width: max-content;
   align-items: center;
-  gap: 0.65rem;
-  margin-top: 0.9rem;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
   color: #d2a75f;
   font-style: normal;
   letter-spacing: 0.06em;
@@ -161,52 +189,49 @@
 
 .casebook-brand time::before,
 .casebook-brand time::after {
-  width: 1.45rem;
-  height: 0.48rem;
+  width: 1.6rem;
+  height: 0.5rem;
   background:
-    radial-gradient(circle, currentColor 0 1.5px, transparent 2px) center / 0.42rem 0.42rem no-repeat,
+    radial-gradient(circle, currentColor 0 1.6px, transparent 2.2px) center / 0.45rem 0.45rem no-repeat,
     linear-gradient(currentColor, currentColor) center / 100% 1px no-repeat;
-  opacity: 0.72;
+  opacity: 0.7;
   content: '';
 }
 
 .casebook-filters {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  margin: 0.35rem 0 1rem;
-  border-bottom: 1px solid rgb(168 129 69 / 0.52);
+  gap: 0.45rem;
+  margin: 0.2rem 0 0.6rem;
 }
 
 .casebook-filters button {
-  padding: 0.63rem 1rem;
-  border: 1px solid #685b43;
-  border-bottom: 0;
-  border-radius: 0.4rem 0.4rem 0 0;
-  background: rgb(3 15 14 / 0.3);
-  color: #c5b798;
-  font: 500 1.12rem/1 'Cormorant', Georgia, serif;
+  padding: 0.44rem 0.8rem;
+  border: 1px solid rgb(150 120 68 / 0.55);
+  border-radius: 0.3rem;
+  background: rgb(3 15 14 / 0.34);
+  color: #b9ac90;
+  font: 400 clamp(0.8rem, 1.2cqw, 1.06rem)/1 var(--casebook-body);
   cursor: pointer;
-  transition: background 220ms ease, color 220ms ease, box-shadow 220ms ease;
+  transition: background 220ms ease, color 220ms ease, border-color 220ms ease;
 }
 
-.casebook-filters button + button { border-left: 0; }
-
 .casebook-filters button.is-active {
-  background: linear-gradient(180deg, rgb(81 100 61 / 0.48), rgb(39 61 42 / 0.44));
-  box-shadow: inset 0 0 1.2rem rgb(166 193 113 / 0.1);
+  border-color: #bfa165;
+  background: linear-gradient(180deg, rgb(74 100 62 / 0.52), rgb(35 60 42 / 0.46));
   color: #f3e8d0;
 }
 
 .casebook-search {
   display: grid;
-  grid-template-columns: 1.3rem minmax(0, 1fr);
+  grid-template-columns: 1.1rem minmax(0, 1fr);
   align-items: center;
-  gap: 0.65rem;
-  min-height: 2.9rem;
-  margin-bottom: 0.85rem;
-  padding: 0 0.9rem;
+  gap: 0.6rem;
+  min-height: 2.3rem;
+  margin-bottom: 0.7rem;
+  padding: 0 0.75rem;
   border: 1px solid #66593f;
-  border-radius: 0.35rem;
+  border-radius: 0.3rem;
   background: rgb(2 12 11 / 0.42);
   color: #bc995e;
   transition: border-color 180ms ease, box-shadow 180ms ease;
@@ -220,17 +245,17 @@
 .casebook-search > span {
   position: relative;
   display: block;
-  width: 0.9rem;
-  height: 0.9rem;
+  width: 0.8rem;
+  height: 0.8rem;
   border: 1.5px solid currentColor;
   border-radius: 50%;
 }
 
 .casebook-search > span::after {
   position: absolute;
-  right: -0.42rem;
-  bottom: -0.28rem;
-  width: 0.55rem;
+  right: -0.38rem;
+  bottom: -0.25rem;
+  width: 0.5rem;
   height: 1px;
   background: currentColor;
   content: '';
@@ -244,7 +269,7 @@
   outline: 0;
   background: transparent;
   color: #efe3cb;
-  font: italic 500 1rem/1.2 'Cormorant', Georgia, serif;
+  font: italic 400 clamp(0.78rem, 1.15cqw, 1rem)/1.2 var(--casebook-body);
 }
 
 .casebook-search input::placeholder { color: #9c8763; opacity: 1; }
@@ -252,7 +277,7 @@
 .casebook-patient-list {
   min-height: 0;
   flex: 1;
-  padding: 0.05rem 0.1rem 0.8rem;
+  padding: 0.05rem 0.1rem 0.6rem;
   overflow: auto;
   scrollbar-color: #6d5a37 transparent;
   scrollbar-width: thin;
@@ -261,16 +286,16 @@
 .casebook-patient {
   position: relative;
   display: grid;
-  grid-template-columns: 0.8rem 4.6rem minmax(0, 1fr) 7.7rem;
+  grid-template-columns: 0.7rem 2.9rem minmax(0, 1fr) minmax(5rem, 6.4rem);
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.6rem;
   width: 100%;
-  min-height: 6.35rem;
-  margin: 0 0 0.62rem;
-  padding: 0.45rem 0.75rem;
+  min-height: 4.35rem;
+  margin: 0 0 0.45rem;
+  padding: 0.45rem 0.65rem;
   overflow: hidden;
   border: 1px solid rgb(151 118 65 / 0.5);
-  border-radius: 0.45rem;
+  border-radius: 0.4rem;
   background: linear-gradient(100deg, rgb(13 43 37 / 0.7), rgb(5 23 20 / 0.28));
   color: #efe3c8;
   text-align: left;
@@ -307,8 +332,8 @@
 .casebook-status-dot {
   position: relative;
   display: inline-block;
-  width: 0.78rem;
-  height: 0.78rem;
+  width: 0.72rem;
+  height: 0.72rem;
   flex: 0 0 auto;
   border-radius: 50%;
   background: #7c7769;
@@ -316,14 +341,29 @@
 }
 
 .casebook-status-dot.is-active { background: #78995f; }
-.casebook-status-dot.is-waiting { border: 2px solid #cc983c; background: transparent; }
 .casebook-status-dot.is-outcome { background: #708e62; }
 .casebook-status-dot.is-outcome::after {
   position: absolute;
-  inset: 0.08rem;
+  inset: 0.06rem;
   color: #18301e;
-  font: bold 0.62rem/0.62rem sans-serif;
+  font: bold 0.58rem/0.58rem sans-serif;
   content: '✓';
+}
+
+/* Waiting reads as a clock face, not a second empty ring. */
+.casebook-status-dot.is-waiting {
+  border: 1.5px solid #cf9c3d;
+  background: transparent;
+  box-shadow: none;
+}
+
+.casebook-status-dot.is-waiting::after {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(#cf9c3d, #cf9c3d) 50% 26% / 1px 0.22rem no-repeat,
+    linear-gradient(#cf9c3d, #cf9c3d) 66% 50% / 0.17rem 1px no-repeat;
+  content: '';
 }
 
 .casebook-portrait {
@@ -333,7 +373,7 @@
   place-items: center;
   background: #655f50;
   color: #efe1c5;
-  font: 600 1.4rem/1 'Cormorant SC', Georgia, serif;
+  font: 400 1rem/1 var(--casebook-display);
 }
 
 .casebook-portrait img {
@@ -344,8 +384,8 @@
 }
 
 .casebook-portrait.is-thumbnail {
-  width: 4.6rem;
-  height: 4.6rem;
+  width: 2.9rem;
+  height: 2.9rem;
   border: 1px solid #b99459;
   border-radius: 50%;
   box-shadow: 0 0 0 2px rgb(3 13 12 / 0.82), 0 0 0 3px rgb(185 144 80 / 0.42);
@@ -358,38 +398,38 @@
 .casebook-patient-copy strong {
   overflow: hidden;
   color: #f0e3c6;
-  font: 600 clamp(1.05rem, 1.5vw, 1.35rem)/1.1 'Cormorant SC', 'Cormorant', Georgia, serif;
-  letter-spacing: 0.045em;
+  font: 400 clamp(0.86rem, 1.35cqw, 1.22rem)/1.15 var(--casebook-display);
+  letter-spacing: 0.015em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .casebook-patient-copy small {
-  margin-top: 0.48rem;
+  margin-top: 0.3rem;
   overflow: hidden;
-  color: #d5c6a8;
-  font: 500 0.96rem/1.1 'Cormorant', Georgia, serif;
+  color: #cfc0a2;
+  font: 400 clamp(0.76rem, 1.12cqw, 1rem)/1.25 var(--casebook-body);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* Status text on one line, arrow on the next, both flush right. */
 .casebook-patient-status {
   position: relative;
   display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 0.35rem;
+  justify-items: end;
+  gap: 0.05rem;
   color: #b4a17c;
   text-align: right;
 }
 
 .casebook-patient-status em {
-  font: italic 600 0.9rem/1.05 'Cormorant', Georgia, serif;
+  font: italic 400 clamp(0.68rem, 1cqw, 0.9rem)/1.2 var(--casebook-body);
 }
 
 .casebook-patient-status b {
   color: #d5a654;
-  font: 400 1.65rem/1 'Cormorant', Georgia, serif;
+  font: 400 clamp(0.95rem, 1.5cqw, 1.3rem)/0.9 var(--casebook-body);
   transition: transform 220ms ease;
 }
 
@@ -401,203 +441,220 @@
 .casebook-index-empty {
   margin: 2.5rem 0;
   color: #9e9075;
-  font: italic 1rem/1.5 'Cormorant', Georgia, serif;
+  font: italic 400 0.86rem/1.5 var(--casebook-body);
   text-align: center;
 }
 
 .casebook-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.65rem 1rem;
-  padding: 1rem 0.5rem 0;
+  gap: 0.5rem 0.9rem;
+  padding: 0.75rem 0.4rem 0;
   border-top: 1px solid rgb(155 119 62 / 0.45);
   color: #a8997d;
-  font: italic 600 0.78rem/1 'Cormorant', Georgia, serif;
+  font: 400 clamp(0.62rem, 0.94cqw, 0.84rem)/1 var(--casebook-body);
 }
 
-.casebook-legend span { display: inline-flex; align-items: center; gap: 0.38rem; }
-.casebook-legend .casebook-status-dot { width: 0.65rem; height: 0.65rem; }
-.casebook-legend .casebook-status-dot.is-outcome::after { font-size: 0.5rem; line-height: 0.5rem; }
+.casebook-legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
+.casebook-legend .casebook-status-dot { width: 0.6rem; height: 0.6rem; }
+.casebook-legend .casebook-status-dot.is-outcome::after { font-size: 0.46rem; line-height: 0.46rem; }
+
+/* ---- Right page: the record ----------------------------------------- */
 
 .casebook-paper-wrap {
   position: relative;
   z-index: 1;
   min-width: 0;
   min-height: 0;
-  padding: clamp(2.1rem, 3.6vw, 3.35rem) clamp(2rem, 3.8vw, 3.7rem) 2rem;
+  padding: clamp(1.35rem, 2.3vw, 2.1rem) clamp(1.5rem, 2.6vw, 2.4rem) clamp(1.4rem, 2.3vw, 2.1rem);
   overflow: hidden;
   background:
-    radial-gradient(circle at 50% 8%, rgb(207 180 124 / 0.23), transparent 36%),
+    radial-gradient(circle at 50% 8%, rgb(207 180 124 / 0.2), transparent 38%),
     repeating-linear-gradient(90deg, rgb(255 255 255 / 0.012) 0 1px, transparent 1px 4px),
     #0b1b18;
   box-shadow: inset 1.2rem 0 2rem rgb(0 0 0 / 0.34);
 }
 
+/* Two sheets under the top one, in the same cream so the edges read as a
+   stack rather than as card. */
 .casebook-paper-wrap::before,
 .casebook-paper-wrap::after {
   position: absolute;
-  inset: 1.7rem 2.7rem 1.2rem 1.7rem;
-  border: 1px solid rgb(105 82 47 / 0.6);
-  background: #b7a383;
-  box-shadow: 0 0.7rem 1.4rem rgb(0 0 0 / 0.35);
+  inset: 1.5rem 1.05rem 1rem 1.9rem;
+  border: 1px solid rgb(120 95 55 / 0.55);
+  background: var(--casebook-paper-edge);
+  box-shadow: 0 0.6rem 1.2rem rgb(0 0 0 / 0.4);
   content: '';
-  transform: rotate(-0.7deg);
+  transform: rotate(-0.55deg);
 }
 
 .casebook-paper-wrap::after {
-  inset: 2rem 2.1rem 1.45rem 2rem;
-  background: #c5b18e;
-  transform: rotate(0.55deg);
+  inset: 1.7rem 1.5rem 1.4rem 1.8rem;
+  background: #eadec1;
+  transform: rotate(0.4deg);
 }
 
 .casebook-record {
   position: relative;
   z-index: 2;
   height: 100%;
-  padding: clamp(2rem, 3.7vw, 3.7rem) clamp(2rem, 3.3vw, 3.4rem) 2.2rem;
+  padding: clamp(1.4rem, 2.2vw, 2.1rem) clamp(1.6rem, 2.6vw, 2.5rem) 1.4rem;
   overflow: auto;
   border: 1px solid #a9946d;
   background:
-    linear-gradient(rgb(238 226 199 / 0.2), rgb(228 211 177 / 0.13)),
+    linear-gradient(168deg, rgb(250 241 220 / 0.34), rgb(222 203 165 / 0.24)),
     url('/ui/casebook-laid-paper.webp') center / 42rem 42rem repeat;
   box-shadow:
-    0 1.3rem 2.7rem rgb(0 0 0 / 0.32),
-    inset 0 0 4rem rgb(126 93 45 / 0.12);
+    0 1.1rem 2.4rem rgb(0 0 0 / 0.34),
+    inset 0 0 5rem rgb(122 90 44 / 0.18),
+    inset 0 0 1.4rem rgb(122 90 44 / 0.12);
   color: var(--casebook-ink);
   scrollbar-color: #937e59 transparent;
   scrollbar-width: thin;
   animation: casebook-record-in 430ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.casebook-record::after {
-  position: absolute;
-  inset: 0.5rem;
-  border: 1px solid rgb(126 101 65 / 0.16);
-  pointer-events: none;
-  content: '';
-}
-
 .casebook-record-head {
   position: relative;
   display: grid;
-  grid-template-columns: clamp(9.5rem, 16vw, 13rem) minmax(0, 1fr);
-  align-items: center;
-  gap: clamp(1.35rem, 2.3vw, 2.4rem);
-  min-height: 12rem;
+  grid-template-columns: clamp(6.5rem, 15cqw, 12.5rem) minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(1rem, 2.1cqw, 1.9rem);
 }
 
+/* An albumen print on an aged mount, laid on the page at an angle: warm sepia
+   image, keyline, raking sheen, and a shadow that falls down and right. */
 .casebook-photo {
   position: relative;
   align-self: start;
   width: 100%;
-  aspect-ratio: 0.82;
-  padding: 0.65rem;
-  border: 1px solid #af9873;
-  background: #ded0b2;
-  box-shadow: 0 0.6rem 0.8rem rgb(75 53 24 / 0.24);
-  transform: rotate(-3.2deg);
+  aspect-ratio: 0.88;
+  margin-top: 0.55rem;
+  padding: 0.55rem;
+  border: 1px solid rgb(140 116 78 / 0.75);
+  background:
+    linear-gradient(152deg, #f0e6cb 0%, #e6d9b8 46%, #d9c9a3 100%);
+  box-shadow:
+    0 0.1rem 0.18rem rgb(52 36 14 / 0.26),
+    0 0.7rem 1.35rem rgb(46 31 12 / 0.36);
+  transform: rotate(-3.4deg);
 }
 
 .casebook-photo::after {
   position: absolute;
-  inset: 0.65rem;
-  border: 1px solid rgb(60 49 35 / 0.35);
+  z-index: 2;
+  inset: 0.55rem;
+  border: 1px solid rgb(56 44 28 / 0.34);
+  background: linear-gradient(116deg, rgb(255 252 240 / 0.24) 0 18%, rgb(255 252 240 / 0.05) 32%, transparent 50%);
+  box-shadow: inset 0 0 1.1rem rgb(74 52 22 / 0.4);
   pointer-events: none;
   content: '';
 }
 
 .casebook-photo .casebook-portrait { width: 100%; height: 100%; }
 .casebook-photo .casebook-portrait img {
-  filter: grayscale(1) sepia(0.18) contrast(1.02) brightness(0.92);
+  filter: grayscale(1) sepia(0.62) saturate(1.2) contrast(0.94) brightness(1.03);
 }
 
+/* Sized against the print so it stays in proportion, and hung high enough that
+   the top loop clears the mount's edge the way a real clip does. */
 .casebook-paperclip {
   position: absolute;
   z-index: 3;
-  top: -0.85rem;
-  left: 1.05rem;
-  width: 1.15rem;
-  height: 4.7rem;
-  border: 3px solid #806e51;
-  border-radius: 0.7rem;
-  box-shadow: inset 0 0 0 1px #d0ba8e, 1px 2px 2px rgb(0 0 0 / 0.28);
-  transform: rotate(-8deg);
+  top: -13%;
+  left: 8.5%;
+  width: 13%;
+  height: 43%;
+  overflow: visible;
+  fill: none;
+  transform: rotate(-5deg);
 }
 
-.casebook-paperclip::after {
-  position: absolute;
-  inset: 0.18rem;
-  border: 1px solid #6f6048;
-  border-radius: 0.5rem;
-  content: '';
+.casebook-paperclip-wire {
+  stroke: url(#casebook-clip-brass);
+  stroke-width: 3;
+  stroke-linecap: round;
 }
 
-.casebook-record-identity { min-width: 0; align-self: center; }
+.casebook-paperclip-shadow {
+  stroke: rgb(52 36 14 / 0.3);
+  stroke-width: 4.4;
+  stroke-linecap: round;
+  transform: translate(1.1px, 1.8px);
+}
+
+.casebook-record-identity { min-width: 0; }
+
+/* Name across the top, then the meta lines with the case stamp beside them. */
+.casebook-identity-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem 1rem;
+  margin-top: 0.5rem;
+}
+
+/* A long occupation pushes the stamp to its own line instead of breaking the
+   meta lines in half. */
+.casebook-identity-meta > div { max-width: 100%; }
 
 .casebook-record-identity h2 {
   margin: 0;
   color: #161612;
-  font-family: 'Cormorant SC', 'Cormorant', Georgia, serif;
-  font-size: clamp(2.15rem, 3.35vw, 3.1rem);
+  font-family: var(--casebook-display);
+  font-size: clamp(1.3rem, 3.5cqw, 3.1rem);
   font-weight: 700;
-  line-height: 0.92;
-  letter-spacing: 0.025em;
-  text-transform: uppercase;
-}
-
-.casebook-name-rule {
-  display: block;
-  width: min(100%, 22rem);
-  height: 0.9rem;
-  margin: 0.85rem 0 0.9rem;
-  background:
-    linear-gradient(90deg, #8c7b60, #8c7b60) center / 100% 1px no-repeat,
-    radial-gradient(circle, #8c7b60 0 2px, transparent 2.5px) center / 0.55rem 0.55rem no-repeat;
-  opacity: 0.65;
+  line-height: 1.04;
+  letter-spacing: 0.005em;
 }
 
 .casebook-record-identity p {
-  margin: 0.18rem 0;
-  font: 600 clamp(0.94rem, 1.5vw, 1.14rem)/1.28 'Libre Caslon Text', Georgia, serif;
+  margin: 0.16rem 0 0;
+  font: 400 clamp(0.82rem, 1.22cqw, 1.1rem)/1.34 var(--casebook-body);
 }
 
-.casebook-record-identity p b { padding: 0 0.42rem; font-weight: 400; }
+.casebook-record-identity p b { padding: 0 0.38rem; font-weight: 400; }
+.casebook-record-identity p span { white-space: nowrap; }
 
 .casebook-status-stamp {
-  position: absolute;
-  right: 0;
-  bottom: 2.1rem;
-  padding: 0.55rem 0.8rem 0.4rem;
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 0.3rem 0.55rem 0.24rem;
   border: 1px solid #88775b;
   color: #645b4b;
-  font: 700 0.88rem/1 'Cormorant SC', 'Cormorant', Georgia, serif;
-  text-transform: uppercase;
-  transform: rotate(-0.8deg);
+  font: 700 clamp(0.56rem, 0.82cqw, 0.74rem)/1 var(--casebook-display);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
-.casebook-status-stamp.is-active { border-color: #5e7950; color: #47653c; }
+.casebook-status-stamp.is-active { border-color: var(--casebook-red); color: var(--casebook-red); }
 .casebook-status-stamp.is-waiting { border-color: #987731; color: #80621f; }
-.casebook-status-stamp.is-outcome { border-color: var(--casebook-red); color: var(--casebook-red); }
+.casebook-status-stamp.is-outcome { border-color: #5e7950; color: #40603a; }
 
 .casebook-tabs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  margin: 1.2rem 0 0;
+  width: max-content;
+  max-width: 100%;
+  grid-template-columns: repeat(3, minmax(4.8rem, auto));
+  margin: 0.85rem 0 0;
   border: 1px solid #9d8a67;
-  border-radius: 0.35rem;
+  border-radius: 0.3rem;
+  overflow: hidden;
 }
 
 .casebook-tabs button {
   display: flex;
-  min-height: 2.9rem;
+  min-height: 2.05rem;
   align-items: center;
   justify-content: center;
-  gap: 0.6rem;
+  gap: 0.45rem;
+  padding: 0 0.95rem;
   border: 0;
   border-right: 1px solid #b4a07b;
-  background: rgb(226 213 185 / 0.42);
+  background: rgb(226 213 185 / 0.32);
   color: #211c16;
-  font: 600 1.08rem/1 'Cormorant', Georgia, serif;
+  font: 500 clamp(0.78rem, 1.14cqw, 1.02rem)/1 var(--casebook-body);
   cursor: pointer;
   transition: background 180ms ease, color 180ms ease, box-shadow 180ms ease;
 }
@@ -606,20 +663,22 @@
 .casebook-tabs button:hover { background: rgb(210 193 158 / 0.55); }
 .casebook-tabs button.is-active {
   background: #09241f;
-  box-shadow: inset 0 0 0 2px #d0b77c, inset 0 0 0 3px #18352e;
+  box-shadow: inset 0 0 0 1px #d0b77c;
   color: #f1e7d3;
 }
 
 .casebook-tabs button span {
   display: grid;
-  min-width: 1.55rem;
-  height: 1.55rem;
+  min-width: 1.2rem;
+  height: 1.2rem;
   place-items: center;
   border-radius: 50%;
-  background: rgb(69 57 39 / 0.35);
+  background: rgb(69 57 39 / 0.32);
   color: inherit;
-  font-size: 0.82rem;
+  font-size: 0.74rem;
 }
+
+.casebook-tabs button.is-active span { background: rgb(233 221 193 / 0.22); }
 
 .casebook-record-body {
   animation: casebook-section-in 280ms ease-out both;
@@ -627,31 +686,42 @@
 
 .casebook-paper-section,
 .casebook-notes-editor {
-  padding: 1.5rem 0 1.35rem;
-  border-bottom: 1px solid rgb(117 94 60 / 0.38);
+  padding: 0.9rem 0 0;
 }
 
-.casebook-paper-section:last-child,
-.casebook-notes-editor { border-bottom: 0; }
+.casebook-record-head + .casebook-record-body .casebook-paper-section:first-child {
+  padding-top: 1.25rem;
+}
+
+/* Section break: a hairline broken by a small diamond, not a full rule. */
+.casebook-paper-section:not(:last-child)::after {
+  display: block;
+  height: 0.6rem;
+  margin-top: 0.85rem;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 62 12'%3E%3Cg fill='none' stroke='%236b5433' stroke-width='1.1' stroke-linecap='round'%3E%3Cpath d='M3 6c5-4.6 9.6 4.6 15 0'/%3E%3Cpath d='M59 6c-5-4.6-9.6 4.6-15 0'/%3E%3C/g%3E%3Cpath d='M31 2.2l3.9 3.8-3.9 3.8L27.1 6z' fill='%236b5433'/%3E%3C/svg%3E") 50% 50% / 3.9rem 0.75rem no-repeat,
+    linear-gradient(90deg, transparent, var(--casebook-rule) 12%, var(--casebook-rule) 40%, transparent 42%) 0 50% / 100% 1px no-repeat,
+    linear-gradient(90deg, transparent 58%, var(--casebook-rule) 60%, var(--casebook-rule) 88%, transparent) 0 50% / 100% 1px no-repeat;
+  content: '';
+}
 
 .casebook-paper-section h3,
 .casebook-notes-editor h3 {
   margin: 0;
   color: #262019;
-  font: 700 1.22rem/1 'Cormorant SC', 'Cormorant', Georgia, serif;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font: 700 clamp(0.8rem, 1.38cqw, 1.24rem)/1 var(--casebook-display);
+  letter-spacing: 0.045em;
 }
 
 .casebook-complaint {
-  max-width: 38rem;
-  margin: 0.75rem 0 0 1.6rem;
-  font: 500 clamp(1rem, 1.45vw, 1.14rem)/1.55 'Libre Caslon Text', Georgia, serif;
+  max-width: 40rem;
+  margin: 0.5rem 0 0 0.9rem;
+  font: 400 clamp(0.85rem, 1.28cqw, 1.16rem)/1.5 var(--casebook-body);
 }
 
 .casebook-section-heading {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 1rem;
 }
@@ -662,14 +732,14 @@
   border: 0;
   background: transparent;
   color: #6e5c3e;
-  font: italic 600 0.95rem/1 'Cormorant', Georgia, serif;
+  font: italic 400 clamp(0.75rem, 1.1cqw, 0.98rem)/1 var(--casebook-body);
   cursor: pointer;
 }
 
 .casebook-text-button:hover { color: #251d12; text-decoration: underline; }
 
 .casebook-timeline {
-  margin: 1.05rem 0 0;
+  margin: 0.7rem 0 0;
   padding: 0;
   list-style: none;
 }
@@ -677,57 +747,58 @@
 .casebook-visit {
   position: relative;
   display: grid;
-  grid-template-columns: 1.1rem 6.8rem minmax(0, 1fr);
-  gap: 0.8rem;
-  min-height: 4.8rem;
-  padding: 0 0 1.2rem;
+  grid-template-columns: 1rem 7.2rem minmax(0, 1fr);
+  gap: 0.7rem;
+  padding: 0 0 0.85rem;
 }
+
+.casebook-visit:last-child { padding-bottom: 0; }
 
 .casebook-visit:not(:last-child)::before {
   position: absolute;
-  top: 1.25rem;
+  top: 1.1rem;
   bottom: -0.1rem;
-  left: 0.5rem;
+  left: 0.47rem;
   width: 1px;
-  background: #756849;
+  background: #8b7a58;
   content: '';
 }
 
 .casebook-visit-node {
   position: relative;
   z-index: 1;
-  width: 1.05rem;
-  height: 1.05rem;
-  margin-top: 0.08rem;
-  border: 2px solid #806a3d;
+  width: 0.95rem;
+  height: 0.95rem;
+  margin-top: 0.1rem;
+  border: 2px solid #9a7f45;
   border-radius: 50%;
-  background: var(--casebook-paper);
-  box-shadow: 0 0 0 2px rgb(238 226 199 / 0.9);
+  background: transparent;
+  box-shadow: 0 0 0 2px rgb(238 226 199 / 0.85);
 }
 
 .casebook-visit.is-complete .casebook-visit-node,
-.casebook-visit.is-outcome .casebook-visit-node { border-color: #365d3b; background: #416f47; }
+.casebook-visit.is-outcome .casebook-visit-node { border-color: #2c4c33; background: #365d3b; }
 
 .casebook-visit time {
-  padding-top: 0.08rem;
-  font: 700 0.88rem/1.2 'Cormorant SC', 'Cormorant', Georgia, serif;
+  padding-top: 0.12rem;
+  font: 400 clamp(0.7rem, 1.04cqw, 0.94rem)/1.2 var(--casebook-display);
   letter-spacing: 0.025em;
 }
 
 .casebook-visit-copy h4 {
-  margin: 0 0 0.34rem;
-  font: 700 1.08rem/1.1 'Libre Caslon Text', Georgia, serif;
+  margin: 0 0 0.22rem;
+  font: 700 clamp(0.84rem, 1.24cqw, 1.12rem)/1.2 var(--casebook-body);
 }
 
 .casebook-visit-copy p,
 .casebook-visit-copy blockquote {
-  margin: 0.2rem 0;
-  font: 500 0.91rem/1.38 'Libre Caslon Text', Georgia, serif;
+  margin: 0.14rem 0;
+  font: 400 clamp(0.79rem, 1.16cqw, 1.05rem)/1.4 var(--casebook-body);
 }
 
 .casebook-visit-copy blockquote {
-  margin-top: 0.65rem;
-  padding-left: 0.8rem;
+  margin-top: 0.5rem;
+  padding-left: 0.7rem;
   border-left: 2px solid #a18b61;
   font-style: italic;
 }
@@ -735,18 +806,24 @@
 .casebook-visit-state { color: #74654b; font-style: italic !important; }
 
 .casebook-empty {
-  margin: 0.8rem 0 0;
+  margin: 0.55rem 0 0;
   color: #746b5d;
-  font: italic 500 0.98rem/1.4 'Cormorant', Georgia, serif;
+  font: italic 400 clamp(0.8rem, 1.18cqw, 1.06rem)/1.4 var(--casebook-body);
 }
 
 .casebook-notes-preview > p:not(.casebook-empty) {
-  margin: 0.55rem 0 0 1.2rem;
-  font: italic 500 1rem/1.35 'Libre Caslon Text', Georgia, serif;
+  margin: 0.4rem 0 0 0.9rem;
+  font: italic 400 clamp(0.82rem, 1.22cqw, 1.1rem)/1.45 var(--casebook-body);
+}
+
+.casebook-notes-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.7rem;
 }
 
 .casebook-edit-notes {
-  padding: 0.55rem 0.85rem;
+  padding: 0.42rem 0.75rem;
   border: 1px solid #8d7b5d;
   border-radius: 0.2rem;
   color: #34291d;
@@ -756,22 +833,22 @@
 
 .casebook-edit-notes:hover { background: rgb(205 188 152 / 0.5); transform: translateY(-1px); }
 
-.casebook-all-visits { padding-top: 1.9rem; }
-.casebook-all-visits .casebook-timeline { margin-top: 1.6rem; }
+.casebook-all-visits { padding-top: 1.35rem; }
+.casebook-all-visits .casebook-timeline { margin-top: 1.1rem; }
 
-.casebook-note-list { margin-top: 0.9rem; }
+.casebook-note-list { margin-top: 0.7rem; }
 .casebook-note {
   display: flex;
   align-items: start;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.72rem 0;
+  padding: 0.6rem 0;
   border-bottom: 1px solid rgb(126 102 67 / 0.24);
 }
 
 .casebook-note p {
   margin: 0;
-  font: italic 500 1rem/1.45 'Libre Caslon Text', Georgia, serif;
+  font: italic 400 clamp(0.82rem, 1.22cqw, 1.1rem)/1.45 var(--casebook-body);
 }
 
 .casebook-note > div { display: flex; gap: 0.6rem; opacity: 0; transition: opacity 160ms ease; }
@@ -783,30 +860,30 @@
   border-bottom: 1px solid currentColor;
   background: transparent;
   color: #775f3d;
-  font: 600 0.82rem/1.2 'Cormorant', Georgia, serif;
+  font: 500 clamp(0.7rem, 1.02cqw, 0.9rem)/1.2 var(--casebook-body);
   cursor: pointer;
 }
 
-.casebook-note-compose { margin-top: 1rem; }
+.casebook-note-compose { margin-top: 0.85rem; }
 .casebook-note-compose textarea {
   width: 100%;
-  min-height: 8rem;
+  min-height: 7rem;
   resize: vertical;
   border: 1px solid #988564;
   border-radius: 0.25rem;
   background:
-    repeating-linear-gradient(transparent 0 1.65rem, rgb(105 83 52 / 0.17) 1.65rem calc(1.65rem + 1px)),
+    repeating-linear-gradient(transparent 0 1.55rem, rgb(105 83 52 / 0.17) 1.55rem calc(1.55rem + 1px)),
     rgb(245 235 213 / 0.62);
   color: #241c14;
-  font: italic 500 1rem/1.65rem 'Libre Caslon Text', Georgia, serif;
-  padding: 0.55rem 0.75rem;
+  font: italic 400 0.95rem/1.55rem var(--casebook-body);
+  padding: 0.5rem 0.7rem;
 }
 
-.casebook-note-compose > div { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.7rem; }
-.casebook-note-compose button { padding: 0.45rem 0.7rem; border: 1px solid #8e7955; }
+.casebook-note-compose > div { display: flex; justify-content: flex-end; gap: 0.7rem; margin-top: 0.6rem; }
+.casebook-note-compose button { padding: 0.4rem 0.65rem; border: 1px solid #8e7955; }
 .casebook-note-compose button.is-primary { background: #11342c; color: #f2e5ca; }
 .casebook-note-compose button:disabled { opacity: 0.45; cursor: default; }
-.casebook-done { display: block; margin: 1.2rem auto 0; }
+.casebook-done { display: block; margin: 1rem auto 0; }
 
 .casebook-live-indicator {
   display: flex;
@@ -815,7 +892,7 @@
   gap: 0.5rem;
   margin: 0.6rem 0 0;
   color: #5e6f51;
-  font: italic 600 0.78rem/1.2 'Cormorant', Georgia, serif;
+  font: italic 400 clamp(0.66rem, 0.98cqw, 0.88rem)/1.2 var(--casebook-body);
 }
 
 .casebook-live-indicator i {
@@ -855,14 +932,15 @@
 }
 
 @media (max-width: 1120px) {
-  .casebook-shell { grid-template-columns: minmax(19rem, 39%) minmax(0, 61%); }
-  .casebook-index { padding-right: 1.5rem; padding-left: 1.5rem; }
-  .casebook-patient { grid-template-columns: 0.65rem 3.8rem minmax(0, 1fr); gap: 0.65rem; min-height: 5.3rem; }
-  .casebook-portrait.is-thumbnail { width: 3.8rem; height: 3.8rem; }
+  .casebook-shell { grid-template-columns: minmax(17rem, 38%) minmax(0, 62%); }
+  .casebook-index { padding-right: 1.3rem; padding-left: 1.3rem; }
+  .casebook-patient { grid-template-columns: 0.65rem 2.6rem minmax(0, 1fr); gap: 0.55rem; min-height: 3.9rem; }
+  .casebook-portrait.is-thumbnail { width: 2.6rem; height: 2.6rem; }
   .casebook-patient-status { display: none; }
-  .casebook-record-head { grid-template-columns: 9.5rem minmax(0, 1fr); }
-  .casebook-record-identity { padding-bottom: 2.8rem; }
-  .casebook-status-stamp { right: auto; bottom: 0.25rem; left: 10.8rem; }
+  .casebook-record-head { grid-template-columns: 7rem minmax(0, 1fr); }
+  .casebook-identity-meta { flex-direction: column; align-items: flex-start; gap: 0.35rem; }
+  .casebook-status-stamp { margin-left: 0; }
+  .casebook-visit { grid-template-columns: 1rem 6.4rem minmax(0, 1fr); }
 }
 
 @media (max-width: 820px) {
@@ -877,8 +955,8 @@
     box-shadow: none;
   }
   .casebook-shell::before { inset: 0.35rem; border-radius: 0.6rem; }
-  .casebook-shell::after { inset: 0.55rem; }
-  .casebook-close { position: fixed; top: max(0.8rem, env(safe-area-inset-top)); right: 0.85rem; width: 2.75rem; height: 2.75rem; }
+  .casebook-shell::after { display: none; }
+  .casebook-close { position: fixed; top: max(0.8rem, env(safe-area-inset-top)); right: 0.85rem; width: 2.6rem; height: 2.6rem; }
   .casebook-index,
   .casebook-paper-wrap {
     position: absolute;
@@ -894,6 +972,7 @@
     padding: max(1.15rem, env(safe-area-inset-top)) 1.05rem max(0.85rem, env(safe-area-inset-bottom));
     border: 0;
   }
+  .casebook-index::after { display: none; }
   .casebook-paper-wrap {
     z-index: 3;
     padding: max(0.5rem, env(safe-area-inset-top)) 0.45rem max(0.45rem, env(safe-area-inset-bottom));
@@ -913,26 +992,24 @@
   .casebook-shell[data-mobile-view='index'] .casebook-paper-wrap {
     visibility: hidden;
   }
-  .casebook-brand { min-height: 7.2rem; padding: 0.65rem 3.2rem 0.75rem 0; }
-  .casebook-brand h1 { font-size: clamp(2rem, 10vw, 2.7rem); }
-  .casebook-brand p { font-size: 1rem; }
-  .casebook-brand time { margin-top: 0.55rem; font-size: 0.92rem; }
-  .casebook-filters { margin-bottom: 0.7rem; }
+  .casebook-brand { padding: 0.65rem 3.2rem 0.75rem 0; }
+  .casebook-brand h1 { font-size: clamp(1.5rem, 7.5vw, 2rem); }
+  .casebook-brand p { font-size: 0.98rem; }
+  .casebook-brand time { margin-top: 0.5rem; font-size: 0.9rem; }
   .casebook-patient-list { padding-bottom: 0.2rem; }
   .casebook-patient {
-    grid-template-columns: 0.7rem 4.2rem minmax(0, 1fr) 5rem;
-    min-height: 5.55rem;
-    margin-bottom: 0.5rem;
+    grid-template-columns: 0.7rem 3rem minmax(0, 1fr) 3.6rem;
+    min-height: 4.3rem;
+    margin-bottom: 0.45rem;
   }
-  .casebook-portrait.is-thumbnail { width: 4.2rem; height: 4.2rem; }
+  .casebook-portrait.is-thumbnail { width: 3rem; height: 3rem; }
   .casebook-patient-status { display: grid; }
   .casebook-patient-status em { display: none; }
-  .casebook-patient-status b { justify-self: end; }
-  .casebook-legend { padding-top: 0.65rem; }
+  .casebook-legend { padding-top: 0.6rem; }
   .casebook-paper-wrap::before,
   .casebook-paper-wrap::after { display: none; }
   .casebook-record {
-    padding: 4.15rem clamp(1rem, 5vw, 2rem) 2rem;
+    padding: 3.6rem clamp(1rem, 5vw, 1.8rem) 1.8rem;
     border: 0;
     box-shadow: none;
   }
@@ -947,49 +1024,40 @@
     border: 0;
     background: transparent;
     color: #67573e;
-    font: 700 0.9rem/1 'Cormorant SC', 'Cormorant', Georgia, serif;
+    font: 700 0.78rem/1 var(--casebook-display);
     cursor: pointer;
   }
   .casebook-record-head {
-    grid-template-columns: 6.8rem minmax(0, 1fr);
-    gap: 1.1rem;
-    min-height: 9rem;
+    grid-template-columns: 6.2rem minmax(0, 1fr);
+    gap: 1rem;
   }
-  .casebook-record-identity h2 { font-size: clamp(1.8rem, 8.5vw, 2.65rem); }
+  .casebook-record-identity h2 { font-size: clamp(1.35rem, 6.4vw, 1.85rem); }
   .casebook-record-identity p { font-size: 0.83rem; }
-  .casebook-name-rule { margin: 0.5rem 0 0.55rem; }
-  .casebook-record-identity { padding-bottom: 2.2rem; }
-  .casebook-status-stamp { right: auto; bottom: 0.15rem; left: 7.9rem; padding: 0.38rem 0.55rem 0.28rem; font-size: 0.72rem; }
-  .casebook-paperclip { height: 3.4rem; width: 0.85rem; border-width: 2px; }
-  .casebook-tabs { position: sticky; z-index: 3; top: -4.15rem; margin-top: 1rem; background: #e4d7bb; }
-  .casebook-tabs button { min-height: 2.65rem; font-size: 0.98rem; }
-  .casebook-paper-section,
-  .casebook-notes-editor { padding: 1.25rem 0; }
+  .casebook-tabs { width: 100%; grid-template-columns: repeat(3, 1fr); margin-top: 0.7rem; }
+  .casebook-tabs button { padding: 0 0.5rem; min-height: 2.2rem; font-size: 0.9rem; }
   .casebook-complaint { margin-left: 0; }
-  .casebook-visit { grid-template-columns: 1rem 5.1rem minmax(0, 1fr); gap: 0.55rem; }
-  .casebook-visit time { font-size: 0.73rem; }
-  .casebook-visit-copy h4 { font-size: 0.98rem; }
-  .casebook-visit-copy p { font-size: 0.84rem; }
+  .casebook-visit { grid-template-columns: 1rem 5.6rem minmax(0, 1fr); gap: 0.55rem; }
+  .casebook-visit time { font-size: 0.74rem; }
 }
 
 @media (max-width: 430px) {
-  .casebook-patient { grid-template-columns: 0.6rem 3.7rem minmax(0, 1fr) 1.7rem; padding-right: 0.55rem; }
-  .casebook-portrait.is-thumbnail { width: 3.7rem; height: 3.7rem; }
-  .casebook-patient-copy strong { font-size: 1rem; }
-  .casebook-patient-copy small { font-size: 0.86rem; }
-  .casebook-legend { gap: 0.5rem 0.75rem; font-size: 0.71rem; }
-  .casebook-photo { padding: 0.42rem; }
-  .casebook-photo::after { inset: 0.42rem; }
-  .casebook-record-head { grid-template-columns: 5.6rem minmax(0, 1fr); min-height: 7.5rem; }
-  .casebook-record-identity h2 { font-size: clamp(1.55rem, 8vw, 2.1rem); }
-  .casebook-status-stamp { font-size: 0.65rem; }
-  .casebook-tabs button { gap: 0.35rem; }
-  .casebook-tabs button span { min-width: 1.3rem; height: 1.3rem; font-size: 0.72rem; }
+  .casebook-patient { grid-template-columns: 0.6rem 2.8rem minmax(0, 1fr) 1.5rem; padding-right: 0.5rem; }
+  .casebook-portrait.is-thumbnail { width: 2.8rem; height: 2.8rem; }
+  .casebook-patient-copy strong { font-size: 0.98rem; }
+  .casebook-patient-copy small { font-size: 0.84rem; }
+  .casebook-legend { gap: 0.45rem 0.7rem; font-size: 0.69rem; }
+  .casebook-photo { padding: 0.36rem; }
+  .casebook-photo::after { inset: 0.36rem; }
+  .casebook-record-head { grid-template-columns: 5.2rem minmax(0, 1fr); }
+  .casebook-record-identity h2 { font-size: clamp(1.2rem, 6vw, 1.6rem); }
+  .casebook-status-stamp { font-size: 0.68rem; }
+  .casebook-tabs button { gap: 0.32rem; }
+  .casebook-tabs button span { min-width: 1.05rem; height: 1.05rem; font-size: 0.68rem; }
   .casebook-visit { grid-template-columns: 0.9rem minmax(0, 1fr); }
-  .casebook-visit time { grid-column: 2; margin-bottom: 0.25rem; }
+  .casebook-visit time { grid-column: 2; margin-bottom: 0.2rem; }
   .casebook-visit-copy { grid-column: 2; }
   .casebook-visit-node { grid-row: 1 / span 2; }
-  .casebook-visit:not(:last-child)::before { left: 0.45rem; }
+  .casebook-visit:not(:last-child)::before { left: 0.44rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

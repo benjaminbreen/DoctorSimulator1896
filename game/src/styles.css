@@ -14,8 +14,20 @@
 @import '@fontsource/tangerine/700.css';
 /* Label-editor choices: locally bundled modern revivals, so exported recipes
    do not depend on a network font service. */
+/* Libre Caslon Text ships 400 and 700 only; asking for 500 or 600 gets a
+   synthesised bold. */
 @import '@fontsource/libre-caslon-text/latin-400.css';
+@import '@fontsource/libre-caslon-text/latin-400-italic.css';
 @import '@fontsource/libre-caslon-text/latin-700.css';
+/* Casebook: a Didone with true small caps for the engraved headings, and a
+   sturdier oldstyle for the record itself, which is set small and dense. */
+@import '@fontsource/playfair-display-sc/latin-400.css';
+@import '@fontsource/playfair-display-sc/latin-700.css';
+@import '@fontsource/lora/latin-400.css';
+@import '@fontsource/lora/latin-400-italic.css';
+@import '@fontsource/lora/latin-600.css';
+@import '@fontsource/lora/latin-700.css';
+@import '@fontsource/lora/latin-700-italic.css';
 @import '@fontsource/bodoni-moda/latin-500.css';
 @import '@fontsource/bodoni-moda/latin-700.css';
 @import '@fontsource/old-standard-tt/latin-400.css';

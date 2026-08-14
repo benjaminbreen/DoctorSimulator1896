@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import { gameDebug } from '../debug.js';
 import { parkLandmark } from './landmarks.js';
 import {
-  weekdayName, monthName, patientQueue, demoLetters,
+  weekdayName, monthName, patientQueue, letters,
   checkWallet,
 } from './hudState.js';
 import {
@@ -185,6 +185,7 @@ function MeterTooltip({ metric, player }) {
 }
 
 // `quiet` clears the foot of the screen while a consultation panel holds it.
+// The band itself needs no variant: on a phone it is already one compact row.
 export default function GameHud({ runtime, worldClock, patients = [], quiet = false }) {
   const [time, setTime] = useState(() => worldClock.getSnapshot());
   const [place, setPlace] = useState('');
@@ -253,7 +254,7 @@ export default function GameHud({ runtime, worldClock, patients = [], quiet = fa
   const day = time.date;
   const clock = formatClock(hours);
   const remaining = patientQueue.filter((patient) => !patient.seen).length;
-  const unreadLetters = demoLetters.filter((entry) => !readIds.has(entry.id)).length;
+  const unreadLetters = letters.filter((entry) => !readIds.has(entry.id)).length;
   const feedbackEvent = meterFeedback?.event ?? null;
   const eventDeltas = feedbackEvent
     ? Object.entries(METERS)
@@ -272,7 +273,7 @@ export default function GameHud({ runtime, worldClock, patients = [], quiet = fa
 
   return (
     <div
-      className={`ghud${overlay ? ' ghud--overlay-open' : ''}${quiet ? ' ghud--quiet' : ''}`}
+      className={`ghud${overlay ? ' ghud--overlay-open' : ''}`}
       aria-label="Practice chrome"
     >
       <header className="ghud-bar">
@@ -318,11 +319,20 @@ export default function GameHud({ runtime, worldClock, patients = [], quiet = fa
           />
         </div>
 
-        <div className="ghud-plate ghud-plate--time">
-          <div className="ghud-time-big">{clock.text}</div>
-          <div className="ghud-time-period">{clock.period}</div>
-          <div className="ghud-time-date">{`${monthName(day)} ${day.date}, ${day.year}`}</div>
-        </div>
+        {/* Also opens the day panel: phones hide the dial, so the numerals
+            have to carry the tap target. */}
+        <button
+          type="button"
+          className="ghud-plate ghud-plate--time"
+          onClick={() => setOverlay(overlay === 'day' ? null : 'day')}
+          aria-haspopup="dialog"
+          aria-expanded={overlay === 'day'}
+          aria-label="The day: news, travel, and rest"
+        >
+          <span className="ghud-time-big">{clock.text}</span>
+          <span className="ghud-time-period">{clock.period}</span>
+          <span className="ghud-time-date">{`${monthName(day)} ${day.date}, ${day.year}`}</span>
+        </button>
 
         <i className="ghud-rule" aria-hidden="true" />
 
@@ -469,7 +479,7 @@ export default function GameHud({ runtime, worldClock, patients = [], quiet = fa
         <nav className="ghud-actions" aria-label="Pocket actions">
           <button
             type="button"
-            className="ghud-action"
+            className="ghud-action ghud-action--travel"
             aria-label="Fast Travel"
             onClick={() => setOverlay(overlay === 'travel' ? null : 'travel')}
             aria-haspopup="dialog"

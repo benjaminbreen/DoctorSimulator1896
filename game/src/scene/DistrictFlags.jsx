@@ -24,7 +24,7 @@ function traceStar(context, cx, cy, outerRadius) {
   context.fill();
 }
 
-function createFortyFiveStarTexture() {
+function createFortyFourStarTexture() {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 270;
@@ -43,22 +43,22 @@ function createFortyFiveStarTexture() {
   context.fillRect(0, 0, cantonWidth, cantonHeight);
   context.fillStyle = '#f7f0df';
   const rowGap = cantonHeight / 7;
-  for (let row = 0; row < 6; row += 1) {
-    const count = row % 2 === 0 ? 8 : 7;
-    const columnGap = cantonWidth / 9;
-    const inset = row % 2 === 0 ? columnGap * 0.75 : columnGap * 1.25;
+  const rowCounts = [8, 7, 7, 7, 7, 8];
+  for (let row = 0; row < rowCounts.length; row += 1) {
+    const count = rowCounts[row];
+    const columnGap = cantonWidth / (count + 1);
     for (let column = 0; column < count; column += 1) {
-      traceStar(context, inset + column * columnGap, rowGap * (row + 1), 5.9);
+      traceStar(context, columnGap * (column + 1), rowGap * (row + 1), 5.9);
     }
   }
 
   // A faint warm veil avoids a digitally pure red-white-blue patch while
-  // retaining enough contrast for the 45-star field to read from the street.
+  // retaining enough contrast for the 44-star field to read from the street.
   context.fillStyle = 'rgba(105, 82, 50, 0.055)';
   context.fillRect(0, 0, canvas.width, canvas.height);
 
   const texture = new THREE.CanvasTexture(canvas);
-  texture.name = '1896 forty-five-star flag';
+  texture.name = '1896 forty-four-star flag';
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.minFilter = THREE.LinearMipmapLinearFilter;
   texture.magFilter = THREE.LinearFilter;
@@ -150,7 +150,7 @@ function createPoleGeometry() {
 }
 
 function createFlagBatch(flags) {
-  const texture = createFortyFiveStarTexture();
+  const texture = createFortyFourStarTexture();
   const geometry = createFlagGeometry(flags.map((flag) => flag.phase));
   const material = createFlagMaterial(texture);
   const mesh = new THREE.InstancedMesh(geometry, material, flags.length);
@@ -219,7 +219,7 @@ export default function DistrictFlags({ runtime }) {
   });
 
   return (
-    <group name="three selective 45-star flags">
+    <group name="three selective 44-star flags">
       <primitive object={poles.mesh} />
       <primitive object={cloth.mesh} />
     </group>

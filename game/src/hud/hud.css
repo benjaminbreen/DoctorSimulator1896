@@ -588,8 +588,10 @@
   filter: drop-shadow(0 2px 3px rgba(6, 10, 8, 0.5)) brightness(1.12);
 }
 
-/* The letters plate is a real control: it opens the writing desk. */
-button.ghud-plate--letters {
+/* Plates that are real controls: letters opens the writing desk, time opens
+   the day panel. */
+button.ghud-plate--letters,
+button.ghud-plate--time {
   pointer-events: auto;
   background: transparent;
   border: none;
@@ -598,11 +600,13 @@ button.ghud-plate--letters {
   transition: filter 0.15s ease;
 }
 
-button.ghud-plate--letters:hover {
+button.ghud-plate--letters:hover,
+button.ghud-plate--time:hover {
   filter: brightness(1.12);
 }
 
-button.ghud-plate--letters:focus-visible {
+button.ghud-plate--letters:focus-visible,
+button.ghud-plate--time:focus-visible {
   outline: 2px solid var(--g-gold-dim);
   outline-offset: -4px;
   border-radius: 8px;
@@ -1037,6 +1041,31 @@ button.ghud-plate--letters:focus-visible {
   letter-spacing: 0.18em;
   text-align: right;
   color: var(--g-ink-soft);
+}
+
+.ghud-letter-provenance {
+  display: grid;
+  gap: 0.25rem;
+  margin: 1.5rem auto 0;
+  padding: 0.8rem 0.9rem;
+  border-top: 1px solid rgba(110, 82, 34, 0.32);
+  border-bottom: 1px solid rgba(110, 82, 34, 0.24);
+  color: var(--g-ink-soft);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.ghud-letter-provenance strong {
+  color: var(--g-olive);
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  letter-spacing: 0.08em;
+}
+
+.ghud-letter-provenance a,
+.ghud-day-source a {
+  color: #644d20;
+  font-weight: 700;
+  text-underline-offset: 0.16em;
 }
 
 /* The verbs ride the modal's bottom margin, inset on the frame band. */
@@ -1574,6 +1603,14 @@ button.ghud-plate--letters:focus-visible {
 .ghud-day-news svg {
   flex: 0 0 auto;
   margin-top: 4px;
+}
+
+.ghud-day-source {
+  margin: 0.9rem 0 0;
+  color: var(--g-ink-soft);
+  font-size: 0.78rem;
+  font-style: italic;
+  line-height: 1.35;
 }
 
 .ghud-day-box {
@@ -2323,10 +2360,11 @@ button.ghud-plate--letters:focus-visible {
   .ghud-plate--queue { flex-direction: row; gap: 7px; }
 }
 
-/* phones: the band reflows to two rows, bosses come back into the band */
+/* phones: one row of live readings. The monogram and the painted dial are
+   the only things carrying no information, so they are what goes. */
 @container (max-width: 780px) {
   .throw-card {
-    top: calc(116px + env(safe-area-inset-top, 0px));
+    top: calc(62px + env(safe-area-inset-top, 0px));
     right: auto;
     left: 50%;
     width: min(272px, calc(100% - 24px));
@@ -2334,88 +2372,55 @@ button.ghud-plate--letters:focus-visible {
   }
 
   .ghud-bar {
-    height: auto;
+    box-sizing: border-box;
+    height: 54px;
     display: grid;
-    grid-template-columns: auto auto auto minmax(0, 1fr);
-    grid-template-areas:
-      'mono clock time loc'
-      'mono queue letters gauges';
-    row-gap: 2px;
-    padding: 7px 10px;
+    grid-template-columns: auto minmax(44px, 1fr) auto auto auto;
+    grid-template-areas: 'time loc queue letters gauges';
+    align-items: center;
+    row-gap: 0;
+    padding: 4px 8px;
     border-radius: 0 0 12px 12px;
   }
 
+  .ghud-mono-wrap,
+  .ghud-clock-wrap,
   .ghud-rule { display: none; }
 
-  .ghud-mono-wrap {
-    grid-area: mono;
-    flex: none;
-    align-self: center;
-    width: 44px;
-    height: 48px;
-    transform-origin: center;
-  }
+  .ghud-plate { padding-inline: 4px; }
 
-  .ghud-monogram-img {
-    position: static;
-    height: 48px;
-    filter: none;
-  }
-
-  .ghud-monogram-mark {
-    top: 7px;
-    left: 5px;
-    width: 34px;
-    height: 34px;
-  }
-
-  .ghud-mono-wrap::after {
-    top: 3px;
-    left: 1px;
-    width: 42px;
-    height: 42px;
-  }
-
-  .ghud-action-img { height: 30px; }
-
-  .ghud-clock-wrap {
-    grid-area: clock;
-    flex: none;
-    align-self: center;
-    width: auto;
-    padding: 0 4px;
-  }
-
-  .ghud-clock-painted {
-    position: static;
-    width: 50px;
-    height: 48px;
-    filter: none;
-  }
-
-  .ghud-plate,
-  .ghud-gauges { padding: 0 8px; }
-
-  .ghud-plate--time { grid-area: time; align-items: flex-start; }
-  .ghud-plate--loc { grid-area: loc; align-items: flex-start; justify-content: center; }
-  .ghud-plate--queue { grid-area: queue; flex-direction: row; gap: 7px; }
-  .ghud-plate--letters { grid-area: letters; flex-direction: row; gap: 7px; }
-  .ghud-gauges { grid-area: gauges; justify-self: end; gap: 5px; }
+  .ghud-plate--time { grid-area: time; min-height: 44px; justify-content: center; }
+  .ghud-plate--loc { grid-area: loc; align-items: center; }
+  .ghud-plate--queue { grid-area: queue; flex-direction: row; gap: 0; }
+  .ghud-plate--letters { grid-area: letters; flex-direction: row; gap: 3px; padding-inline: 2px; }
+  .ghud-gauges { grid-area: gauges; justify-self: end; gap: 4px; padding: 0 2px; }
 
   .ghud-plate--queue .ghud-label,
+  .ghud-plate--letters .ghud-label,
+  .ghud-count-word,
   .ghud-plate--time .ghud-time-date { display: none; }
 
-  .ghud-time-big { font-size: 21px; }
-  .ghud-loc-line { gap: 4px; }
-  .ghud-loc-text { font-size: 12px; letter-spacing: 0.04em; }
+  .ghud-time-big { font-size: 16px; }
+  .ghud-time-period { font-size: 7.5px; letter-spacing: 0.1em; }
+  .ghud-loc-line { gap: 3px; }
+  .ghud-loc-line svg { width: 14px; height: 14px; }
+  .ghud-loc-text { font-size: 11px; letter-spacing: 0.03em; }
   .ghud-loc-text--full { display: none; }
   .ghud-loc-text--short { display: inline; }
-  .ghud-track { width: 70px; height: 8px; }
+  .ghud-count-badge { width: 22px; height: 22px; font-size: 12px; }
+  .ghud-envelope-img { height: 21px; }
+  .ghud-letters-count { font-size: 16px; }
+  .ghud-gauge { min-height: 17px; gap: 4px; padding: 0; }
+  .ghud-gauge-icon { width: 14px; }
+  .ghud-gauge-icon svg { width: 14px; height: 14px; }
+  .ghud-track { width: 54px; height: 7px; }
+
+  button.ghud-plate--letters { min-width: 44px; min-height: 44px; }
 
   /* Walking controls own the lower corners on touch screens. Pocket actions
      become a small shelf below the top bar instead of competing with them. */
   .ghud-actions {
-    top: calc(108px + env(safe-area-inset-top, 0px));
+    top: calc(58px + env(safe-area-inset-top, 0px));
     right: calc(8px + env(safe-area-inset-right, 0px));
     bottom: auto;
     left: auto;
@@ -2425,48 +2430,22 @@ button.ghud-plate--letters:focus-visible {
     border-radius: 12px;
   }
   .ghud-action { min-width: 48px; min-height: 44px; padding: 4px 7px; }
-  .ghud-action svg { width: 28px; height: 28px; }
+  .ghud-action-img { height: 28px; }
   .ghud-action-caption { display: none; }
 
-  button.ghud-plate--letters,
-  .ghud-clock-hit { min-width: 44px; min-height: 44px; }
-
-  .ghud-gauge { min-height: 20px; padding-block: 2px; }
-
-  /* A consultation already owns the lower screen, so its status band keeps
-     only the live information and moves it into one compact row. Ordinary
-     exploration retains the more decorative two-row phone composition. */
-  .ghud--quiet .ghud-bar {
-    box-sizing: border-box;
-    height: 64px;
-    grid-template-columns: 50px auto minmax(46px, 1fr) auto 44px auto;
-    grid-template-areas: 'clock time loc queue letters gauges';
-    align-items: center;
-    row-gap: 0;
-    padding: 5px 8px;
+  /* The consulting room is where the day's work is, so travel is lit and
+     labelled while the other two stay plain pocket items. */
+  .ghud-action--travel {
+    min-width: 68px;
+    border: 1px solid rgba(214, 176, 92, 0.7);
+    background: radial-gradient(120% 140% at 50% 0%, rgba(226, 191, 116, 0.32), rgba(226, 191, 116, 0.06) 72%);
   }
-
-  .ghud--quiet .ghud-mono-wrap { display: none; }
-  .ghud--quiet .ghud-clock-wrap { width: 50px; padding: 0; }
-  .ghud--quiet .ghud-plate { padding-inline: 3px; }
-  .ghud--quiet .ghud-plate--time,
-  .ghud--quiet .ghud-plate--loc { align-items: center; }
-  .ghud--quiet .ghud-time-big { font-size: 18px; }
-  .ghud--quiet .ghud-time-period { font-size: 7.5px; letter-spacing: 0.1em; }
-  .ghud--quiet .ghud-loc-line { gap: 3px; }
-  .ghud--quiet .ghud-loc-line svg { width: 14px; height: 14px; }
-  .ghud--quiet .ghud-loc-text { font-size: 10.5px; letter-spacing: 0.03em; }
-  .ghud--quiet .ghud-plate--queue { gap: 0; }
-  .ghud--quiet .ghud-count-word { display: none; }
-  .ghud--quiet .ghud-count-badge { width: 22px; height: 22px; font-size: 12px; }
-  .ghud--quiet .ghud-plate--letters { gap: 3px; padding-inline: 2px; }
-  .ghud--quiet .ghud-envelope-img { height: 21px; }
-  .ghud--quiet .ghud-letters-count { font-size: 16px; }
-  .ghud--quiet .ghud-gauges { gap: 4px; padding: 0 2px; }
-  .ghud--quiet .ghud-gauge { min-height: 17px; gap: 4px; padding: 0; }
-  .ghud--quiet .ghud-gauge-icon { width: 14px; }
-  .ghud--quiet .ghud-gauge-icon svg { width: 14px; height: 14px; }
-  .ghud--quiet .ghud-track { width: 54px; height: 7px; }
+  .ghud-action--travel .ghud-action-img { height: 34px; }
+  .ghud-action--travel .ghud-action-caption {
+    display: block;
+    font-size: 8px;
+    letter-spacing: 0.12em;
+  }
 }
 
 @container (max-width: 640px) {
@@ -2541,7 +2520,7 @@ button.ghud-plate--letters:focus-visible {
 
   .ghud-pt-ring > svg { width: 66px; height: 66px; }
 
-  .ghud-scrim--clear { padding-top: 116px; }
+  .ghud-scrim--clear { padding-top: 62px; }
 
   .ghud-day-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -2590,8 +2569,7 @@ button.ghud-plate--letters:focus-visible {
   .ghud-monogram-img { height: 46px; }
   .ghud-monogram-mark { top: 7px; left: 6px; width: 32px; height: 32px; }
   .ghud-mono-wrap::after { top: 2px; left: 1px; width: 42px; height: 42px; }
-  .ghud-clock-wrap { width: 50px; flex: 0 0 50px; padding: 0; }
-  .ghud-clock-painted { width: 50px; height: 48px; }
+  .ghud-clock-wrap { display: none; }
   .ghud-plate--queue { display: none; }
   .ghud-plate--loc {
     display: flex;
@@ -2600,8 +2578,7 @@ button.ghud-plate--letters:focus-visible {
     padding-inline: 7px;
   }
   .ghud-mono-wrap { order: 0; }
-  .ghud-clock-wrap { order: 1; }
-  .ghud-plate--time { order: 2; }
+  .ghud-plate--time { order: 2; min-height: 44px; }
   .ghud-plate--loc { order: 3; }
   .ghud-plate--letters { order: 4; }
   .ghud-gauges { order: 5; }
@@ -2611,7 +2588,7 @@ button.ghud-plate--letters:focus-visible {
   .ghud-rule { display: none; }
   .ghud-plate { padding-inline: 7px; }
   .ghud-time-date { display: none; }
-  .ghud-time-big { font-size: 20px; }
+  .ghud-time-big { font-size: 17px; }
   .ghud-time-period { font-size: 8px; letter-spacing: 0.12em; }
   .ghud-plate--letters { margin-left: auto; }
   .ghud-gauges { display: flex; gap: 4px; padding: 0 8px; }
@@ -2630,9 +2607,13 @@ button.ghud-plate--letters:focus-visible {
   .ghud-action { min-width: 46px; min-height: 44px; padding: 3px 5px; }
   .ghud-action-img { height: 28px; }
   .ghud-action-caption { display: none; }
+  .ghud-action--travel {
+    border: 1px solid rgba(214, 176, 92, 0.7);
+    background: radial-gradient(120% 140% at 50% 0%, rgba(226, 191, 116, 0.32), rgba(226, 191, 116, 0.06) 72%);
+  }
+  .ghud-action--travel .ghud-action-img { height: 33px; }
   .ghud-action-rule { height: 70%; }
-  button.ghud-plate--letters,
-  .ghud-clock-hit { min-width: 44px; min-height: 44px; }
+  button.ghud-plate--letters { min-width: 44px; min-height: 44px; }
   .ghud-scrim--clear { padding-top: 66px; }
 }
 

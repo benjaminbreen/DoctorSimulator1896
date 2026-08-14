@@ -17,6 +17,7 @@ import {
   makeRng,
   sampleElevatedCameraCandidates,
   sampleGroundPoints,
+  sampleRooftopSubjectCandidates,
 } from './space.mjs';
 import { buildGamutPlan, familyTargets } from './gamut_plan.mjs';
 import { ensureGame, ensureZone, renderResilient } from './runner.mjs';
@@ -160,6 +161,95 @@ async function elevatedCamera(page, rng, world, stratum) {
   throw new Error(`could not place a legal ${stratum} camera in ${world.zone}`);
 }
 
+function doorwayFigure(rng, entrance) {
+  const [x, ground, z] = entrance.position;
+  const [nx = 0, , nz = 1] = entrance.normal ?? [0, 0, 1];
+  // Turn partly toward the street rather than stare flat into the door. The
+  // side alternation gives profile and three-quarter variants.
+  const inward = [x - nx, ground + 0.9, z - nz];
+  const inwardYaw = aimAt([x, ground + 0.9, z], inward).yaw;
+  return {
+    x,
+    z,
+    ground,
+    yaw: inwardYaw + (rng() < 0.5 ? -1 : 1) * (0.38 + rng() * 0.42),
+    entranceId: entrance.id,
+    normal: [nx, nz],
+  };
+}
+
+async function doorwayCamera(page, rng, figure) {
+  const [nx, nz] = figure.normal;
+  const tangent = [-nz, nx];
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const candidates = Array.from({ length: 24 }, () => {
+      const distance = 5 + rng() * 7;
+      const side = (rng() * 2 - 1) * Math.min(3.2, distance * 0.28);
+      return [
+        figure.x + nx * distance + tangent[0] * side,
+        figure.z + nz * distance + tangent[1] * side,
+      ];
+    });
+    const probed = await page.evaluate(
+      (points) => window.__shot.sample(points, 'camera'),
+      candidates,
+    );
+    const legal = candidates
+      .map(([x, z], index) => ({ x, z, ...probed[index], stratum: 'ground' }))
+      .filter((candidate) => candidate.legal);
+    if (legal.length) return pick(rng, legal);
+  }
+  return null;
+}
+
+async function doorwayPlacement(page, rng, world) {
+  if (!world.entrances?.length) throw new Error(`zone ${world.zone} has no doorway anchors`);
+  const shuffle = (rows) => {
+    const result = [...rows];
+    for (let index = result.length - 1; index > 0; index -= 1) {
+      const swap = Math.floor(rng() * (index + 1));
+      [result[index], result[swap]] = [result[swap], result[index]];
+    }
+    return result;
+  };
+  // Raised stoops make the requested doorway/steps relationship legible.
+  // Ground-level doors remain a fallback when their camera geometry is safer.
+  const entrances = [
+    ...shuffle(world.entrances.filter((entrance) => entrance.raised)),
+    ...shuffle(world.entrances.filter((entrance) => !entrance.raised)),
+  ];
+  for (const entrance of entrances) {
+    const figure = doorwayFigure(rng, entrance);
+    const camera = await doorwayCamera(page, rng, figure);
+    if (camera) return { figure, camera };
+  }
+  throw new Error(`zone ${world.zone} has no doorway with a legal exterior camera`);
+}
+
+function rooftopFigure(rng, world, camera) {
+  const nearbyRoofs = world.architecture.filter((anchor) => {
+    if (anchor.id === camera.anchorId) return false;
+    const distance = Math.hypot(anchor.position[0] - camera.x, anchor.position[2] - camera.z);
+    return distance >= 10 && distance <= 38 && Math.abs(anchor.roofY - camera.y) <= 12;
+  });
+  const sameRoof = world.architecture.filter((anchor) => anchor.id === camera.anchorId);
+  const candidates = sampleRooftopSubjectCandidates(
+    rng,
+    nearbyRoofs.length ? nearbyRoofs : (sameRoof.length ? sameRoof : world.architecture),
+    96,
+  );
+  if (!candidates.length) throw new Error(`zone ${world.zone} has no rooftop figure anchors`);
+  const separated = candidates.filter((candidate) => {
+    const distance = Math.hypot(candidate.x - camera.x, candidate.z - camera.z);
+    return distance >= (nearbyRoofs.length ? 10 : 4) && distance <= (nearbyRoofs.length ? 36 : 28);
+  });
+  if (separated.length) return pick(rng, separated);
+  const nearby = candidates.filter((candidate) => (
+    Math.hypot(candidate.x - camera.x, candidate.z - camera.z) <= 40
+  ));
+  return pick(rng, nearby.length ? nearby : candidates);
+}
+
 function factorById(values, id, fallback) {
   return values.find((value) => value.id === id) ?? { id: fallback, range: null };
 }
@@ -182,7 +272,11 @@ async function makeShot(page, rng, world, task) {
     target = [figure.x, figure.ground + 1.5, figure.z];
   } else if (task.family === 'park-people' || task.family === 'street-people') {
     const setting = task.family === 'street-people' ? 'street' : 'park';
-    const people = world.people.filter((person) => person.setting === setting);
+    const settingPeople = world.people.filter((person) => person.setting === setting);
+    const preferred = task.subjectGender
+      ? settingPeople.filter((person) => person.gender === task.subjectGender)
+      : settingPeople;
+    const people = preferred.length ? preferred : settingPeople;
     if (!people.length) throw new Error(`no existing ${setting} pedestrians are ready`);
     subject = pick(rng, people);
     camera = await cameraNear(page, rng, world.bounds, subject.position, setting);
@@ -197,6 +291,13 @@ async function makeShot(page, rng, world, task) {
     if (!world.windows.length) throw new Error(`zone ${world.zone} has no windows for window-figure`);
     figure = await windowFigure(page, rng, world);
     camera = await cameraNear(page, rng, world.bounds, [figure.x, figure.ground, figure.z]);
+    target = [figure.x, figure.ground + 0.9, figure.z];
+  } else if (task.family === 'doorway-figure') {
+    ({ figure, camera } = await doorwayPlacement(page, rng, world));
+    target = [figure.x, figure.ground + 0.9, figure.z];
+  } else if (task.family === 'rooftop-figure') {
+    camera = await elevatedCamera(page, rng, world, 'rooftop');
+    figure = rooftopFigure(rng, world, camera);
     target = [figure.x, figure.ground + 0.9, figure.z];
   } else if (task.family === 'elevated-architecture') {
     camera = await elevatedCamera(page, rng, world, task.cameraStratum);
@@ -225,9 +326,12 @@ async function makeShot(page, rng, world, task) {
     sunAzimuthSector,
     target,
     subject,
+    subjectArchetype: task.subjectArchetype,
+    subjectScenario: task.subjectScenario ?? task.family,
     sceneFamily: task.family,
   });
-  if (task.family === 'elevated-architecture') {
+  if (task.family === 'rooftop-figure') shot.camera.fov = Math.min(34, shot.camera.fov);
+  if (task.family === 'elevated-architecture' || task.family === 'rooftop-figure') {
     // Evening roof materials otherwise collapse to near-black even when the
     // sky remains visible. Keep nocturnes moody, but still judgeable.
     shot.tuning.exposure = Math.max(0.95, shot.tuning.exposure);
@@ -252,7 +356,7 @@ async function prepareTaskWorld(page, task) {
         { timeout: 90000 },
       );
     }
-    if (task.family === 'window-figure') {
+    if (['window-figure', 'doorway-figure', 'rooftop-figure'].includes(task.family)) {
       await page.waitForFunction(
         (zone) => window.__shot.world().zone === zone && window.__shot.world().shotWomanReady,
         task.zone,
@@ -345,6 +449,8 @@ async function main() {
         composition: shot.meta.composition,
         vibe: task.vibe,
         cameraStratum: task.cameraStratum,
+        subjectArchetype: shot.meta.subjectArchetype ?? null,
+        subjectScenario: shot.meta.subjectScenario ?? null,
         shadowFamily: task.shadowFamily,
         sunAzimuthSector: task.sunAzimuthSector,
         frame,

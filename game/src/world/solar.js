@@ -1,7 +1,7 @@
 // Solar position and lighting ramps, framework-free. All outdoor lighting
 // keys off solar altitude (Darwin's approach), not hour-of-day directly.
 //
-// The game opens on 3 August 1896 in New York. Daylight saving does not reach
+// The game opens on 15 June 1896 in New York. Daylight saving does not reach
 // the United States until 1918, so the clock is Eastern Standard year round
 // and the sun peaks near noon rather than near one.
 
@@ -12,15 +12,14 @@ export function smoothstep(edge0, edge1, x) {
   return t * t * (3 - 2 * t);
 }
 
-// 3 August; 1896 was a leap year.
-export const START_DAY_OF_YEAR = 216;
+// 15 June; 1896 was a leap year.
+export const START_DAY_OF_YEAR = 167;
 const LATITUDE = degToRad(40.78); // Central Park
 
 // How far local apparent noon sits from 12:00 on the clock. New York is about
-// a degree east of the 75 W standard meridian, which puts the sun four minutes
-// early, and the equation of time runs some six minutes slow in early August.
-// One constant until there is a real calendar to vary it.
-const SOLAR_NOON = 12.03;
+// a degree east of the 75 W standard meridian. The USNO calculation for the
+// opening date puts upper transit at 11:56 Eastern Standard Time.
+const SOLAR_NOON = 11.94;
 
 // Cooper's approximation: within half a degree, which is finer than the half
 // degree the sun's own disc subtends.

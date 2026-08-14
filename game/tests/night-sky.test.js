@@ -7,13 +7,14 @@ import { settingsSchema, schemaParameters } from '../src/tuning/settingsSchema.j
 
 test('the opening-date moon agrees with the historical ephemeris', () => {
   const noon = moonState(12, START_DAY_OF_YEAR);
-  assert.ok(noon.illumination > 0.3 && noon.illumination < 0.33);
-  assert.equal(noon.waxing, false);
+  assert.ok(noon.illumination > 0.2 && noon.illumination < 0.22);
+  assert.equal(noon.waxing, true);
 
-  // USNO for 06:00 UTC on 4 August: 11.37 degrees altitude and 27% lit.
-  const oneAm = moonState(1, START_DAY_OF_YEAR + 1);
-  assert.ok(Math.abs(oneAm.altitude - 11.37) < 0.4);
-  assert.ok(Math.abs(oneAm.illumination - 0.27) < 0.015);
+  // USNO gives moonrise at 08:39 and moonset at 22:52 EST on June 15.
+  const rise = moonState(8 + 39 / 60, START_DAY_OF_YEAR);
+  const set = moonState(22 + 52 / 60, START_DAY_OF_YEAR);
+  assert.ok(Math.abs(rise.altitude) < 0.4);
+  assert.ok(Math.abs(set.altitude) < 0.4);
 });
 
 test('the solar ramps describe the full astronomical night', () => {
@@ -25,13 +26,13 @@ test('the solar ramps describe the full astronomical night', () => {
 });
 
 test('the authored twilight handoff covers the analytic-sky trough', () => {
-  const before = solarRamps(18.75, START_DAY_OF_YEAR);
-  const horizon = solarRamps(19, START_DAY_OF_YEAR);
-  const after = solarRamps(19.5, START_DAY_OF_YEAR);
+  const before = solarRamps(19, START_DAY_OF_YEAR);
+  const horizon = solarRamps(19.48, START_DAY_OF_YEAR);
+  const after = solarRamps(20.1, START_DAY_OF_YEAR);
   assert.ok(before.twilight < horizon.twilight);
   assert.ok(horizon.twilight > 0 && horizon.twilight < 1);
   assert.ok(after.twilight > 0.99);
-  assert.equal(environmentPalette(19, START_DAY_OF_YEAR).authoredBlend, horizon.twilight);
+  assert.equal(environmentPalette(19.48, START_DAY_OF_YEAR).authoredBlend, horizon.twilight);
 });
 
 test('night environment retains authored fill but stays darker than noon', () => {

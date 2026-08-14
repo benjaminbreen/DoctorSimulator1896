@@ -10,7 +10,7 @@ import {
 } from '../src/world/streetDressing.js';
 import { streetItems } from '../src/world/streetGrid.js';
 
-test('the district uses exactly three selective 45-star flag sites', () => {
+test('the district uses exactly three selective 44-star flag sites', () => {
   assert.equal(FLAG_SITES.length, 3);
   assert.deepEqual(
     FLAG_SITES.map((site) => site.buildingId),

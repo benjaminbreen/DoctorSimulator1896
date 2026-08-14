@@ -1,13 +1,13 @@
 // The letters modal: a writing-desk view over the scene. Left page lists the
 // correspondence; right page shows the opened letter on a deckle-edged sheet.
-// Only UI — the demo letters come from hudState and the verbs raise notices
-// until the real systems exist.
+// Correspondence data and its source notes come from hudState. The delivery
+// may be fictional, but the interface never hides that distinction.
 //
 // Learn is the seat of the future educational layer: the primary source a
 // letter draws on, and a historical note beside it.
 
 import { useEffect, useState } from 'react';
-import { demoLetters, learnFromLetter, replyToLetterLater } from './hudState.js';
+import { letters, learnFromLetter, replyToLetterLater } from './hudState.js';
 import { useDismissableOverlay } from './useDismissableOverlay.js';
 import {
   EnvelopeIcon, SealedEnvelopeIcon, EyebrowArrow, BookIcon, ArchiveBoxIcon,
@@ -15,7 +15,7 @@ import {
 } from './chrome.jsx';
 
 export default function LettersModal({ open, onClose, readIds, onRead, archivedIds, onArchive }) {
-  const [selectedId, setSelectedId] = useState(demoLetters[0]?.id);
+  const [selectedId, setSelectedId] = useState(letters[0]?.id);
   // Escape, Tab trap, focus restore, and input blocking all live in the hook.
   const containerRef = useDismissableOverlay(open, onClose);
 
@@ -27,9 +27,9 @@ export default function LettersModal({ open, onClose, readIds, onRead, archivedI
       event.preventDefault();
       const step = event.key === 'ArrowDown' ? 1 : -1;
       setSelectedId((current) => {
-        const index = demoLetters.findIndex((entry) => entry.id === current);
-        const next = Math.min(demoLetters.length - 1, Math.max(0, index + step));
-        return demoLetters[next].id;
+        const index = letters.findIndex((entry) => entry.id === current);
+        const next = Math.min(letters.length - 1, Math.max(0, index + step));
+        return letters[next].id;
       });
     };
     window.addEventListener('keydown', onKey, true);
@@ -43,7 +43,7 @@ export default function LettersModal({ open, onClose, readIds, onRead, archivedI
 
   if (!open) return null;
 
-  const letter = demoLetters.find((entry) => entry.id === selectedId) ?? demoLetters[0];
+  const letter = letters.find((entry) => entry.id === selectedId) ?? letters[0];
 
   return (
     <div className="ghud-scrim" onPointerDown={onClose}>
@@ -77,7 +77,7 @@ export default function LettersModal({ open, onClose, readIds, onRead, archivedI
             </div>
 
             <ul className="ghud-letters-list">
-              {demoLetters.map((entry) => {
+              {letters.map((entry) => {
                 const unread = !readIds.has(entry.id);
                 const archived = archivedIds.has(entry.id);
                 return (
@@ -107,7 +107,7 @@ export default function LettersModal({ open, onClose, readIds, onRead, archivedI
             </ul>
 
             <div className="ghud-letters-foot">
-              <span>{`${demoLetters.length} letters in your possession`}</span>
+              <span>{`${letters.length} ${letters.length === 1 ? 'letter' : 'letters'} in your possession`}</span>
             </div>
           </div>
 
@@ -128,13 +128,22 @@ export default function LettersModal({ open, onClose, readIds, onRead, archivedI
                 <p className="ghud-letter-valediction">{letter.valediction}</p>
                 <p className="ghud-letter-signature">{letter.signature}</p>
                 <p className="ghud-letter-sigtitle">{letter.signatureTitle}</p>
+                {letter.provenance && (
+                  <aside className="ghud-letter-provenance">
+                    <strong>{letter.provenance.label}</strong>
+                    <span>{letter.provenance.note}</span>
+                    <a href={letter.provenance.sourceUrl} target="_blank" rel="noreferrer">
+                      Read the published source
+                    </a>
+                  </aside>
+                )}
               </div>
             </div>
             <footer className="ghud-letter-verbs">
               <button
                 type="button"
                 className="ghud-letter-verb ghud-letter-verb--learn"
-                onClick={learnFromLetter}
+                onClick={() => learnFromLetter(letter)}
               >
                 <BookIcon />
                 <span>Learn</span>

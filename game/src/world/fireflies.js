@@ -19,7 +19,9 @@ function hash01(seed) {
 
 export function fireflyActivity(timeOfDay, dayOfYear) {
   const { altitude } = solarRamps(timeOfDay, dayOfYear);
-  return 1 - smoothstep(-4, 2, altitude);
+  // Wake in the long late-June shadows rather than waiting until after
+  // sunset: first glimmers below 8 degrees, fully present near the horizon.
+  return 1 - smoothstep(1, 8, altitude);
 }
 
 export function buildFireflies(seed = 1896, count = FIREFLY_COUNT) {

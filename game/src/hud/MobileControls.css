@@ -17,8 +17,8 @@
     position: absolute;
     left: calc(12px + env(safe-area-inset-left, 0px));
     bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-    width: 138px;
-    height: 138px;
+    width: 112px;
+    height: 112px;
   }
 
   .mctl-tip {
@@ -56,9 +56,13 @@
       inset 0 0 0 4px rgba(7, 17, 13, 0.78),
       inset 0 0 0 5px rgba(201, 162, 79, 0.28),
       inset 0 0 24px rgba(0, 0, 0, 0.3);
+    opacity: 0.45;
+    transition: opacity 140ms ease;
     pointer-events: auto;
     touch-action: none;
   }
+
+  .mctl-stick--active { opacity: 1; }
 
   .mctl-stick-runes {
     position: absolute;
@@ -74,10 +78,10 @@
 
   .mctl-knob {
     position: absolute;
-    top: calc(50% - 28px);
-    left: calc(50% - 28px);
-    width: 56px;
-    height: 56px;
+    top: calc(50% - 23px);
+    left: calc(50% - 23px);
+    width: 46px;
+    height: 46px;
     border: 1px solid rgba(230, 197, 121, 0.76);
     border-radius: 50%;
     background:
@@ -119,7 +123,16 @@
     touch-action: none;
   }
 
-  .mctl-action--interact { width: 68px; height: 68px; }
+  .mctl-action--interact {
+    width: 68px;
+    height: 68px;
+    animation: mctl-reach 160ms ease;
+  }
+
+  @keyframes mctl-reach {
+    from { opacity: 0; transform: scale(0.88); }
+  }
+
   .mctl-action:disabled { opacity: 0.38; }
   .mctl-action:not(:disabled):active { transform: scale(0.94); filter: brightness(1.18); }
 
@@ -161,12 +174,14 @@
 }
 
 @media (hover: none) and (pointer: coarse) and (orientation: landscape) {
-  .mctl-left { width: 116px; height: 116px; }
+  .mctl-left { width: 100px; height: 100px; }
   .mctl-tip { display: none; }
   .mctl-action--interact { width: 60px; height: 60px; }
   .mctl-action { width: 48px; height: 48px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mctl-action { transition: none; }
+  .mctl-action,
+  .mctl-stick { transition: none; }
+  .mctl-action--interact { animation: none; }
 }

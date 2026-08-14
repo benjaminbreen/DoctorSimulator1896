@@ -126,15 +126,14 @@ Working research record for what the props were modelled from:
   it is not presented as part of Cattell's original procedure. Source:
   Cattell, ["Mental Tests and Measurements" (1890)](https://psychclassics.yorku.ca/Cattell/mental.htm).
 
-## Central Park night sky — 3 August 1896
+## Central Park night sky — 15 June 1896
 
 - The U.S. Naval Observatory's historical calculation for New York gives a
-  32%-illuminated waning crescent, with last quarter on 1 August. On 3 August
-  the moon transits at 06:56, sets at 14:52, and rises again at 23:48 Eastern
-  Standard Time. Civil twilight ends at 19:39. Source: [USNO Complete Sun and
-  Moon Data](https://aa.usno.navy.mil/api/rstt/oneday?date=1896-08-03&coords=40.78,-73.97&tz=-5).
+  21%-illuminated waxing crescent. On June 15 the moon rises at 08:39,
+  transits at 15:52, and sets at 22:52 Eastern Standard Time. The sun transits
+  at 11:56 and civil twilight ends at 20:02. Source: [USNO Complete Sun and
+  Moon Data](https://aa.usno.navy.mil/api/rstt/oneday?date=1896-06-15&coords=40.78,-73.97&tz=-5).
 - The renderer uses a compact, truncated lunar ephemeris rather than a full
-  navigational almanac. At 01:00 on 4 August it predicts the moon at 11.46°
-  altitude and about 26.7% illumination; the USNO values are 11.37° and 27%.
-  This accuracy is appropriate for a visual sky but should not be reused for
-  historical navigation or event timing.
+  navigational almanac. It reproduces the published rise and set times within
+  roughly two minutes. This accuracy is appropriate for a visual sky but
+  should not be reused for historical navigation or event timing.

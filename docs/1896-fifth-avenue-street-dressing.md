@@ -6,9 +6,10 @@ documented at its exact game coordinate.
 
 ## National flags
 
-The game date is August 3, 1896. The 45-star United States flag became official
-on July 4, 1896, following Utah's admission. The game texture therefore uses
-45 stars in six staggered rows of eight and seven.
+The game date is June 15, 1896. The 44-star United States flag remained
+official through July 3, before Utah's star took effect on July 4. The game
+texture therefore uses 44 stars in rows of 8-7-7-7-7-8. Star arrangements
+varied before federal standardization in 1912.
 
 - Source: Smithsonian, [Flag facts](https://www.si.edu/es/spotlight/flag-day/flag-facts?page=1).
 - Placement status: inferred. Flags appear only at the New Netherland, Savoy,

@@ -220,10 +220,14 @@ python3 tools/hopper/score_gamut.py --run hopper-gamut-60
 npm run hopper:finalize -- --run hopper-gamut-60 --keep 30 --requested-samples 60
 ```
 
-The 60-frame plan fixes the proportions at 20% park landscapes/people, 25%
-street people, 25% women at windows, 15% other interiors, and only 15%
-raised/rooftop architecture. It reuses the game's existing pedestrians and
-rooms. A family-balanced comparison pass is:
+The 60-frame plan fixes the proportions at 20% park landscapes/people, 20%
+street people, 15% women at windows, 15% women at existing doorways or stoops,
+10% women on existing rooftops, 10% other interiors, and 10% elevated
+architecture. The placed subjects rotate evenly through four already-shipped
+standing-woman pedestrian models; live street and park people are also sampled
+with a female quota. No Hopper-only character or world asset is added.
+Subject archetype and scenario are preserved in the logs and diversity
+selection. A family-balanced comparison pass is:
 
 ```bash
 python3 tools/hopper/compare.py --profile gamut --run hopper-gamut-60 \
@@ -236,6 +240,16 @@ woman-at-window compositions and assigns four to every other family:
 ```bash
 python3 tools/hopper/compare.py --profile window-validation \
   --run hopper-gamut-holdout-60 --session hopper-window-holdout-30 \
+  --session-size 30
+```
+
+For the widened existing-character generator, use the subject-weighted blind
+profile. Six pairs are window scenes, five are stoops/doorways, five are
+rooftops, and the remaining fourteen preserve the ordinary scene gamut:
+
+```bash
+python3 tools/hopper/compare.py --profile subject-validation \
+  --run hopper-subject-gamut-60 --session hopper-subject-validation-30 \
   --session-size 30
 ```
 
@@ -277,7 +291,8 @@ Three hooks, all inert unless the page is loaded with `?shot=1`:
 
 - Figure legality is still a 2D collider test; elevated shot cameras use their
   own 3D check, but figures remain on authored walkable ground.
-- Existing pedestrians are selectable exterior anchors. Window studies reuse
-  the existing working-woman model in `?shot=1`; neither changes ordinary play.
+- Existing pedestrians are selectable exterior anchors. Window, stoop, and
+  rooftop studies rotate through four existing standing-woman models in
+  `?shot=1`; none of these hooks changes ordinary play.
 - CMA-ES instead of random search plus hill-climb. Worth it above ~1000
   samples; not worth it below.

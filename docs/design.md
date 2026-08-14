@@ -2,7 +2,7 @@
 
 ## Concept
 
-The player is a physician in New York beginning on 3 August 1896. Patients
+The player is a physician in New York beginning on 15 June 1896. Patients
 arrive with complaints the era
 reads through its own categories: neurasthenia, hysteria, nervous exhaustion,
 spirit communication. The player examines, diagnoses in period vocabulary,

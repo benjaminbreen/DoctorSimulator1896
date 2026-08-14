@@ -4,6 +4,8 @@ import './MobileControls.css';
 
 const DEAD_ZONE = 0.1;
 const RUN_EDGE = 0.86;
+// Half the knob, so a fully pushed knob sits flush inside the ring.
+const KNOB_RADIUS = 23;
 
 function ViewIcon() {
   return (
@@ -65,6 +67,7 @@ export default function MobileControls({ keyboard, hidden = false }) {
   const stick = useRef(null);
   const activePointer = useRef(null);
   const [knob, setKnob] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
   const [moved, setMoved] = useState(false);
   const [prompt, setPrompt] = useState(null);
 
@@ -73,6 +76,7 @@ export default function MobileControls({ keyboard, hidden = false }) {
       stick.current.releasePointerCapture(event.pointerId);
     }
     activePointer.current = null;
+    setDragging(false);
     setKnob({ x: 0, y: 0 });
     keyboard.setVirtualMove(0, 0, false);
   };
@@ -80,7 +84,7 @@ export default function MobileControls({ keyboard, hidden = false }) {
   const moveStick = (event) => {
     if (activePointer.current !== event.pointerId || !stick.current) return;
     const rect = stick.current.getBoundingClientRect();
-    const radius = Math.max(1, Math.min(rect.width, rect.height) / 2 - 25);
+    const radius = Math.max(1, Math.min(rect.width, rect.height) / 2 - KNOB_RADIUS);
     let x = event.clientX - (rect.left + rect.width / 2);
     let y = event.clientY - (rect.top + rect.height / 2);
     const distance = Math.hypot(x, y);
@@ -110,6 +114,7 @@ export default function MobileControls({ keyboard, hidden = false }) {
     const clear = () => {
       activePointer.current = null;
       keyboard.clearVirtualInput();
+      setDragging(false);
       setKnob({ x: 0, y: 0 });
     };
     window.addEventListener('blur', clear);
@@ -144,13 +149,14 @@ export default function MobileControls({ keyboard, hidden = false }) {
         )}
         <div
           ref={stick}
-          className="mctl-stick"
+          className={`mctl-stick${dragging ? ' mctl-stick--active' : ''}`}
           role="group"
           aria-label="Movement joystick. Push farther to run."
           onContextMenu={(event) => event.preventDefault()}
           onPointerDown={(event) => {
             event.preventDefault();
             activePointer.current = event.pointerId;
+            setDragging(true);
             event.currentTarget.setPointerCapture(event.pointerId);
             moveStick(event);
           }}
@@ -171,11 +177,17 @@ export default function MobileControls({ keyboard, hidden = false }) {
       </div>
 
       <div className="mctl-right">
-        {prompt && <span className="mctl-use-label">{prompt}</span>}
-        <ActionButton action="interact" keyboard={keyboard} label={prompt ? `Use: ${prompt}` : 'Nothing within reach'} disabled={!prompt}>
-          <HandIcon />
-          <span>Use</span>
-        </ActionButton>
+        {/* Use appears only when something is actually within reach. Jump and
+            View hold the bottom row, so nothing shifts when it comes and goes. */}
+        {prompt && (
+          <>
+            <span className="mctl-use-label">{prompt}</span>
+            <ActionButton action="interact" keyboard={keyboard} label={`Use: ${prompt}`}>
+              <HandIcon />
+              <span>Use</span>
+            </ActionButton>
+          </>
+        )}
         <div className="mctl-secondary-actions">
           <ActionButton action="jump" keyboard={keyboard} label="Jump">
             <JumpIcon />

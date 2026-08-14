@@ -5,7 +5,9 @@
 // a real archive scan at public/newspapers/<year-month-day>.jpg.
 //
 import { useState } from 'react';
-import { weekdayName, monthName, dayNews } from './hudState.js';
+import {
+  weekdayName, monthName, dayNews, dayNewsSource,
+} from './hudState.js';
 import { notice } from '../world/notices.js';
 import { recover, restEffect } from '../world/player.js';
 import { travelMinutesBetween } from '../world/travel.js';
@@ -123,6 +125,9 @@ export default function DayPanel({ open, onClose, runtime, worldClock, day }) {
                 </li>
               ))}
             </ul>
+            <p className="ghud-day-source">
+              Front page of <a href={dayNewsSource.sourceUrl} target="_blank" rel="noreferrer">{dayNewsSource.publication}</a>, {dayNewsSource.date}. Library of Congress.
+            </p>
           </div>
 
           <div className="ghud-day-box ghud-day-box--travel">

@@ -8,12 +8,12 @@
 
 import { notice } from '../world/notices.js';
 
-// The campaign opens in mid-May 1896. The weekday is computed, not typed:
-// May 14, 1896 was a Thursday, whatever a mockup says.
+// The campaign opens on the Monday after William James wrote about his
+// unsuccessful mescal experiment. The weekday is always computed below.
 export const day = {
   year: 1896,
-  month: 5, // 1-based
-  date: 14,
+  month: 6, // 1-based
+  date: 15,
 };
 
 const MONTHS = [
@@ -42,71 +42,33 @@ export const patientQueue = [
   { id: 'q5', seen: false, silhouette: 'man' },
 ];
 
-// Demo letters for the modal. PLACEHOLDER FIXTURES: the Roosevelt body is
-// from Ben's mockup; the Mitchell, Osler, and Lister bodies are drafts that
-// put words in real men's mouths and need Ben's verification before any of
-// it ships as content. The real letter system replaces this array.
-export const demoLetters = [
+// This is a fictional delivery of a documented letter. The recipient and
+// greeting are adapted for play; the displayed source note makes that change
+// explicit instead of presenting the prop as untouched correspondence.
+export const letters = [
   {
-    id: 'roosevelt-referral',
-    sender: 'Roosevelt Hospital',
-    place: 'New York',
-    date: 'May 13, 1896',
-    subject: 'Referral of New Patient',
+    id: 'james-mescal-1896',
+    sender: 'Professor William James',
+    place: 'Chocorua, New Hampshire',
+    date: 'June 11, 1896',
+    subject: 'A Psychological Experiment with Mescal',
     body: [
       'Dear Doctor,',
-      'We respectfully refer to you Mr. James H. Alden, aged 28, clerk, who presents with nervous exhaustion following a period of great mental strain and overwork.',
-      'He suffers from insomnia, palpitation, and general debility of nervous origin.',
-      'We commend him to your kindly care and expertise.',
+      'All that the telegraph imparts are the shocks; the “happy homes,” good husbands and fathers, fine weather, honest business men, neat new houses, punctual meetings of engagements, etc., of which the country mainly consists, are never cabled over.',
+      'The really bad thing here is the silly wave that has gone over the public mind—protection humbug, silver, jingoism, etc. It is a case of “mob-psychology.” Any country is liable to it if circumstances conspire, and our circumstances have conspired.',
+      'I had two days spoiled by a psychological experiment with mescal, an intoxicant used by some of our Southwestern Indians in their religious ceremonies, a sort of cactus bud, of which the U. S. Government had distributed a supply to certain medical men, including Weir Mitchell, who sent me some to try. He had himself been “in fairyland.” It gives the most glorious visions of color—every object thought of appears in a jeweled splendor unknown to the natural world.',
+      'It disturbs the stomach somewhat, but that, according to W. M., was a cheap price, etc. I took one bud three days ago, was violently sick for 24 hours, and had no other symptom whatever except that and the Katzenjammer the following day. I will take the visions on trust!',
+      'We have had three days of delicious rain—it all soaks into the sandy soil here and leaves no mud whatever.',
     ],
-    valediction: 'Respectfully,',
-    signature: 'John C. Minor, M.D.',
-    signatureTitle: 'Attending Physician',
-  },
-  {
-    id: 'mitchell-rest',
-    sender: 'Dr. S. Weir Mitchell',
-    place: 'Philadelphia',
-    date: 'May 11, 1896',
-    subject: 'On Rest and the Nerves',
-    body: [
-      'Dear Colleague,',
-      'I thank you for your note on the case of nervous exhaustion. In such patients I hold that rest, seclusion, abundant feeding, and massage do more than any drug.',
-      'Begin the regimen early and hold to it strictly; the half-rest is no rest at all.',
-    ],
-    valediction: 'Yours faithfully,',
-    signature: 'S. Weir Mitchell, M.D.',
-    signatureTitle: 'Philadelphia',
-  },
-  {
-    id: 'osler-diet',
-    sender: 'Dr. William Osler',
-    place: 'Baltimore',
-    date: 'May 8, 1896',
-    subject: 'Notes on Convalescent Diet',
-    body: [
-      'Dear Doctor,',
-      'In convalescence from nervous exhaustion I favour milk in divided doses, beef juice, and a slow return to solid fare.',
-      'Small meals, often; fresh air on a fixed schedule; and no tobacco whatever the patient pleads.',
-    ],
-    valediction: 'Very truly yours,',
-    signature: 'William Osler, M.D.',
-    signatureTitle: 'Johns Hopkins Hospital',
-  },
-  {
-    id: 'lister-antiseptic',
-    sender: 'Dr. Joseph Lister',
-    place: 'London',
-    date: 'April 30, 1896',
-    subject: 'Antiseptic Observations',
-    body: [
-      'Dear Sir,',
-      'Your inquiry on the antiseptic method is welcome. Cleanliness of the wound, of the instruments, and of the hands remains the whole of the doctrine.',
-      'The rest is diligence, and the humility to repeat what one already knows.',
-    ],
-    valediction: 'I remain, faithfully,',
-    signature: 'Joseph Lister',
-    signatureTitle: 'London',
+    valediction: 'Yours ever,',
+    signature: 'Wm. James',
+    signatureTitle: 'Harvard University',
+    provenance: {
+      label: 'Fictionalized delivery of a primary source',
+      note: 'William James wrote this passage to his brother Henry on June 11, 1896. The greeting and recipient are adapted for the game; the remaining displayed text follows the published letter.',
+      sourceLabel: 'The Letters of William James, volume II',
+      sourceUrl: 'https://www.gutenberg.org/files/38091/38091-h/38091-h.htm',
+    },
   },
 ];
 
@@ -133,29 +95,25 @@ export function checkWallet() {
   notice('Four dollars and eighty-five cents, in coin and small notes.', { key: 'wallet' });
 }
 
-// Headlines for the day panel. PLACEHOLDER FIXTURES copied from Ben's
-// mockup — several are anachronistic for May 14, 1896 (Homestead was 1892,
-// Earnest premiered February 1895, Marconi's over-water work came 1897) and
-// all of it awaits Ben's verification. The real feed comes with the weekly
-// newspaper system; the front page image will come from a real archive at
-// public/newspapers/<year-month-day>.jpg.
+// Short front-page headings transcribed from the June 15 issue shipped in
+// public/newspapers. Keeping the list small is preferable to filling the
+// panel with plausible but unverified events.
 export const dayNews = [
-  'Gold standard bill debated in the U.S. House; vote expected soon.',
-  'Homestead Strike continues in Pittsburgh as negotiations break down.',
-  'The New Elevated station at 42nd Street opens to the public.',
-  'Dr. Emil von Behring announces breakthrough in diphtheria antitoxin serum.',
-  'Oscar Wilde’s “The Importance of Being Earnest” premieres in London.',
-  'First successful wireless message sent over water by Guglielmo Marconi.',
-  'Baseball: Brooklyn Bridegrooms defeat New York Giants, 6–3.',
-  'Mild spring weather continues across New York City.',
+  'McKinley sold out to Foraker.',
+  'Nothing but gold will do.',
 ];
+
+export const dayNewsSource = Object.freeze({
+  publication: 'The Journal',
+  date: 'June 15, 1896',
+  sourceUrl: 'https://www.loc.gov/item/sn84031792/1896-06-15/ed-1/',
+});
 
 // Letter verbs, placeholders like the pocket verbs above. Learn is the hook
 // for the educational layer: the primary source and a historical note.
-export function learnFromLetter() {
-  notice('The primary source and historical note for this letter are not yet bound in.', {
-    key: 'learn',
-  });
+export function learnFromLetter(letter) {
+  const provenance = letter?.provenance;
+  notice(provenance?.note || 'No historical note is available for this letter.', { key: 'learn' });
 }
 
 export function replyToLetterLater() {

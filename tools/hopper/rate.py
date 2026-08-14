@@ -167,6 +167,8 @@ def collect_frames(out_dir, run_filter=None):
                     "shadow_family": entry.get("shadowFamily") or meta.get("shadowFamily") or "profile",
                     "sun_azimuth_sector": entry.get("sunAzimuthSector") or meta.get("sunAzimuthSector") or "physical",
                     "scene_family": entry.get("sceneFamily") or meta.get("sceneFamily") or "legacy",
+                    "subject_archetype": entry.get("subjectArchetype") or meta.get("subjectArchetype") or (shot.get("subject") or {}).get("archetype"),
+                    "subject_scenario": entry.get("subjectScenario") or meta.get("subjectScenario") or (shot.get("subject") or {}).get("scenario"),
                 })
     return frames
 

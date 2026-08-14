@@ -7,11 +7,11 @@ import {
 } from '../src/world/clock.js';
 import { weekdayName } from '../src/hud/hudState.js';
 
-test('the civil clock opens on Monday 3 August 1896 at half past nine', () => {
+test('the civil clock opens on Monday 15 June 1896 at half past nine', () => {
   const clock = createWorldClock();
   const state = clock.getSnapshot();
   assert.deepEqual(state.logical.date, {
-    year: 1896, month: 8, date: 3, dayOfYear: 216,
+    year: 1896, month: 6, date: 15, dayOfYear: 167,
   });
   assert.equal(state.logical.hours, 9.5);
   assert.equal(weekdayName(state.logical.date), 'Monday');
@@ -47,11 +47,11 @@ test('action time is logical immediately and catches up visually', () => {
 
 test('passing midnight advances the date and solar day', () => {
   const clock = createWorldClock({
-    start: { year: 1896, month: 8, date: 3, hour: 23, minute: 50 },
+    start: { year: 1896, month: 6, date: 15, hour: 23, minute: 50 },
   });
   clock.advanceMinutes(20, { animate: false });
   assert.deepEqual(clock.getSnapshot().logical.date, {
-    year: 1896, month: 8, date: 4, dayOfYear: 217,
+    year: 1896, month: 6, date: 16, dayOfYear: 168,
   });
   assert.equal(clock.getSnapshot().logical.hour, 0);
   assert.equal(clock.getSnapshot().logical.minute, 10);
@@ -59,10 +59,10 @@ test('passing midnight advances the date and solar day', () => {
 
 test('until morning always moves forward to seven', () => {
   const clock = createWorldClock({
-    start: { year: 1896, month: 8, date: 3, hour: 18, minute: 0 },
+    start: { year: 1896, month: 6, date: 15, hour: 18, minute: 0 },
   });
   const minutes = clock.advanceToHour(7, { animate: false });
   assert.equal(minutes, 13 * 60);
-  assert.equal(clock.getSnapshot().logical.date.date, 4);
+  assert.equal(clock.getSnapshot().logical.date.date, 16);
   assert.equal(clock.getSnapshot().logical.hours, 7);
 });

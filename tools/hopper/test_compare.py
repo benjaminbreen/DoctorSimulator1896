@@ -9,6 +9,7 @@ from compare import (  # noqa: E402
     ComparisonRater,
     select_comparison_pairs,
     select_gamut_pairs,
+    select_subject_validation_pairs,
     select_window_validation_pairs,
 )
 
@@ -97,6 +98,37 @@ class ComparisonTests(unittest.TestCase):
             for family in families
             if family != "window-figure"
         ))
+
+    def test_subject_validation_weights_three_figure_settings(self):
+        families = [
+            "park-landscape", "park-people", "street-people", "window-figure",
+            "doorway-figure", "rooftop-figure", "interior-room", "elevated-architecture",
+        ]
+        frames = []
+        for family in families:
+            for index in range(12):
+                frames.append({
+                    "path": f"subject/frames/{family}-{index}.png",
+                    "run": "subject",
+                    "zone": "room" if family in {"window-figure", "interior-room"} else "park",
+                    "time_band": ["dawn", "morning", "midday", "sunset"][index % 4],
+                    "time": 6 + index % 4 * 4,
+                    "composition": family,
+                    "vibe": ["hard", "soft", "haze"][index % 3],
+                    "camera_stratum": "rooftop" if "rooftop" in family else "ground",
+                    "scene_family": family,
+                    "subject_archetype": ["w", "d", "f", "h"][index % 4],
+                    "subject_scenario": family,
+                    "auto": 0.3 + index / 100,
+                })
+        pairs = select_subject_validation_pairs(frames, 30, seed=14)
+        counts = {}
+        for pair in pairs:
+            counts[pair["pair_type"]] = counts.get(pair["pair_type"], 0) + 1
+        self.assertEqual(counts["window-figure"], 6)
+        self.assertEqual(counts["doorway-figure"], 5)
+        self.assertEqual(counts["rooftop-figure"], 5)
+        self.assertEqual(sum(counts.values()), 30)
 
 
 if __name__ == "__main__":

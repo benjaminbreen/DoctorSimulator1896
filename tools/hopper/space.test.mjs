@@ -12,11 +12,12 @@ import {
   sampleTimeOfDay,
   sampleTuning,
   sampleElevatedCameraCandidates,
+  sampleRooftopSubjectCandidates,
   assembleShot,
   aimAt,
 } from './space.mjs';
 import { selectDiverseResults, selectGamutResults } from './diversity.mjs';
-import { buildGamutPlan, familyTargets } from './gamut_plan.mjs';
+import { SHOT_SUBJECT_ARCHETYPES, buildGamutPlan, familyTargets } from './gamut_plan.mjs';
 
 test('each named time stratum samples only inside its interval', () => {
   const rng = makeRng(813);
@@ -156,6 +157,22 @@ test('elevated candidates use existing façades and roof tops', () => {
   assert.ok(rooftops.every((point) => Math.abs(point.z + 4) <= 3));
 });
 
+test('rooftop subjects stand on existing roof faces rather than camera-height points', () => {
+  const architecture = [{
+    id: 'brick-block',
+    position: [10, 9, -4],
+    size: [12, 16, 10],
+    yaw: 0,
+    roofY: 17,
+  }];
+  const figures = sampleRooftopSubjectCandidates(makeRng(9), architecture, 12);
+  assert.equal(figures.length, 12);
+  assert.ok(figures.every((point) => point.stratum === 'rooftop'));
+  assert.ok(figures.every((point) => Math.abs(point.ground - 17.04) < 1e-9));
+  assert.ok(figures.every((point) => Math.abs(point.x - 10) <= 2.88));
+  assert.ok(figures.every((point) => Math.abs(point.z + 4) <= 2.4));
+});
+
 test('an elevated composition uses the supplied lens height and hides the player', () => {
   const rng = makeRng(58);
   const bounds = { minX: -100, maxX: 230, minZ: -85, maxZ: 186, floorY: 0, ceilingY: 6 };
@@ -215,9 +232,34 @@ test('window-figure reuses a still woman subject and hides the player', () => {
   });
   assert.equal(shot.figure.visible, false);
   assert.equal(shot.subject.kind, 'woman');
+  assert.equal(shot.subject.archetype, 'w');
   assert.deepEqual(shot.subject.position, [2.2, 0, -4.1]);
   assert.equal(shot.meta.composition, 'window-figure');
   assert.equal(shot.meta.sceneFamily, 'window-figure');
+});
+
+test('placed woman compositions retain archetype and scenario metadata', () => {
+  const rng = makeRng(72);
+  const bounds = { minX: -100, maxX: 230, minZ: -85, maxZ: 186, floorY: 0, ceilingY: 70 };
+  const camera = { x: 4, y: 22, z: 8, ground: 0, stratum: 'rooftop' };
+  const figure = { x: 18, z: -7, ground: 17.04, yaw: 0.7 };
+  for (const composition of ['doorway-figure', 'rooftop-figure']) {
+    const shot = assembleShot(rng, bounds, camera, figure, true, {
+      composition,
+      sceneFamily: composition,
+      subjectArchetype: 'h',
+      subjectScenario: composition,
+      target: [figure.x, figure.ground + 0.9, figure.z],
+      timeBand: TIME_BANDS[2],
+      vibe: VIBE_FAMILIES[1],
+    });
+    assert.equal(shot.figure.visible, false);
+    assert.equal(shot.subject.kind, 'woman');
+    assert.equal(shot.subject.archetype, 'h');
+    assert.equal(shot.subject.scenario, composition);
+    assert.equal(shot.meta.subjectArchetype, 'h');
+    assert.equal(shot.meta.subjectScenario, composition);
+  }
 });
 
 test('the 60-frame gamut caps elevated shots and preserves every scene family', () => {
@@ -229,8 +271,19 @@ test('the 60-frame gamut caps elevated shots and preserves every scene family', 
   }, {});
   assert.equal(plan.length, 60);
   assert.deepEqual(counts, targets);
-  assert.equal(counts['elevated-architecture'], 9);
-  assert.equal(counts['window-figure'], 15);
+  assert.equal(counts['elevated-architecture'], 6);
+  assert.equal(counts['window-figure'], 9);
+  assert.equal(counts['doorway-figure'], 9);
+  assert.equal(counts['rooftop-figure'], 6);
+  const placed = plan.filter((task) => task.subjectArchetype);
+  const archetypeCounts = placed.reduce((result, task) => {
+    result[task.subjectArchetype] = (result[task.subjectArchetype] ?? 0) + 1;
+    return result;
+  }, {});
+  assert.deepEqual(
+    archetypeCounts,
+    Object.fromEntries(SHOT_SUBJECT_ARCHETYPES.map((id) => [id, 6])),
+  );
   assert.equal(new Set(plan.map((task) => task.timeBand)).size, TIME_BANDS.length);
   assert.equal(new Set(plan.map((task) => task.vibe)).size, VIBE_FAMILIES.length);
 });

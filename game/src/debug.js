@@ -78,9 +78,15 @@ export const gameDebug = {
   // anchors instead of inventing extra people.
   pedestrians: [],
   shotTrackedPersonId: null,
-  // A shot-only placement of the existing working-woman pedestrian model.
-  // It is mounted only on ?shot=1 pages and never changes normal gameplay.
-  shotWoman: { visible: false, position: [0, 0, 0], yaw: 0 },
+  // A shot-only placement of one of the existing standing-woman pedestrian
+  // models. It is mounted only on ?shot=1 pages and never changes gameplay.
+  shotWoman: {
+    visible: false,
+    position: [0, 0, 0],
+    yaw: 0,
+    archetype: 'w',
+    scenario: null,
+  },
   shotWomanReady: false,
   // Written by HorselessCarriage every frame: carriages is one state
   // {route, x, z, s, lat, speed, yaw} per vehicle; carriage is the first.

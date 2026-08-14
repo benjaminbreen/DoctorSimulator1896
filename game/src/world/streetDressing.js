@@ -18,7 +18,8 @@ export const STREET_DRESSING_BUDGET = Object.freeze({
   triangles: 3000,
 });
 
-// Six staggered rows of eight and seven stars make 45. The flag texture is
+// Six rows of 8-7-7-7-7-8 stars make the 44-star flag still official on
+// June 15, 1896. The flag texture is
 // drawn locally in scene/DistrictFlags.jsx, so it introduces no redistributable
 // third-party asset and all three cloth instances share one map.
 export const FLAG_SITES = Object.freeze([

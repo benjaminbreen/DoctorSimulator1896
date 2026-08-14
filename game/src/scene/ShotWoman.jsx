@@ -9,22 +9,25 @@ import { PEDESTRIAN_ARCHETYPES } from '../world/pedestrianCatalog.js';
 import { normalizeNonmetallicCharacterMaterial } from './characterMaterials.js';
 
 const SCALE = 1.62;
+const STANDING_ARCHETYPES = Object.freeze(['w', 'd', 'f', 'h']);
+const MODEL_PATHS = STANDING_ARCHETYPES.map((id) => PEDESTRIAN_ARCHETYPES[id].modelPath);
 
-// A photographic subject made from the working-woman pedestrian already
+// A photographic subject made from standing-woman pedestrians already
 // shipped in the game. This component exists only on ?shot=1 pages. It adds no
-// model, asset, or gameplay state and lets an interior study place a still
-// woman beside an existing window without teleporting the male player there.
+// asset or gameplay state and lets the sampler place a varied, still subject
+// at windows, stoops, and rooftops without teleporting the male player there.
 export default function ShotWoman() {
   const wrapperRef = useRef();
-  const gltf = useLoader(
+  const gltfs = useLoader(
     GLTFLoader,
-    PEDESTRIAN_ARCHETYPES.w.modelPath,
+    MODEL_PATHS,
     (loader) => loader.setMeshoptDecoder(MeshoptDecoder),
   );
-  const { figure, mixer } = useMemo(() => {
-    const root = cloneSkeleton(gltf.scene);
-    root.scale.setScalar(SCALE);
-    root.traverse((node) => {
+  const subjects = useMemo(() => gltfs.map((gltf, index) => {
+    const figure = cloneSkeleton(gltf.scene);
+    figure.scale.setScalar(SCALE);
+    figure.visible = false;
+    figure.traverse((node) => {
       if (!node.isMesh && !node.isSkinnedMesh) return;
       node.castShadow = true;
       node.receiveShadow = true;
@@ -34,23 +37,27 @@ export default function ShotWoman() {
       node.material = Array.isArray(node.material) ? materials : materials[0];
       materials.forEach(normalizeNonmetallicCharacterMaterial);
     });
-    const animations = new THREE.AnimationMixer(root);
-    const clip = gltf.animations.find((candidate) => candidate.name === 'Idle') ?? gltf.animations[0];
-    const action = clip ? animations.clipAction(clip) : null;
+    const mixer = new THREE.AnimationMixer(figure);
+    const clip = gltf.animations.find((candidate) => (
+      candidate.name === 'Idle' || candidate.name === 'StandingIdle'
+    )) ?? gltf.animations[0];
+    const action = clip ? mixer.clipAction(clip) : null;
     action?.play();
     if (action && clip) action.time = clip.duration * 0.28;
-    animations.update(0);
-    return { figure: root, mixer: animations };
-  }, [gltf]);
+    mixer.update(0);
+    return { id: STANDING_ARCHETYPES[index], figure, mixer };
+  }), [gltfs]);
 
   useEffect(() => () => {
-    mixer.stopAllAction();
-    mixer.uncacheRoot(figure);
-    figure.traverse((node) => {
-      const materials = Array.isArray(node.material) ? node.material : [node.material];
-      materials.filter(Boolean).forEach((material) => material.dispose());
+    subjects.forEach(({ figure, mixer }) => {
+      mixer.stopAllAction();
+      mixer.uncacheRoot(figure);
+      figure.traverse((node) => {
+        const materials = Array.isArray(node.material) ? node.material : [node.material];
+        materials.filter(Boolean).forEach((material) => material.dispose());
+      });
     });
-  }, [figure, mixer]);
+  }, [subjects]);
 
   useEffect(() => {
     gameDebug.shotWomanReady = true;
@@ -58,10 +65,14 @@ export default function ShotWoman() {
   }, []);
 
   useFrame((_, delta) => {
-    mixer.update(Math.min(delta, 0.1));
     const wrapper = wrapperRef.current;
     if (!wrapper) return;
     const shot = gameDebug.shotWoman;
+    const requested = STANDING_ARCHETYPES.includes(shot.archetype) ? shot.archetype : 'w';
+    subjects.forEach((subject) => {
+      subject.figure.visible = shot.visible && subject.id === requested;
+      if (subject.figure.visible) subject.mixer.update(Math.min(delta, 0.1));
+    });
     wrapper.visible = shot.visible;
     wrapper.position.set(...shot.position);
     wrapper.rotation.y = shot.yaw;
@@ -69,7 +80,9 @@ export default function ShotWoman() {
 
   return (
     <group ref={wrapperRef} visible={false}>
-      <primitive object={figure} />
+      {subjects.map((subject) => (
+        <primitive key={subject.id} object={subject.figure} />
+      ))}
     </group>
   );
 }

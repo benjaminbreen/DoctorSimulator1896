@@ -43,11 +43,16 @@ test('an active mobile consultation compacts chrome without shrinking touch targ
   const hudStyles = source('../src/hud/hud.css');
   const consultationStyles = source('../src/consultation/consultation.css');
 
-  assert.match(app, /quiet \? ' ghud--quiet' : ''/);
+  // The phone band is one compact row for everyone, so a consultation needs
+  // no variant of its own; `quiet` only clears the foot of the screen.
+  const phone = hudStyles.slice(hudStyles.indexOf('@container (max-width: 780px)'));
+
+  assert.match(app, /\{!quiet && \(/);
   assert.match(app, /'Consulting Office': 'Consulting Rm\.'/);
   assert.match(consultation, /patient && state \? ' gcon--active' : ''/);
-  assert.match(hudStyles, /\.ghud--quiet \.ghud-bar\s*\{[^}]*height:\s*64px;/s);
-  assert.match(hudStyles, /\.ghud--quiet \.ghud-mono-wrap\s*\{\s*display:\s*none;/);
+  assert.match(phone, /\.ghud-bar\s*\{[^}]*height:\s*54px;/s);
+  assert.match(phone, /\.ghud-mono-wrap,[\s\S]{0,80}display:\s*none;/);
+  assert.match(phone, /button\.ghud-plate--letters\s*\{[^}]*min-height:\s*44px;/s);
   assert.match(consultationStyles, /\.gcon--active \.gcon-rail\s*\{[^}]*height:\s*54px;/s);
   assert.match(consultationStyles, /\.gcon--active \.gcon-rail-item\s*\{[^}]*min-height:\s*44px;/s);
   assert.match(consultationStyles, /\.gcon--active \.gcon-card,[\s\S]*font-size:\s*12\.25px;/);

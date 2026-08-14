@@ -25,6 +25,8 @@ export function selectDiverseResults(entries, limit) {
   const timeCounts = new Map();
   const pairCounts = new Map();
   const compositionCounts = new Map();
+  const subjectArchetypeCounts = new Map();
+  const subjectScenarioCounts = new Map();
   const vibeCounts = new Map();
   const cameraStratumCounts = new Map();
   const shadowFamilyCounts = new Map();
@@ -37,6 +39,12 @@ export function selectDiverseResults(entries, limit) {
   const cameraStratumOf = (entry) => entry.cameraStratum ?? entry.shot.meta?.cameraStratum ?? 'ground';
   const shadowFamilyOf = (entry) => entry.shadowFamily ?? entry.shot.meta?.shadowFamily ?? 'profile';
   const sunAzimuthOf = (entry) => entry.sunAzimuthSector ?? entry.shot.meta?.sunAzimuthSector ?? 'physical';
+  const subjectArchetypeOf = (entry) => (
+    entry.subjectArchetype ?? entry.shot.meta?.subjectArchetype ?? entry.shot.subject?.archetype ?? null
+  );
+  const subjectScenarioOf = (entry) => (
+    entry.subjectScenario ?? entry.shot.meta?.subjectScenario ?? entry.shot.subject?.scenario ?? null
+  );
   const categoryCap = (values) => Math.ceil(limit / Math.max(1, new Set(values).size));
   const zoneCap = categoryCap(entries.map((entry) => entry.zone));
   const timeCap = categoryCap(entries.map(timeOf));
@@ -76,8 +84,14 @@ export function selectDiverseResults(entries, limit) {
       const bShadowFamily = shadowFamilyOf(b);
       const aSunAzimuth = sunAzimuthOf(a);
       const bSunAzimuth = sunAzimuthOf(b);
+      const aSubjectArchetype = subjectArchetypeOf(a);
+      const bSubjectArchetype = subjectArchetypeOf(b);
+      const aSubjectScenario = subjectScenarioOf(a);
+      const bSubjectScenario = subjectScenarioOf(b);
       const aPriority = [
         count(zoneCounts, a.zone),
+        aSubjectArchetype ? count(subjectArchetypeCounts, aSubjectArchetype) : 0,
+        aSubjectScenario ? count(subjectScenarioCounts, aSubjectScenario) : 0,
         Math.max(count(timeCounts, aTime), count(vibeCounts, aVibe)),
         count(timeCounts, aTime) + count(vibeCounts, aVibe),
         count(cameraStratumCounts, aCameraStratum),
@@ -88,6 +102,8 @@ export function selectDiverseResults(entries, limit) {
       ];
       const bPriority = [
         count(zoneCounts, b.zone),
+        bSubjectArchetype ? count(subjectArchetypeCounts, bSubjectArchetype) : 0,
+        bSubjectScenario ? count(subjectScenarioCounts, bSubjectScenario) : 0,
         Math.max(count(timeCounts, bTime), count(vibeCounts, bVibe)),
         count(timeCounts, bTime) + count(vibeCounts, bVibe),
         count(cameraStratumCounts, bCameraStratum),
@@ -113,6 +129,10 @@ export function selectDiverseResults(entries, limit) {
     increment(cameraStratumCounts, cameraStratumOf(chosen));
     increment(shadowFamilyCounts, shadowFamilyOf(chosen));
     increment(sunAzimuthCounts, sunAzimuthOf(chosen));
+    const subjectArchetype = subjectArchetypeOf(chosen);
+    const subjectScenario = subjectScenarioOf(chosen);
+    if (subjectArchetype) increment(subjectArchetypeCounts, subjectArchetype);
+    if (subjectScenario) increment(subjectScenarioCounts, subjectScenario);
   }
   return selected;
 }

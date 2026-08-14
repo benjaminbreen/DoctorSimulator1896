@@ -15,7 +15,7 @@ function memoryStorage() {
   };
 }
 
-const STAMP = { date: { year: 1896, month: 8, date: 3 }, hours: 10.25 };
+const STAMP = { date: { year: 1896, month: 6, date: 15 }, hours: 10.25 };
 
 test('starting a consultation creates one persistent visit', () => {
   const storage = memoryStorage();

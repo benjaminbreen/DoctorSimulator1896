@@ -7,6 +7,8 @@ gets a per-frame upper-arm retarget; the remaining channels stay intact.
     /Applications/Blender.app/Contents/MacOS/Blender --factory-startup \
       --background --python scripts/characters/export_tripo_player.py -- \
       --output game/public/models/tripo-victorian-player.glb
+
+Then run ``node scripts/characters/optimize-tripo-player.mjs`` before shipping.
 """
 
 import argparse

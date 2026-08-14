@@ -162,6 +162,12 @@ their terms are settled:
 
 ## Other
 
+The June 15, 1896 front page of *The Journal* in
+`game/public/newspapers/1896-06-15.jpg` is from the Library of Congress,
+Serial and Government Publications Division. The Library of Congress reports
+no known U.S. copyright restrictions for the digitized collection. [Source
+record](https://www.loc.gov/item/sn84031792/1896-06-15/ed-1/).
+
 The CGTrader Victorian interior pack under `game/public/models/victorian/` is a
 purchased asset; its licence terms live with the purchase, not here.
 

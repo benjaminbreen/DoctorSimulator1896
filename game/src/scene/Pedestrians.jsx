@@ -376,6 +376,7 @@ export default function Pedestrians({ runtime }) {
       const entry = {
         id: spec.id,
         age: spec.age,
+        archetype: who,
         gender: who === 'm' ? 'male' : 'female',
         wrapper,
         meshes,
@@ -496,6 +497,7 @@ export default function Pedestrians({ runtime }) {
   const trackedPeople = useMemo(
     () => figures.map((entry) => ({
       id: entry.id,
+      archetype: entry.archetype,
       gender: entry.gender,
       position: [entry.wrapper.position.x, entry.wrapper.position.y, entry.wrapper.position.z],
       yaw: entry.wrapper.rotation.y,

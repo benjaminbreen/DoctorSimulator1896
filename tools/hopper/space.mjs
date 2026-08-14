@@ -465,6 +465,32 @@ export function sampleElevatedCameraCandidates(rng, architecture, count, stratum
   return candidates;
 }
 
+// A figure's feet sit just above an existing building's collider-backed top
+// face. This is deliberately separate from the elevated camera sampler: the
+// lens needs parapet clearance while the subject must remain on the roof.
+export function sampleRooftopSubjectCandidates(rng, architecture, count) {
+  if (!architecture?.length) return [];
+  const candidates = [];
+  for (let index = 0; index < count; index += 1) {
+    const anchor = pick(rng, architecture);
+    const [width, , depth] = anchor.size;
+    const [x, z] = localToWorld(
+      anchor,
+      uniform(rng, -width * 0.24, width * 0.24),
+      uniform(rng, -depth * 0.24, depth * 0.24),
+    );
+    candidates.push({
+      x,
+      z,
+      ground: anchor.roofY + 0.04,
+      yaw: uniform(rng, 0, Math.PI * 2),
+      stratum: 'rooftop',
+      anchorId: anchor.id,
+    });
+  }
+  return candidates;
+}
+
 // `camera` and `figure` are sample results from window.__shot.sample: each
 // carries its own ground height, which outdoors follows the terrain.
 export function aimAt(cameraPosition, target) {
@@ -484,9 +510,12 @@ export function assembleShot(rng, bounds, camera, figure, exterior = false, opti
     ? camera.ground + 2.3
     : Math.min(bounds.ceilingY - 0.3, camera.ground + 2.4);
   const elevated = exterior && camera.stratum && camera.stratum !== 'ground';
+  const requestedComposition = options.composition;
   // Outdoors the figure can be a long way off, so let the camera aim a touch
   // further down; indoors a tilted frame is not the look.
-  const pitchLow = elevated ? -0.16 : (exterior ? -0.3 : -0.22);
+  const pitchLow = requestedComposition === 'rooftop-figure'
+    ? -0.72
+    : (elevated ? -0.16 : (exterior ? -0.3 : -0.22));
   const position = [
     camera.x,
     Number.isFinite(camera.y) ? camera.y : uniform(rng, eyeLow, Math.max(eyeLow + 0.1, eyeHigh)),
@@ -494,10 +523,13 @@ export function assembleShot(rng, bounds, camera, figure, exterior = false, opti
   ];
   const fov = elevated ? uniform(rng, 26, 52) : uniform(rng, 28, 62);
   const windows = options.windows ?? [];
-  const requestedComposition = options.composition;
-  const useWindowFigure = requestedComposition === 'window-figure'
-    && !exterior
-    && windows.length > 0;
+  const placedWomanCompositions = new Set([
+    'window-figure',
+    'doorway-figure',
+    'rooftop-figure',
+  ]);
+  const usePlacedWoman = placedWomanCompositions.has(requestedComposition)
+    && (requestedComposition !== 'window-figure' || (!exterior && windows.length > 0));
   const useTrackedPerson = requestedComposition === 'people' && options.subject?.id;
   const useLandscape = requestedComposition === 'landscape';
   const useWindow = requestedComposition
@@ -505,12 +537,12 @@ export function assembleShot(rng, bounds, camera, figure, exterior = false, opti
     : !exterior && windows.length > 0 && rng() < 0.24;
   const useFigure = requestedComposition
     ? requestedComposition === 'figure' && !elevated
-    : !elevated && !useWindow && !useWindowFigure && !useTrackedPerson && !useLandscape
+    : !elevated && !useWindow && !usePlacedWoman && !useTrackedPerson && !useLandscape
       && rng() < (exterior ? 0.9 : 0.82);
   let composition = 'architecture';
   let target = null;
-  if (useWindowFigure) {
-    composition = 'window-figure';
+  if (usePlacedWoman) {
+    composition = requestedComposition;
     target = options.target ?? [figure.x, figure.ground + 0.9, figure.z];
   } else if (useTrackedPerson) {
     composition = 'people';
@@ -595,11 +627,13 @@ export function assembleShot(rng, bounds, camera, figure, exterior = false, opti
       visible: useFigure,
       pose: 'still',
     },
-    ...(useWindowFigure ? {
+    ...(usePlacedWoman ? {
       subject: {
         kind: 'woman',
         position: [figure.x, figure.ground, figure.z],
         yaw: figure.yaw ?? 0,
+        archetype: options.subjectArchetype ?? 'w',
+        scenario: options.subjectScenario ?? requestedComposition,
         visible: true,
       },
     } : {}),
@@ -620,6 +654,14 @@ export function assembleShot(rng, bounds, camera, figure, exterior = false, opti
       cameraStratum: camera.stratum ?? 'ground',
       shadowFamily: options.shadowFamily?.id ?? 'profile',
       sunAzimuthSector: options.sunAzimuthSector?.id ?? 'physical',
+      ...(usePlacedWoman ? {
+        subjectArchetype: options.subjectArchetype ?? 'w',
+        subjectScenario: options.subjectScenario ?? requestedComposition,
+      } : {}),
+      ...(useTrackedPerson ? {
+        subjectArchetype: options.subject.archetype ?? 'unknown',
+        subjectScenario: options.subjectScenario ?? options.sceneFamily ?? 'people',
+      } : {}),
       ...(options.sceneFamily ? { sceneFamily: options.sceneFamily } : {}),
     },
   };

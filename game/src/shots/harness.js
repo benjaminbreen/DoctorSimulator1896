@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { gameDebug } from '../debug.js';
 import { terrainHeight, pondDepth, pathsDistance } from '../world/terrain.js';
 import { constructedSurfaceAt } from '../world/constructedSurfaces.js';
+import { doorWorld, facadeEntranceLayout } from '../world/facade.js';
 
 const FIGURE_HEIGHT = 1.72;
 const CAMERA_MARGIN = 0.45;
@@ -97,6 +98,33 @@ function architectureBoxes(room) {
     }));
 }
 
+// Existing procedural stoops are already derived from facade records. Expose
+// their top landings to the shot sampler so a figure can be photographed in a
+// real doorway without introducing any screenshot-only geometry.
+function entranceAnchors(room) {
+  if (!room.exterior) return [];
+  return room.furnitureBoxes
+    .filter((item) => item.kind === 'backdrop' && item.frontageFamily && !item.landmarkModel)
+    .map((item) => {
+      const entrance = facadeEntranceLayout(item);
+      if (!entrance?.steps?.length) return null;
+      const topStep = entrance.steps[entrance.steps.length - 1];
+      const door = doorWorld(item, Math.max(0.16, entrance.depth * 0.16));
+      return {
+        id: item.id,
+        position: [
+          door.x,
+          topStep.position[1] + topStep.size[1] / 2 + 0.02,
+          door.z,
+        ],
+        normal: [...entrance.face.normal],
+        raised: entrance.raised,
+        stepCount: entrance.stepCount,
+      };
+    })
+    .filter(Boolean);
+}
+
 // Projects a world point to fractional screen coordinates: [0,1] from the top
 // left, with `inFront` false when it sits behind the camera.
 function project(camera, point) {
@@ -136,9 +164,11 @@ export function installShotHarness(runtime) {
           normal: h.normal,
         })),
         architecture: architectureBoxes(room),
+        entrances: entranceAnchors(room),
         people: room.exterior
           ? gameDebug.pedestrians.map((person) => ({
             id: person.id,
+            archetype: person.archetype,
             gender: person.gender,
             position: [...person.position],
             yaw: person.yaw,
@@ -236,6 +266,8 @@ export function installShotHarness(runtime) {
       if (woman) {
         gameDebug.shotWoman.position = [...shot.subject.position];
         gameDebug.shotWoman.yaw = shot.subject.yaw ?? 0;
+        gameDebug.shotWoman.archetype = shot.subject.archetype ?? 'w';
+        gameDebug.shotWoman.scenario = shot.subject.scenario ?? shot.meta?.composition ?? null;
       }
       gameDebug.shotTrackedPersonId = shot.subject?.kind === 'pedestrian'
         ? shot.subject.id
@@ -289,6 +321,10 @@ export function installShotHarness(runtime) {
           distance,
           // Positive when the figure faces roughly away from the camera.
           awayness: Math.cos(subjectYaw - Math.atan2(p[0] - eye.x, p[2] - eye.z)),
+          ...(woman ? {
+            subjectArchetype: gameDebug.shotWoman.archetype,
+            subjectScenario: gameDebug.shotWoman.scenario,
+          } : {}),
         },
         windows,
         camera: {
@@ -304,6 +340,7 @@ export function installShotHarness(runtime) {
       gameDebug.shotSunAzimuthDeg = null;
       gameDebug.shotTrackedPersonId = null;
       gameDebug.shotWoman.visible = false;
+      gameDebug.shotWoman.scenario = null;
       gameDebug.player.visible = true;
     },
 

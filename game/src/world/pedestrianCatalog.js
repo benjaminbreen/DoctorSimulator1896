@@ -2,6 +2,7 @@
 // stays authored for now; this file does not add procedural spawning.
 import { PEDESTRIAN_STROLLER_CIRCUITS } from './strollerPedestrians.js';
 import { PARK_VISITOR_ITINERARY } from './parkVisitorItinerary.js';
+import { shouldRecycleWebGLContextOnTravel } from '../scene/mobileGraphics.js';
 import {
   HOTEL_DOORMAN_ANIMATIONS,
   HOTEL_DOORMAN_MODEL_FILE,
@@ -42,6 +43,22 @@ export const PEDESTRIAN_WOMAN_CLIP_FILES = Object.freeze([
 // quality-gated on the other pedestrian meshes without loading duplicate art.
 export const PEDESTRIAN_STRAWHAT_MOTION_FILE = '/models/strawhat-motions.glb';
 
+// Background figures are close enough to deserve the full models on desktop,
+// but phone screens cannot resolve their 1024px costume maps at park viewing
+// distances. These variants retain the same skeleton and clips while reducing
+// decoded texture memory and per-frame skinning cost.
+const USE_MOBILE_BACKGROUND_MODELS = shouldRecycleWebGLContextOnTravel();
+function backgroundModelPath(name) {
+  return `/models/${name}${USE_MOBILE_BACKGROUND_MODELS ? '-mobile' : ''}.glb?v=crowd-opt-1`;
+}
+
+const BOWLER_MODEL = backgroundModelPath('pedestrian-b');
+const WORKING_WOMAN_MODEL = backgroundModelPath('pedestrian-c');
+const SUMMER_DRESS_MODEL = backgroundModelPath('pedestrian-d');
+const SOMBER_WOMAN_MODEL = backgroundModelPath('pedestrian-e');
+const FORTIES_WOMAN_MODEL = backgroundModelPath('pedestrian-f');
+const STRAWHAT_MODEL = backgroundModelPath('strawhat-pedestrian');
+
 export const PEDESTRIAN_SHARED_CLIPS = Object.freeze(['Sit Ground', 'Lie Down', 'Sit']);
 
 // These clips were exported against the full 65-bone Mixamo hierarchy shared
@@ -60,9 +77,9 @@ export const PEDESTRIAN_ARCHETYPES = Object.freeze({
   m: Object.freeze({
     id: 'bowler-man',
     label: 'Bowler-hat man',
-    modelPath: '/models/pedestrian-b.glb',
+    modelPath: BOWLER_MODEL,
     animationSources: Object.freeze([
-      '/models/pedestrian-b.glb',
+      BOWLER_MODEL,
       ...PEDESTRIAN_MAN_CLIP_FILES,
       PEDESTRIAN_REACTION_FILE,
     ]),
@@ -79,9 +96,9 @@ export const PEDESTRIAN_ARCHETYPES = Object.freeze({
   w: Object.freeze({
     id: 'working-woman',
     label: 'Working woman',
-    modelPath: '/models/pedestrian-c.glb',
+    modelPath: WORKING_WOMAN_MODEL,
     animationSources: Object.freeze([
-      '/models/pedestrian-c.glb',
+      WORKING_WOMAN_MODEL,
       ...PEDESTRIAN_WOMAN_CLIP_FILES,
       '/models/ped-anim-sit-ground.glb',
       '/models/ped-anim-lie.glb',
@@ -101,9 +118,9 @@ export const PEDESTRIAN_ARCHETYPES = Object.freeze({
   d: Object.freeze({
     id: 'summer-dress-woman',
     label: 'Summer-dress woman',
-    modelPath: '/models/pedestrian-d.glb',
+    modelPath: SUMMER_DRESS_MODEL,
     animationSources: Object.freeze([
-      '/models/pedestrian-d.glb',
+      SUMMER_DRESS_MODEL,
       ...PEDESTRIAN_WOMAN_CLIP_FILES,
       PEDESTRIAN_STRAWHAT_MOTION_FILE,
     ]),
@@ -114,17 +131,17 @@ export const PEDESTRIAN_ARCHETYPES = Object.freeze({
   s: Object.freeze({
     id: 'somber-seated-woman',
     label: 'Somber seated woman',
-    modelPath: '/models/pedestrian-e.glb',
-    animationSources: Object.freeze(['/models/pedestrian-e.glb']),
+    modelPath: SOMBER_WOMAN_MODEL,
+    animationSources: Object.freeze([SOMBER_WOMAN_MODEL]),
     animations: Object.freeze(['Bench Sit']),
   }),
   f: Object.freeze({
     id: 'forties-walking-woman',
     label: 'Woman in her forties',
-    modelPath: '/models/pedestrian-f.glb',
+    modelPath: FORTIES_WOMAN_MODEL,
     animationSources: Object.freeze([
-      '/models/pedestrian-f.glb',
-      '/models/strawhat-pedestrian.glb',
+      FORTIES_WOMAN_MODEL,
+      STRAWHAT_MODEL,
       PEDESTRIAN_STRAWHAT_MOTION_FILE,
     ]),
     animations: Object.freeze([
@@ -134,9 +151,9 @@ export const PEDESTRIAN_ARCHETYPES = Object.freeze({
   h: Object.freeze({
     id: 'strawhat-pedestrian',
     label: 'Straw-hatted pedestrian',
-    modelPath: '/models/strawhat-pedestrian.glb',
+    modelPath: STRAWHAT_MODEL,
     animationSources: Object.freeze([
-      '/models/strawhat-pedestrian.glb',
+      STRAWHAT_MODEL,
       PEDESTRIAN_STRAWHAT_MOTION_FILE,
     ]),
     animations: Object.freeze([

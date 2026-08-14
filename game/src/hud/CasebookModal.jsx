@@ -48,7 +48,7 @@ function formatDate(stamp, compact = false) {
   if (!stamp?.date) return 'Not yet seen';
   const { year, month, date } = stamp.date;
   return compact
-    ? `${MONTHS[month - 1]?.slice(0, 3) || ''}. ${date}`
+    ? `${MONTHS[month - 1]?.slice(0, 3) || ''} ${date}, ${year}`
     : `${MONTHS[month - 1] || ''} ${date}, ${year}`;
 }
 
@@ -76,6 +76,31 @@ function StatusDot({ status }) {
   return <i className={`casebook-status-dot is-${status.id}`} aria-hidden="true" />;
 }
 
+// Gem-clip wire: one continuous stroke, drawn twice so the lower copy reads as
+// the shadow the clip casts on the mount.
+function Paperclip() {
+  return (
+    <svg className="casebook-paperclip" viewBox="0 0 24 68" aria-hidden="true">
+      <defs>
+        <linearGradient id="casebook-clip-brass" x1="0" y1="0" x2="1" y2="0.35">
+          <stop offset="0" stopColor="#5c4d2c" />
+          <stop offset="0.28" stopColor="#efdfae" />
+          <stop offset="0.55" stopColor="#9a8449" />
+          <stop offset="1" stopColor="#4e4227" />
+        </linearGradient>
+      </defs>
+      <path
+        className="casebook-paperclip-shadow"
+        d="M22 10v40a10 10 0 0 1-20 0V14a6 6 0 0 1 12 0v36a4 4 0 0 1-8 0V18"
+      />
+      <path
+        className="casebook-paperclip-wire"
+        d="M22 10v40a10 10 0 0 1-20 0V14a6 6 0 0 1 12 0v36a4 4 0 0 1-8 0V18"
+      />
+    </svg>
+  );
+}
+
 function VisitTimeline({ record, expanded = false }) {
   const visits = record?.visits || [];
   if (!visits.length) {
@@ -88,7 +113,7 @@ function VisitTimeline({ record, expanded = false }) {
         return (
           <li key={visit.id} className={`casebook-visit is-${visit.status}`}>
             <span className="casebook-visit-node" aria-hidden="true" />
-            <time>{formatDate(visit.startedAt, true).toUpperCase()}</time>
+            <time>{formatDate(visit.startedAt, true)}</time>
             <div className="casebook-visit-copy">
               <h4>{index === 0 ? 'Initial consultation' : `Consultation ${index + 1}`}</h4>
               {visit.status === 'in-progress' && <p className="casebook-visit-state">Consultation in progress.</p>}
@@ -108,7 +133,7 @@ function VisitTimeline({ record, expanded = false }) {
       {visits.at(-1)?.oneMonthOutcome?.narrative && (
         <li className="casebook-visit is-outcome">
           <span className="casebook-visit-node" aria-hidden="true" />
-          <time>ONE MONTH LATER</time>
+          <time>One month later</time>
           <div className="casebook-visit-copy">
             <h4>Outcome received</h4>
             <p><em>{visits.at(-1).oneMonthOutcome.narrative}</em></p>
@@ -202,35 +227,37 @@ function RecordPaper({ patient, record, status, notes, setNotes, tab, setTab, on
       <header className="casebook-record-head">
         <div className="casebook-photo">
           <PatientPortrait patient={patient} recordPhoto />
-          <i className="casebook-paperclip" aria-hidden="true" />
+          <Paperclip />
         </div>
         <div className="casebook-record-identity">
           <h2>{patientName(patient)}</h2>
-          <span className="casebook-name-rule" aria-hidden="true" />
-          <p>{occupation} <b aria-hidden="true">·</b> Age {patient.profile.identity.age}</p>
-          <p>{record?.firstSeenAt ? `First seen ${formatDate(record.firstSeenAt)}` : 'Not yet seen'}</p>
+          <div className="casebook-identity-meta">
+            <div>
+              <p>{occupation} <b aria-hidden="true">·</b> <span>Age {patient.profile.identity.age}</span></p>
+              <p>{record?.firstSeenAt ? `First seen ${formatDate(record.firstSeenAt)}` : 'Not yet seen'}</p>
+            </div>
+            <span className={`casebook-status-stamp is-${status.id}`}>{status.legend}</span>
+          </div>
+          <nav className="casebook-tabs" role="tablist" aria-label="Patient record sections">
+            {[
+              ['overview', 'Overview', null],
+              ['visits', 'Visits', visits.length],
+              ['notes', 'Notes', notes.length],
+            ].map(([id, label, count]) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={tab === id}
+                className={tab === id ? 'is-active' : ''}
+                onClick={() => setTab(id)}
+              >
+                {label}{count !== null && <span>{count}</span>}
+              </button>
+            ))}
+          </nav>
         </div>
-        <span className={`casebook-status-stamp is-${status.id}`}>{status.legend}</span>
       </header>
-
-      <nav className="casebook-tabs" role="tablist" aria-label="Patient record sections">
-        {[
-          ['overview', 'Overview', null],
-          ['visits', 'Visits', visits.length],
-          ['notes', 'Notes', notes.length],
-        ].map(([id, label, count]) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={tab === id}
-            className={tab === id ? 'is-active' : ''}
-            onClick={() => setTab(id)}
-          >
-            {label}{count !== null && <span>{count}</span>}
-          </button>
-        ))}
-      </nav>
 
       <div className="casebook-record-body" key={tab}>
         {tab === 'overview' && (
@@ -247,15 +274,15 @@ function RecordPaper({ patient, record, status, notes, setNotes, tab, setTab, on
               <VisitTimeline record={record} />
             </section>
             <section className="casebook-paper-section casebook-notes-preview">
-              <div className="casebook-section-heading">
-                <h3>Notes</h3>
+              <h3>Notes</h3>
+              {notes.length ? notes.slice(-3).map((note) => <p key={note.id}>“{note.text}”</p>) : (
+                <p className="casebook-empty">No private notes have been added.</p>
+              )}
+              <div className="casebook-notes-actions">
                 <button type="button" className="casebook-edit-notes" onClick={() => setTab('notes')}>
                   <span aria-hidden="true">✎</span> Edit notes
                 </button>
               </div>
-              {notes.length ? notes.slice(-3).map((note) => <p key={note.id}>“{note.text}”</p>) : (
-                <p className="casebook-empty">No private notes have been added.</p>
-              )}
             </section>
           </>
         )}
