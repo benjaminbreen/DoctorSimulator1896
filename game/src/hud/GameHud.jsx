@@ -185,7 +185,7 @@ function MeterTooltip({ metric, player }) {
 }
 
 // `quiet` clears the foot of the screen while a consultation panel holds it.
-export default function GameHud({ runtime, worldClock, quiet = false }) {
+export default function GameHud({ runtime, worldClock, patients = [], quiet = false }) {
   const [time, setTime] = useState(() => worldClock.getSnapshot());
   const [place, setPlace] = useState('');
   // One overlay at a time; this state is the whole registry. Escape and
@@ -445,7 +445,12 @@ export default function GameHud({ runtime, worldClock, quiet = false }) {
         archivedIds={archivedIds}
         onArchive={markArchived}
       />
-      <CasebookModal open={overlay === 'casebook'} onClose={closeOverlay} />
+      <CasebookModal
+        open={overlay === 'casebook'}
+        onClose={closeOverlay}
+        patients={patients}
+        day={day}
+      />
       <DayPanel
         open={overlay === 'day'}
         onClose={closeOverlay}

@@ -1,47 +1,138 @@
-// The casebook's ground truth: entries and the unsaved draft. Framework-free
-// and subscribable like notices.js, because entries will eventually be penned
-// by simulation events (observations, consultations), not only by the player.
-//
-// The draft lives here rather than in component state so closing the book
-// never loses a half-written note — the Darwin journal's one best decision.
-//
-// PLACEHOLDER FIXTURES below: demo entries so the book opens with pages in
-// it. Wording needs Ben's review before any of it ships as content.
+// Persistent practice records assembled from consultation events. The store
+// keeps only what the player observed, recorded, or chose; it never copies a
+// patient's hidden ground truth into the casebook.
 
+export const CASEBOOK_STORAGE_KEY = 'ghosts.casebook.records.v1';
+
+const MAX_VISITS_PER_PATIENT = 24;
 const listeners = new Set();
+let revision = 0;
 
-let entries = [
-  {
-    id: 'cb-1',
-    type: 'note',
-    title: 'The consulting room, made ready',
-    text: 'Arranged the room for tomorrow’s list. The draught from the airshaft still finds the examination couch.',
-    date: { year: 1896, month: 5, date: 13 },
-    hours: 20.5,
-  },
-  {
-    id: 'cb-2',
-    type: 'patient',
-    title: 'Mr. James H. Alden — referred',
-    text: 'Roosevelt Hospital sends a clerk of twenty-eight with nervous exhaustion: insomnia, palpitation, general debility of nervous origin. To be seen this week.',
-    date: { year: 1896, month: 5, date: 14 },
-    hours: 9.1,
-  },
-  {
-    id: 'cb-3',
-    type: 'observation',
-    title: 'Central Park, by the carousel',
-    text: 'A fine morning. The carousel draws a mixed crowd; two nursemaids with charges from the avenue houses, and a boy who has ridden four times on one ticket.',
-    date: { year: 1896, month: 5, date: 14 },
-    hours: 10.25,
-  },
-];
+function browserStorage() {
+  return typeof localStorage === 'undefined' ? null : localStorage;
+}
 
-let draft = '';
-let nextId = entries.length + 1;
+function emptyBook() {
+  return { schemaVersion: 1, nextVisitId: 1, patients: {} };
+}
 
-function notify() {
-  for (const listener of listeners) listener();
+function readBook(storage = browserStorage()) {
+  if (!storage) return emptyBook();
+  try {
+    const parsed = JSON.parse(storage.getItem(CASEBOOK_STORAGE_KEY));
+    if (parsed?.schemaVersion === 1 && parsed.patients && typeof parsed.patients === 'object') {
+      return {
+        schemaVersion: 1,
+        nextVisitId: Math.max(1, Number(parsed.nextVisitId) || 1),
+        patients: parsed.patients,
+      };
+    }
+  } catch {
+    // A damaged record store should leave the casebook empty, not unusable.
+  }
+  return emptyBook();
+}
+
+function writeBook(book, storage = browserStorage()) {
+  if (!storage) return false;
+  try {
+    storage.setItem(CASEBOOK_STORAGE_KEY, JSON.stringify(book));
+    revision += 1;
+    for (const listener of listeners) listener();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function cleanStamp(stamp = {}) {
+  const date = stamp.date || {};
+  return {
+    date: {
+      year: Number(date.year) || 1896,
+      month: Number(date.month) || 1,
+      date: Number(date.date) || 1,
+    },
+    hours: Math.max(0, Math.min(24, Number(stamp.hours) || 0)),
+  };
+}
+
+function observationEntries(state) {
+  const seen = new Set();
+  const entries = [];
+  for (const event of state.history || []) {
+    let entry = null;
+    if (event.kind === 'examination' && event.reply) {
+      entry = { kind: 'examination', label: event.label || 'Examination', text: event.reply };
+    } else if (event.kind === 'speech' && event.noteSummary) {
+      entry = { kind: 'patient-account', label: 'Patient account', text: event.noteSummary };
+    }
+    if (!entry) continue;
+    const key = `${entry.label}:${entry.text}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    entries.push(entry);
+  }
+  return entries;
+}
+
+function selectedEvidence(patient, state) {
+  const factMap = new Map(patient.facts.map((fact) => [fact.id, fact]));
+  return (state.caseRecordFactIds || []).map((id) => factMap.get(id)).filter(Boolean).map((fact) => ({
+    id: fact.id,
+    label: fact.label,
+    text: fact.notebookSummary || fact.value,
+  }));
+}
+
+function resultSignature(state) {
+  if (state.stage !== 'result') return null;
+  return [
+    state.patientId,
+    state.history?.length || 0,
+    state.diagnosisId || '',
+    state.treatmentId || '',
+    state.result?.oneMonth?.band || '',
+  ].join(':');
+}
+
+function projectVisit(patient, state, stamp, previous, id) {
+  const diagnosis = patient.diagnoses.find((item) => item.id === state.diagnosisId);
+  const treatment = patient.treatments.find((item) => item.id === state.treatmentId);
+  const complete = state.stage === 'result';
+  const closed = state.stage === 'terminated';
+  return {
+    id,
+    startedAt: previous?.startedAt || stamp,
+    updatedAt: stamp,
+    status: complete ? 'complete' : closed ? 'closed' : 'in-progress',
+    stage: state.stage,
+    elapsedMinutes: Math.max(0, Number(state.elapsedMinutes) || 0),
+    observations: observationEntries(state),
+    evidence: selectedEvidence(patient, state),
+    diagnosis: diagnosis ? { id: diagnosis.id, label: diagnosis.label } : null,
+    treatment: treatment ? {
+      id: treatment.id,
+      label: treatment.label,
+      description: treatment.description || '',
+    } : null,
+    caseNote: String(state.caseNote || '').trim(),
+    immediateOutcome: complete ? {
+      narrative: state.result?.immediate?.narrative || '',
+      departureLine: state.result?.immediate?.departureLine || '',
+      paymentCents: Number(state.result?.immediate?.paymentCents) || 0,
+    } : null,
+    oneMonthOutcome: complete && state.result?.oneMonth ? {
+      band: state.result.oneMonth.band || 'recorded',
+      narrative: state.result.oneMonth.narrative || '',
+    } : null,
+    summary: complete ? {
+      questionsAsked: Number(state.result?.summary?.questionsAsked) || 0,
+      examinationsPerformed: Number(state.result?.summary?.examinationsPerformed) || 0,
+      minutesUsed: Number(state.result?.summary?.minutesUsed) || Number(state.elapsedMinutes) || 0,
+    } : null,
+    resultSignature: resultSignature(state),
+  };
 }
 
 export function subscribeCasebook(listener) {
@@ -49,33 +140,49 @@ export function subscribeCasebook(listener) {
   return () => listeners.delete(listener);
 }
 
-export function getCasebookEntries() {
-  return entries;
+export function getCasebookRevision() {
+  return revision;
 }
 
-export function getCasebookDraft() {
-  return draft;
+export function getCasebookRecords(storage = browserStorage()) {
+  return readBook(storage).patients;
 }
 
-export function setCasebookDraft(text) {
-  draft = String(text);
-  notify();
+export function getPatientRecord(patient, storage = browserStorage()) {
+  return getCasebookRecords(storage)[patient.id] || null;
 }
 
-// Pen the draft into the book. Entries keep arrival order, oldest first.
-export function saveCasebookEntry({ date, hours, type = 'note', title = '' }) {
-  const text = draft.trim();
-  if (!text) return null;
-  const entry = {
-    id: `cb-${nextId++}`,
-    type,
-    title: title.trim(),
-    text,
-    date,
-    hours,
+// Update the open visit after every consultation transition. A second call
+// with the same completed result updates that visit instead of duplicating it.
+export function syncConsultationRecord(patient, state, stamp, storage = browserStorage()) {
+  if (!patient || !state || state.patientId !== patient.id) return null;
+  const book = readBook(storage);
+  const current = book.patients[patient.id] || { patientId: patient.id, visits: [] };
+  const visits = [...(current.visits || [])];
+  const last = visits.at(-1) || null;
+  const signature = resultSignature(state);
+  const updateLast = Boolean(last && (
+    last.status === 'in-progress'
+    || (signature && last.resultSignature === signature)
+  ));
+  const visitId = updateLast ? last.id : `visit-${book.nextVisitId++}`;
+  const time = cleanStamp(stamp);
+  const visit = projectVisit(patient, state, time, updateLast ? last : null, visitId);
+  if (updateLast) visits[visits.length - 1] = visit;
+  else visits.push(visit);
+
+  const trimmedVisits = visits.slice(-MAX_VISITS_PER_PATIENT);
+  const record = {
+    patientId: patient.id,
+    status: visit.status,
+    firstSeenAt: current.firstSeenAt || visit.startedAt,
+    lastSeenAt: visit.updatedAt,
+    visits: trimmedVisits,
   };
-  entries = [...entries, entry];
-  draft = '';
-  notify();
-  return entry;
+  const nextBook = {
+    ...book,
+    patients: { ...book.patients, [patient.id]: record },
+  };
+  writeBook(nextBook, storage);
+  return record;
 }

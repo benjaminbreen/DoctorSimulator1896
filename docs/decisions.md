@@ -98,6 +98,10 @@ earlier consultation proposals.
   Ben decides whether later historical evidence justifies changing it.
 - Gapstow Bridge remains at 0.58 of real size unless a measured replacement is
   adopted.
+- FXAA is rejected for the main game renderer. It has produced substantial
+  full-scene graphical regressions in two playtests and should not be
+  reintroduced. Address shimmering through geometry, material, LOD, or a
+  separately reviewed antialiasing method instead.
 
 ## Open questions
 

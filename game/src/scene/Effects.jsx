@@ -53,6 +53,9 @@ export default function Effects({ runtime, indoors }) {
   const dpr = useThree((state) => state.viewport.dpr);
   // Retina rendering already supersamples the image. Extra MSAA there adds
   // substantial bandwidth and resolve work without a visible edge benefit.
+  // Do not substitute FXAA here: it has twice caused a substantial full-scene
+  // quality regression in playtesting. Fix shimmering facade geometry at the
+  // asset/LOD level, or evaluate targeted MSAA/SMAA separately.
   const multisampling = dpr >= 1.5 ? 0 : 2;
 
   useFrame(() => {

@@ -30,10 +30,12 @@ import { nextSeed } from '../../shared/patients/index.js';
 import { createWorldClock } from './world/clock.js';
 import { notice } from './world/notices.js';
 import { attachSoundUnlock } from './audio/sound.js';
+import { syncConsultationRecord } from './hud/casebookState.js';
 
 const TuningPanel = lazy(() => import('./panel/TuningPanel.jsx'));
 const PropsPanel = lazy(() => import('./panel/PropsPanel.jsx'));
 const NpcPanel = lazy(() => import('./panel/NpcPanel.jsx'));
+const PatientPortraitPanel = lazy(() => import('./panel/PatientPortraitPanel.jsx'));
 const ShotBar = lazy(() => import('./shots/ShotBar.jsx'));
 const ConsultationDevPanel = lazy(() => import('./consultation/ConsultationDevPanel.jsx'));
 const ConsultationView = lazy(() => import('./consultation/ConsultationView.jsx'));
@@ -53,6 +55,7 @@ const devConsult = Boolean(pageParams?.has('devconsult'));
 // A test or art-review URL can boot one zone directly. Normal play still opens
 // in Central Park.
 const bootZone = pageParams?.get('zone');
+const patientPortraitReview = Boolean(pageParams?.has('patientPortraits'));
 
 export default function App() {
   const worldClock = useMemo(() => createWorldClock(), []);
@@ -128,9 +131,11 @@ export default function App() {
     if (!state) return;
     const patient = consultationPatients.find((candidate) => candidate.id === state.patientId);
     if (!patient) return;
+    const time = worldClock.getSnapshot().logical;
+    syncConsultationRecord(patient, state, { date: time.date, hours: time.hours });
     if (actorRuntime.get()[0]?.id !== patient.actor.id) actorRuntime.setSingle(patient.actor);
     actorRuntime.cue(patient.actor.id, actorCueForConsultation(state));
-  }), [actorRuntime, consultationRuntime, consultationPatients]);
+  }), [actorRuntime, consultationRuntime, consultationPatients, worldClock]);
 
   // Receiving a patient seats the doctor: the camera eases to the chair and
   // gameplay keys rest until the consultation lets go (or the zone changes).
@@ -265,6 +270,7 @@ export default function App() {
               <GameHud
                 runtime={runtime}
                 worldClock={worldClock}
+                patients={consultationPatients}
                 quiet={!devConsult && zone === 'consulting-office' && consultActive}
               />
             )}
@@ -322,6 +328,11 @@ export default function App() {
       {!shotMode && npcOpen && (
         <Suspense fallback={null}>
           <NpcPanel patients={consultationPatients} onClose={() => setNpcOpen(false)} />
+        </Suspense>
+      )}
+      {patientPortraitReview && (
+        <Suspense fallback={null}>
+          <PatientPortraitPanel patients={consultationPatients} />
         </Suspense>
       )}
       </div>

@@ -38,7 +38,7 @@ const STONE_TEXTURE_URLS = [
   '/textures/architecture/buff-limestone_nrm.webp',
   '/textures/architecture/buff-limestone_rough.webp',
 ];
-const ROOF_TEXTURE_URL = '/textures/new-netherland/slate-shingles.png';
+const ROOF_TEXTURE_URL = '/textures/new-netherland/slate-shingles.webp';
 const STONE_METRES_PER_REPEAT = 2.25;
 const ROOF_METRES_PER_REPEAT = 3.2;
 

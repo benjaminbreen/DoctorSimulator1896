@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame, useLoader } from '@react-three/fiber';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { identifyLandmark } from '../world/landmarkInformation.js';
 import { solarRamps, smoothstep } from '../world/solar.js';
 
@@ -8,8 +9,30 @@ const TRIM_STONE = '#87624a';
 const GLASS = '#252d2c';
 const IRON = '#222728';
 const DOOR = '#32251f';
-const LAMP_DAY_COLOR = new THREE.Color('#625d53');
-const LAMP_DUSK_COLOR = new THREE.Color('#e2ba73');
+const LAMP_DAY_COLOR = new THREE.Color('#d8c6a5');
+const LAMP_DUSK_COLOR = new THREE.Color('#ffd28a');
+const HOTEL_LAMP_LIGHT_COLOR = '#ffc879';
+const HOTEL_LAMP_LIGHT_BUDGET = 4;
+const HOTEL_LAMP_LIGHT_DISTANCE = 11;
+const HOTEL_LAMP_LIGHT_CULL_DISTANCE = 46;
+// Each side has a wall lantern and a standard whose pools overlap. Four lower
+// intensities give the same warm fill without burning out the stonework.
+const HOTEL_LAMP_DAY_INTENSITY = 2.8;
+const HOTEL_LAMP_DUSK_INTENSITY = 7.5;
+
+// These facade pieces are already authored in hotel-local coordinates. Joining
+// pieces that share a material and shadow mode preserves their exact surfaces
+// while turning many small draw calls into one. Dispose the source buffers once
+// their attributes have been copied into the merged geometry.
+function mergeStaticGeometries(geometries, label) {
+  const entries = geometries.filter(Boolean);
+  if (entries.length <= 1) return entries[0] ?? null;
+  const merged = mergeGeometries(entries, false);
+  if (!merged) throw new Error(`Could not merge New Netherland geometry batch: ${label}`);
+  merged.name = label;
+  entries.forEach((geometry) => geometry.dispose());
+  return merged;
+}
 
 // The supplied brick photograph is a useful relief source, but its strong red
 // albedo does not match period descriptions of the hotel as dull yellowish or
@@ -33,7 +56,15 @@ function gradedMapMaterial(options, { target, saturation, tintMix, lift }) {
   return material;
 }
 
-function InstancedBoxes({ name, instances, geometry, material, castShadow = false, receiveShadow = false }) {
+function InstancedBoxes({
+  name,
+  instances,
+  geometry,
+  material,
+  castShadow = false,
+  receiveShadow = false,
+  renderOrder = 0,
+}) {
   const meshRef = useRef();
   useLayoutEffect(() => {
     if (!meshRef.current) return;
@@ -57,48 +88,129 @@ function InstancedBoxes({ name, instances, geometry, material, castShadow = fals
       args={[geometry, material, instances.length]}
       castShadow={castShadow}
       receiveShadow={receiveShadow}
+      renderOrder={renderOrder}
     />
   );
 }
 
-function MasonryArchBlocks({ face, radius, spring, depth, boxGeometry, material }) {
-  const instances = useMemo(() => {
-    const blockCount = Math.max(7, Math.round(radius * 10));
-    const pierRows = Math.max(3, Math.round(spring / 0.55));
-    const archRadius = radius + 0.02;
-    const blocks = Array.from({ length: blockCount }, (_, index) => {
-      const theta = (index + 0.5) * Math.PI / blockCount;
-      return face === 'west' ? {
-        position: [-depth, spring + Math.sin(theta) * archRadius, Math.cos(theta) * archRadius],
-        rotation: [theta, 0, 0],
-        scale: [0.34, Math.PI * archRadius / blockCount * 0.88, 0.34],
-      } : {
-        position: [Math.cos(theta) * archRadius, spring + Math.sin(theta) * archRadius, depth],
-        rotation: [0, 0, theta],
-        scale: [0.34, Math.PI * archRadius / blockCount * 0.88, 0.34],
-      };
-    });
-    for (const offset of [-radius, radius]) {
-      for (let index = 0; index < pierRows; index += 1) {
-        blocks.push(face === 'west' ? {
-          position: [-depth, (index + 0.5) * spring / pierRows, offset],
-          scale: [0.34, spring / pierRows * 0.9, 0.36],
-        } : {
-          position: [offset, (index + 0.5) * spring / pierRows, depth],
-          scale: [0.36, spring / pierRows * 0.9, 0.34],
-        });
-      }
-    }
-    return blocks;
-  }, [depth, face, radius, spring]);
-  return (
-    <InstancedBoxes
-      name={`${face} rusticated arch blocks`}
-      instances={instances}
-      geometry={boxGeometry}
-      material={material}
-    />
+// Four fixed, shadowless lights keep the symmetrical entrance stable as the
+// camera moves. The set culls as one when the hotel is distant; reassigning a
+// smaller pool between fixtures made alternate lanterns visibly switch off.
+// They deliberately cast no shadows: a point-light shadow would render the
+// scene six extra times per fixture.
+function HotelLampLights({ fixtures, runtime }) {
+  const groupRef = useRef();
+  const lightRefs = useRef([]);
+  const cameraLocal = useMemo(() => new THREE.Vector3(), []);
+  const fixturePoints = useMemo(
+    () => fixtures.map((position) => new THREE.Vector3().fromArray(position)),
+    [fixtures],
   );
+
+  useFrame(({ camera }) => {
+    const group = groupRef.current;
+    if (!group) return;
+    group.worldToLocal(cameraLocal.copy(camera.position));
+
+    let nearestDistanceSq = Infinity;
+    fixturePoints.forEach((point) => {
+      const distanceSq = cameraLocal.distanceToSquared(point);
+      nearestDistanceSq = Math.min(nearestDistanceSq, distanceSq);
+    });
+
+    let dusk = 0;
+    if (runtime) {
+      const { altitude, night } = solarRamps(runtime.values.timeOfDay, runtime.values.dayOfYear);
+      dusk = Math.max(1 - smoothstep(2, 10, altitude), night);
+    }
+    const intensity = THREE.MathUtils.lerp(HOTEL_LAMP_DAY_INTENSITY, HOTEL_LAMP_DUSK_INTENSITY, dusk);
+    const visible = nearestDistanceSq <= HOTEL_LAMP_LIGHT_CULL_DISTANCE ** 2;
+    fixturePoints.forEach((point, index) => {
+      const light = lightRefs.current[index];
+      if (!light) return;
+      light.position.copy(point);
+      light.intensity = intensity;
+      light.visible = visible;
+    });
+  });
+
+  return (
+    <group ref={groupRef} name="fixed four-light hotel lantern pool">
+      {Array.from({ length: HOTEL_LAMP_LIGHT_BUDGET }, (_, index) => (
+        <pointLight
+          key={index}
+          ref={(light) => {
+            lightRefs.current[index] = light;
+          }}
+          color={HOTEL_LAMP_LIGHT_COLOR}
+          intensity={HOTEL_LAMP_DAY_INTENSITY}
+          distance={HOTEL_LAMP_LIGHT_DISTANCE}
+          decay={2}
+          castShadow={false}
+          visible={false}
+        />
+      ))}
+    </group>
+  );
+}
+
+function archSurroundInstance({ face, along, bottom, width, height, wall, depth = 0.2 }) {
+  const radius = width / 2;
+  const spring = height - radius;
+  return face === 'west' ? {
+    position: [wall - depth, bottom + spring, along],
+    rotation: [0, -Math.PI / 2, 0],
+    scale: [radius, radius, 1],
+  } : {
+    position: [along, bottom + spring, wall + depth],
+    scale: [radius, radius, 1],
+  };
+}
+
+function archPierInstances({ face, along, bottom, width, height, wall, depth = 0.2 }) {
+  const radius = width / 2;
+  const spring = height - radius;
+  const piers = [];
+  for (const offset of [-radius, radius]) {
+    piers.push(face === 'west' ? {
+      position: [wall - depth, bottom + spring / 2, along + offset],
+      scale: [0.34, spring, 0.36],
+    } : {
+      position: [along + offset, bottom + spring / 2, wall + depth],
+      scale: [0.36, spring, 0.34],
+    });
+  }
+  return piers;
+}
+
+function archSashInstances({ face, along, bottom, width, height, wall }) {
+  const radius = width / 2;
+  const spring = height - radius;
+  if (face === 'west') {
+    const x = wall - 0.23;
+    return [
+      { position: [x, bottom + spring * 0.5, along], scale: [0.08, spring, 0.045] },
+      { position: [x, bottom + spring, along], scale: [0.08, 0.055, width - 0.16] },
+      { position: [x, bottom + spring + radius * 0.38, along], scale: [0.08, radius * 0.67, 0.045] },
+    ];
+  }
+  const z = wall + 0.23;
+  return [
+    { position: [along, bottom + spring * 0.5, z], scale: [0.045, spring, 0.08] },
+    { position: [along, bottom + spring, z], scale: [width - 0.16, 0.055, 0.08] },
+    { position: [along, bottom + spring + radius * 0.38, z], scale: [0.045, radius * 0.67, 0.08] },
+  ];
+}
+
+function archFillInstance({ face, along, bottom, wall, fillInset = 0.04 }) {
+  return face === 'west' ? {
+    position: [wall - fillInset, bottom, along],
+    rotation: [0, -Math.PI / 2, 0],
+    scale: [1, 1, 1],
+  } : {
+    position: [along, bottom, wall + fillInset],
+    scale: [1, 1, 1],
+  };
 }
 
 export function roundedFootprintPoints(width, depth, radius, segments = 16) {
@@ -338,7 +450,6 @@ function WestArch({
   trimMaterial,
   depth = 0.2,
   fillInset = 0.04,
-  masonryBlocks = false,
 }) {
   const radius = width / 2;
   const spring = height - radius;
@@ -351,168 +462,24 @@ function WestArch({
         position={[-fillInset, 0, 0]}
         receiveShadow
       />
-      {masonryBlocks ? (
-        <MasonryArchBlocks
-          face="west"
-          radius={radius}
-          spring={spring}
-          depth={depth}
-          boxGeometry={boxGeometry}
-          material={trimMaterial}
-        />
-      ) : (
-        <>
-          <mesh
-            geometry={torusGeometry}
-            material={trimMaterial}
-            rotation={[0, -Math.PI / 2, 0]}
-            position={[-depth, spring, 0]}
-            scale={[radius, radius, 1]}
-            castShadow
-          />
-          {[-radius, radius].map((offset) => (
-            <mesh
-              key={offset}
-              geometry={boxGeometry}
-              material={trimMaterial}
-              position={[-depth, spring / 2, offset]}
-              scale={[0.28, spring, 0.32]}
-              castShadow
-            />
-          ))}
-        </>
-      )}
-    </group>
-  );
-}
-
-function SouthArch({
-  along,
-  bottom,
-  width,
-  height,
-  wallZ,
-  fillGeometry,
-  torusGeometry,
-  boxGeometry,
-  glassMaterial,
-  trimMaterial,
-  depth = 0.2,
-  fillInset = 0.04,
-  masonryBlocks = false,
-}) {
-  const radius = width / 2;
-  const spring = height - radius;
-  return (
-    <group position={[along, bottom, wallZ]}>
-      <mesh geometry={fillGeometry} material={glassMaterial} position={[0, 0, fillInset]} receiveShadow />
-      {masonryBlocks ? (
-        <MasonryArchBlocks
-          face="south"
-          radius={radius}
-          spring={spring}
-          depth={depth}
-          boxGeometry={boxGeometry}
-          material={trimMaterial}
-        />
-      ) : (
-        <>
-          <mesh
-            geometry={torusGeometry}
-            material={trimMaterial}
-            position={[0, spring, depth]}
-            scale={[radius, radius, 1]}
-            castShadow
-          />
-          {[-radius, radius].map((offset) => (
-            <mesh
-              key={offset}
-              geometry={boxGeometry}
-              material={trimMaterial}
-              position={[offset, spring / 2, depth]}
-              scale={[0.32, spring, 0.28]}
-              castShadow
-            />
-          ))}
-        </>
-      )}
-    </group>
-  );
-}
-
-function WestArchSashes({ along, bottom, width, height, wallX, boxGeometry, material }) {
-  const radius = width / 2;
-  const spring = height - radius;
-  const faceX = wallX - 0.23;
-  const instances = useMemo(() => [
-    { position: [faceX, bottom + spring * 0.5, along], scale: [0.08, spring, 0.045] },
-    { position: [faceX, bottom + spring, along], scale: [0.08, 0.055, width - 0.16] },
-    { position: [faceX, bottom + spring + radius * 0.38, along], scale: [0.08, radius * 0.67, 0.045] },
-  ], [along, bottom, faceX, radius, spring, width]);
-  return (
-    <InstancedBoxes name="recessed west arch sashes" instances={instances} geometry={boxGeometry} material={material} />
-  );
-}
-
-function SouthArchSashes({ along, bottom, width, height, wallZ, boxGeometry, material }) {
-  const radius = width / 2;
-  const spring = height - radius;
-  const faceZ = wallZ + 0.23;
-  const instances = useMemo(() => [
-    { position: [along, bottom + spring * 0.5, faceZ], scale: [0.045, spring, 0.08] },
-    { position: [along, bottom + spring, faceZ], scale: [width - 0.16, 0.055, 0.08] },
-    { position: [along, bottom + spring + radius * 0.38, faceZ], scale: [0.045, radius * 0.67, 0.08] },
-  ], [along, bottom, faceZ, radius, spring, width]);
-  return (
-    <InstancedBoxes name="recessed south arch sashes" instances={instances} geometry={boxGeometry} material={material} />
-  );
-}
-
-function WestArchGlazingBars({
-  along,
-  bottom,
-  width,
-  height,
-  wallX,
-  boxGeometry,
-  material,
-}) {
-  const radius = width / 2;
-  const spring = height - radius;
-  const faceX = wallX - 0.19;
-  return (
-    <group name="two-storey glazing subdivision">
-      {[-width * 0.24, 0, width * 0.24].map((offset) => (
+      <mesh
+        geometry={torusGeometry}
+        material={trimMaterial}
+        rotation={[0, -Math.PI / 2, 0]}
+        position={[-depth, spring, 0]}
+        scale={[radius, radius, 1]}
+        castShadow
+      />
+      {[-radius, radius].map((offset) => (
         <mesh
-          key={`vertical-${offset}`}
+          key={offset}
           geometry={boxGeometry}
-          material={material}
-          position={[faceX, bottom + spring / 2, along + offset]}
-          scale={[0.13, spring, 0.09]}
+          material={trimMaterial}
+          position={[-depth, spring / 2, offset]}
+          scale={[0.28, spring, 0.32]}
           castShadow
         />
       ))}
-      <mesh
-        geometry={boxGeometry}
-        material={material}
-        position={[faceX, bottom + spring * 0.49, along]}
-        scale={[0.13, 0.11, width - 0.22]}
-        castShadow
-      />
-      <mesh
-        geometry={boxGeometry}
-        material={material}
-        position={[faceX, bottom + spring, along]}
-        scale={[0.13, 0.13, width - 0.16]}
-        castShadow
-      />
-      <mesh
-        geometry={boxGeometry}
-        material={material}
-        position={[faceX, bottom + spring + radius * 0.42, along]}
-        scale={[0.13, radius * 0.72, 0.09]}
-        castShadow
-      />
     </group>
   );
 }
@@ -590,14 +557,8 @@ function RectWindowBatch({
     const glassDim = [];
     const roomsDark = [];
     const roomsSoft = [];
-    const hollandShades = [];
-    const curtainPanels = [];
-    const sills = [];
-    const lintels = [];
-    const stoneJambs = [];
-    const sashJambs = [];
-    const sashRails = [];
-    const muntins = [];
+    const stoneTrim = [];
+    const sashes = [];
     records.forEach((record, index) => {
       const { along, y } = record;
       const projection = record.projection ?? 0.015;
@@ -611,84 +572,53 @@ function RectWindowBatch({
       const horizontalScale = (span, thick) => (west
         ? [0.075, thick, span]
         : [span, thick, 0.075]);
-      const paneHeight = height / 2 - 0.13;
       const paneScale = west
-        ? [0.025, paneHeight, width - 0.18]
-        : [width - 0.18, paneHeight, 0.025];
-      const upperPane = { position: at(y + height * 0.255, 0, -0.09), scale: paneScale };
-      const lowerPane = { position: at(y - height * 0.255, 0, -0.09), scale: paneScale };
+        ? [0.025, height - 0.18, width - 0.18]
+        : [width - 0.18, height - 0.18, 0.025];
+      const pane = { position: at(y, 0, -0.09), scale: paneScale };
 
       // Rolled and cylinder glass was neither perfectly flat nor a blue
       // mirror. Adjacent lights get a very small neutral value shift while
       // the dark room and fabric behind them do most of the visual work.
-      (index % 3 === 0 ? glassDim : glassClear).push(upperPane);
-      (index % 4 === 1 ? glassDim : glassClear).push(lowerPane);
+      (index % 3 === 0 ? glassDim : glassClear).push(pane);
       const room = {
         position: at(y, 0, -0.035),
         scale: west ? [0.035, height - 0.12, width - 0.14] : [width - 0.14, height - 0.12, 0.035],
       };
       (index % 5 === 2 ? roomsSoft : roomsDark).push(room);
 
-      if (index % 5 === 1 || index % 7 === 4) {
-        const drop = index % 2 ? 0.42 : 0.6;
-        const shadeHeight = height * drop;
-        hollandShades.push({
-          position: at(y + height / 2 - shadeHeight / 2 - 0.07, 0, -0.062),
-          scale: west
-            ? [0.025, shadeHeight, width - 0.25]
-            : [width - 0.25, shadeHeight, 0.025],
-        });
-      } else if (index % 6 === 3) {
-        for (const side of [-1, 1]) curtainPanels.push({
-          position: at(y - 0.03, side * width * 0.34, -0.065),
-          scale: west
-            ? [0.035, height * 0.78, width * 0.2]
-            : [width * 0.2, height * 0.78, 0.035],
-        });
-      }
-
-      sills.push({
+      stoneTrim.push({
         position: at(y - height / 2 - 0.12, 0, -0.13),
         scale: west ? [0.2, 0.14, width + 0.28] : [width + 0.28, 0.14, 0.2],
       });
-      lintels.push({
+      stoneTrim.push({
         position: at(y + height / 2 + 0.12, 0, -0.135),
         scale: west ? [0.22, 0.18, width + 0.3] : [width + 0.3, 0.18, 0.22],
       });
       for (const side of [-1, 1]) {
-        stoneJambs.push({
+        stoneTrim.push({
           position: at(y, side * (width / 2 + 0.08), -0.12),
           scale: verticalScale(height + 0.18, 0.15),
         });
-        sashJambs.push({
-          position: at(y, side * (width / 2 - 0.045), -0.135),
-          scale: verticalScale(height - 0.03, 0.085),
-        });
       }
-      for (const railY of [y - height / 2 + 0.045, y, y + height / 2 - 0.045]) {
-        sashRails.push({ position: at(railY, 0, -0.137), scale: horizontalScale(width, railY === y ? 0.1 : 0.075) });
-      }
-      muntins.push({ position: at(y, 0, -0.139), scale: verticalScale(height - 0.16, 0.045) });
+      // One meeting rail and one deliberately readable central mullion retain
+      // the double-hung window character. The former six-piece sash became
+      // subpixel noise at normal street distance.
+      sashes.push({ position: at(y, 0, -0.139), scale: horizontalScale(width - 0.08, 0.1) });
+      sashes.push({ position: at(y, 0, -0.141), scale: verticalScale(height - 0.16, 0.07) });
     });
     return {
-      glassClear, glassDim, roomsDark, roomsSoft, hollandShades, curtainPanels,
-      sills, lintels, stoneJambs, sashJambs, sashRails, muntins,
+      glassClear, glassDim, roomsDark, roomsSoft, stoneTrim, sashes,
     };
   }, [height, records, wall, west, width]);
   return (
     <group name={name}>
       <InstancedBoxes name={`${name} dark rooms`} instances={batches.roomsDark} geometry={boxGeometry} material={glassMaterials.roomDark} />
       <InstancedBoxes name={`${name} softly lit rooms`} instances={batches.roomsSoft} geometry={boxGeometry} material={glassMaterials.roomSoft} />
-      <InstancedBoxes name={`${name} holland shades`} instances={batches.hollandShades} geometry={boxGeometry} material={glassMaterials.shadeCloth} />
-      <InstancedBoxes name={`${name} curtain panels`} instances={batches.curtainPanels} geometry={boxGeometry} material={glassMaterials.curtain} />
       <InstancedBoxes name={`${name} clear old glass`} instances={batches.glassClear} geometry={boxGeometry} material={glassMaterials.glass} receiveShadow />
       <InstancedBoxes name={`${name} dim old glass`} instances={batches.glassDim} geometry={boxGeometry} material={glassMaterials.glassShade} receiveShadow />
-      <InstancedBoxes name={`${name} sills`} instances={batches.sills} geometry={boxGeometry} material={trimMaterial} />
-      <InstancedBoxes name={`${name} lintels`} instances={batches.lintels} geometry={boxGeometry} material={trimMaterial} />
-      <InstancedBoxes name={`${name} stone jambs`} instances={batches.stoneJambs} geometry={boxGeometry} material={trimMaterial} />
-      <InstancedBoxes name={`${name} sash jambs`} instances={batches.sashJambs} geometry={boxGeometry} material={sashMaterial} />
-      <InstancedBoxes name={`${name} double-hung sash rails`} instances={batches.sashRails} geometry={boxGeometry} material={sashMaterial} />
-      <InstancedBoxes name={`${name} narrow muntins`} instances={batches.muntins} geometry={boxGeometry} material={sashMaterial} />
+      <InstancedBoxes name={`${name} stone window surrounds`} instances={batches.stoneTrim} geometry={boxGeometry} material={trimMaterial} />
+      <InstancedBoxes name={`${name} simplified double-hung sashes`} instances={batches.sashes} geometry={boxGeometry} material={sashMaterial} />
     </group>
   );
 }
@@ -1129,11 +1059,23 @@ export default function NewNetherlandHotel({ item, runtime }) {
   const turretBottom = eave - 0.85;
   const turretHeight = 4.5;
   const turretTop = turretBottom + turretHeight;
+  const hotelLampFixtures = useMemo(() => [
+    // The projecting entrance lanterns.
+    { kind: 'wall', position: [westWall - 1.25, bottom + 3.12, -3.12] },
+    { kind: 'wall', position: [westWall - 1.25, bottom + 3.12, 0.92] },
+    // The two freestanding forecourt lamps.
+    { kind: 'post', position: [westWall - 1.75, bottom + 3.58, -4.05] },
+    { kind: 'post', position: [westWall - 1.75, bottom + 3.58, 1.85] },
+  ], [bottom, westWall]);
+  const hotelLampPositions = useMemo(
+    () => hotelLampFixtures.map((fixture) => fixture.position),
+    [hotelLampFixtures],
+  );
 
   const [brickMap, stoneMap, roofMap] = useLoader(THREE.TextureLoader, [
-    '/textures/new-netherland/brick.png',
-    '/textures/new-netherland/rusticated-stone.png',
-    '/textures/new-netherland/slate-shingles.png',
+    '/textures/new-netherland/brick.webp',
+    '/textures/new-netherland/rusticated-stone.webp',
+    '/textures/new-netherland/slate-shingles.webp',
   ]);
   const surfaceMaps = useMemo(() => {
     const prepare = (source, repeatX, repeatY) => {
@@ -1289,8 +1231,6 @@ export default function NewNetherlandHotel({ item, runtime }) {
       roughness: 0.94,
       metalness: 0,
     }),
-    shadeCloth: new THREE.MeshStandardMaterial({ color: '#b8ad94', roughness: 0.98, metalness: 0 }),
-    curtain: new THREE.MeshStandardMaterial({ color: '#756956', roughness: 0.97, metalness: 0 }),
     iron: new THREE.MeshStandardMaterial({ color: IRON, roughness: 0.48, metalness: 0.62 }),
     // Window sash was ordinarily painted wood. A matte response also avoids
     // subpixel metallic highlights crawling along the narrow muntins.
@@ -1301,12 +1241,38 @@ export default function NewNetherlandHotel({ item, runtime }) {
     foliage: new THREE.MeshStandardMaterial({ color: '#263d2c', roughness: 0.98, metalness: 0, flatShading: true }),
     foliageLight: new THREE.MeshStandardMaterial({ color: '#38533a', roughness: 0.98, metalness: 0, flatShading: true }),
     foliageShade: new THREE.MeshStandardMaterial({ color: '#1c3023', roughness: 1, metalness: 0, flatShading: true }),
-    lampGlass: new THREE.MeshStandardMaterial({
+    // Thin tinted panes, not luminous blocks. Avoid physical transmission:
+    // ordinary alpha glass keeps the burner visible without an extra scene
+    // refraction pass, and the shadowless point lights naturally pass through.
+    lampGlass: new THREE.MeshPhysicalMaterial({
       color: LAMP_DAY_COLOR,
-      emissive: '#9d6327',
-      emissiveIntensity: 0,
-      roughness: 0.34,
+      emissive: '#8a4616',
+      emissiveIntensity: 0.3,
+      roughness: 0.16,
       metalness: 0,
+      clearcoat: 0.72,
+      clearcoatRoughness: 0.24,
+      envMapIntensity: 0.55,
+      transparent: true,
+      opacity: 0.24,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    }),
+    lampGlow: new THREE.MeshBasicMaterial({
+      color: '#ffe0a0',
+      transparent: true,
+      opacity: 0.78,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      toneMapped: false,
+    }),
+    lampHalo: new THREE.MeshBasicMaterial({
+      color: '#ffad4f',
+      transparent: true,
+      opacity: 0.13,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      toneMapped: false,
     }),
   }), [surfaceMaps]);
   useEffect(() => () => Object.values(materials).forEach((material) => material.dispose()), [materials]);
@@ -1314,14 +1280,29 @@ export default function NewNetherlandHotel({ item, runtime }) {
     if (!runtime) return;
     const { altitude, night } = solarRamps(runtime.values.timeOfDay, runtime.values.dayOfYear);
     const dusk = Math.max(1 - smoothstep(2, 10, altitude), night);
-    materials.lampGlass.emissiveIntensity = dusk * 2.1;
+    // The hotel entrance is intentionally welcoming even in the deep daytime
+    // shade; dusk raises the glow rather than switching it on from black.
+    materials.lampGlass.emissiveIntensity = 0.3 + dusk * 1.1;
     materials.lampGlass.color.copy(LAMP_DAY_COLOR).lerp(LAMP_DUSK_COLOR, dusk);
+    materials.lampGlow.opacity = 0.76 + dusk * 0.16;
+    materials.lampHalo.opacity = 0.11 + dusk * 0.13;
     materials.roomSoft.emissiveIntensity = 0.06 + dusk * 0.5;
   });
 
   const geometry = useMemo(() => {
     const unitBox = new THREE.BoxGeometry(1, 1, 1);
     const unitTorus = new THREE.TorusGeometry(1, 0.105, 8, 24, Math.PI);
+    // Street-level masonry reads better as one broad voussoir band than as
+    // dozens of tiny block edges. The stone texture retains the rustication.
+    const unitArch = new THREE.TorusGeometry(1, 0.19, 6, 20, Math.PI);
+    // Shared low-sided primitives let all four ornamental lanterns render in
+    // material batches instead of constructing a separate mesh set per lamp.
+    const lampCylinder = new THREE.CylinderGeometry(1, 1, 1, 10);
+    const lampTaper = new THREE.CylinderGeometry(0.72, 1, 1, 8);
+    const lampBand = new THREE.CylinderGeometry(1, 1, 1, 8, 1, true);
+    const lampRoof = new THREE.ConeGeometry(1, 1, 8);
+    const lampSphere = new THREE.SphereGeometry(1, 10, 8);
+    const lampScroll = new THREE.TorusGeometry(0.32, 0.035, 6, 16, Math.PI * 1.5);
     const podium = createRoundedPrismGeometry(sx + 0.22, sz + 0.22, radius + 0.11, bottom, podiumTop - 0.12);
     const podiumSpandrel = createRoundedPrismGeometry(
       sx + 0.08,
@@ -1509,21 +1490,43 @@ export default function NewNetherlandHotel({ item, runtime }) {
     return {
       unitBox,
       unitTorus,
+      unitArch,
+      lampCylinder,
+      lampTaper,
+      lampBand,
+      lampRoof,
+      lampSphere,
+      lampScroll,
       podium,
-      podiumSpandrel,
-      shaft,
-      courses,
-      podiumCornice,
-      podiumBelt,
-      cornerGroundSurrounds,
-      cornerGroundWindows,
+      shellBrick: mergeStaticGeometries([podiumSpandrel, shaft], 'hotel brick shell'),
+      shellBaseTrim: mergeStaticGeometries([podiumCornice, podiumBelt], 'hotel podium trim'),
+      courses: mergeStaticGeometries(courses, 'hotel masonry courses'),
+      cornerGroundSurrounds: mergeStaticGeometries(cornerGroundSurrounds, 'corner ground surrounds'),
+      archGlassBright: mergeStaticGeometries([
+        ...cornerGroundWindows.filter((_, index) => index % 2 === 0),
+        ...turretWindows.filter((_, index) => index % 2 === 0),
+      ], 'bright curved glazing'),
+      archGlassDim: mergeStaticGeometries([
+        ...cornerGroundWindows.filter((_, index) => index % 2 === 1),
+        ...turretWindows.filter((_, index) => index % 2 === 1),
+      ], 'dim curved glazing'),
       cornerWindows,
-      cornerWindowRooms,
-      cornerWindowSashes,
-      cornerWindowSills,
-      cornerWindowLintels,
-      turretWindows,
-      turretWindowRails,
+      cornerWindowRoomsDark: mergeStaticGeometries(
+        cornerWindowRooms.filter((_, index) => index % 5 !== 2),
+        'dark curved rooms',
+      ),
+      cornerWindowRoomsSoft: mergeStaticGeometries(
+        cornerWindowRooms.filter((_, index) => index % 5 === 2),
+        'softly lit curved rooms',
+      ),
+      cornerWindowTrim: mergeStaticGeometries(
+        [...cornerWindowSills, ...cornerWindowLintels],
+        'curved window stone trim',
+      ),
+      curvedWindowSashes: mergeStaticGeometries(
+        [...cornerWindowSashes, ...turretWindowRails],
+        'curved window sashes',
+      ),
       entranceFill,
       entranceTorus,
       arcadeFill,
@@ -1565,6 +1568,223 @@ export default function NewNetherlandHotel({ item, runtime }) {
     () => sideUpperWindows.map(({ x, y }) => ({ y, along: x })),
     [sideUpperWindows],
   );
+  const streetArchBatches = useMemo(() => {
+    const westWallFace = westWall - 0.18;
+    const southWallFace = southWall + 0.18;
+    const westGround = [-8.3, -6.65, -4.45, 1.15, 2.8].map((along) => ({
+      face: 'west', along, bottom: bottom + 0.65, width: 1.45, height: 2.75, wall: westWallFace,
+    }));
+    const westUpper = [-8.3, -6.65, -4.45, 1.15, 2.8].map((along) => ({
+      face: 'west', along, bottom: bottom + 5.15, width: 1.25, height: 2.45, wall: westWallFace,
+    }));
+    const south = [-0.6, 1.6, 3.8, 6.0, 8.15].flatMap((along) => (
+      [bottom + 0.65, bottom + 4.65].map((openingBottom) => ({
+        face: 'south', along, bottom: openingBottom, width: 1.5, height: 2.75, wall: southWallFace,
+      }))
+    ));
+    const openings = [...westGround, ...westUpper, ...south];
+    return {
+      surrounds: openings.map(archSurroundInstance),
+      piers: openings.flatMap(archPierInstances),
+      sashes: openings.flatMap(archSashInstances),
+      dimFills: [...westGround, ...south].map(archFillInstance),
+      brightFills: westUpper.map(archFillInstance),
+    };
+  }, [bottom, southWall, westWall]);
+  const arcadeBatches = useMemo(() => {
+    const wall = westWall - 0.15;
+    const openingBottom = podiumTop + 0.55;
+    const width = 3.25;
+    const radius = width / 2;
+    const spring = 4.65 - radius;
+    const faceX = wall - 0.19;
+    const fills = [];
+    const surrounds = [];
+    const trimBoxes = [];
+    const glazingBars = [];
+    for (const along of [-4.75, -1.1, 2.55]) {
+      fills.push(archFillInstance({ face: 'west', along, bottom: openingBottom, wall, fillInset: 0.06 }));
+      surrounds.push({
+        position: [wall - 0.24, openingBottom + spring, along],
+        rotation: [0, -Math.PI / 2, 0],
+        scale: [radius, radius, 1],
+      });
+      trimBoxes.push(...[-radius, radius].map((offset) => ({
+        position: [wall - 0.24, openingBottom + spring / 2, along + offset],
+        scale: [0.28, spring, 0.32],
+      })));
+      glazingBars.push(...[-width * 0.24, 0, width * 0.24].map((offset) => ({
+        position: [faceX, openingBottom + spring / 2, along + offset],
+        scale: [0.13, spring, 0.09],
+      })));
+      glazingBars.push(
+        { position: [faceX, openingBottom + spring * 0.49, along], scale: [0.13, 0.11, width - 0.22] },
+        { position: [faceX, openingBottom + spring, along], scale: [0.13, 0.13, width - 0.16] },
+        { position: [faceX, openingBottom + spring + radius * 0.42, along], scale: [0.13, radius * 0.72, 0.09] },
+      );
+      trimBoxes.push({
+        position: [westWall - 0.48, podiumTop + 5.03, along],
+        rotation: [Math.PI / 4, 0, 0],
+        scale: [0.42, 0.56, 0.5],
+      });
+      trimBoxes.push(...[-1, 1].map((side) => ({
+        position: [westWall - 0.44, podiumTop + 3.58, along + side * 1.63],
+        scale: [0.38, 0.3, 0.62],
+      })));
+    }
+    return { fills, surrounds, trimBoxes, glazingBars };
+  }, [podiumTop, westWall]);
+  const lampBatches = useMemo(() => {
+    const glass = [];
+    const frames = [];
+    const ironCylinders = [];
+    const tapers = [];
+    const ironBands = [];
+    const brassBands = [];
+    const roofs = [];
+    const bronzeSpheres = [];
+    const scrolls = [];
+    const burners = [];
+    const halos = [];
+    const burnerCups = [];
+
+    hotelLampFixtures.forEach(({ kind, position }) => {
+      const [x, y, z] = position;
+      const post = kind === 'post';
+      const width = post ? 0.64 : 0.52;
+      const height = post ? 0.86 : 0.72;
+      const depth = post ? 0.64 : 0.46;
+      const frame = post ? 0.052 : 0.045;
+
+      // An open-sided octagonal glass shell avoids the doubled front/back
+      // faces of a transparent box and gives the lantern a faceted period
+      // silhouette. Eight standards align with those panes.
+      glass.push({ position, scale: [width / 2, height, depth / 2] });
+      burners.push({ position: [x, y - 0.08, z], scale: [0.085, 0.18, 0.085] });
+      halos.push({ position: [x, y - 0.01, z], scale: [width * 0.38, height * 0.4, depth * 0.38] });
+      burnerCups.push({ position: [x, y - height * 0.31, z], scale: [0.105, 0.13, 0.105] });
+
+      for (let index = 0; index < 8; index += 1) {
+        const theta = (index / 8) * Math.PI * 2;
+        frames.push({
+          position: [
+            x + Math.cos(theta) * (width / 2 + frame / 2),
+            y,
+            z + Math.sin(theta) * (depth / 2 + frame / 2),
+          ],
+          rotation: [0, -theta, 0],
+          scale: [frame, height + 0.12, frame],
+        });
+        // A beaded bronze corona catches the hotel lights without requiring
+        // more materials or individually drawn ornament meshes.
+        bronzeSpheres.push({
+          position: [
+            x + Math.cos(theta) * width * 0.43,
+            y + height / 2 + 0.075,
+            z + Math.sin(theta) * depth * 0.43,
+          ],
+          scale: [0.038, 0.038, 0.038],
+        });
+      }
+      for (const ySide of [-1, 1]) {
+        ironBands.push({
+          position: [x, y + ySide * (height / 2 + 0.035), z],
+          scale: [width / 2 + 0.055, 0.07, depth / 2 + 0.055],
+        });
+      }
+      brassBands.push({
+        position: [x, y, z],
+        scale: [width / 2 + 0.025, 0.026, depth / 2 + 0.025],
+      });
+
+      tapers.push({
+        position: [x, y - height / 2 - 0.105, z],
+        scale: [width * 0.76, 0.18, depth * 0.76],
+      });
+      ironBands.push({
+        position: [x, y + height / 2 + 0.09, z],
+        scale: [width / 2 + 0.1, 0.11, depth / 2 + 0.1],
+      });
+      roofs.push({
+        position: [x, y + height / 2 + 0.25, z],
+        scale: [width * 0.76, 0.38, depth * 0.76],
+      });
+      ironCylinders.push({
+        position: [x, y + height / 2 + 0.49, z],
+        scale: [0.045, 0.16, 0.045],
+      });
+      bronzeSpheres.push({ position: [x, y + height / 2 + 0.62, z], scale: [0.105, 0.105, 0.105] });
+
+      if (post) {
+        ironCylinders.push(
+          { position: [x, bottom + 1.88, z], scale: [0.065, 2.68, 0.065] },
+          { position: [x, bottom + 0.83, z], scale: [0.14, 0.11, 0.14] },
+          { position: [x, bottom + 2.84, z], scale: [0.14, 0.11, 0.14] },
+          { position: [x, y - height / 2 - 0.28, z], scale: [0.115, 0.3, 0.115] },
+        );
+        tapers.push(
+          { position: [x, bottom + 0.14, z], scale: [0.36, 0.27, 0.36] },
+          { position: [x, bottom + 0.39, z], scale: [0.27, 0.23, 0.27] },
+        );
+        brassBands.push(
+          { position: [x, bottom + 0.78, z], scale: [0.155, 0.045, 0.155] },
+          { position: [x, bottom + 2.83, z], scale: [0.155, 0.045, 0.155] },
+          { position: [x, y - height / 2 - 0.29, z], scale: [0.13, 0.04, 0.13] },
+        );
+      } else {
+        // A rosette backplate and cast S-scroll turn the wall fitting into a
+        // Beaux-Arts bracket rather than a lantern attached to a plain stick.
+        ironCylinders.push({
+          position: [westWall - 0.1, y + 0.12, z],
+          rotation: [0, 0, Math.PI / 2],
+          scale: [0.18, 0.09, 0.18],
+        });
+        frames.push(
+          { position: [westWall - 0.74, y + height / 2 + 0.11, z], scale: [1.02, 0.065, 0.065] },
+          {
+            position: [westWall - 0.69, y - 0.34, z],
+            rotation: [0, 0, -0.62],
+            scale: [0.62, 0.055, 0.055],
+          },
+        );
+        scrolls.push(
+          {
+            position: [westWall - 0.55, y - 0.24, z - 0.055],
+            rotation: [0, 0, 0.18],
+            scale: [1.05, 1.05, 1],
+          },
+          {
+            position: [westWall - 0.55, y - 0.24, z + 0.055],
+            rotation: [0, Math.PI, 0.18],
+            scale: [1.05, 1.05, 1],
+          },
+        );
+        bronzeSpheres.push({
+          position: [westWall - 0.2, y + 0.12, z],
+          scale: [0.055, 0.14, 0.14],
+        });
+        brassBands.push({
+          position: [westWall - 0.72, y + height / 2 + 0.11, z],
+          rotation: [0, 0, Math.PI / 2],
+          scale: [0.11, 0.04, 0.11],
+        });
+      }
+    });
+    return {
+      glass,
+      frames,
+      ironCylinders,
+      tapers,
+      ironBands,
+      brassBands,
+      roofs,
+      bronzeSpheres,
+      scrolls,
+      burners,
+      halos,
+      burnerCups,
+    };
+  }, [bottom, hotelLampFixtures, westWall]);
   const roofDentilInstances = useMemo(() => [
     ...[-9.45, -8.55, -7.65, -6.75, -5.85, -4.95, -4.05, -3.15, -2.25, -1.35, -0.45, 0.45, 1.35, 2.25, 3.15]
       .map((z) => ({ position: [westWall - 0.38, eave - 0.78, z], scale: [0.48, 0.34, 0.38] })),
@@ -1588,66 +1808,47 @@ export default function NewNetherlandHotel({ item, runtime }) {
       onClick={identify}
       userData={{ reconstructionPass: 'phase-2-material-and-ornament', source: 'new-netherlands-hero-render-mockup' }}
     >
+      <HotelLampLights fixtures={hotelLampPositions} runtime={runtime} />
       <group name="rounded masonry shell">
         <mesh geometry={geometry.podium} material={materials.base} castShadow receiveShadow />
-        <mesh geometry={geometry.podiumSpandrel} material={materials.brick} castShadow receiveShadow />
-        <mesh geometry={geometry.shaft} material={materials.brick} castShadow receiveShadow />
-        <mesh geometry={geometry.podiumBelt} material={materials.baseTrim} castShadow receiveShadow />
-        <mesh geometry={geometry.podiumCornice} material={materials.baseTrim} castShadow receiveShadow />
-        {geometry.courses.map((course, index) => (
-          <mesh key={index} geometry={course} material={materials.trim} castShadow receiveShadow />
-        ))}
+        <mesh geometry={geometry.shellBrick} material={materials.brick} castShadow receiveShadow />
+        <mesh geometry={geometry.shellBaseTrim} material={materials.baseTrim} castShadow receiveShadow />
+        <mesh geometry={geometry.courses} material={materials.trim} castShadow receiveShadow />
       </group>
 
       <group name="street-level openings">
-        {[-8.3, -6.65, -4.45, 1.15, 2.8].map((z) => (
-          <group key={z}>
-            <WestArch
-              along={z}
-              bottom={bottom + 0.65}
-              width={1.45}
-              height={2.75}
-              wallX={westWall - 0.18}
-              fillGeometry={geometry.baseArchFill}
-              torusGeometry={geometry.unitTorus}
-              boxGeometry={geometry.unitBox}
-              glassMaterial={materials.archGlassDim}
-              trimMaterial={materials.baseTrim}
-              masonryBlocks
-            />
-            <WestArchSashes
-              along={z}
-              bottom={bottom + 0.65}
-              width={1.45}
-              height={2.75}
-              wallX={westWall - 0.18}
-              boxGeometry={geometry.unitBox}
-              material={materials.windowSash}
-            />
-            <WestArch
-              along={z}
-              bottom={bottom + 5.15}
-              width={1.25}
-              height={2.45}
-              wallX={westWall - 0.18}
-              fillGeometry={geometry.upperBaseArchFill}
-              torusGeometry={geometry.unitTorus}
-              boxGeometry={geometry.unitBox}
-              glassMaterial={materials.archGlass}
-              trimMaterial={materials.baseTrim}
-              masonryBlocks
-            />
-            <WestArchSashes
-              along={z}
-              bottom={bottom + 5.15}
-              width={1.25}
-              height={2.45}
-              wallX={westWall - 0.18}
-              boxGeometry={geometry.unitBox}
-              material={materials.windowSash}
-            />
-          </group>
-        ))}
+        <InstancedBoxes
+          name="simplified continuous masonry arches"
+          instances={streetArchBatches.surrounds}
+          geometry={geometry.unitArch}
+          material={materials.baseTrim}
+        />
+        <InstancedBoxes
+          name="simplified masonry arch piers"
+          instances={streetArchBatches.piers}
+          geometry={geometry.unitBox}
+          material={materials.baseTrim}
+        />
+        <InstancedBoxes
+          name="batched recessed arch sashes"
+          instances={streetArchBatches.sashes}
+          geometry={geometry.unitBox}
+          material={materials.windowSash}
+        />
+        <InstancedBoxes
+          name="batched dim arch glazing"
+          instances={streetArchBatches.dimFills}
+          geometry={geometry.baseArchFill}
+          material={materials.archGlassDim}
+          receiveShadow
+        />
+        <InstancedBoxes
+          name="batched bright arch glazing"
+          instances={streetArchBatches.brightFills}
+          geometry={geometry.upperBaseArchFill}
+          material={materials.archGlass}
+          receiveShadow
+        />
         <group name="projecting entrance portal">
           <WestArch
           along={-1.1}
@@ -1721,29 +1922,6 @@ export default function NewNetherlandHotel({ item, runtime }) {
               />
             </group>
           ))}
-          {[-2.02, 2.02].map((offset) => (
-            <group key={`entrance-lantern-${offset}`}>
-              <mesh
-                geometry={geometry.unitBox}
-                material={materials.iron}
-                position={[westWall - 0.9, bottom + 3.35, -1.1 + offset]}
-                scale={[0.72, 0.075, 0.075]}
-                castShadow
-              />
-              <mesh material={materials.iron} position={[westWall - 1.25, bottom + 3.42, -1.1 + offset]} castShadow>
-                <coneGeometry args={[0.25, 0.22, 8]} />
-              </mesh>
-              <mesh
-                geometry={geometry.unitBox}
-                material={materials.lampGlass}
-                position={[westWall - 1.25, bottom + 3.12, -1.1 + offset]}
-                scale={[0.3, 0.48, 0.3]}
-              />
-              <mesh material={materials.iron} position={[westWall - 1.25, bottom + 2.83, -1.1 + offset]} castShadow>
-                <cylinderGeometry args={[0.2, 0.24, 0.12, 8]} />
-              </mesh>
-            </group>
-          ))}
           {[
             { x: westWall - 1.42, y: bottom + 0.14, width: 3.65, depth: 1.75 },
             { x: westWall - 1.12, y: bottom + 0.29, width: 3.4, depth: 1.48 },
@@ -1761,90 +1939,40 @@ export default function NewNetherlandHotel({ item, runtime }) {
             />
           ))}
         </group>
-        {geometry.cornerGroundSurrounds.map((surround, index) => (
-          <mesh key={`corner-ground-surround-${index}`} geometry={surround} material={materials.baseTrim} receiveShadow />
-        ))}
-        {geometry.cornerGroundWindows.map((windowGeometry, index) => (
-          <mesh key={`corner-ground-window-${index}`} geometry={windowGeometry} material={index % 2 ? materials.archGlassDim : materials.archGlass} receiveShadow />
-        ))}
-        {[-0.6, 1.6, 3.8, 6.0, 8.15].map((x) => (
-          <group key={x}>
-            {[bottom + 0.65, bottom + 4.65].map((openingBottom) => (
-              <group key={openingBottom}>
-                <SouthArch
-                  along={x}
-                  bottom={openingBottom}
-                  width={1.5}
-                  height={2.75}
-                  wallZ={southWall + 0.18}
-                  fillGeometry={geometry.baseArchFill}
-                  torusGeometry={geometry.unitTorus}
-                  boxGeometry={geometry.unitBox}
-                  glassMaterial={materials.archGlassDim}
-                  trimMaterial={materials.baseTrim}
-                  masonryBlocks
-                />
-                <SouthArchSashes
-                  along={x}
-                  bottom={openingBottom}
-                  width={1.5}
-                  height={2.75}
-                  wallZ={southWall + 0.18}
-                  boxGeometry={geometry.unitBox}
-                  material={materials.windowSash}
-                />
-              </group>
-            ))}
-          </group>
-        ))}
+        <mesh geometry={geometry.cornerGroundSurrounds} material={materials.baseTrim} receiveShadow />
+        <mesh geometry={geometry.archGlassBright} material={materials.archGlass} receiveShadow />
+        <mesh geometry={geometry.archGlassDim} material={materials.archGlassDim} receiveShadow />
       </group>
 
       <group name="large front arcade">
-        {[-4.75, -1.1, 2.55].map((z) => (
-          <group key={z}>
-            <WestArch
-              along={z}
-              bottom={podiumTop + 0.55}
-              width={3.25}
-              height={4.65}
-              wallX={westWall - 0.15}
-              fillGeometry={geometry.arcadeFill}
-              torusGeometry={geometry.unitTorus}
-              boxGeometry={geometry.unitBox}
-              glassMaterial={materials.archGlass}
-              trimMaterial={materials.arcadeTrim}
-              depth={0.24}
-              fillInset={0.06}
-            />
-            <WestArchGlazingBars
-              along={z}
-              bottom={podiumTop + 0.55}
-              width={3.25}
-              height={4.65}
-              wallX={westWall - 0.15}
-              boxGeometry={geometry.unitBox}
-              material={materials.windowSash}
-            />
-            <mesh
-              geometry={geometry.unitBox}
-              material={materials.arcadeTrim}
-              position={[westWall - 0.48, podiumTop + 5.03, z]}
-              scale={[0.42, 0.56, 0.5]}
-              rotation={[Math.PI / 4, 0, 0]}
-              castShadow
-            />
-            {[-1, 1].map((side) => (
-              <mesh
-                key={`arcade-impost-${side}`}
-                geometry={geometry.unitBox}
-                material={materials.arcadeTrim}
-                position={[westWall - 0.44, podiumTop + 3.58, z + side * 1.63]}
-                scale={[0.38, 0.3, 0.62]}
-                castShadow
-              />
-            ))}
-          </group>
-        ))}
+        <InstancedBoxes
+          name="batched arcade glazing"
+          instances={arcadeBatches.fills}
+          geometry={geometry.arcadeFill}
+          material={materials.archGlass}
+          receiveShadow
+        />
+        <InstancedBoxes
+          name="batched arcade arches"
+          instances={arcadeBatches.surrounds}
+          geometry={geometry.unitTorus}
+          material={materials.arcadeTrim}
+          castShadow
+        />
+        <InstancedBoxes
+          name="batched arcade masonry trim"
+          instances={arcadeBatches.trimBoxes}
+          geometry={geometry.unitBox}
+          material={materials.arcadeTrim}
+          castShadow
+        />
+        <InstancedBoxes
+          name="batched arcade glazing bars"
+          instances={arcadeBatches.glazingBars}
+          geometry={geometry.unitBox}
+          material={materials.windowSash}
+          castShadow
+        />
         <mesh
           geometry={geometry.unitBox}
           material={materials.baseTrim}
@@ -1855,40 +1983,89 @@ export default function NewNetherlandHotel({ item, runtime }) {
       </group>
 
       <group name="entrance forecourt details">
-        {[-4.05, 1.85].map((z) => (
-          <group key={`freestanding-lamp-${z}`} position={[westWall - 1.75, bottom + 0.2, z]}>
-            <mesh material={materials.iron} position={[0, 0.12, 0]} castShadow>
-              <cylinderGeometry args={[0.28, 0.36, 0.24, 12]} />
-            </mesh>
-            <mesh material={materials.iron} position={[0, 0.36, 0]} castShadow>
-              <cylinderGeometry args={[0.17, 0.26, 0.32, 12]} />
-            </mesh>
-            <mesh material={materials.iron} position={[0, 1.7, 0]} castShadow>
-              <cylinderGeometry args={[0.06, 0.1, 2.8, 12]} />
-            </mesh>
-            {[0.72, 2.7].map((y) => (
-              <mesh key={`lamp-collar-${y}`} material={materials.iron} position={[0, y, 0]} castShadow>
-                <cylinderGeometry args={[0.14, 0.14, 0.11, 12]} />
-              </mesh>
-            ))}
-            <mesh material={materials.iron} position={[0, 3.02, 0]} castShadow>
-              <cylinderGeometry args={[0.29, 0.34, 0.12, 8]} />
-            </mesh>
-            <mesh geometry={geometry.unitBox} material={materials.lampGlass} position={[0, 3.38, 0]} scale={[0.46, 0.66, 0.46]} />
-            {[-0.24, 0.24].map((offset) => (
-              <group key={`lantern-frame-${offset}`}>
-                <mesh geometry={geometry.unitBox} material={materials.iron} position={[offset, 3.38, 0]} scale={[0.045, 0.72, 0.045]} castShadow />
-                <mesh geometry={geometry.unitBox} material={materials.iron} position={[0, 3.38, offset]} scale={[0.045, 0.72, 0.045]} castShadow />
-              </group>
-            ))}
-            <mesh material={materials.iron} position={[0, 3.78, 0]} castShadow>
-              <coneGeometry args={[0.39, 0.28, 8]} />
-            </mesh>
-            <mesh material={materials.iron} position={[0, 4.0, 0]} castShadow>
-              <sphereGeometry args={[0.1, 10, 8]} />
-            </mesh>
-          </group>
-        ))}
+        <group name="batched ornamental hotel lanterns">
+          <InstancedBoxes
+            name="transparent amber lantern panes"
+            instances={lampBatches.glass}
+            geometry={geometry.lampBand}
+            material={materials.lampGlass}
+            renderOrder={1}
+          />
+          <InstancedBoxes
+            name="lantern iron frames and brackets"
+            instances={lampBatches.frames}
+            geometry={geometry.unitBox}
+            material={materials.iron}
+            castShadow
+          />
+          <InstancedBoxes
+            name="lantern posts collars and backplates"
+            instances={lampBatches.ironCylinders}
+            geometry={geometry.lampCylinder}
+            material={materials.iron}
+            castShadow
+          />
+          <InstancedBoxes
+            name="lantern octagonal iron galleries"
+            instances={lampBatches.ironBands}
+            geometry={geometry.lampBand}
+            material={materials.iron}
+            castShadow
+          />
+          <InstancedBoxes
+            name="lantern gilded moulding bands"
+            instances={lampBatches.brassBands}
+            geometry={geometry.lampBand}
+            material={materials.bronze}
+          />
+          <InstancedBoxes
+            name="lantern stepped bases"
+            instances={lampBatches.tapers}
+            geometry={geometry.lampTaper}
+            material={materials.iron}
+            castShadow
+          />
+          <InstancedBoxes
+            name="lantern octagonal roofs"
+            instances={lampBatches.roofs}
+            geometry={geometry.lampRoof}
+            material={materials.iron}
+            castShadow
+          />
+          <InstancedBoxes
+            name="lantern gilded beads rosettes and finials"
+            instances={lampBatches.bronzeSpheres}
+            geometry={geometry.lampSphere}
+            material={materials.bronze}
+          />
+          <InstancedBoxes
+            name="lantern cast scroll brackets"
+            instances={lampBatches.scrolls}
+            geometry={geometry.lampScroll}
+            material={materials.iron}
+            castShadow
+          />
+          <InstancedBoxes
+            name="lantern brass burner cups"
+            instances={lampBatches.burnerCups}
+            geometry={geometry.lampCylinder}
+            material={materials.bronze}
+          />
+          <InstancedBoxes
+            name="visible lantern burners"
+            instances={lampBatches.burners}
+            geometry={geometry.lampSphere}
+            material={materials.lampGlow}
+            renderOrder={2}
+          />
+          <InstancedBoxes
+            name="soft lantern interior halos"
+            instances={lampBatches.halos}
+            geometry={geometry.lampSphere}
+            material={materials.lampHalo}
+            renderOrder={3}
+          />
+        </group>
         {[-2.38, 0.18].map((z) => (
           <group key={`entrance-railing-${z}`}>
             {[westWall - 1.42, westWall - 1.08, westWall - 0.74, westWall - 0.4].map((x, index) => (
@@ -2006,9 +2183,8 @@ export default function NewNetherlandHotel({ item, runtime }) {
           trimMaterial={materials.trim}
           sashMaterial={materials.windowSash}
         />
-        {geometry.cornerWindowRooms.map((roomGeometry, index) => (
-          <mesh key={`corner-room-${index}`} geometry={roomGeometry} material={index % 5 === 2 ? materials.roomSoft : materials.roomDark} />
-        ))}
+        <mesh geometry={geometry.cornerWindowRoomsDark} material={materials.roomDark} />
+        <mesh geometry={geometry.cornerWindowRoomsSoft} material={materials.roomSoft} />
         {geometry.cornerWindows.map((windowGeometry, index) => (
           <mesh
             key={index}
@@ -2017,15 +2193,8 @@ export default function NewNetherlandHotel({ item, runtime }) {
             receiveShadow
           />
         ))}
-        {geometry.cornerWindowSills.map((sillGeometry, index) => (
-          <mesh key={`corner-sill-${index}`} geometry={sillGeometry} material={materials.trim} castShadow />
-        ))}
-        {geometry.cornerWindowLintels.map((lintelGeometry, index) => (
-          <mesh key={`corner-lintel-${index}`} geometry={lintelGeometry} material={materials.trim} castShadow />
-        ))}
-        {geometry.cornerWindowSashes.map((sashGeometry, index) => (
-          <mesh key={`corner-sash-${index}`} geometry={sashGeometry} material={materials.windowSash} castShadow />
-        ))}
+        <mesh geometry={geometry.cornerWindowTrim} material={materials.trim} castShadow />
+        <mesh geometry={geometry.curvedWindowSashes} material={materials.windowSash} castShadow />
       </group>
 
       <group name="roof and gabled crown">
@@ -2120,17 +2289,6 @@ export default function NewNetherlandHotel({ item, runtime }) {
         >
           <cylinderGeometry args={[turretRadius, turretRadius, turretHeight, 28]} />
         </mesh>
-        {geometry.turretWindows.map((windowGeometry, index) => (
-          <mesh
-            key={index}
-            geometry={windowGeometry}
-            material={index % 2 ? materials.archGlassDim : materials.archGlass}
-            receiveShadow
-          />
-        ))}
-        {geometry.turretWindowRails.map((railGeometry, index) => (
-          <mesh key={`turret-window-rail-${index}`} geometry={railGeometry} material={materials.windowSash} castShadow />
-        ))}
         {[turretBottom + 0.18, turretTop - 0.22].map((y, index) => (
           <mesh key={y} material={materials.trim} position={[turretX, y, turretZ]} castShadow receiveShadow>
             <cylinderGeometry args={[

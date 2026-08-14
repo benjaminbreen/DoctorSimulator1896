@@ -10,22 +10,25 @@ import { applyWind } from './foliageWind.js';
 const TREE_SWAY = 0.03;
 
 // Instanced trees from the Shapespark exterior plants kit, split into pieces
-// by the model converter. Three species in four variants each; a tree item
-// picks one variant of its archetype, and every variant part (trunk, leaf
-// cards) is one InstancedMesh, so a few hundred trees stay cheap.
-const VARIANTS = 4;
+// by the model converter. Two well-separated source variants per species keep
+// the silhouettes varied while random spin, scale and canopy tint supply the
+// rest. Loading all four doubled the tree payload and render buckets for very
+// little visible gain at park viewing distances.
+const SOURCE_VARIANTS = [0, 2];
+const SOURCE_VARIANT_STRIDE = 4;
+const VARIANTS = SOURCE_VARIANTS.length;
 const ARCHETYPE_MODELS = ['Tree-01', 'Tree-02', 'Tree-03'];
 // Model height relative to trunkH + canopyR, tuned per archetype: elms tall,
 // oaks broad, pond willows low.
 const HEIGHT_SCALE = [2.05, 1.85, 1.5];
 
 // The converter names a split piece `<source>__<group>`, and the kit's groups
-// carry their index: Tree-01-1_0 … Tree-03-4_11.
+// retain their original four-variant index even though only variants 1 and 3
+// are loaded here: Tree-01-1_0, Tree-01-3_2, … Tree-03-3_10.
 const MODEL_NAMES = ARCHETYPE_MODELS.flatMap((name, archetype) =>
-  Array.from(
-    { length: VARIANTS },
-    (_, i) => `shapespark_plants__${name}-${i + 1}_${archetype * VARIANTS + i}`,
-  ),
+  SOURCE_VARIANTS.map((sourceVariant) => (
+    `shapespark_plants__${name}-${sourceVariant + 1}_${archetype * SOURCE_VARIANT_STRIDE + sourceVariant}`
+  )),
 );
 const MODEL_URLS = MODEL_NAMES.map(modelUrl);
 
