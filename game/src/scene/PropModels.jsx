@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { useFrame, useLoader } from '@react-three/fiber';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'meshoptimizer';
+import { sharePackTextures } from './packTextures.js';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import { modelUrl, modelSize } from '../world/modelPacks.js';
 import { applyWind } from './foliageWind.js';
@@ -108,7 +109,7 @@ export default function PropModels({ items }) {
 
   const gltfs = useLoader(GLTFLoader, urls, (loader) => loader.setMeshoptDecoder(MeshoptDecoder));
   const byUrl = useMemo(
-    () => new Map(urls.map((url, index) => [url, gltfs[index]])),
+    () => new Map(urls.map((url, index) => [url, sharePackTextures(gltfs[index])])),
     [urls, gltfs],
   );
   const loose = useMemo(() => items.filter((item) => item.dynamic), [items]);

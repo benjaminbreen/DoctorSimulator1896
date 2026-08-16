@@ -5,6 +5,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'meshoptimizer';
 import { TREE_MODEL_URLS, TREE_SOURCE_VARIANTS } from '../world/treeModels.js';
 import { applyWind } from './foliageWind.js';
+import { sharePackTextures } from './packTextures.js';
 
 // How far a canopy top travels, as a fraction of the tree's height. A big elm
 // moving a quarter of a metre is a breeze; much more and it reads as a storm.
@@ -61,7 +62,7 @@ export default function TreeField({ items }) {
   const gltfs = useLoader(GLTFLoader, TREE_MODEL_URLS, (loader) => loader.setMeshoptDecoder(MeshoptDecoder));
 
   const meshes = useMemo(() => {
-    const models = gltfs.map(extractParts);
+    const models = gltfs.map((gltf) => extractParts(sharePackTextures(gltf)));
     const modelFor = (archetype, variant) => models[archetype * VARIANTS + variant];
 
     // Bucket trees by archetype + variant so each bucket instances one model.
