@@ -493,7 +493,10 @@ function SceneContents({
       {room.exterior ? (
         <>
           <Suspense fallback={null}>
-            <Physics gravity={[0, -9.81, 0]}>
+            {/* timeStep="vary": the fixed 1/60 accumulator skips whole steps
+                above 60fps, which stalls the kinematic player every other
+                frame on 120Hz displays. */}
+            <Physics timeStep="vary" gravity={[0, -9.81, 0]}>
               <Stage active stage={0} onRendered={onStageRendered}>
               <SkyRig
                 config={lighting}
@@ -588,7 +591,8 @@ function SceneContents({
           {/* Each stage carries its own boundary; this one is only for
               Physics, which suspends on the Rapier module itself. */}
           <Suspense fallback={null}>
-          <Physics gravity={[0, -9.81, 0]}>
+          {/* timeStep="vary" for the same reason as the exterior Physics. */}
+          <Physics timeStep="vary" gravity={[0, -9.81, 0]}>
             {/* The shell: walls, floor, gaslight, and a player who can stand
                 on it. Everything else arrives on top of a room already up. */}
             <Stage active stage={0} onRendered={onStageRendered}>

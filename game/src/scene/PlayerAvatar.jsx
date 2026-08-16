@@ -183,7 +183,6 @@ export default function PlayerAvatar({ runtime, onReady }) {
   // publish for the HUD, but React bails out on this unchanged string.
   useEffect(() => subscribeThrowablePlay((next) => setHeldType(next.heldType)), []);
 
-  const last = useRef(null);
   const wasGrounded = useRef(false);
   const activeJump = useRef(null);
   const wasSmoking = useRef(false);
@@ -231,7 +230,6 @@ export default function PlayerAvatar({ runtime, onReady }) {
         mixer.update(0);
       }
       wasShotPose.current = true;
-      last.current = [x, z];
       wasGrounded.current = true;
       group.position.set(x, y, z);
       group.rotation.y = gameDebug.player.yaw + FACING;
@@ -327,18 +325,15 @@ export default function PlayerAvatar({ runtime, onReady }) {
       throwAction.reset().setEffectiveTimeScale(THROW_PLAYBACK).fadeIn(0.08).play();
     }
 
-    // Speed from the position it actually moved, so this needs nothing from
-    // the physics rig beyond what the debug handle already carries.
-    let speed = 0;
-    if (last.current && delta > 0) {
-      speed = Math.hypot(x - last.current[0], z - last.current[1]) / delta;
-    }
-    last.current = [x, z];
+    // Speed from the rig's published velocity, not finite-differenced
+    // position: physics can step zero times on a >60Hz frame, and a repeated
+    // position reads as speed 0, flapping the blend weights every other frame.
+    const velocity = gameDebug.player.velocity;
+    const speed = Math.hypot(velocity[0], velocity[2]);
 
     const grounded = gameDebug.player.grounded;
     const moving = speed > MOVING;
-    const runThreshold = (runtime.values.walkSpeed + runtime.values.runSpeed) / 2;
-    const running = grounded && moving && speed >= runThreshold;
+    const running = grounded && moving && gameDebug.player.running;
     if (!reactionBusy && !grounded && wasGrounded.current) {
       const selected = moving ? jump : standingJump;
       activeJump.current?.stop();

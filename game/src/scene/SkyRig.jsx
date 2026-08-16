@@ -19,9 +19,11 @@ const HEMI_GROUND = { night: new THREE.Color('#1b2533'), day: new THREE.Color('#
 const AMBIENT_NIGHT = new THREE.Color('#526b91');
 const AMBIENT_DAY = new THREE.Color('#e4e7de');
 const scratch = new THREE.Color();
-// The moving sun makes autoUpdate redraw the park's whole depth map every
-// frame. Every other frame is indistinguishable and halves that cost.
-const SHADOW_UPDATE_INTERVAL = 2;
+// Every frame: skinned figures animate every frame, and a half-rate depth map
+// lets their self-shadowing lag the pose on alternate frames, which reads as
+// lighting flicker in the clothing. Recover cost with map size or distance,
+// not update rate.
+const SHADOW_UPDATE_INTERVAL = 1;
 export default function SkyRig({
   config,
   runtime,
