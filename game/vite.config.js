@@ -97,5 +97,6 @@ export default {
   resolve: { dedupe: ['three'] },
   // Pre-bundling would inline the wasm again before rapierWasmAsset can see it.
   optimizeDeps: { exclude: ['@dimforge/rapier3d-compat'] },
-  server: { host: '127.0.0.1', port: 5175, strictPort: true },
+  // PORT lets a second dev server run when 5175 is already taken.
+  server: { host: '127.0.0.1', port: Number(process.env.PORT) || 5175, strictPort: true },
 };
