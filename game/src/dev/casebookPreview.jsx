@@ -75,6 +75,7 @@ createRoot(document.getElementById('root')).render(
       onClose={() => {}}
       patients={CONSULTATION_PATIENTS}
       day={{ year: 1896, month: 6, date: 15 }}
+      onSeePatient={(patient) => console.info('see patient', patient.id)}
     />
   </div>,
 );

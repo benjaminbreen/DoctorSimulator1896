@@ -10,6 +10,7 @@ import {
 } from '../world/throwablePlay.js';
 import { throwableDefinition } from '../world/throwables.js';
 import { queueCarriageProjectileHit } from '../world/carriageImpacts.js';
+import { queueActorImpact } from '../world/actorImpacts.js';
 import { terrainHeight } from '../world/terrain.js';
 import { notice } from '../world/notices.js';
 import { gameDebug } from '../debug.js';
@@ -20,6 +21,9 @@ import {
   resolvedImpactVelocity,
 } from '../world/projectileImpacts.js';
 
+// Every collider that is a person. Police and doormen carry their own kind
+// but are hit exactly as a pedestrian is.
+const PERSON_KINDS = new Set(['pedestrian', 'policeman', 'doorman']);
 const GRAVITY = -9.81;
 const GUIDE_POINTS = 34;
 const GUIDE_STEP = 0.075;
@@ -147,6 +151,19 @@ function ThrownObject({ item, onImpact, onExpire }) {
     body.current.setTranslation({ x: pushed[0], y: pushed[1], z: pushed[2] }, true);
     if (speed < 1.5 || age.current - lastImpact.current < 0.16) return;
     lastImpact.current = age.current;
+    // A struck person reacts through the shared impact queue: a lobbed apple
+    // earns a flinch, a hard throw a stagger (actorReactions decides). The
+    // label rides along because the confrontation names what was thrown, and
+    // every kind of NPC counts here, not only the crowd rigs.
+    const actorId = other?.rigidBodyObject?.userData?.actorId;
+    if (actorId && PERSON_KINDS.has(kind)) {
+      queueActorImpact(actorId, {
+        cause: 'projectile',
+        sourceVelocity: incoming,
+        direction: [incoming[0], incoming[2]],
+        itemLabel: definition.label,
+      });
+    }
     const carriageId = kind === 'horseless-carriage'
       ? other.rigidBodyObject.userData.carriageId
       : null;

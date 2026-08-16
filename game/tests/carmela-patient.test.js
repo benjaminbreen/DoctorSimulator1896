@@ -125,16 +125,16 @@ test('discovered evidence promotes stimulant-amplified palpitation in the short 
 
 test('a flattering supernatural path feels good immediately but worsens Carmela at one month', () => {
   const evidence = discoverFocusedEvidence();
-  const focused = finish(evidence, 'carmela-dx-nervous-coca', 'carmela-tx-stop-coca');
-  const warning = finish(evidence, 'carmela-dx-presentiment', 'carmela-tx-heed-warning');
+  const focused = finish(evidence, 'carmela-dx-nervous-coca', 'drug-stop-tonic');
+  const warning = finish(evidence, 'carmela-dx-presentiment', 'mind-endorse');
   assert.equal(focused.stage, 'result');
   assert.equal(focused.result.summary.questionsAsked, 5);
   assert.equal(focused.result.summary.examinationsPerformed, 1);
   assert.equal(focused.result.summary.minutesUsed, 30);
   assert.equal(focused.result.immediate.paymentCents, 300);
-  assert.ok(focused.result.oneMonth.healthChange > 0);
+  assert.ok(focused.result.oneMonth.recovery > 0);
   assert.ok(warning.result.immediate.satisfaction > focused.result.immediate.satisfaction);
-  assert.ok(warning.result.oneMonth.healthChange < 0);
+  assert.ok(warning.result.oneMonth.recovery < 0);
   assert.match(warning.result.oneMonth.narrative, /sphere of danger has widened/);
 });
 
@@ -148,7 +148,7 @@ test('dismissal and economically impossible rest can reduce Carmela’s fee', ()
   });
   state = ask(state, 'carmela-ask-shop');
   state = consultationTransition(state, patient, { type: 'examine', id: 'carmela-exam-cardiorespiratory' });
-  const result = finish(state, 'carmela-dx-irritable-heart', 'carmela-tx-rest-cure');
+  const result = finish(state, 'carmela-dx-irritable-heart', 'rest-cure-home');
   assert.equal(result.result.immediate.paymentCents, 150);
   assert.equal(result.result.immediate.paymentLabel, 'Reduced fee paid');
   assert.ok(result.result.immediate.satisfactionOutOfTen < 5);

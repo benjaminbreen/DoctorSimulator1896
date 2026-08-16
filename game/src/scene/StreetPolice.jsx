@@ -9,6 +9,14 @@ import { damp, dampAngle } from '../movement/mathUtils.js';
 import { handlesAlive } from '../physics/useCharacterController.js';
 import { gameDebug } from '../debug.js';
 import { listAgents, removeAgent, reportAgent } from '../world/agents.js';
+import { clearActorImpacts, takeActorImpacts } from '../world/actorImpacts.js';
+import {
+  confrontationFor,
+  provokeConfrontation,
+  releaseConfrontation,
+  stepConfrontation,
+} from '../world/confrontation.js';
+import { hashString } from '../world/npcIdentity.js';
 import {
   latestMajorStreetEventId,
   majorStreetEventsSince,
@@ -106,6 +114,22 @@ function returnToIdle(actor) {
   actor.active = null;
   actor.activeName = null;
   actor.priority = -1;
+}
+
+// A confrontation outranks every gesture and loops until it is over, so it
+// bypasses playGesture's priority and one-shot handling entirely.
+function playConfrontLoop(actor, name) {
+  if (actor.confrontPose === name) return;
+  actor.confrontPose = name;
+  const next = actor.actions[name];
+  if (!next) return;
+  actor.active?.fadeOut(0.15);
+  actor.idle.fadeOut(0.15);
+  next.reset().setLoop(THREE.LoopRepeat, Infinity).fadeIn(0.15).play();
+  actor.active = next;
+  actor.activeName = name;
+  actor.priority = 9;
+  actor.gestureUntil = Infinity;
 }
 
 export default function StreetPolice({ runtime }) {
@@ -213,6 +237,7 @@ export default function StreetPolice({ runtime }) {
       actor.figure.visible = !isSpeechAudience || Boolean(speechAudience);
       if (isSpeechAudience && !speechAudience) {
         removeAgent(actor.post.id);
+        releaseConfrontation(actor.post.id);
         if (handlesAlive(world, actor.body, actor.collider)) {
           actor.body.setNextKinematicTranslation({ x: 0, y: -100, z: 0 });
         }
@@ -231,15 +256,62 @@ export default function StreetPolice({ runtime }) {
       actor.sidestep = damp(actor.sidestep, sidestepTarget, 3.8, delta);
       actor.worldX = x;
       actor.worldZ = z + actor.sidestep;
+
+      // Being pelted takes an officer off his post. He walks over, says his
+      // piece, and afterwards drifts back to the post placement above.
+      for (const impact of takeActorImpacts(actor.post.id)) {
+        if (impact.cause !== 'projectile') continue;
+        provokeConfrontation(actor.post.id, {
+          itemLabel: impact.itemLabel,
+          kind: 'policeman',
+          name: 'A policeman',
+          dialogueId: actor.post.id,
+          now,
+        });
+      }
+      const march = confrontationFor(actor.post.id)
+        ? stepConfrontation(actor.post.id, {
+          x: actor.worldX,
+          z: actor.worldZ,
+          playerX: player[0],
+          playerZ: player[2],
+          delta,
+          now,
+        })
+        : null;
+      if (march) {
+        actor.worldX = march.x;
+        actor.worldZ = march.z;
+        actor.targetYaw = march.yaw;
+        playConfrontLoop(actor, march.walking ? 'Walk' : 'StandingArguing');
+      } else if (actor.confrontPose) {
+        actor.confrontPose = null;
+        actor.gestureUntil = 0;
+        releaseConfrontation(actor.post.id);
+        returnToIdle(actor);
+      }
       if (handlesAlive(world, actor.body, actor.collider)) {
-        actor.body.setNextKinematicTranslation({ x, y, z: actor.worldZ });
+        actor.body.setNextKinematicTranslation({ x: actor.worldX, y, z: actor.worldZ });
       }
       reportAgent(actor.post.id, actor.worldX, actor.worldZ, 0.42, {
         kind: 'policeman',
         gender: 'male',
         velocity: [0, (sidestepTarget - actor.sidestep) * 3.8],
         trafficClearance: speechAudience ? undefined : POLICE_TRAFFIC_CLEARANCE,
+        dialogueId: actor.post.id,
+        dialogueName: 'A policeman',
+        dialogueContext: {
+          archetype: 'p',
+          role: 'police',
+          activity: 'standing',
+          hour: runtime.values.timeOfDay,
+          seed: hashString(actor.post.id),
+        },
       });
+
+      // Mid-confrontation nothing else gets a say: no bump gesture for the
+      // player standing in front of him, no traffic nods, no post fidgets.
+      if (march) continue;
 
       const playerDistance = Math.hypot(actor.worldX - player[0], actor.worldZ - player[2]);
       const bumping = playerDistance < PLAYER_BUMP_DISTANCE;
@@ -328,6 +400,8 @@ export default function StreetPolice({ runtime }) {
     gameDebug.streetPolice = [];
     for (const actor of actors) {
       removeAgent(actor.post.id);
+      clearActorImpacts(actor.post.id);
+      releaseConfrontation(actor.post.id);
       actor.mixer.stopAllAction();
       actor.figure.traverse((node) => {
         if (!node.isMesh && !node.isSkinnedMesh) return;

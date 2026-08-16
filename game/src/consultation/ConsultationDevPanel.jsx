@@ -1,3 +1,4 @@
+import { TREATMENT_LIBRARY, resolveTreatment } from './treatments.js';
 import { useState, useSyncExternalStore } from 'react';
 import { patientProfileRows } from '../../../shared/patients/profile.js';
 
@@ -147,7 +148,7 @@ export default function ConsultationDevPanel({ runtime, onRegenerate }) {
           </div>
           <div className="grid gap-1">
             <p className="text-[10px] uppercase tracking-wider text-neutral-400">Treatment</p>
-            {patient.treatments.map((item) => <Button key={item.id} selected={state.treatmentId === item.id} onClick={() => runtime.dispatch({ type: 'select-treatment', id: item.id })}>{item.label}</Button>)}
+            {TREATMENT_LIBRARY.map((base) => { const item = resolveTreatment(patient, base.id); return <Button key={item.id} selected={(state.treatmentIds || []).includes(item.id)} onClick={() => runtime.dispatch({ type: 'select-treatment', id: item.id })}>{item.label}</Button>; })}
           </div>
           <Button onClick={() => runtime.dispatch({ type: 'begin-case-note' })}>Write case note</Button>
         </div>

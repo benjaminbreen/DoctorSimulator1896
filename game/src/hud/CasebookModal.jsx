@@ -83,10 +83,10 @@ function Paperclip() {
     <svg className="casebook-paperclip" viewBox="0 0 24 68" aria-hidden="true">
       <defs>
         <linearGradient id="casebook-clip-brass" x1="0" y1="0" x2="1" y2="0.35">
-          <stop offset="0" stopColor="#5c4d2c" />
-          <stop offset="0.28" stopColor="#efdfae" />
-          <stop offset="0.55" stopColor="#9a8449" />
-          <stop offset="1" stopColor="#4e4227" />
+          <stop offset="0" stopColor="#7d6c46" />
+          <stop offset="0.3" stopColor="#d9c79a" />
+          <stop offset="0.6" stopColor="#9c8956" />
+          <stop offset="1" stopColor="#6d5e3a" />
         </linearGradient>
       </defs>
       <path
@@ -124,7 +124,9 @@ function VisitTimeline({ record, expanded = false }) {
                 <p key={entry.id}><strong>{entry.label}:</strong> {entry.text}</p>
               ))}
               {visit.diagnosis && <p><strong>Assessment:</strong> <em>{visit.diagnosis.label} — provisional.</em></p>}
-              {visit.treatment && <p><strong>Treatment:</strong> <em>{visit.treatment.label}.</em></p>}
+              {visit.treatments?.length > 0 && (
+                <p><strong>Treatment:</strong> <em>{visit.treatments.map((item) => item.label).join('; ')}.</em></p>
+              )}
               {expanded && visit.caseNote && <blockquote>{visit.caseNote}</blockquote>}
             </div>
           </li>
@@ -214,7 +216,7 @@ function NotesEditor({ patient, notes, setNotes, onDone }) {
   );
 }
 
-function RecordPaper({ patient, record, status, notes, setNotes, tab, setTab, onBack }) {
+function RecordPaper({ patient, record, status, notes, setNotes, tab, setTab, onBack, onSeePatient }) {
   const visits = record?.visits || [];
   const latestVisit = visits.at(-1);
   const occupation = titleCase(patient.profile.social.occupation);
@@ -231,6 +233,7 @@ function RecordPaper({ patient, record, status, notes, setNotes, tab, setTab, on
         </div>
         <div className="casebook-record-identity">
           <h2>{patientName(patient)}</h2>
+          <span className="casebook-name-rule" aria-hidden="true" />
           <div className="casebook-identity-meta">
             <div>
               <p>{occupation} <b aria-hidden="true">·</b> <span>Age {patient.profile.identity.age}</span></p>
@@ -238,6 +241,12 @@ function RecordPaper({ patient, record, status, notes, setNotes, tab, setTab, on
             </div>
             <span className={`casebook-status-stamp is-${status.id}`}>{status.legend}</span>
           </div>
+          {status.id === 'waiting' && onSeePatient && (
+            <button type="button" className="casebook-see-patient" onClick={() => onSeePatient(patient)}>
+              See patient
+              <span aria-hidden="true">→</span>
+            </button>
+          )}
           <nav className="casebook-tabs" role="tablist" aria-label="Patient record sections">
             {[
               ['overview', 'Overview', null],
@@ -303,10 +312,10 @@ function RecordPaper({ patient, record, status, notes, setNotes, tab, setTab, on
   );
 }
 
-export default function CasebookModal({ open, onClose, patients = [], day }) {
+export default function CasebookModal({ open, onClose, patients = [], day, onSeePatient, initialPatientId = null }) {
   useSyncExternalStore(subscribeCasebook, getCasebookRevision, getCasebookRevision);
   const records = getCasebookRecords();
-  const [selectedId, setSelectedId] = useState(patients[0]?.id || null);
+  const [selectedId, setSelectedId] = useState(initialPatientId || patients[0]?.id || null);
   const [filter, setFilter] = useState('active');
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState('overview');
@@ -339,6 +348,14 @@ export default function CasebookModal({ open, onClose, patients = [], day }) {
   useEffect(() => {
     if (!open) setMobileRecordOpen(false);
   }, [open]);
+
+  // Opened from the patient queue: jump straight to that record, and on a
+  // phone show the record rather than the index.
+  useEffect(() => {
+    if (!open || !initialPatientId) return;
+    setSelectedId(initialPatientId);
+    setMobileRecordOpen(true);
+  }, [open, initialPatientId]);
 
   if (!open || !selected) return null;
   const dateLine = `${MONTHS[(day?.month || 1) - 1]} ${day?.date || 1}, ${day?.year || 1896}`;
@@ -428,6 +445,7 @@ export default function CasebookModal({ open, onClose, patients = [], day }) {
             tab={tab}
             setTab={setTab}
             onBack={() => setMobileRecordOpen(false)}
+            onSeePatient={onSeePatient}
           />
         </main>
       </section>

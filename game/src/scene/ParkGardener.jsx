@@ -5,13 +5,22 @@ import { CapsuleCollider, RigidBody } from '@react-three/rapier';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
+import { gameDebug } from '../debug.js';
 import { removeAgent, reportAgent } from '../world/agents.js';
+import { clearActorImpacts, takeActorImpacts } from '../world/actorImpacts.js';
+import {
+  confrontationFor,
+  provokeConfrontation,
+  releaseConfrontation,
+  stepConfrontation,
+} from '../world/confrontation.js';
 import {
   PARK_GARDENER_MODEL_FILE,
   PARK_GARDENER_MOTION_FILE,
   parkGardenerScheduleState,
 } from '../world/parkGardener.js';
 import { normalizeNonmetallicCharacterMaterial } from './characterMaterials.js';
+import { fadeInAction } from './characterGestures.js';
 import { findMixamoBone } from './walkingStick.js';
 import { buildWateringCan } from './wateringCan.js';
 
@@ -45,7 +54,9 @@ function setAnimation(actor, state) {
     );
   }
   previous?.fadeOut(ACTION_BLEND_SECONDS);
-  action.fadeIn(ACTION_BLEND_SECONDS).play();
+  // Through fadeInAction: a clip returned to after its fade-out completed is
+  // disabled, and would otherwise stay at zero weight in the bind pose.
+  fadeInAction(action, ACTION_BLEND_SECONDS);
   actor.action = action;
   actor.mixer.update(0);
 }
@@ -96,27 +107,77 @@ export default function ParkGardener({ runtime }) {
       action,
       phase: null,
       body: null,
+      marchX: null,
+      marchZ: null,
     };
   }, [modelGltf, motionGltf]);
 
   useFrame((_, delta) => {
     const step = Math.min(delta, 0.1);
     const state = parkGardenerScheduleState(runtime.values.timeOfDay);
-    setAnimation(actor, state);
+
+    // Being pelted takes him off the beds: he walks over and objects, then
+    // the schedule picks him back up wherever it had reached.
+    for (const impact of takeActorImpacts(ACTOR_ID)) {
+      if (impact.cause !== 'projectile') continue;
+      provokeConfrontation(ACTOR_ID, {
+        itemLabel: impact.itemLabel,
+        kind: 'gardener',
+        name: 'The park keeper',
+        dialogueId: 'park-keeper',
+        now: performance.now() / 1000,
+      });
+    }
+    const player = gameDebug.player.position;
+    const march = state.active && confrontationFor(ACTOR_ID)
+      ? stepConfrontation(ACTOR_ID, {
+        x: actor.marchX ?? state.position[0],
+        z: actor.marchZ ?? state.position[2],
+        playerX: player[0],
+        playerZ: player[2],
+        delta,
+        now: performance.now() / 1000,
+      })
+      : null;
+    if (march) {
+      actor.marchX = march.x;
+      actor.marchZ = march.z;
+      setAnimation(actor, {
+        phase: `confront:${march.phase}`,
+        animation: march.walking ? 'Walking' : 'StandingArguing',
+      });
+    } else {
+      if (actor.marchX !== null) releaseConfrontation(ACTOR_ID);
+      actor.marchX = null;
+      actor.marchZ = null;
+      setAnimation(actor, state);
+    }
     actor.mixer.update(step);
     actor.wrapper.visible = state.active;
-    actor.wrapper.rotation.y = state.yaw;
+    actor.wrapper.rotation.y = march ? march.yaw : state.yaw;
     actor.figure.rotation.x = 0;
     actor.figure.rotation.z = 0;
-    actor.wateringCan.group.visible = state.active && state.carryingCan;
+    actor.wateringCan.group.visible = state.active && state.carryingCan && !march;
     actor.body?.setNextKinematicTranslation({
-      x: state.position[0], y: state.position[1], z: state.position[2],
+      x: march ? march.x : state.position[0],
+      y: state.position[1],
+      z: march ? march.z : state.position[2],
     });
     if (state.active) {
       const moving = state.moving === true;
-      reportAgent(ACTOR_ID, state.position[0], state.position[2], 0.44, {
+      reportAgent(ACTOR_ID, march ? march.x : state.position[0], march ? march.z : state.position[2], 0.44, {
         kind: 'gardener',
         gender: 'male',
+        dialogueId: 'park-keeper',
+        dialogueName: 'The park keeper',
+        // Procedural identity: same seed all playthrough, rerolled next one.
+        dialogueContext: {
+          archetype: 'g',
+          role: 'keeper',
+          activity: state.animation === 'BenchRest' ? 'resting' : 'working',
+          hour: runtime.values.timeOfDay,
+          seed: 7,
+        },
         velocity: moving
           ? [Math.sin(state.yaw) * 1.3, Math.cos(state.yaw) * 1.3]
           : [0, 0],
@@ -130,6 +191,8 @@ export default function ParkGardener({ runtime }) {
 
   useEffect(() => () => {
     removeAgent(ACTOR_ID);
+    clearActorImpacts(ACTOR_ID);
+    releaseConfrontation(ACTOR_ID);
     actor.mixer.stopAllAction();
     actor.wateringCan.dispose();
     actor.figure.traverse((node) => {

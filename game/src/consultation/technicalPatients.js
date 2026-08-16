@@ -6,43 +6,33 @@ export const DEFAULT_TECHNICAL_PATIENT_SEEDS = Object.freeze([2273, 4819, 4816])
 const PRESENTATION_DETAILS = Object.freeze({
   'neurasthenic-exhaustion': Object.freeze({
     diagnoses: ['Neurasthenic exhaustion', 'Anaemic debility'],
-    treatments: ['Rest and regulated sleep', 'Galvanic treatment'],
   }),
   'melancholic-withdrawal': Object.freeze({
     diagnoses: ['Melancholia', 'Neurasthenic exhaustion'],
-    treatments: ['Change of scene and companionship', 'Rest and nourishing diet'],
   }),
   'anxious-palpitations': Object.freeze({
     diagnoses: ['Nervous palpitation', 'Neurasthenic exhaustion'],
-    treatments: ['Rest and regulated breathing', 'Galvanic treatment'],
   }),
   'persistent-insomnia': Object.freeze({
     diagnoses: ['Nervous insomnia', 'Neurasthenic exhaustion'],
-    treatments: ['Regulated sleep and exercise', 'Bromide draught'],
   }),
   'bereavement-visions': Object.freeze({
     diagnoses: ['Morbid grief', 'Nervous exhaustion'],
-    treatments: ['Companionship and observation', 'Rest and regulated sleep'],
   }),
   'compulsive-fears': Object.freeze({
     diagnoses: ['Fixed nervous apprehension', 'Neurasthenic exhaustion'],
-    treatments: ['Regulated occupation and exercise', 'Rest and seclusion'],
   }),
   'functional-tremor': Object.freeze({
     diagnoses: ['Hysterical tremor', 'Neurasthenic exhaustion'],
-    treatments: ['Rest and graduated exercise', 'Galvanic treatment'],
   }),
   'traumatic-fright': Object.freeze({
     diagnoses: ['Nervous shock', 'Neurasthenic exhaustion'],
-    treatments: ['Rest and removal from reminders', 'Galvanic treatment'],
   }),
   'morphine-habit': Object.freeze({
     diagnoses: ['Morphine habit', 'Neurasthenic exhaustion'],
-    treatments: ['Supervised gradual withdrawal', 'Rest and nourishing diet'],
   }),
   'postpartum-disturbance': Object.freeze({
     diagnoses: ['Puerperal mental disturbance', 'Melancholia'],
-    treatments: ['Close nursing and rest', 'Removal from household duties'],
   }),
 });
 
@@ -179,7 +169,6 @@ function consultationFor(profile, index) {
   const facts = [...symptoms, ...signs];
   const withheld = symptoms.filter((fact) => fact.disclosure === 'withheld');
   const diagnoses = details?.diagnoses || [profile.clinical.periodCategory, 'Neurasthenic exhaustion'];
-  const treatments = details?.treatments || ['Rest and observation', 'Galvanic treatment'];
   const subject = profile.identity.sex === 'male' ? 'He' : 'She';
   const bearing = ['weary', 'sad'].includes(profile.clinical.affect)
     ? 'settles wearily into the chair and takes a moment before speaking'
@@ -208,12 +197,6 @@ function consultationFor(profile, index) {
       label,
       reputation: diagnosisIndex === 0 ? 4 : 1,
       record: diagnosisIndex === 0 ? 4 : 1,
-    })),
-    treatments: treatments.map((label, treatmentIndex) => ({
-      id: `${prefix}-treatment-${treatmentIndex + 1}`,
-      label,
-      reputation: treatmentIndex === 0 ? 4 : 1,
-      record: treatmentIndex === 0 ? 3 : 0,
     })),
     requiredFactIds: [withheld[0].id, signs[0].id],
   };

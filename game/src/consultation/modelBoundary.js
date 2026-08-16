@@ -1,3 +1,5 @@
+import { resolveTreatmentPlan } from './treatments.js';
+
 function factForModel(fact) {
   return {
     id: fact.id,
@@ -64,7 +66,7 @@ function periodRecord(patient, state, result) {
     knownFacts: known.map(factForModel),
     interpretations: state.history.filter((event) => event.kind === 'interpretation').map((event) => event.text),
     diagnosis: patient.diagnoses.find((item) => item.id === state.diagnosisId)?.label,
-    treatment: patient.treatments.find((item) => item.id === state.treatmentId)?.label,
+    treatment: resolveTreatmentPlan(patient, state.treatmentIds)?.treatments.map((item) => item.label).join('; '),
     caseNote: state.caseNote,
     immediate: result.immediate,
     oneMonth: result.oneMonth,
@@ -87,7 +89,7 @@ export function buildModernDebriefModelPayload(patient, state, result) {
     task: 'render-modern-debrief',
     record: periodRecord(patient, state, result),
     groundTruth: patient.groundTruth,
-    treatmentEffects: patient.treatments.find((item) => item.id === state.treatmentId)?.evaluation,
+    treatmentEffects: resolveTreatmentPlan(patient, state.treatmentIds)?.evaluation,
     instruction: 'Explain the supplied cause, evidence, decision quality, and outcome. Do not add or revise facts or scores.',
   };
 }

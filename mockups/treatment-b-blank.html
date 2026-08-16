@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Treatment — Option B, The Prescription Blank</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500&family=Cormorant+SC:wght@500;600;700&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&family=Tangerine:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink-0:#050908; --ink-1:#0a1210;
+  --panel-a:rgba(15,26,22,.74); --panel-b:rgba(7,13,11,.88);
+  --line:rgba(203,168,92,.30); --line-soft:rgba(203,168,92,.14); --line-hot:rgba(240,199,116,.9);
+  --cream:#ecdfbe; --cream-hi:#f7efd7; --cream-dim:rgba(236,223,190,.60); --cream-faint:rgba(236,223,190,.30);
+  --gold:#e3aa4e; --gold-soft:#c9a45a;
+  --radium:#9fe0ab; --radium-line:rgba(159,224,171,.85);
+  /* the paper */
+  --paper:#e8dcc0; --paper-hi:#f2e9d4; --paper-line:rgba(96,74,44,.16);
+  --iron:#3b2f22; --iron-soft:rgba(59,47,34,.62); --red-ink:#8c3a24;
+  --serif:'Libre Caslon Text',Georgia,serif;
+  --display:'Bodoni Moda',Georgia,serif;
+  --sc:'Cormorant SC',serif;
+  --hand:'Tangerine',cursive;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; font-family:var(--serif); color:var(--cream);
+  background:
+    radial-gradient(110% 80% at 50% 0%, rgba(56,42,24,.5), transparent 62%),
+    radial-gradient(70% 60% at 88% 84%, rgba(70,52,24,.30), transparent 62%),
+    linear-gradient(180deg,#0b0906,#040503 72%);
+  min-height:100vh; display:flex; flex-direction:column; overflow-x:hidden;
+}
+body::after{
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:5;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .94 0 0 0 0 .87 0 0 0 0 .70 0 0 0 .04 0'/%3E%3C/filter%3E%3Crect width='150' height='150' filter='url(%23n)'/%3E%3C/svg%3E") repeat;
+}
+
+.bar{
+  position:relative; z-index:2; display:flex; align-items:center; gap:26px;
+  padding:12px 26px; border-bottom:1px solid var(--line-soft);
+  background:linear-gradient(180deg,rgba(5,9,8,.92),rgba(5,9,8,.5));
+}
+.bar h1{margin:0; font-family:var(--display); font-size:17px; font-weight:400; color:var(--cream-hi)}
+.bar .sub{font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--cream-faint); margin-top:2px}
+.bar .clock{margin-left:auto; text-align:right; font-family:var(--display); font-size:15px; color:var(--gold)}
+.bar .clock span{display:block; font-family:var(--sc); font-size:10px; letter-spacing:.22em; color:var(--cream-faint)}
+
+.stage{position:relative; z-index:2; flex:1; display:flex; align-items:center; justify-content:center; padding:22px 20px 30px}
+.wrap{width:min(1320px,100%)}
+
+.title{text-align:center; margin-bottom:16px}
+.title h2{margin:0; font-family:var(--display); font-weight:400; font-size:clamp(26px,3vw,38px); color:var(--cream-hi)}
+.title .who{margin-top:7px; font-family:var(--sc); font-size:12px; letter-spacing:.26em; text-transform:uppercase; color:var(--gold-soft)}
+
+/* three columns: rail · options · paper */
+.cols{display:grid; grid-template-columns:236px 1fr 372px; gap:16px; align-items:start}
+
+.card{
+  position:relative; border:1px solid var(--line); border-radius:9px;
+  background:radial-gradient(140% 90% at 50% 0%, rgba(44,64,52,.2), transparent 58%), linear-gradient(180deg,var(--panel-a),var(--panel-b));
+  box-shadow:0 22px 60px rgba(0,0,0,.6), inset 0 0 0 1px rgba(3,6,5,.8), inset 0 0 48px rgba(0,4,2,.45);
+}
+.card::after{content:''; position:absolute; inset:6px; border:1px solid var(--line-soft); border-radius:5px; pointer-events:none}
+.eyebrow{
+  font-family:var(--sc); font-size:10.5px; font-weight:700; letter-spacing:.3em; text-transform:uppercase;
+  color:var(--gold-soft); margin:0; padding:15px 18px 11px;
+}
+
+/* ---------- rail ---------- */
+.rail{padding:0 12px 14px}
+.rail button{
+  position:relative; display:flex; align-items:center; gap:12px; width:100%; margin-bottom:6px;
+  padding:11px 12px; border:1px solid transparent; border-radius:6px; cursor:pointer;
+  background:rgba(255,250,235,.014); font-family:var(--serif); font-size:14.5px; text-align:left; color:var(--cream);
+  transition:border-color .16s, background .16s, color .16s;
+}
+.rail button svg{width:20px;height:20px;stroke:var(--gold-soft);fill:none;stroke-width:1.15;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+.rail button small{display:block; font-family:var(--sc); font-size:9.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--cream-faint); margin-top:2px}
+.rail button:hover{border-color:var(--line-soft); background:rgba(255,250,235,.035); color:var(--cream-hi)}
+.rail button:focus-visible{outline:2px solid var(--radium-line); outline-offset:1px}
+.rail button.on{
+  border-color:var(--radium-line); background:linear-gradient(180deg,rgba(22,46,32,.72),rgba(10,20,15,.8)); color:#eafbe6;
+  box-shadow:0 0 10px rgba(120,220,150,.2);
+}
+.rail button.on svg{stroke:var(--radium)}
+.rail .sep{height:1px; margin:9px 6px; background:linear-gradient(90deg,transparent,var(--line-soft),transparent)}
+
+/* ---------- options ---------- */
+.opts{padding:0 16px 16px; display:grid; grid-template-columns:repeat(2,1fr); gap:9px}
+.opt{
+  position:relative; padding:12px 14px; cursor:pointer; text-align:left; color:var(--cream);
+  border:1px solid var(--line); border-radius:6px; font-family:var(--serif);
+  background:linear-gradient(180deg,rgba(16,27,22,.5),rgba(8,14,12,.62));
+  transition:border-color .16s,box-shadow .16s,background .16s;
+}
+.opt:hover{border-color:rgba(240,199,116,.62)}
+.opt:focus-visible{outline:2px solid var(--radium-line); outline-offset:2px}
+.opt .row{display:flex; align-items:baseline; gap:10px}
+.opt .t{font-size:15px; color:var(--cream-hi); line-height:1.28; flex:1}
+.opt .fee{font-family:var(--display); font-size:13px; color:var(--gold); white-space:nowrap}
+.opt .d{display:block; margin-top:3px; font-size:12.5px; font-style:italic; color:var(--cream-dim); line-height:1.4}
+.opt.on{
+  border-color:var(--radium-line); background:linear-gradient(180deg,rgba(22,44,31,.72),rgba(10,20,15,.82));
+  box-shadow:0 0 1px rgba(190,255,205,.8),0 0 10px rgba(120,220,150,.28),0 0 24px rgba(90,200,130,.13);
+}
+.opt.on .t{color:#f2ffe9}
+.opt .objection{
+  display:flex; gap:8px; margin-top:9px; padding-top:8px;
+  border-top:1px dashed rgba(224,139,98,.34);
+  font-size:12px; font-style:italic; line-height:1.45; color:#e08b62;
+}
+.opt .objection b{font-style:normal; font-family:var(--sc); font-weight:700; letter-spacing:.14em;
+  text-transform:uppercase; font-size:9.5px; color:rgba(224,139,98,.85); flex:0 0 auto; padding-top:2px}
+
+.custombox{padding:0 16px 16px}
+.custombox textarea{
+  width:100%; min-height:110px; resize:vertical; padding:13px 15px;
+  border:1px dashed rgba(203,168,92,.42); border-radius:6px; background:rgba(6,11,9,.5);
+  color:var(--cream-hi); font-family:var(--serif); font-size:15px; line-height:1.55;
+}
+.custombox textarea::placeholder{color:var(--cream-faint); font-style:italic}
+.custombox textarea:focus{outline:none; border-color:var(--line-hot); border-style:solid}
+.custombox .hint{margin:9px 2px 0; font-size:12.5px; font-style:italic; color:var(--cream-faint)}
+
+/* ---------- the paper ---------- */
+.paper{
+  position:relative; padding:26px 26px 20px; border-radius:3px; color:var(--iron);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.34), transparent 12%),
+    repeating-linear-gradient(180deg, transparent 0 33px, var(--paper-line) 33px 34px),
+    linear-gradient(168deg, var(--paper-hi), var(--paper) 42%, #ddd0b2 100%);
+  box-shadow:
+    0 24px 54px rgba(0,0,0,.62), 0 2px 0 rgba(255,255,255,.2) inset,
+    -1px 0 0 rgba(120,96,58,.2) inset;
+  transform:rotate(-.35deg);
+}
+/* torn top edge of a pad sheet */
+.paper::before{
+  content:''; position:absolute; left:0; right:0; top:-3px; height:6px;
+  background:repeating-linear-gradient(90deg, var(--paper-hi) 0 7px, transparent 7px 9px);
+  filter:drop-shadow(0 1px 0 rgba(120,96,58,.25));
+}
+.letterhead{text-align:center; border-bottom:1px solid rgba(96,74,44,.3); padding-bottom:11px; margin-bottom:6px}
+.letterhead .n{font-family:var(--display); font-size:16.5px; letter-spacing:.02em}
+.letterhead .a{font-family:'Old Standard TT',serif; font-size:10.5px; letter-spacing:.2em; text-transform:uppercase; color:var(--iron-soft); margin-top:3px}
+.patientline{display:flex; justify-content:space-between; align-items:baseline; font-family:'Old Standard TT',serif; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--iron-soft); padding:10px 0 4px}
+.patientline b{font-family:var(--hand); font-size:27px; letter-spacing:0; text-transform:none; color:var(--iron); font-weight:400; line-height:.8}
+
+.rx{display:flex; gap:14px; padding-top:8px; min-height:250px}
+.rx .sym{font-family:var(--display); font-size:44px; line-height:.9; color:var(--red-ink); flex:0 0 auto; padding-top:4px}
+.rx .sym sub{font-size:19px; vertical-align:baseline}
+.lines{flex:1; padding-top:2px}
+.lines .none{font-family:var(--serif); font-style:italic; font-size:13.5px; color:var(--iron-soft); padding-top:8px}
+.entry{
+  display:flex; align-items:flex-start; gap:9px; padding:1px 0 4px;
+  animation:ink .34s ease both;
+}
+@keyframes ink{from{opacity:0; transform:translateY(-3px)} to{opacity:1; transform:none}}
+.entry .txt{font-family:var(--hand); font-size:29px; line-height:1.06; color:var(--iron); flex:1}
+.entry .txt em{display:block; font-family:'Old Standard TT',serif; font-style:italic; font-size:11.5px; color:var(--iron-soft); line-height:1.4; margin-top:-1px}
+.entry button{
+  flex:0 0 auto; background:none; border:0; cursor:pointer; color:rgba(59,47,34,.4);
+  font-size:15px; line-height:1; padding:6px 2px 0;
+}
+.entry button:hover{color:var(--red-ink)}
+/* the objection, written in the margin */
+.margin-note{
+  margin:2px 0 8px 0; padding:6px 10px; border-left:2px solid rgba(140,58,36,.4);
+  font-family:'Old Standard TT',serif; font-style:italic; font-size:11.5px; line-height:1.45; color:var(--red-ink);
+}
+.sign{border-top:1px solid rgba(96,74,44,.3); margin-top:8px; padding-top:9px; display:flex; justify-content:space-between; align-items:flex-end}
+.sign .fee{font-family:'Old Standard TT',serif; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--iron-soft)}
+.sign .fee b{display:block; font-family:var(--display); font-size:21px; letter-spacing:0; text-transform:none; color:var(--iron); margin-top:2px}
+.sign .name{font-family:var(--hand); font-size:31px; color:var(--iron); line-height:.9; text-align:right}
+.sign .name small{display:block; font-family:'Old Standard TT',serif; font-size:9.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--iron-soft); margin-top:3px}
+
+.actions{display:flex; gap:10px; margin-top:14px}
+.btn{
+  flex:1; padding:11px 18px; border:1px solid var(--line); border-radius:6px; cursor:pointer;
+  font-family:var(--serif); font-size:14px; color:var(--cream);
+  background:linear-gradient(180deg,rgba(16,27,22,.6),rgba(8,14,12,.7)); transition:all .16s;
+}
+.btn:hover{border-color:var(--line-hot); color:var(--cream-hi)}
+.btn.go{border-color:var(--radium-line); color:#eafbe6; background:linear-gradient(180deg,rgba(22,48,32,.75),rgba(10,22,16,.82)); box-shadow:0 0 12px rgba(120,220,150,.2)}
+.btn.go:hover{box-shadow:0 0 20px rgba(120,220,150,.34)}
+
+@media (max-width:1180px){
+  .cols{grid-template-columns:210px 1fr; }
+  .paperwrap{grid-column:1/-1}
+  .paper{transform:none}
+}
+@media (max-width:760px){
+  .cols{grid-template-columns:1fr}
+  .opts{grid-template-columns:1fr}
+  .rail{display:flex; flex-wrap:wrap; gap:6px}
+  .rail button{width:auto; flex:1 0 44%; margin:0}
+  .rail .sep{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div>
+    <h1>Blackwell Nervous Disorders Clinic</h1>
+    <div class="sub">West 10th Street, New York</div>
+  </div>
+  <div class="clock">4:41 p.m.<span>Thursday · March 12, 1896</span></div>
+</div>
+
+<div class="stage">
+<div class="wrap">
+  <div class="title">
+    <h2>Consider Treatment</h2>
+    <div class="who">Miss Nora Byrne · aged 28 · copyist</div>
+  </div>
+
+  <div class="cols">
+
+    <!-- rail -->
+    <div class="card">
+      <p class="eyebrow">The cabinet</p>
+      <div class="rail" id="rail"></div>
+    </div>
+
+    <!-- options -->
+    <div class="card">
+      <p class="eyebrow" id="optHead">Drugs</p>
+      <div class="opts" id="opts"></div>
+      <div class="custombox" id="custombox" style="display:none">
+        <textarea placeholder="Write the prescription in your own words — a substance, a regimen, a combination, a course of your own devising…"></textarea>
+        <p class="hint">It will be read, matched to what the dispensary knows, and dispensed as written.</p>
+      </div>
+    </div>
+
+    <!-- paper -->
+    <div class="paperwrap">
+      <div class="paper">
+        <div class="letterhead">
+          <div class="n">Blackwell Nervous Disorders Clinic</div>
+          <div class="a">14 West 10th Street · New York</div>
+        </div>
+        <div class="patientline">
+          <span>For <b>Nora Byrne</b></span>
+          <span>12 March 1896</span>
+        </div>
+        <div class="rx">
+          <div class="sym">℞</div>
+          <div class="lines" id="lines"><p class="none">Nothing written yet.</p></div>
+        </div>
+        <div class="sign">
+          <div class="fee">Fee<b id="fee">$2.00</b></div>
+          <div class="name">Jno. Blackwell<small>attending</small></div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn go">Sign and hand it to her</button>
+        <button class="btn">Tear it up</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<script>
+const I = {
+  drug:'<path d="M9 3h6M10 3v4.2L5.8 16A3 3 0 0 0 8.5 20.5h7A3 3 0 0 0 18.2 16L14 7.2V3"/><path d="M6.6 14h10.8"/>',
+  rest:'<path d="M3 18v-6h13a5 5 0 0 1 5 5v1"/><path d="M3 18h18"/><path d="M3 8v4"/><circle cx="7.5" cy="9.5" r="2.2"/>',
+  diet:'<path d="M6 3v8a3 3 0 0 0 6 0V3"/><path d="M9 11v10"/><path d="M17.5 3c-1.6 1.6-2 3.4-2 5.5V13h4V8.5c0-2.1-.4-3.9-2-5.5Z"/><path d="M17.5 13v8"/>',
+  air:'<path d="M3 8h11a3 3 0 1 0-3-3"/><path d="M3 12h15a2.6 2.6 0 1 1-2.6 2.6"/><path d="M3 16h8a2.2 2.2 0 1 1-2.2 2.2"/>',
+  water:'<path d="M12 3s6 6.6 6 10.6A6 6 0 0 1 6 13.6C6 9.6 12 3 12 3Z"/><path d="M9.4 14.6a2.6 2.6 0 0 0 2.6 2.6"/>',
+  electric:'<path d="M13.5 2 5 13h5.5L9.5 22 19 10h-5.8l.3-8Z"/>',
+  mind:'<path d="M12 20.5c4.7 0 8.5-3.6 8.5-8S16.7 3.5 12 3.5 3.5 7.6 3.5 12c0 1.7.6 3.3 1.6 4.6L4 21l4.6-1.3a9 9 0 0 0 3.4.8Z"/><path d="M12 16c2 0 3.4-1.4 3.4-3.2S14 9.6 12.4 9.6c-1.3 0-2.2.9-2.2 2s.8 1.7 1.6 1.7"/>',
+  remove:'<path d="M13 3H5v18h8"/><path d="M9.5 12h11"/><path d="M17 8.2 20.8 12 17 15.8"/>',
+  custom:'<path d="M4 20c6.5.6 11-2.4 13.4-6.6C19.6 9.5 20.4 5.9 20 3c-3 .3-6.6 1.5-10 4.2C6.2 10 4 14.2 4 20Z"/><path d="M4 20 11 13"/>'
+};
+const CATS = [
+ {icon:'drug',name:'Drugs',note:'8 on the shelf',opts:[
+   ['Potassium bromide','15 gr. at night','calms excitation; dulls with use',1.25],
+   ['Chloral hydrate','20 gr. at bedtime','promotes quiet sleep',1.60],
+   ['Laudanum','10 drops as needed','quiets pain and the nerves',0.90],
+   ['Morphine, hypodermic','¼ gr.','certain relief; habit forms readily',2.40],
+   ['Cannabis indica','tincture, 5 drops','relieves nervous agitation',1.75],
+   ['Coca wine','a glass with meals','a restorative tonic',1.10],
+   ['Iron and arsenic','Fowler’s, 3 drops','for debility and poor colour',0.80],
+   ['Valerian','tincture, 1 dram','soothes nervous tension',0.55],
+ ]},
+ {icon:'rest',name:'Rest',note:'5 degrees',opts:[
+   ['An hour recumbent','daily, after dinner','curtains drawn, no reading',0],
+   ['Rest cure at home','six weeks','no reading, no visitors, no letters',4.00,
+    'Six weeks from the office costs her the place. She keeps her room on those wages.'],
+   ['Rest cure, sanatorium','six weeks resident','seclusion, massage, feeding, attendants',38.00,
+    'More than she earns in a quarter.'],
+   ['A fortnight at a resort','Saratoga','change of scene and regular hours',16.00],
+   ['Seclusion from family','one month','no callers',0],
+ ]},
+ {icon:'diet',name:'Diet & stimulants',note:'6 regimens',opts:[
+   ['Exclusive milk diet','four quarts daily','nothing else taken',2.20],
+   ['Feeding up','every two hours','cream, chops, and eggs',3.10],
+   ['Beef tea','three times daily','strengthens and supports',1.40],
+   ['Brandy','a wineglass, noon and night','as a stimulant',1.20],
+   ['Cod liver oil and malt','before meals','a spoonful',0.75],
+   ['Abstinence','tea, coffee, tobacco','and all excitement',0],
+ ]},
+ {icon:'air',name:'Exercise & air',note:'6 courses',opts:[
+   ['Graduated walking','a half mile, daily','increased weekly',0],
+   ['Swedish movements','with an attendant','medical gymnastics',6.00],
+   ['Change of air','one month','the country or the shore',14.00],
+   ['A sea voyage','six weeks','Atlantic passage',60.00],
+   ['The camp cure','the season','outdoor life, riding, rough living',22.00],
+   ['Mountain air','through summer','the Adirondacks',30.00],
+ ]},
+ {icon:'water',name:'Hydrotherapy',note:'6 applications',opts:[
+   ['Cold sponging','on rising','briskly, then friction',0],
+   ['The wet pack','one hour daily','wrapped in sheets',1.00],
+   ['Sitz bath','twice daily','tepid',0.60],
+   ['Turkish bath','weekly','followed by an hour’s rest',2.00],
+   ['Continuous warm bath','as required','for excitement and agitation',3.50],
+   ['A water cure','a fortnight resident','full course',24.00],
+ ]},
+ {icon:'electric',name:'Electrotherapy',note:'6 applications',opts:[
+   ['General faradization','15 minutes, thrice weekly','Beard’s method, head to foot',3.00],
+   ['Local faradization','to the affected hand','10 minutes',1.80],
+   ['Galvanization','10 minutes','constant current',2.20],
+   ['Central galvanization','spine and head','Beard’s technique',3.40],
+   ['Static electricity','weekly','the machine; sparks and breeze',4.00],
+   ['The electric bath','twice weekly','current passed through the water',5.00],
+ ]},
+ {icon:'mind',name:'Mind & suggestion',note:'7 approaches',opts:[
+   ['Hypnotic suggestion','weekly sittings','the symptom addressed under trance',3.00],
+   ['Hypnotic investigation','weekly sittings','reproduce the state and question it',3.00,
+    'Repeated questioning under suggestion has produced accounts that changed with the questions.'],
+   ['Persuasion','at each visit','tell her plainly what you believe is happening',0],
+   ['Moral management','continuing','firm authority; no indulgence',0],
+   ['Leave the circle','at once','no more sittings at Mrs. Bell’s',0],
+   ['Endorse the writing','develop the communications','accept Mary’s agency',0,
+    'She will be grateful. Nothing in the writings has contained anything she did not know.'],
+   ['Planchette, observed','under your eye','recorded as investigation',0],
+ ]},
+ {icon:'remove',name:'Removal & change',note:'6 changes',opts:[
+   ['Leave the trade','entirely','give up the copying desk',0,
+    'She has no other trade and no one to keep her.'],
+   ['Lighter work','same desk','fewer hours of close script',0],
+   ['Reduced hours','one month','half days',0],
+   ['Change of lodgings','at once','away from the damp',8.00],
+   ['Separation from household','a room elsewhere','of her own',12.00],
+   ['The country','a season','placed with relations upstate',18.00],
+ ]},
+];
+
+const rail=document.getElementById('rail'), optsEl=document.getElementById('opts'),
+      head=document.getElementById('optHead'), lines=document.getElementById('lines'),
+      feeEl=document.getElementById('fee'), custom=document.getElementById('custombox');
+const svg=k=>`<svg viewBox="0 0 24 24">${I[k]}</svg>`;
+const plan=[];
+
+CATS.forEach((c,i)=>{
+  const b=document.createElement('button'); b.type='button';
+  b.innerHTML=`${svg(c.icon)}<span>${c.name}<small>${c.note}</small></span>`;
+  b.onclick=()=>pick(i,b); rail.appendChild(b);
+});
+rail.insertAdjacentHTML('beforeend','<div class="sep"></div>');
+const cb=document.createElement('button'); cb.type='button';
+cb.innerHTML=`${svg('custom')}<span>In your own words<small>write it</small></span>`;
+cb.onclick=()=>pick(-1,cb); rail.appendChild(cb);
+
+function pick(i,btn){
+  [...rail.querySelectorAll('button')].forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  if(i<0){ head.textContent='In your own words'; optsEl.innerHTML=''; custom.style.display='block'; return; }
+  custom.style.display='none';
+  const c=CATS[i]; head.textContent=c.name; optsEl.innerHTML='';
+  c.opts.forEach(([t,dose,d,fee,objection])=>{
+    const b=document.createElement('button'); b.className='opt'; b.type='button';
+    b.innerHTML=`<span class="row"><span class="t">${t}</span><span class="fee">${fee?'$'+fee.toFixed(2):'—'}</span></span>`+
+      `<span class="d">${dose} · ${d}</span>`+
+      (objection?`<span class="objection"><b>She said</b><span>${objection}</span></span>`:'');
+    if(plan.find(p=>p.t===t)) b.classList.add('on');
+    b.onclick=()=>{
+      const on=!b.classList.contains('on'); b.classList.toggle('on',on);
+      const k=plan.findIndex(p=>p.t===t);
+      if(on&&k<0) plan.push({t,dose,fee,objection});
+      if(!on&&k>=0) plan.splice(k,1);
+      draw();
+    };
+    optsEl.appendChild(b);
+  });
+}
+
+function draw(){
+  if(!plan.length){ lines.innerHTML='<p class="none">Nothing written yet.</p>'; feeEl.textContent='$2.00'; return; }
+  lines.innerHTML = plan.map((p,i)=>
+    `<div class="entry"><span class="txt">${p.t}<em>${p.dose}</em></span>`+
+    `<button onclick="drop(${i})" aria-label="Strike out">×</button></div>`+
+    (p.objection?`<div class="margin-note">${p.objection}</div>`:'')
+  ).join('');
+  feeEl.textContent = '$'+(plan.reduce((a,p)=>a+p.fee,0)+2).toFixed(2);
+}
+window.drop=i=>{ const t=plan[i].t; plan.splice(i,1); draw();
+  [...optsEl.querySelectorAll('.opt')].forEach(o=>{ if(o.querySelector('.t').textContent===t) o.classList.remove('on'); }); };
+
+pick(0, rail.querySelector('button'));
+</script>
+</body>
+</html>

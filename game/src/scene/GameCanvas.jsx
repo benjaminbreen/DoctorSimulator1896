@@ -38,6 +38,7 @@ import {
   shouldRecycleWebGLContextOnTravel,
   webGLContextKey,
 } from './mobileGraphics.js';
+import { warmParkAssets } from './parkPreload.js';
 
 const Room = lazy(() => import('./Room.jsx'));
 const Furniture = lazy(() => import('./Furniture.jsx'));
@@ -89,7 +90,10 @@ const PARK_STAGE_LABELS = [
   'landmarks',
   'people-and-traffic',
 ];
-const PARK_FINAL_STAGE = PARK_STAGE_LABELS.length - 1;
+// A consulting room is smaller than a park but arrives the same way: shell
+// first so the player can see and move, then dressing, then the loose props
+// and instruments, then whoever is waiting in it.
+const INTERIOR_STAGE_LABELS = ['core', 'dressing', 'props', 'cast'];
 const PARK_LIFE_FEATURES = new Set([
   'pedestrians',
   'dandies',
@@ -97,6 +101,7 @@ const PARK_LIFE_FEATURES = new Set([
   'park-gardener',
   'hotel-doormen',
   'street-police',
+  'posted-npcs',
   'horseless-carriage',
   'horse-drawn-traffic',
   'pigeon-flock',
@@ -137,9 +142,16 @@ function CompiledStage({ stage, onRendered, children }) {
     let cancelled = false;
     let compilation;
     try {
-      // compileAsync walks visible objects when called. Hide the new group
-      // immediately afterwards so ordinary frames keep showing the last stage.
-      compilation = gl.compileAsync?.(scene, camera) ?? Promise.resolve();
+      // three reads the first argument as the new object to compile and the
+      // third as the scene it is joining, so this initializes only this
+      // stage's materials against the live lighting. Passing the whole scene
+      // as both — which is what omitting the third argument does — made every
+      // stage walk everything already compiled.
+      //
+      // Lights are gathered with traverseVisible, so the group has to still be
+      // visible here; materials are not, so hiding it straight afterwards is
+      // safe and keeps ordinary frames showing the previous stage.
+      compilation = gl.compileAsync?.(object, camera, scene) ?? Promise.resolve();
       object.visible = false;
     } catch (error) {
       compilation = Promise.reject(error);
@@ -164,7 +176,10 @@ function CompiledStage({ stage, onRendered, children }) {
   );
 }
 
-function ParkStage({ active, stage, onRendered, children }) {
+// One batch of a zone's arrival: suspends on its own assets, compiles its own
+// shaders, then reports so the next batch can start. Interiors and exteriors
+// both use it — a consulting room built in one go froze for as long as a park.
+function Stage({ active, stage, onRendered, children }) {
   if (!active) return null;
   return (
     <Suspense fallback={null}>
@@ -394,15 +409,25 @@ function SceneContents({
     [zone],
   );
 
-  const [parkStage, setParkStage] = useState(0);
+  const [stage, setStage] = useState(0);
   const [coreReady, setCoreReady] = useState(false);
   const [avatarReady, setAvatarReady] = useState(() => !values.showAvatarGlb);
   const bootStartedAt = useRef(globalThis.performance?.now?.() ?? Date.now());
   const advanceTimer = useRef(null);
   const revealReported = useRef(false);
+  const stageLabels = room.exterior ? PARK_STAGE_LABELS : INTERIOR_STAGE_LABELS;
+  const bootTag = room.exterior ? 'park' : 'room';
+
+  // Downloads for the later stages start as soon as the first one is on
+  // screen; the stages themselves still mount one at a time below. Waiting for
+  // the first stage keeps 20MB of set dressing off the reveal's critical path
+  // on a slow connection.
+  useEffect(() => {
+    if (!room.exterior || !coreReady) return undefined;
+    return warmParkAssets(parkModelGroups);
+  }, [coreReady, parkModelGroups, room.exterior]);
 
   useEffect(() => {
-    if (!room.exterior) return undefined;
     bootStartedAt.current = globalThis.performance?.now?.() ?? Date.now();
     gameDebug.stats.boot = {
       zone: blueprint.id,
@@ -410,12 +435,12 @@ function SceneContents({
       elapsedMs: 0,
       complete: false,
     };
-    globalThis.performance?.mark?.('park:boot:start');
-    console.info('[park-boot] loading 0ms');
+    globalThis.performance?.mark?.(`${bootTag}:boot:start`);
+    console.info(`[${bootTag}-boot] loading 0ms`);
     return () => {
       if (advanceTimer.current !== null) clearTimeout(advanceTimer.current);
     };
-  }, [blueprint.id, room.exterior]);
+  }, [blueprint.id, bootTag]);
 
   useEffect(() => {
     if (!room.exterior || !coreReady || !avatarReady || revealReported.current) return;
@@ -429,24 +454,23 @@ function SceneContents({
 
   const onAvatarReady = useCallback(() => setAvatarReady(true), []);
 
-  const onParkStageRendered = useCallback((stage) => {
-    if (!room.exterior) return;
+  const onStageRendered = useCallback((rendered) => {
     const now = globalThis.performance?.now?.() ?? Date.now();
     const elapsedMs = Math.round(now - bootStartedAt.current);
-    const label = PARK_STAGE_LABELS[stage] ?? `stage-${stage}`;
-    const complete = stage >= PARK_FINAL_STAGE;
+    const label = stageLabels[rendered] ?? `stage-${rendered}`;
+    const complete = rendered >= stageLabels.length - 1;
     gameDebug.stats.boot = { zone: blueprint.id, stage: label, elapsedMs, complete };
-    globalThis.performance?.mark?.(`park:boot:${label}`);
-    console.info(`[park-boot] ${label} ${elapsedMs}ms`);
-    if (stage === 0) setCoreReady(true);
+    globalThis.performance?.mark?.(`${bootTag}:boot:${label}`);
+    console.info(`[${bootTag}-boot] ${label} ${elapsedMs}ms`);
+    if (rendered === 0) setCoreReady(true);
     if (complete) return;
     if (advanceTimer.current !== null) clearTimeout(advanceTimer.current);
     // A short quiet frame between batches makes the progress visible and
     // stops React, model parsing, Rapier, and shader work piling up at once.
     advanceTimer.current = setTimeout(() => {
-      setParkStage((current) => (current === stage ? stage + 1 : current));
+      setStage((current) => (current === rendered ? rendered + 1 : current));
     }, 120);
-  }, [blueprint.id, room.exterior]);
+  }, [blueprint.id, bootTag, stageLabels]);
 
   useEffect(() => {
     gameDebug.zoneLabel = blueprint.label;
@@ -470,7 +494,7 @@ function SceneContents({
         <>
           <Suspense fallback={null}>
             <Physics gravity={[0, -9.81, 0]}>
-              <ParkStage active stage={0} onRendered={onParkStageRendered}>
+              <Stage active stage={0} onRendered={onStageRendered}>
               <SkyRig
                 config={lighting}
                 runtime={runtime}
@@ -501,43 +525,43 @@ function SceneContents({
                 keyboard={keyboard}
                 heightAt={terrainHeight}
               />
-              </ParkStage>
+              </Stage>
 
-              <ParkStage active={parkStage >= 1} stage={1} onRendered={onParkStageRendered}>
+              <Stage active={stage >= 1} stage={1} onRendered={onStageRendered}>
                 <Room room={room} lighting={lighting} />
                 <Furniture items={room.furnitureBoxes} runtime={runtime} />
                 <SkyEnvironment runtime={runtime} />
-              </ParkStage>
+              </Stage>
 
-              <ParkStage active={parkStage >= 2} stage={2} onRendered={onParkStageRendered}>
+              <Stage active={stage >= 2} stage={2} onRendered={onStageRendered}>
                 <PropModels items={parkModelGroups.structural} />
-              </ParkStage>
+              </Stage>
 
-              <ParkStage active={parkStage >= 3} stage={3} onRendered={onParkStageRendered}>
+              <Stage active={stage >= 3} stage={3} onRendered={onStageRendered}>
                 <TreeField items={parkTrees} />
-              </ParkStage>
+              </Stage>
 
-              <ParkStage active={parkStage >= 4} stage={4} onRendered={onParkStageRendered}>
+              <Stage active={stage >= 4} stage={4} onRendered={onStageRendered}>
                 <PropModels items={parkModelGroups.cover} />
-              </ParkStage>
+              </Stage>
 
-              <ParkStage active={parkStage >= 5} stage={5} onRendered={onParkStageRendered}>
+              <Stage active={stage >= 5} stage={5} onRendered={onStageRendered}>
                 <WindowField items={parkBackdrops} runtime={runtime} />
                 {zone.water && (
                   <Water runtime={runtime} outline={zone.water.outline} level={zone.water.level} />
                 )}
-              </ParkStage>
+              </Stage>
 
-              <ParkStage active={parkStage >= 6} stage={6} onRendered={onParkStageRendered}>
+              <Stage active={stage >= 6} stage={6} onRendered={onStageRendered}>
                 <ZoneFeatures
                   zone={zone}
                   runtime={runtime}
                   ids={staticFeatures}
                   suspendTogether
                 />
-              </ParkStage>
+              </Stage>
 
-              <ParkStage active={parkStage >= 7} stage={7} onRendered={onParkStageRendered}>
+              <Stage active={stage >= 7} stage={7} onRendered={onStageRendered}>
                 <ZoneFeatures
                   zone={zone}
                   runtime={runtime}
@@ -545,7 +569,7 @@ function SceneContents({
                   suspendTogether
                 />
                 <ColliderDebug room={room} runtime={runtime} />
-              </ParkStage>
+              </Stage>
             </Physics>
           </Suspense>
           {values.showAvatarGlb && (
@@ -553,7 +577,7 @@ function SceneContents({
               <PlayerAvatar runtime={runtime} onReady={onAvatarReady} />
             </Suspense>
           )}
-          {graphics.postEnabled && parkStage >= 6 && (
+          {graphics.postEnabled && stage >= 6 && (
             <Suspense fallback={null}>
               <Effects runtime={runtime} indoors={false} />
             </Suspense>
@@ -561,12 +585,14 @@ function SceneContents({
         </>
       ) : (
         <>
+          {/* Each stage carries its own boundary; this one is only for
+              Physics, which suspends on the Rapier module itself. */}
           <Suspense fallback={null}>
-            <Physics gravity={[0, -9.81, 0]}>
-            <Room room={room} lighting={lighting} />
-            <Furniture items={room.furnitureBoxes} runtime={runtime} />
-            <PropModels items={room.furnitureBoxes.filter((item) => item.model)} />
-            <>
+          <Physics gravity={[0, -9.81, 0]}>
+            {/* The shell: walls, floor, gaslight, and a player who can stand
+                on it. Everything else arrives on top of a room already up. */}
+            <Stage active stage={0} onRendered={onStageRendered}>
+              <Room room={room} lighting={lighting} />
               <LightingRig
                 room={room}
                 config={lighting}
@@ -575,6 +601,20 @@ function SceneContents({
                 maxShadowMapSize={graphics.maxShadowMapSize}
               />
               <InteriorEnvironment lighting={lighting} runtime={runtime} />
+              <PlayerRig
+                room={room}
+                runtime={runtime}
+                keyboard={keyboard}
+                look={look}
+                spawn={spawn}
+                spawnYaw={spawnYaw}
+                motionAffordances={zone.motionAffordances}
+              />
+              <CameraRig room={room} runtime={runtime} look={look} keyboard={keyboard} heightAt={null} />
+            </Stage>
+
+            <Stage active={stage >= 1} stage={1} onRendered={onStageRendered}>
+              <Furniture items={room.furnitureBoxes} runtime={runtime} />
               <CeilingRose room={room} lighting={lighting} />
               <WallArt items={room.furnitureBoxes} />
               <SootStains room={room} />
@@ -595,35 +635,40 @@ function SceneContents({
               <WindowGlass holes={room.windowHoles} runtime={runtime} />
               {dressing && <Curtains holes={room.windowHoles} dressing={dressing} />}
               <Portiere holes={room.openingHoles} />
-
               <LightShafts room={room} runtime={runtime} dressing={dressing} />
-            </>
-            <PlayerRig
-              room={room}
-              runtime={runtime}
-              keyboard={keyboard}
-              look={look}
-              spawn={spawn}
-              spawnYaw={spawnYaw}
-              motionAffordances={zone.motionAffordances}
-            />
-            {values.showAvatarGlb && <PlayerAvatar runtime={runtime} />}
-            {shotMode && <ShotWoman />}
-            <CameraRig room={room} runtime={runtime} look={look} keyboard={keyboard} heightAt={null} />
-            <ColliderDebug room={room} runtime={runtime} />
-            <InstrumentStage />
-            <ZoneFeatures zone={zone} runtime={runtime} />
-            {blueprint.id === 'CONSULTING_OFFICE' && <OpiumRitual />}
-            {blueprint.id === 'CONSULTING_OFFICE'
-              && actors.length > 0
-              && (!graphics.deferIdleActors || consultationActive) && (
-              <Suspense fallback={null}>
+            </Stage>
+
+            <Stage active={stage >= 2} stage={2} onRendered={onStageRendered}>
+              <PropModels items={room.furnitureBoxes.filter((item) => item.model)} />
+              <InstrumentStage />
+              <ZoneFeatures zone={zone} runtime={runtime} />
+              <ColliderDebug room={room} runtime={runtime} />
+              {blueprint.id === 'CONSULTING_OFFICE' && <OpiumRitual />}
+            </Stage>
+
+            <Stage active={stage >= 3} stage={3} onRendered={onStageRendered}>
+              {blueprint.id === 'CONSULTING_OFFICE'
+                && actors.length > 0
+                && (!graphics.deferIdleActors || consultationActive) && (
                 <ActorLayer actors={actors} />
+              )}
+            </Stage>
+
+            {/* Outside the stages: a 3.6MB figure, and nothing in the room
+                waits on it. */}
+            {values.showAvatarGlb && (
+              <Suspense fallback={null}>
+                <PlayerAvatar runtime={runtime} />
               </Suspense>
             )}
-            </Physics>
+            {shotMode && (
+              <Suspense fallback={null}>
+                <ShotWoman />
+              </Suspense>
+            )}
+          </Physics>
           </Suspense>
-          {graphics.postEnabled && (
+          {graphics.postEnabled && stage >= 2 && (
             <Suspense fallback={null}>
               <Effects runtime={runtime} indoors />
             </Suspense>

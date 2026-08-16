@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Treatment — Option D, The Tray</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+SC:wght@600&family=Libre+Caslon+Text:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#120f0c; --tile-a:#372b22; --tile-b:#261d16; --tile-hi:#453529;
+  --cream:#f3ebda; --dim:rgba(243,235,218,.55); --faint:rgba(243,235,218,.3);
+  --gold:#e9b565; --ring:#ffd493; --ok:#79cf98; --dear:#e2934e;
+  --serif:'Libre Caslon Text',Georgia,serif;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; min-height:100vh; font-family:var(--serif); color:var(--cream);
+  background:radial-gradient(85% 55% at 50% -8%,#31251a,transparent 68%),var(--bg);
+  display:flex; flex-direction:column; align-items:center; padding:28px 20px 0;
+}
+h1{margin:0; font-size:25px; font-weight:400}
+.who{margin:5px 0 22px; font-size:14px; color:var(--dim)}
+.page{width:min(880px,100%); flex:1; display:flex; flex-direction:column}
+
+/* ---- the row of drawers ---- */
+.drawers{display:flex; gap:9px; overflow-x:auto; padding-bottom:4px; scrollbar-width:none}
+.drawers::-webkit-scrollbar{display:none}
+.drawer{
+  flex:1 0 88px; display:flex; flex-direction:column; align-items:center; gap:7px;
+  padding:13px 6px 11px; cursor:pointer; border:1px solid transparent; border-radius:15px;
+  background:rgba(255,225,180,.035); color:var(--dim); font-family:var(--serif); font-size:12.5px;
+  text-align:center; line-height:1.2; transition:all .16s;
+}
+.drawer svg{width:40px; height:40px; filter:drop-shadow(0 3px 5px rgba(0,0,0,.5)); opacity:.72; transition:opacity .16s, transform .16s}
+.drawer:hover{background:rgba(255,225,180,.08); color:var(--cream)}
+.drawer:hover svg{opacity:1; transform:translateY(-2px)}
+.drawer:focus-visible{outline:2px solid var(--ring); outline-offset:2px}
+.drawer.on{background:linear-gradient(165deg,var(--tile-a),var(--tile-b)); border-color:rgba(255,212,147,.5); color:var(--cream)}
+.drawer.on svg{opacity:1}
+
+/* ---- the open drawer ---- */
+.items{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:16px}
+.item{
+  position:relative; display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
+  gap:9px; min-height:158px; padding:16px 10px 14px; cursor:pointer;
+  border:1px solid rgba(255,220,170,.11); border-radius:17px;
+  background:linear-gradient(165deg,var(--tile-a),var(--tile-b));
+  box-shadow:0 6px 18px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,225,180,.07);
+  color:inherit; font-family:inherit;
+  transition:transform .16s cubic-bezier(.3,1.4,.5,1), box-shadow .16s, border-color .16s;
+}
+.item:hover{transform:translateY(-4px); box-shadow:0 12px 26px rgba(0,0,0,.5); border-color:rgba(255,220,170,.2)}
+.item:focus-visible{outline:2px solid var(--ring); outline-offset:3px}
+.item .art{width:74px; height:74px; flex:1 1 auto; display:grid; place-items:center}
+.item .art svg{width:100%; height:100%}
+.item .name{font-size:14px; line-height:1.25; text-align:center; flex:0 0 auto}
+.item .fee{position:absolute; top:10px; right:10px; min-width:28px; height:23px; padding:0 8px;
+  display:grid; place-items:center; border-radius:12px; font-size:12px; color:#12100c;
+  background:var(--ok); box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.item .fee.dear{background:var(--dear)}
+.item.on{border-color:var(--ring); box-shadow:0 0 0 1px var(--ring),0 0 22px rgba(255,200,120,.26),0 10px 24px rgba(0,0,0,.5)}
+.item.on .art{opacity:.4}
+.item .taken{position:absolute; inset:0; display:none; place-items:center;
+  font-family:'Cormorant SC',serif; font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:var(--ring)}
+.item.on .taken{display:grid}
+
+/* a warning she has earned you */
+.item .warn{position:absolute; top:10px; left:10px; width:22px; height:22px; border-radius:50%;
+  display:grid; place-items:center; background:#c9663c; color:#fff; font-size:13px; line-height:1}
+
+.note{
+  margin-top:14px; min-height:58px; padding:15px 18px; border-radius:14px;
+  background:rgba(255,225,180,.045); border:1px solid rgba(255,220,170,.07);
+  font-size:14.5px; line-height:1.5; color:var(--dim);
+}
+.note b{color:var(--cream); font-weight:400}
+.note .obj{display:block; margin-top:5px; font-style:italic; color:#e8a077}
+
+/* ---- the tray ---- */
+.tray{
+  position:sticky; bottom:0; margin-top:auto; width:100%;
+  padding:16px 20px 20px; margin-left:-20px; margin-right:-20px; width:calc(100% + 40px);
+  background:linear-gradient(180deg,rgba(18,15,12,0),rgba(18,15,12,.94) 22%);
+}
+.tray-in{
+  width:min(880px,100%); margin:0 auto; display:flex; align-items:center; gap:16px;
+  padding:12px 16px; border-radius:18px;
+  background:linear-gradient(180deg,#2a2019,#1c1510);
+  border:1px solid rgba(255,220,170,.13);
+  box-shadow:0 -2px 0 rgba(255,225,180,.06) inset, 0 10px 30px rgba(0,0,0,.55);
+}
+.slots{flex:1; display:flex; gap:10px; align-items:center; min-height:62px; flex-wrap:wrap}
+.slots .empty{font-size:14px; font-style:italic; color:var(--faint)}
+.slot{
+  position:relative; width:58px; height:58px; border-radius:14px; cursor:pointer;
+  background:rgba(255,225,180,.07); border:1px solid rgba(255,220,170,.16);
+  display:grid; place-items:center; animation:pop .28s cubic-bezier(.3,1.5,.5,1) both;
+}
+@keyframes pop{from{transform:scale(.5) translateY(-14px); opacity:0} to{transform:none; opacity:1}}
+.slot svg{width:40px; height:40px; filter:drop-shadow(0 3px 5px rgba(0,0,0,.5))}
+.slot:hover::after{
+  content:attr(data-name); position:absolute; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%);
+  white-space:nowrap; padding:5px 10px; border-radius:8px; background:#3b2d22; color:var(--cream);
+  font-size:12.5px; box-shadow:0 4px 12px rgba(0,0,0,.5);
+}
+.slot .x{position:absolute; top:-6px; right:-6px; width:19px; height:19px; border-radius:50%;
+  background:#c9663c; color:#fff; font-size:12px; display:grid; place-items:center; opacity:0; transition:opacity .15s}
+.slot:hover .x{opacity:1}
+.go{
+  flex:0 0 auto; padding:14px 30px; cursor:pointer; border:0; border-radius:24px;
+  font-family:var(--serif); font-size:15.5px; color:#1a1209;
+  background:linear-gradient(180deg,#f6cd86,#e0a655); box-shadow:0 6px 20px rgba(230,170,90,.28);
+  transition:transform .15s, box-shadow .15s;
+}
+.go:hover:not(:disabled){transform:translateY(-2px); box-shadow:0 10px 26px rgba(230,170,90,.42)}
+.go:disabled{opacity:.32; cursor:default}
+
+@media(max-width:720px){.items{grid-template-columns:repeat(2,1fr)} .drawer{flex:0 0 78px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<h1>Consider Treatment</h1>
+<p class="who">Miss Nora Byrne · aged 28 · copyist</p>
+
+<div class="page">
+  <div class="drawers" id="drawers"></div>
+  <div class="items" id="items"></div>
+  <div class="note" id="note">Take what you mean to prescribe. It goes on the tray.</div>
+
+  <div class="tray"><div class="tray-in">
+    <div class="slots" id="slots"><span class="empty">The tray is empty.</span></div>
+    <button class="go" id="go" disabled>Write it out</button>
+  </div></div>
+</div>
+
+<script>
+const ART={
+bottle:`<svg viewBox="0 0 64 64"><defs><linearGradient id="b1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d99a4e"/><stop offset="1" stop-color="#8a5622"/></linearGradient></defs>
+<rect x="26" y="6" width="12" height="9" rx="2" fill="#8a6a44"/><path d="M25 14h14v6l6 12v22a4 4 0 0 1-4 4H23a4 4 0 0 1-4-4V32l6-12z" fill="url(#b1)"/>
+<rect x="22" y="34" width="20" height="14" rx="2" fill="#f2e6cc"/><rect x="25" y="38" width="14" height="1.6" fill="#a08258"/><rect x="25" y="42" width="10" height="1.6" fill="#a08258"/>
+<path d="M25 14h5v6l-5 10z" fill="#fff" opacity=".18"/></svg>`,
+bed:`<svg viewBox="0 0 64 64"><path d="M6 30h34a14 14 0 0 1 14 14v8H6z" fill="#7a5d3e"/><rect x="6" y="20" width="6" height="32" rx="3" fill="#9c7a52"/>
+<rect x="14" y="26" width="20" height="12" rx="5" fill="#f2e6cc"/><rect x="6" y="46" width="48" height="6" rx="3" fill="#5d452c"/></svg>`,
+milk:`<svg viewBox="0 0 64 64"><path d="M22 10h20l-3 8v4l5 10v24a4 4 0 0 1-4 4H24a4 4 0 0 1-4-4V32l5-10v-4z" fill="#e9e2d2"/>
+<path d="M20 38h24v18a4 4 0 0 1-4 4H24a4 4 0 0 1-4-4z" fill="#fbf8f0"/><path d="M44 26c5 0 8 3 8 7s-3 7-8 7" fill="none" stroke="#cfc4ac" stroke-width="4"/>
+<path d="M25 22h4v10l-4 8z" fill="#fff" opacity=".7"/></svg>`,
+leaf:`<svg viewBox="0 0 64 64"><path d="M52 8C30 8 14 20 14 38c0 6 2 11 5 15C25 40 36 30 50 26 38 32 28 42 23 56c4 2 9 2 13 1 16-4 22-24 16-49z" fill="#7fa05c"/>
+<path d="M50 26C38 32 28 42 23 56" stroke="#5c7a40" stroke-width="2.4" fill="none"/></svg>`,
+water:`<svg viewBox="0 0 64 64"><defs><linearGradient id="w1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fc7db"/><stop offset="1" stop-color="#3d7d99"/></linearGradient></defs>
+<path d="M32 6s16 17 16 27a16 16 0 1 1-32 0C16 23 32 6 32 6z" fill="url(#w1)"/>
+<path d="M24 34c0 6 4 10 9 10" stroke="#dff0f6" stroke-width="3.4" fill="none" stroke-linecap="round" opacity=".8"/></svg>`,
+spark:`<svg viewBox="0 0 64 64"><rect x="14" y="34" width="36" height="20" rx="4" fill="#6b5335"/><rect x="18" y="38" width="28" height="4" rx="2" fill="#c8a468"/>
+<path d="M36 4 18 32h11l-3 20 20-30H34z" fill="#ffd06b"/></svg>`,
+mind:`<svg viewBox="0 0 64 64"><path d="M32 8c11 0 20 8 20 18 0 6-3 11-8 15l-1 10-9-5h-2c-11 0-20-8-20-18S21 8 32 8z" fill="#9a86b8"/>
+<path d="M32 34c4 0 7-2.6 7-6.2S36 22 33 22c-2.5 0-4.2 1.7-4.2 3.7s1.5 3.2 3 3.2" fill="none" stroke="#f2ecfa" stroke-width="3" stroke-linecap="round"/></svg>`,
+door:`<svg viewBox="0 0 64 64"><rect x="10" y="8" width="24" height="48" rx="3" fill="#7a5d3e"/><rect x="14" y="12" width="16" height="40" rx="2" fill="#5d452c"/>
+<circle cx="29" cy="33" r="2.6" fill="#e9b565"/><path d="M40 33h16" stroke="#e9b565" stroke-width="4" stroke-linecap="round"/><path d="M48 25l8 8-8 8" stroke="#e9b565" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+quill:`<svg viewBox="0 0 64 64"><path d="M8 56c14 1.4 24-5.4 29.6-14.8C42.6 32.6 44.4 24 44 14c-6.6.7-14.6 3.4-22 9.4C14 30 8 42 8 56z" fill="#d8cbb0"/>
+<path d="M8 56 26 38" stroke="#8a7350" stroke-width="3" stroke-linecap="round"/></svg>`};
+
+const CATS=[
+ {art:'bottle',name:'Drugs',opts:[
+  ['Potassium bromide',1.25,'A nightly draught. Calms excitation; dulls the senses with continued use.'],
+  ['Chloral hydrate',1.60,'Twenty grains at bedtime. Promotes quiet sleep.'],
+  ['Laudanum',0.90,'Ten drops as needed. Quiets pain and the nerves.'],
+  ['Morphine',2.40,'A quarter grain, hypodermic. Certain relief; the habit forms readily.'],
+  ['Cannabis indica',1.75,'Five drops of the tincture. Relieves nervous agitation.'],
+  ['Coca wine',1.10,'A glass with meals. A restorative tonic.'],
+  ['Iron and arsenic',0.80,'Fowler’s solution, three drops. For debility and poor colour.'],
+  ['Valerian',0.55,'A dram of the tincture. Soothes nervous tension.']]},
+ {art:'bed',name:'Rest',opts:[
+  ['An hour lying down',0,'Daily after dinner, curtains drawn.'],
+  ['Rest cure at home',4.00,'Six weeks in bed. No reading, no visitors, no letters.',
+   'Six weeks from the office costs her the place. She keeps her room on those wages.'],
+  ['Sanatorium',38.00,'Six weeks resident: seclusion, massage, feeding up, attendants.',
+   'More than she earns in a quarter.'],
+  ['A fortnight at Saratoga',16.00,'Change of scene and regular hours.'],
+  ['Seclusion from family',0,'One month. No callers.']]},
+ {art:'milk',name:'Diet',opts:[
+  ['Milk diet',2.20,'Four quarts daily and nothing else.'],
+  ['Feeding up',3.10,'Cream, chops, and eggs every two hours.'],
+  ['Beef tea',1.40,'Three times daily. Strengthens and supports.'],
+  ['Brandy',1.20,'A wineglass at noon and at night, as a stimulant.'],
+  ['Cod liver oil',0.75,'A spoonful before meals.'],
+  ['Abstinence',0,'No tea, coffee, tobacco, or excitement.']]},
+ {art:'leaf',name:'Exercise',opts:[
+  ['Graduated walking',0,'A half mile daily, increased each week.'],
+  ['Swedish movements',6.00,'Medical gymnastics with an attendant.'],
+  ['Change of air',14.00,'One month at the shore or in the country.'],
+  ['A sea voyage',60.00,'Six weeks, Atlantic passage.'],
+  ['The camp cure',22.00,'Outdoor life, riding, rough living.'],
+  ['Mountain air',30.00,'The Adirondacks, through the summer.']]},
+ {art:'water',name:'Water',opts:[
+  ['Cold sponging',0,'On rising, briskly, followed by friction.'],
+  ['The wet pack',1.00,'Wrapped in sheets for an hour.'],
+  ['Sitz bath',0.60,'Tepid, twice daily.'],
+  ['Turkish bath',2.00,'Weekly, followed by an hour’s rest.'],
+  ['Warm bath, continuous',3.50,'For excitement and agitation.'],
+  ['A water cure',24.00,'A fortnight, resident.']]},
+ {art:'spark',name:'Electricity',opts:[
+  ['General faradization',3.00,'Beard’s method, head to foot, thrice weekly.'],
+  ['Local faradization',1.80,'Ten minutes to the affected hand.'],
+  ['Galvanization',2.20,'Constant current, ten minutes.'],
+  ['Central galvanization',3.40,'Spine and head.'],
+  ['Static electricity',4.00,'The machine — sparks and the electric breeze.'],
+  ['The electric bath',5.00,'Current passed through the water.']]},
+ {art:'mind',name:'Suggestion',opts:[
+  ['Hypnotic suggestion',3.00,'The symptom addressed directly under trance.'],
+  ['Hypnotic investigation',3.00,'Reproduce the state and question it.',
+   'Questioning under suggestion has already produced accounts that changed with the questions.'],
+  ['Persuasion',0,'Tell her plainly what you believe is happening.'],
+  ['Moral management',0,'Firm authority. No indulgence of the symptom.'],
+  ['Leave the circle',0,'No more sittings at Mrs. Bell’s.'],
+  ['Endorse the writing',0,'Accept Mary’s agency and develop the communications.',
+   'She will be grateful. Nothing in the writings has contained anything she did not know.'],
+  ['Planchette, observed',0,'Recorded under your eye, as investigation.']]},
+ {art:'door',name:'Removal',opts:[
+  ['Leave the trade',0,'Give up the copying desk entirely.',
+   'She has no other trade and no one to keep her.'],
+  ['Lighter work',0,'Fewer hours of close script at the same desk.'],
+  ['Reduced hours',0,'Half days for one month.'],
+  ['Change of lodgings',8.00,'Away from the damp and the noise.'],
+  ['A room of her own',12.00,'Separated from the household.'],
+  ['The country',18.00,'A season with relations upstate.']]},
+ {art:'quill',name:'Your words',custom:true},
+];
+
+const drawers=document.getElementById('drawers'), itemsEl=document.getElementById('items'),
+      note=document.getElementById('note'), slots=document.getElementById('slots'), go=document.getElementById('go');
+const plan=[]; let open=0;
+const money=n=>n?'$'+n.toFixed(2):'free';
+const tint=(el,i)=>{el.style.filter=`drop-shadow(0 6px 9px rgba(0,0,0,.55)) hue-rotate(${i*41}deg) saturate(${1+(i%3)*.25})`};
+
+CATS.forEach((c,i)=>{
+  const b=document.createElement('button'); b.className='drawer'+(i===0?' on':''); b.type='button';
+  b.innerHTML=ART[c.art]+`<span>${c.name}</span>`;
+  b.onclick=()=>{ open=i; [...drawers.children].forEach(d=>d.classList.remove('on')); b.classList.add('on'); render(); };
+  drawers.appendChild(b);
+});
+
+function render(){
+  const c=CATS[open]; itemsEl.innerHTML='';
+  if(c.custom){
+    itemsEl.style.display='block';
+    itemsEl.innerHTML=`<textarea rows="4" placeholder="A substance, a regimen, a combination of your own devising…"
+      style="width:100%;padding:18px 20px;border-radius:16px;border:1px solid rgba(255,220,170,.14);
+      background:rgba(255,225,180,.045);color:var(--cream);font-family:var(--serif);font-size:16px;line-height:1.55;resize:vertical"></textarea>`;
+    note.innerHTML='It will be read, matched against what the dispensary knows, and dispensed as written.';
+    return;
+  }
+  itemsEl.style.display='grid';
+  c.opts.forEach(([name,fee,desc,objection],i)=>{
+    const on=plan.some(p=>p.name===name);
+    const b=document.createElement('button'); b.className='item'+(on?' on':''); b.type='button';
+    b.innerHTML=`<span class="fee${fee>4?' dear':''}">${money(fee)}</span>`
+      +(objection?'<span class="warn" title="She has told you something about this">!</span>':'')
+      +`<span class="art">${ART[c.art]}</span><span class="name">${name}</span><span class="taken">On the tray</span>`;
+    tint(b.querySelector('.art svg'),i);
+    b.onmouseenter=()=>{ note.innerHTML=`<b>${name}.</b> ${desc}`+(objection?`<span class="obj">She said: ${objection}</span>`:''); };
+    b.onclick=()=>{
+      const k=plan.findIndex(p=>p.name===name);
+      if(k<0) plan.push({name,fee,art:c.art,i}); else plan.splice(k,1);
+      render(); tray();
+    };
+    itemsEl.appendChild(b);
+  });
+}
+function tray(){
+  slots.innerHTML = plan.length
+    ? plan.map((p,i)=>`<span class="slot" data-name="${p.name}" onclick="drop(${i})">${ART[p.art]}<span class="x">×</span></span>`).join('')
+    : '<span class="empty">The tray is empty.</span>';
+  [...slots.querySelectorAll('.slot svg')].forEach((s,k)=>tint(s,plan[k].i));
+  go.disabled=!plan.length;
+  go.textContent = plan.length ? `Write it out — $${(plan.reduce((a,p)=>a+p.fee,0)+2).toFixed(2)}` : 'Write it out';
+}
+window.drop=i=>{ plan.splice(i,1); render(); tray(); };
+render(); tray();
+</script>
+</body>
+</html>

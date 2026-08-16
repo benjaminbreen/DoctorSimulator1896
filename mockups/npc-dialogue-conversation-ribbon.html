@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NPC Dialogue Mockup B — Conversation Ribbon</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #33271a;
+      --ink-soft: #69573a;
+      --green: #15382d;
+      --green-deep: #091b15;
+      --gold: #c49a48;
+      --gold-bright: #e5c984;
+      --gold-dim: #7c622b;
+      --paper-hi: #f7eed8;
+      --paper: #eadab6;
+      --paper-low: #cdb788;
+      --garnet: #752b20;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #07100d;
+      font-family: Georgia, 'Times New Roman', serif;
+    }
+
+    button,
+    input { font: inherit; }
+
+    .game-view {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-height: 560px;
+      isolation: isolate;
+      overflow: hidden;
+      background: #7ba2bf url('./npc-dialogue-park.png') center center / cover no-repeat;
+      color: var(--paper-hi);
+    }
+
+    .game-view::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background:
+        linear-gradient(180deg, rgba(4, 10, 8, .12), transparent 34%, transparent 72%, rgba(3, 8, 5, .32)),
+        radial-gradient(ellipse at 50% 60%, transparent 0 27%, rgba(2, 8, 5, .1) 65%, rgba(2, 8, 5, .3) 120%);
+    }
+
+    .top-chrome {
+      position: absolute;
+      z-index: 5;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 68px;
+      display: grid;
+      grid-template-columns: minmax(310px, 1.7fr) minmax(170px, .65fr) minmax(120px, .45fr) minmax(160px, .6fr) minmax(165px, .62fr) minmax(145px, .55fr);
+      align-items: stretch;
+      color: var(--ink);
+      border: 1px solid rgba(4, 16, 11, .95);
+      border-radius: 0 0 14px 14px;
+      background: linear-gradient(180deg, var(--paper-hi) 0%, var(--paper) 54%, var(--paper-low) 100%);
+      box-shadow:
+        0 8px 28px rgba(3, 7, 5, .55),
+        inset 0 0 0 4px var(--green-deep),
+        inset 0 0 0 5px rgba(196, 154, 72, .74);
+      padding: 5px 9px 5px 90px;
+    }
+
+    .top-chrome::after {
+      content: '';
+      position: absolute;
+      inset: 5px;
+      pointer-events: none;
+      border-radius: 0 0 9px 9px;
+      opacity: .09;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+      mix-blend-mode: multiply;
+    }
+
+    .monogram {
+      position: absolute;
+      z-index: 6;
+      top: -8px;
+      left: 22px;
+      width: 82px;
+      height: 82px;
+      display: grid;
+      place-items: center;
+      color: var(--gold-bright);
+      border: 3px double var(--gold);
+      border-radius: 50%;
+      background: radial-gradient(circle at 38% 28%, #285141 0, var(--green) 54%, var(--green-deep) 100%);
+      box-shadow:
+        0 6px 16px rgba(3, 7, 5, .58),
+        inset 0 0 0 4px #0b241b,
+        inset 0 0 0 6px var(--gold-dim);
+      font-size: 38px;
+      font-style: italic;
+      line-height: 1;
+    }
+
+    .monogram::before,
+    .monogram::after {
+      content: '✦';
+      position: absolute;
+      left: 50%;
+      color: var(--gold);
+      font-size: 13px;
+      transform: translateX(-50%);
+    }
+
+    .monogram::before { top: -10px; }
+    .monogram::after { bottom: -10px; }
+
+    .chrome-cell {
+      position: relative;
+      z-index: 1;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 15px;
+      border-right: 1px solid rgba(111, 80, 31, .42);
+      box-shadow: 1px 0 rgba(255, 248, 221, .68);
+    }
+
+    .chrome-cell:last-child { border-right: 0; box-shadow: none; }
+
+    .place {
+      justify-content: flex-start;
+      gap: 10px;
+      font-size: clamp(13px, 1.25vw, 19px);
+      font-variant: small-caps;
+      letter-spacing: .13em;
+      white-space: nowrap;
+    }
+
+    .place-mark { color: var(--gold-dim); font-size: 18px; line-height: 1; }
+
+    .date,
+    .time { flex-direction: column; gap: 2px; line-height: 1; }
+
+    .date span,
+    .queue-label,
+    .letters-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .25em;
+      text-transform: uppercase;
+    }
+
+    .date strong { font-size: 17px; letter-spacing: .06em; }
+    .time strong { font-size: 26px; font-weight: 500; }
+    .time span { color: var(--ink-soft); font-size: 9px; letter-spacing: .2em; text-transform: uppercase; }
+
+    .queue { flex-direction: column; gap: 4px; }
+    .cameos { display: flex; gap: 5px; }
+
+    .cameos i {
+      width: 27px;
+      height: 27px;
+      border: 1px solid var(--gold-dim);
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 50% 32%, #514331 0 13%, transparent 14%),
+        radial-gradient(ellipse at 50% 95%, #514331 0 31%, transparent 32%),
+        radial-gradient(circle, #d9c8a4, #a98e60);
+      box-shadow: inset 0 0 0 2px rgba(255, 246, 216, .26);
+    }
+
+    .letters { gap: 10px; }
+    .envelope { color: var(--ink-soft); font-size: 27px; line-height: 1; }
+    .letter-count { font-size: 21px; }
+
+    .meters { flex-direction: column; gap: 8px; padding-inline: 18px; }
+    .meter-row { width: 100%; display: grid; grid-template-columns: 12px 1fr; align-items: center; gap: 8px; }
+    .meter-icon { color: var(--garnet); font-size: 12px; }
+    .meter-track { height: 7px; border: 1px solid rgba(63, 47, 26, .7); border-radius: 99px; background: #6c4d25; overflow: hidden; }
+    .meter-track b { display: block; width: 72%; height: 100%; background: linear-gradient(90deg, #a3472f, #d1a44c); }
+    .meter-row:last-child .meter-icon { color: #6652a8; }
+    .meter-row:last-child .meter-track { background: #43345e; }
+    .meter-row:last-child .meter-track b { width: 62%; background: linear-gradient(90deg, #585099, #9682c2); }
+
+    .speaker-marker {
+      position: absolute;
+      z-index: 2;
+      left: 50.2%;
+      top: 59.5%;
+      padding: 5px 9px 6px;
+      color: #f5e5bd;
+      border: 1px solid rgba(229, 201, 132, .5);
+      border-radius: 4px;
+      background: rgba(5, 19, 13, .76);
+      box-shadow: 0 5px 18px rgba(0, 7, 4, .35);
+      font-size: 10px;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+      transform: translate(-50%, -100%);
+    }
+
+    .speaker-marker::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      bottom: -11px;
+      width: 1px;
+      height: 10px;
+      background: rgba(229, 201, 132, .66);
+    }
+
+    .conversation-ribbon {
+      position: absolute;
+      z-index: 10;
+      left: 50%;
+      bottom: clamp(22px, 3.4vh, 38px);
+      width: min(990px, calc(100vw - 64px));
+      min-height: 172px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.6fr) minmax(285px, .75fr);
+      border: 1px solid rgba(204, 164, 82, .78);
+      border-radius: 8px;
+      background:
+        linear-gradient(102deg, rgba(6, 18, 13, .95), rgba(13, 39, 29, .94) 54%, rgba(5, 17, 12, .97));
+      box-shadow:
+        0 18px 52px rgba(0, 6, 3, .6),
+        inset 0 0 0 3px rgba(231, 202, 132, .06);
+      transform: translateX(-50%);
+      transition: opacity 180ms ease, transform 220ms ease;
+    }
+
+    .conversation-ribbon::before,
+    .conversation-ribbon::after {
+      content: '◆';
+      position: absolute;
+      top: 50%;
+      color: var(--gold-dim);
+      font-size: 9px;
+      transform: translateY(-50%);
+    }
+
+    .conversation-ribbon::before { left: -5px; }
+    .conversation-ribbon::after { right: -5px; }
+
+    .conversation-ribbon.is-hidden {
+      pointer-events: none;
+      opacity: 0;
+      transform: translate(-50%, 18px);
+    }
+
+    .speaker-copy {
+      position: relative;
+      min-width: 0;
+      padding: 31px 32px 24px 66px;
+    }
+
+    .speaker-tab {
+      position: absolute;
+      top: -17px;
+      left: 34px;
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      min-width: 230px;
+      padding: 7px 16px 6px;
+      color: var(--paper-hi);
+      border: 1px solid rgba(204, 164, 82, .8);
+      border-radius: 5px 5px 2px 2px;
+      background: linear-gradient(180deg, #1e4b3b, #0d2b20);
+      box-shadow: 0 5px 16px rgba(0, 7, 4, .38), inset 0 0 0 2px rgba(231, 202, 132, .06);
+    }
+
+    .speaker-tab strong { font-size: 15px; font-weight: 500; letter-spacing: .04em; }
+    .speaker-tab small { color: #bbaa86; font-size: 10px; font-style: italic; }
+
+    .speaker-copy::before {
+      content: '“';
+      position: absolute;
+      left: 27px;
+      top: 31px;
+      color: var(--gold);
+      font-size: 52px;
+      line-height: .8;
+      opacity: .72;
+    }
+
+    .spoken-line {
+      min-height: 70px;
+      margin: 0;
+      color: #f5ecd9;
+      font-size: clamp(17px, 1.5vw, 21px);
+      line-height: 1.48;
+      text-wrap: balance;
+    }
+
+    .conversation-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      color: #91a391;
+      font-size: 9px;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .conversation-status::before {
+      content: '';
+      width: 20px;
+      height: 1px;
+      background: var(--gold-dim);
+    }
+
+    .reply-column {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 8px;
+      margin: 18px 18px 18px 0;
+      padding: 13px 0 2px 20px;
+      border-left: 1px solid rgba(196, 154, 72, .32);
+    }
+
+    .reply-column h2 {
+      margin: 0 0 1px;
+      color: var(--gold);
+      font-size: 9px;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+    }
+
+    .topic-button {
+      position: relative;
+      width: 100%;
+      padding: 3px 24px 5px 0;
+      color: #ddd1b9;
+      text-align: left;
+      border: 0;
+      border-bottom: 1px solid rgba(196, 154, 72, .16);
+      background: transparent;
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1.3;
+    }
+
+    .topic-button::after {
+      content: '›';
+      position: absolute;
+      right: 5px;
+      top: 2px;
+      color: var(--gold-dim);
+      font-size: 18px;
+    }
+
+    .topic-button:hover,
+    .topic-button:focus-visible {
+      color: #fff4da;
+      outline: none;
+      border-bottom-color: rgba(229, 201, 132, .72);
+    }
+
+    .custom-question {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 7px;
+      margin-top: 3px;
+    }
+
+    .custom-question input {
+      min-width: 0;
+      height: 32px;
+      padding: 5px 9px;
+      color: #f4ead4;
+      border: 1px solid rgba(196, 154, 72, .34);
+      border-radius: 4px;
+      background: rgba(0, 8, 5, .38);
+      outline: none;
+      font-size: 12px;
+    }
+
+    .custom-question input::placeholder { color: #8e927e; }
+    .custom-question input:focus { border-color: rgba(229, 201, 132, .8); }
+
+    .ask-button {
+      height: 32px;
+      padding: 4px 10px;
+      color: var(--gold-bright);
+      border: 1px solid rgba(196, 154, 72, .52);
+      border-radius: 4px;
+      background: rgba(30, 75, 59, .48);
+      cursor: pointer;
+      font-size: 11px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .ask-button:hover,
+    .ask-button:focus-visible { color: #fff6df; border-color: var(--gold-bright); }
+
+    .close-ribbon {
+      position: absolute;
+      z-index: 2;
+      top: 8px;
+      right: 8px;
+      width: 27px;
+      height: 27px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      color: #ad9f7e;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      font-size: 20px;
+    }
+
+    .close-ribbon:hover,
+    .close-ribbon:focus-visible { color: var(--paper-hi); }
+
+    .return-prompt {
+      position: absolute;
+      z-index: 9;
+      left: 50%;
+      top: 64%;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 13px;
+      color: var(--paper-hi);
+      border: 1px solid rgba(229, 201, 132, .65);
+      border-radius: 6px;
+      background: rgba(7, 22, 16, .9);
+      box-shadow: 0 8px 26px rgba(0, 5, 3, .45);
+      cursor: pointer;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 8px);
+      transition: opacity 180ms ease, transform 180ms ease;
+    }
+
+    .return-prompt.is-visible { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
+
+    .return-prompt kbd {
+      padding: 2px 5px;
+      color: var(--gold-bright);
+      border: 1px solid rgba(229, 201, 132, .38);
+      border-radius: 3px;
+      background: rgba(0, 8, 5, .5);
+      font: 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .return-prompt small { color: #bdae8a; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+
+    @media (max-width: 980px) {
+      .top-chrome { grid-template-columns: minmax(240px, 1fr) 170px 125px; padding-left: 78px; }
+      .queue,
+      .letters,
+      .meters { display: none; }
+      .monogram { left: 13px; width: 74px; height: 74px; }
+      .time { border-right: 0; box-shadow: none; }
+      .conversation-ribbon { width: calc(100vw - 36px); grid-template-columns: minmax(0, 1.35fr) minmax(250px, .75fr); }
+      .speaker-copy { padding-left: 56px; }
+      .speaker-copy::before { left: 21px; }
+    }
+
+    @media (max-width: 700px) {
+      .game-view { min-height: 500px; background-position: 51% center; }
+      .top-chrome { height: 58px; grid-template-columns: 1fr 105px; padding-left: 67px; }
+      .monogram { width: 64px; height: 64px; left: 8px; font-size: 30px; }
+      .date { display: none; }
+      .place { padding-left: 10px; font-size: 12px; letter-spacing: .08em; white-space: normal; }
+      .time strong { font-size: 23px; }
+      .time span { font-size: 8px; letter-spacing: .1em; white-space: nowrap; }
+      .conversation-ribbon {
+        bottom: 10px;
+        width: calc(100vw - 20px);
+        grid-template-columns: 1fr;
+      }
+      .speaker-copy { padding: 28px 22px 10px 49px; }
+      .speaker-copy::before { left: 17px; top: 29px; font-size: 42px; }
+      .speaker-tab { left: 19px; min-width: 205px; }
+      .spoken-line { min-height: 0; font-size: 15px; }
+      .conversation-status { display: none; }
+      .reply-column { margin: 0 14px 13px; padding: 10px 0 0; border-top: 1px solid rgba(196, 154, 72, .28); border-left: 0; }
+      .topic-button { padding-block: 4px; }
+      .speaker-marker { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="game-view" aria-label="Central Park exploration view with a conversation ribbon">
+    <header class="top-chrome" aria-label="Game status">
+      <div class="monogram" aria-hidden="true">B</div>
+      <div class="chrome-cell place"><span class="place-mark" aria-hidden="true">⌖</span><span>Central Park — Southeast Corner</span></div>
+      <div class="chrome-cell date"><span>Monday</span><strong>June 15, 1896</strong></div>
+      <div class="chrome-cell time"><strong>9:30</strong><span>In the Morning</span></div>
+      <div class="chrome-cell queue"><span class="queue-label">Patient Queue</span><div class="cameos" aria-label="Three patients waiting"><i></i><i></i><i></i></div></div>
+      <div class="chrome-cell letters"><span class="letters-label">Incoming Letters</span><span class="envelope" aria-hidden="true">✉</span><span class="letter-count">1</span></div>
+      <div class="chrome-cell meters" aria-label="Health and nerves">
+        <div class="meter-row"><span class="meter-icon" aria-hidden="true">♥</span><span class="meter-track"><b></b></span></div>
+        <div class="meter-row"><span class="meter-icon" aria-hidden="true">◆</span><span class="meter-track"><b></b></span></div>
+      </div>
+    </header>
+
+    <div class="speaker-marker" aria-hidden="true">Speaking</div>
+
+    <section class="conversation-ribbon" id="conversationRibbon" aria-live="polite" aria-label="Conversation with Patrick Nolan">
+      <button class="close-ribbon" id="closeRibbon" type="button" aria-label="End conversation">×</button>
+      <div class="speaker-copy">
+        <div class="speaker-tab"><strong>Patrick Nolan</strong><small>Park gardener</small></div>
+        <p class="spoken-line" id="spokenLine">Beg pardon, Doctor—you’ll want the east path today. Mr. Roosevelt has half the park listening where they stand.</p>
+        <div class="conversation-status" id="conversationStatus">Conversation · Nearby time slowed</div>
+      </div>
+      <div class="reply-column">
+        <h2>Your reply</h2>
+        <button class="topic-button" type="button" data-topic="speech">Ask about Mr. Roosevelt’s speech</button>
+        <button class="topic-button" type="button" data-topic="park">Ask what he has noticed in the park</button>
+        <form class="custom-question" id="customQuestion">
+          <label for="questionInput" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Ask Patrick a question</label>
+          <input id="questionInput" type="text" autocomplete="off" placeholder="Ask in your own words…">
+          <button class="ask-button" type="submit">Ask</button>
+        </form>
+      </div>
+    </section>
+
+    <button class="return-prompt" id="returnPrompt" type="button"><kbd>E</kbd><span>Speak with Patrick Nolan<br><small>Park gardener</small></span></button>
+  </main>
+
+  <script>
+    (() => {
+      const ribbon = document.getElementById('conversationRibbon');
+      const line = document.getElementById('spokenLine');
+      const status = document.getElementById('conversationStatus');
+      const close = document.getElementById('closeRibbon');
+      const prompt = document.getElementById('returnPrompt');
+      const form = document.getElementById('customQuestion');
+      const input = document.getElementById('questionInput');
+      const topicResponses = {
+        speech: 'He says the city must govern its streets as firmly as a man governs himself. I came to hear about the streets; the boys came to see the man.',
+        park: 'Quiet enough before the carriages arrived. The birds took to the far bank, though. They know when a crowd means to stay.',
+      };
+
+      function answer(text, state) {
+        line.textContent = text;
+        status.textContent = state;
+      }
+
+      function hideConversation() {
+        ribbon.classList.add('is-hidden');
+        prompt.classList.add('is-visible');
+      }
+
+      function showConversation() {
+        ribbon.classList.remove('is-hidden');
+        prompt.classList.remove('is-visible');
+        input.focus();
+      }
+
+      document.querySelectorAll('[data-topic]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const topic = button.dataset.topic;
+          answer(topicResponses[topic], `Patrick answers · ${topic === 'speech' ? 'The gathering' : 'Park conditions'}`);
+        });
+      });
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const question = input.value.trim();
+        if (!question) return;
+        const lower = question.toLowerCase();
+        if (/roosevelt|speech|crowd/.test(lower)) {
+          answer(topicResponses.speech, 'Patrick answers · The gathering');
+        } else if (/bird|park|quiet|water|pond/.test(lower)) {
+          answer(topicResponses.park, 'Patrick answers · Park conditions');
+        } else {
+          answer('I could not say, Doctor. My charge is the paths and planting beds—but the policeman by the summerhouse may know.', 'Patrick answers · No further knowledge');
+        }
+        input.value = '';
+      });
+
+      close.addEventListener('click', hideConversation);
+      prompt.addEventListener('click', showConversation);
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') hideConversation();
+        if ((event.key === 'e' || event.key === 'E') && ribbon.classList.contains('is-hidden')) showConversation();
+      });
+    })();
+  </script>
+</body>
+</html>

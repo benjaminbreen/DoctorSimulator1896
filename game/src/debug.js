@@ -1,6 +1,8 @@
 // Shared debug handle, exposed as window.__game so movement, camera, and
 // lighting can be driven headlessly (screenshot verification without input).
 
+import { receiveGood } from './world/pocket.js';
+
 export const gameDebug = {
   tuning: null,
   set: null,
@@ -97,6 +99,8 @@ export const gameDebug = {
   streetPolice: [],
   // Set by PlayerRig so the debug handle can enter instrument mode directly.
   enterInstrument: null,
+  // Set by PlayerRig so dialogue can be opened for visual and API testing.
+  talk: null,
   // Present while the mobile controls are mounted; the screenshot harness
   // can drive the same virtual input that pointer gestures use.
   mobileInput: null,
@@ -126,5 +130,7 @@ export function installDebugHandle(runtime) {
   gameDebug.reset = runtime.resetToDefaults;
   gameDebug.exportPreset = runtime.toPreset;
   gameDebug.use = useInstrumentByName;
+  // Hand over a good without walking to a vendor and paying for it.
+  gameDebug.give = receiveGood;
   if (typeof window !== 'undefined') window.__game = gameDebug;
 }

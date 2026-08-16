@@ -5,6 +5,7 @@ import Toasts from './hud/Toasts.jsx';
 import InstrumentPanel from './hud/InstrumentPanel.jsx';
 import DebugHud from './hud/DebugHud.jsx';
 import GameHud from './hud/GameHud.jsx';
+import NpcDialogueRibbon from './hud/NpcDialogueRibbon.jsx';
 import ParkIntro from './hud/ParkIntro.jsx';
 import ControlHelper from './hud/ControlHelper.jsx';
 import MobileControls from './hud/MobileControls.jsx';
@@ -14,12 +15,12 @@ import { createKeyboard } from './input/keyboard.js';
 import { createLook } from './input/pointerLook.js';
 import { gameDebug, installDebugHandle } from './debug.js';
 import { installShotHarness } from './shots/harness.js';
-import { preservePose, requestFastTravel } from './world/travel.js';
+import { preservePose, requestFastTravel, travelMinutesBetween } from './world/travel.js';
 import { isFocusedInteraction, subscribe } from './world/interaction.js';
 import { createActorRuntime } from './world/characters/actors.js';
 import { phase1Cast } from './content/clinic1896/phase1Cast.js';
 import { actorCueForConsultation, createConsultationRuntime } from './consultation/engine.js';
-import { renderOfflineDialogue } from './consultation/offlineRenderer.js';
+import { renderLunaDialogue } from './consultation/lunaRenderer.js';
 import { setConsultationMode, setGamePaused } from './input/uiMode.js';
 import { seatFramingForPatient, setConsultationSeat } from './consultation/seatFraming.js';
 import {
@@ -28,6 +29,7 @@ import {
 } from './consultation/patients.js';
 import { nextSeed } from '../../shared/patients/index.js';
 import { createWorldClock } from './world/clock.js';
+import { installCrowdDialogue } from './world/crowdDialogue.js';
 import { notice } from './world/notices.js';
 import { attachSoundUnlock } from './audio/sound.js';
 import { syncConsultationRecord } from './hud/casebookState.js';
@@ -59,6 +61,11 @@ const patientPortraitReview = Boolean(pageParams?.has('patientPortraits'));
 
 export default function App() {
   const worldClock = useMemo(() => createWorldClock(), []);
+  // Any speaking NPC (the park keeper included) resolves through this
+  // provider, so it must not wait for the pedestrian models to load.
+  useEffect(() => {
+    installCrowdDialogue();
+  }, []);
   const runtime = useMemo(() => {
     const next = applyGameStart(createTuningRuntime(settingsSchema));
     const zoneDefinition = next.definitions.find((item) => item.id === 'zone');
@@ -79,7 +86,7 @@ export default function App() {
   const consultationPatients = useMemo(() => createConsultationPatients(patientSeeds), [patientSeeds]);
   const actorRuntime = useMemo(() => createActorRuntime([consultationPatients[0].actor]), []);
   const consultationRuntime = useMemo(
-    () => createConsultationRuntime(consultationPatients, renderOfflineDialogue, {
+    () => createConsultationRuntime(consultationPatients, renderLunaDialogue, {
       onAdvanceMinutes: (minutes) => worldClock.advanceMinutes(minutes, {
         reason: 'consultation',
       }),
@@ -105,11 +112,13 @@ export default function App() {
   const [tuningOpen, setTuningOpen] = useState(false);
   // Focused interactions hide the ordinary HUD. Seats are kept separate from
   // instruments so the touch Use control remains available to stand again.
-  const [usingInstrument, setUsingInstrument] = useState(false);
+  const [focusedInteraction, setFocusedInteraction] = useState(null);
+  const conversation = focusedInteraction?.kind === 'conversation' ? focusedInteraction : null;
+  const usingInstrument = isFocusedInteraction(focusedInteraction) && !conversation;
   // A live consultation owns the foot of the screen; the HUD verbs yield it.
   const [consultActive, setConsultActive] = useState(false);
   const [paused, setPaused] = useState(false);
-  useEffect(() => subscribe((state) => setUsingInstrument(isFocusedInteraction(state.using))), []);
+  useEffect(() => subscribe((state) => setFocusedInteraction(state.using)), []);
   useEffect(() => actorRuntime.subscribe(setActors), [actorRuntime]);
   useEffect(() => actorRuntime.setSingle(consultationPatients[0].actor), [actorRuntime, consultationPatients]);
   useEffect(() => runtime.onChange((id, value) => {
@@ -234,6 +243,24 @@ export default function App() {
     actorRuntime.setSingle(null);
   }, [actorRuntime, consultationRuntime]);
 
+  // Called from the casebook: walk to the consulting room and show the patient
+  // in, so a waiting case can be started without hunting for the door.
+  const seePatient = useCallback((patient) => {
+    if (!patient) return;
+    const originId = runtime.values.zone;
+    if (originId !== 'consulting-office') {
+      if (!requestFastTravel(runtime, 'consulting-office')) return;
+      worldClock.advanceMinutes(travelMinutesBetween(originId, 'consulting-office'), {
+        reason: 'travel',
+      });
+    }
+    consultationRuntime.start(patient.id);
+    const { givenName, familyName } = patient.profile.identity;
+    notice(`You show ${givenName} ${familyName} into your consulting room.`, {
+      key: 'consultation',
+    });
+  }, [consultationRuntime, runtime, worldClock]);
+
   const leaveConsultation = useCallback((destination) => {
     clearConsultation();
     const zoneId = destination === 'street' ? 'central-park' : 'waiting-room';
@@ -271,7 +298,8 @@ export default function App() {
                 runtime={runtime}
                 worldClock={worldClock}
                 patients={consultationPatients}
-                quiet={!devConsult && zone === 'consulting-office' && consultActive}
+                onSeePatient={seePatient}
+                quiet={Boolean(conversation) || (!devConsult && zone === 'consulting-office' && consultActive)}
               />
             )}
             {!usingInstrument && zone === 'consulting-office' && (
@@ -294,6 +322,7 @@ export default function App() {
             )}
             {!usingInstrument && <DebugHud showStats={tuningOpen} />}
             <InstrumentPanel />
+            <NpcDialogueRibbon conversation={conversation} worldClock={worldClock} />
             {/* Above everything, instrument mode included: the thing most
                 worth saying is that the machine has just hurt you. */}
             <Toasts />
@@ -302,8 +331,8 @@ export default function App() {
                 <ShotBar runtime={runtime} />
               </Suspense>
             )}
-            <ControlHelper hidden={usingInstrument || consultActive} />
-            <MobileControls keyboard={keyboard} hidden={usingInstrument || consultActive} />
+            <ControlHelper hidden={usingInstrument || consultActive || Boolean(conversation)} />
+            <MobileControls keyboard={keyboard} hidden={usingInstrument || consultActive || Boolean(conversation)} />
             {paused && (
               <div className="pointer-events-none absolute inset-0 z-50 grid place-items-center bg-black/20">
                 <div className="border border-amber-100/40 bg-neutral-950/90 px-8 py-4 font-serif text-2xl tracking-[0.22em] text-amber-50 shadow-2xl">

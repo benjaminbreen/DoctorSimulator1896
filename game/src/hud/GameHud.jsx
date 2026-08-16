@@ -1,18 +1,14 @@
-// The working chrome: nameplate bar across the top, verb plinth at the foot.
-// Pure DOM over the canvas, so it stays crisp at any resolution and swaps to
-// painted assets piecemeal if we ever want them.
-//
-// Everything shown is read from somewhere real: time from the civil clock,
-// place from the zone label and landmark table, the rest from hudState's
-// placeholder ground truth. This component invents nothing.
+// Nameplate bar across the top, verb plinth at the foot. DOM over the canvas,
+// not painted assets. Every value shown comes from the civil clock, the zone
+// and landmark tables, or hudState; this component invents nothing.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import * as THREE from 'three';
 import { gameDebug } from '../debug.js';
 import { parkLandmark } from './landmarks.js';
+import WalletDrawer from './WalletDrawer.jsx';
 import {
   weekdayName, monthName, patientQueue, letters,
-  checkWallet,
 } from './hudState.js';
 import {
   getPlayer,
@@ -23,15 +19,22 @@ import {
 } from '../world/player.js';
 import { mergeMeterFeedback, meterFeedbackStyle } from '../world/meterFeedback.js';
 import {
-  Cameo, PinIcon, HeartIcon, BrainIcon, EyeIcon,
+  Cameo, PortraitCameo, PinIcon, HeartIcon, BrainIcon, EyeIcon,
 } from './chrome.jsx';
+import { isCarrying, subscribeCarrying } from '../world/pocket.js';
 import PocketClock from './PocketClock.jsx';
 import LettersModal from './LettersModal.jsx';
 import CasebookModal from './CasebookModal.jsx';
+import {
+  getCasebookRecords,
+  getCasebookRevision,
+  subscribeCasebook,
+} from './casebookState.js';
 import DayPanel from './DayPanel.jsx';
 import FastTravelMenu from './FastTravelMenu.jsx';
 import { subscribeHudOverlayRequests } from './overlayRequests.js';
-import ThrowAimHud from './ThrowAimHud.jsx';
+import HeldItemHud from './HeldItemHud.jsx';
+import ItemsDrawer from './ItemsDrawer.jsx';
 import './hud.css';
 
 function formatClock(hours) {
@@ -186,18 +189,23 @@ function MeterTooltip({ metric, player }) {
 
 // `quiet` clears the foot of the screen while a consultation panel holds it.
 // The band itself needs no variant: on a phone it is already one compact row.
-export default function GameHud({ runtime, worldClock, patients = [], quiet = false }) {
+export default function GameHud({ runtime, worldClock, patients = [], onSeePatient, quiet = false }) {
   const [time, setTime] = useState(() => worldClock.getSnapshot());
   const [place, setPlace] = useState('');
   // One overlay at a time; this state is the whole registry. Escape and
   // focus restore live in useDismissableOverlay inside each modal.
-  const [overlay, setOverlay] = useState(null); // null | 'letters' | 'casebook' | 'day' | 'travel'
+  const [overlay, setOverlay] = useState(null); // null | 'letters' | 'casebook' | 'day' | 'travel' | 'wallet' | 'items'
+  const carrying = useSyncExternalStore(subscribeCarrying, isCarrying, isCarrying);
   // Letters UI state only: which are read/archived. The letter system that
   // delivers them replaces this, not the modal.
   const [readIds, setReadIds] = useState(() => new Set());
   const [archivedIds, setArchivedIds] = useState(() => new Set());
   const [player, setPlayer] = useState(() => getPlayer());
   const [meterFeedback, setMeterFeedback] = useState(null);
+  // Which record the casebook opens on when it is opened from the queue.
+  const [casebookPatientId, setCasebookPatientId] = useState(null);
+  useSyncExternalStore(subscribeCasebook, getCasebookRevision, getCasebookRevision);
+  const records = getCasebookRecords();
   const lastPlayerEvent = useRef(getPlayer().log.at(-1) ?? null);
   const feedbackSequence = useRef(0);
 
@@ -250,10 +258,24 @@ export default function GameHud({ runtime, worldClock, patients = [], quiet = fa
 
   const closeOverlay = useCallback(() => setOverlay(null), []);
 
+  // Eating the last thing you own takes the button away, so the drawer it
+  // opened has to go with it.
+  useEffect(() => {
+    if (!carrying) setOverlay((current) => (current === 'items' ? null : current));
+  }, [carrying]);
+
   const hours = time.hours;
   const day = time.date;
   const clock = formatClock(hours);
-  const remaining = patientQueue.filter((patient) => !patient.seen).length;
+  // The queue is the real patient list, so it grows on its own as patients
+  // are added; patientQueue is only the fallback silhouette order.
+  const queue = patients.length
+    ? patients.map((patient, index) => ({
+      patient,
+      seen: records[patient.id]?.status === 'complete' || records[patient.id]?.status === 'closed',
+      silhouette: patientQueue[index % patientQueue.length].silhouette,
+    }))
+    : patientQueue.map((entry) => ({ patient: null, seen: entry.seen, silhouette: entry.silhouette }));
   const unreadLetters = letters.filter((entry) => !readIds.has(entry.id)).length;
   const feedbackEvent = meterFeedback?.event ?? null;
   const eventDeltas = feedbackEvent
@@ -339,11 +361,24 @@ export default function GameHud({ runtime, worldClock, patients = [], quiet = fa
         <div className="ghud-plate ghud-plate--queue">
           <div className="ghud-label">Patient Queue</div>
           <div className="ghud-queue-row">
-            {patientQueue.map((patient) => (
-              <Cameo key={patient.id} variant={patient.silhouette} seen={patient.seen} />
-            ))}
-            <span className="ghud-count-badge">{remaining}</span>
-            <span className="ghud-count-word">Remaining</span>
+            {queue.map((entry, index) => (entry.patient ? (
+              <PortraitCameo
+                key={entry.patient.id}
+                src={`/ui/patients/${entry.patient.id}.webp`}
+                name={`${entry.patient.profile.identity.givenName} ${entry.patient.profile.identity.familyName}`}
+                age={entry.patient.profile.identity.age}
+                occupation={entry.patient.profile.social.occupation}
+                label={`Open the casebook for ${entry.patient.profile.identity.givenName} ${entry.patient.profile.identity.familyName}`}
+                variant={entry.silhouette}
+                seen={entry.seen}
+                onClick={() => {
+                  setCasebookPatientId(entry.patient.id);
+                  setOverlay('casebook');
+                }}
+              />
+            ) : (
+              <Cameo key={`slot-${index}`} variant={entry.silhouette} seen={entry.seen} />
+            )))}
           </div>
         </div>
 
@@ -445,7 +480,7 @@ export default function GameHud({ runtime, worldClock, patients = [], quiet = fa
 
       <MeterBurst key={meterFeedback?.id ?? 0} feedback={meterFeedback} entries={eventDeltas} />
 
-      <ThrowAimHud />
+      <HeldItemHud />
 
       <LettersModal
         open={overlay === 'letters'}
@@ -457,9 +492,17 @@ export default function GameHud({ runtime, worldClock, patients = [], quiet = fa
       />
       <CasebookModal
         open={overlay === 'casebook'}
-        onClose={closeOverlay}
+        onClose={() => {
+          setCasebookPatientId(null);
+          closeOverlay();
+        }}
         patients={patients}
         day={day}
+        initialPatientId={casebookPatientId}
+        onSeePatient={onSeePatient && ((patient) => {
+          closeOverlay();
+          onSeePatient(patient);
+        })}
       />
       <DayPanel
         open={overlay === 'day'}
@@ -474,6 +517,8 @@ export default function GameHud({ runtime, worldClock, patients = [], quiet = fa
         runtime={runtime}
         worldClock={worldClock}
       />
+      <WalletDrawer open={overlay === 'wallet'} onClose={closeOverlay} />
+      <ItemsDrawer open={overlay === 'items'} onClose={closeOverlay} />
 
       {!quiet && (
         <nav className="ghud-actions" aria-label="Pocket actions">
@@ -489,10 +534,31 @@ export default function GameHud({ runtime, worldClock, patients = [], quiet = fa
             <span className="ghud-action-caption">Fast Travel</span>
           </button>
           <i className="ghud-action-rule" aria-hidden="true" />
-          <button type="button" className="ghud-action" aria-label="Check Wallet" onClick={checkWallet}>
+          <button
+            type="button"
+            className="ghud-action"
+            aria-label="Check Wallet"
+            aria-expanded={overlay === 'wallet'}
+            onClick={() => setOverlay(overlay === 'wallet' ? null : 'wallet')}
+          >
             <img className="ghud-action-img" src="/ui/verb-wallet.png" alt="" draggable={false} />
             <span className="ghud-action-caption">Check Wallet</span>
           </button>
+          {carrying && (
+            <>
+              <i className="ghud-action-rule" aria-hidden="true" />
+              <button
+                type="button"
+                className="ghud-action"
+                aria-label="Check Items"
+                aria-expanded={overlay === 'items'}
+                onClick={() => setOverlay(overlay === 'items' ? null : 'items')}
+              >
+                <img className="ghud-action-img" src="/ui/verb-items.png" alt="" draggable={false} />
+                <span className="ghud-action-caption">Check Items</span>
+              </button>
+            </>
+          )}
           <i className="ghud-action-rule" aria-hidden="true" />
           <button type="button" className="ghud-action" aria-label="Take Notes" onClick={() => setOverlay('casebook')}>
             <img className="ghud-action-img" src="/ui/verb-notebook.png" alt="" draggable={false} />

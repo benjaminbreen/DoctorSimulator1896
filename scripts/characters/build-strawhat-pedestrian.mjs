@@ -50,6 +50,12 @@ const MOTIONS = Object.freeze([
   // Exported now so phase two only needs the stroller model and route logic.
   ['Strawhat Pushing Stroller Idle.fbx', 'StrollerIdle'],
   ['Strawhat Pushing Stroller Walk.fbx', 'StrollerWalk'],
+  // Standing gestures the crowd quirks need: a quarrel, a gallant's bow, and
+  // the brush-off that usually answers it.
+  ['Standing Arguing.fbx', 'StandingArguing'],
+  ['Quick Formal Bow.fbx', 'QuickFormalBow'],
+  ['Annoyed Head Shake.fbx', 'AnnoyedHeadShake'],
+  ['Playing The Violin.fbx', 'PlayingViolin'],
 ]);
 const MOTION_SOURCES = MOTIONS.map(([filename, name]) => [sourcePath(filename), name]);
 

@@ -29,3 +29,13 @@ assets-src/
 # Local authoring inputs not intended for distribution. Export scripts may
 # read from here, but only their converted runtime assets belong in Git.
 assets-local/
+
+# Raw drops in the repo root: Mixamo FBX, image-generator output, and the
+# currency sheets. Only their converted runtime assets belong in Git — the
+# keyed webp under game/public/ui/, the GLB under game/public/models/. Files
+# of this kind committed before the rule stay tracked until cleaned up.
+/*.fbx
+/currency/
+/ChatGPT Image *.png
+/item icon.png
+/casebook mockup example .jpg

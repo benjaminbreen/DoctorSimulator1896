@@ -4,15 +4,13 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { environmentPalette, paletteDistance } from '../world/skyPalette.js';
 import { gameDebug } from '../debug.js';
 
-// Image-based light for the outdoors, taken from a three-stop gradient rather
-// than a captured HDRI. A photograph is fixed at one hour; this tracks the sun,
-// so shaded surfaces get sky colour that matches the time of day.
-//
-// Darwin's cadence: 128px, and only redo the convolution when the palette has
-// actually moved. Scrubbing time of day still costs one PMREM every 2.5s.
+// Outdoor image-based light from a three-stop gradient, not a captured HDRI,
+// so it can track the sun through the day. Each refresh re-runs the PMREM
+// chain and hitches, hence the long floor and movement threshold below;
+// brightness alone tracks every frame via environmentIntensity.
 const PROBE_SIZE = 128;
-const REFRESH_SECONDS = 2.5;
-const CHANGE_THRESHOLD = 0.03;
+const REFRESH_SECONDS = 8;
+const CHANGE_THRESHOLD = 0.05;
 
 const GRADIENT_FRAGMENT = /* glsl */ `
   varying vec3 vDir;

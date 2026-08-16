@@ -1,14 +1,28 @@
-// Validate Renderer C runtime assets and copy them into the playable game.
-// Use --check to validate without writing files.
+// Validate Renderer C runtime assets and publish them into the playable game.
+// Publishing compresses each GLB for the web (webp textures, meshopt
+// geometry); the character-lab sources stay as authored. Use --check to
+// validate without writing files.
 
-import { copyFile, mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { prune, resample } from '@gltf-transform/functions';
 import { validateCharacterRecipe } from '../../shared/characters/recipe.js';
+import {
+  assertSameCharacter,
+  compressAccessors,
+  compressCharacterTextures,
+  conservativeDedup,
+  contract,
+  createIO,
+  dropMorphTargetNormals,
+} from '../lib/glb-pipeline.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
 const SOURCE = path.join(ROOT, 'character-lab', 'public', 'models');
 const TARGET = path.join(ROOT, 'game', 'public', 'models', 'characters');
 const CHECK_ONLY = process.argv.includes('--check');
+// Bump when republishing changes the bytes; also update phase1Cast.js.
+const CACHE_BUST = 'cast-opt-2';
 const REQUIRED_CLIPS = [
   'ClinicIdle', 'SittingTalking', 'SittingKneeStrike', 'SittingDejected',
   'SittingTalkingLegsCrossed', 'SitDown', 'StandUp', 'StandingIdle', 'Walk',
@@ -62,18 +76,44 @@ for (const file of FILES) {
 
 if (errors.length) throw new Error(`Renderer C publication failed:\n- ${errors.join('\n- ')}`);
 
+if (!CHECK_ONLY) {
+  await mkdir(TARGET, { recursive: true });
+  const io = await createIO();
+  for (const file of FILES) {
+    const targetPath = path.join(TARGET, file);
+    const document = await io.read(path.join(SOURCE, file));
+    const before = contract(document);
+    await document.transform(
+      resample({ tolerance: 1e-4 }),
+      conservativeDedup(),
+      prune({ keepAttributes: true, keepSolidTextures: true, keepLeaves: true }),
+    );
+    await compressCharacterTextures(document);
+    // The lab sources keep their normal deltas; only the web build sheds them.
+    dropMorphTargetNormals(document);
+    // The lab sources already ship KHR_mesh_quantization; null keeps it as-is.
+    await compressAccessors(document, null);
+    assertSameCharacter(before, document, file);
+
+    const temp = targetPath.replace(/\.glb$/, '.optimized.glb');
+    await io.write(temp, document);
+    assertSameCharacter(before, await io.read(temp), file);
+    await rename(temp, targetPath);
+    // The manifest advertises the bytes the game will actually download.
+    sizes.set(file, (await stat(targetPath)).size);
+  }
+}
+
 const published = structuredClone(manifest);
 published.publishedFor = 'ghosts-game';
 for (const cohort of Object.values(published.cohorts)) {
   const file = path.basename(cohort.path);
-  cohort.path = `/models/characters/${file}`;
+  cohort.path = `/models/characters/${file}?v=${CACHE_BUST}`;
   cohort.bytes = sizes.get(file);
 }
-published.motionPath = '/models/characters/renderer-c-mixamo-motions.glb';
+published.motionPath = `/models/characters/renderer-c-mixamo-motions.glb?v=${CACHE_BUST}`;
 
 if (!CHECK_ONLY) {
-  await mkdir(TARGET, { recursive: true });
-  for (const file of FILES) await copyFile(path.join(SOURCE, file), path.join(TARGET, file));
   await writeFile(
     path.join(TARGET, 'renderer-c-cohorts.json'),
     `${JSON.stringify(published, null, 2)}\n`,

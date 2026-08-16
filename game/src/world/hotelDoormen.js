@@ -14,6 +14,7 @@ export const HOTEL_DOORMAN_ANIMATIONS = Object.freeze([
   'HoldingObjectOneHand',
   'StandingLeaningWall',
   'StandingIdleAlternate',
+  'Walk',
 ]);
 
 export const HOTEL_DOORMAN_PLACEMENTS = Object.freeze([

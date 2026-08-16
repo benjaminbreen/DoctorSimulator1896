@@ -12,6 +12,8 @@ import {
 import { gameDebug } from '../debug.js';
 import { getPlayer, harm, pushcartImpactEffect } from '../world/player.js';
 import { removeThrowableSource, reportThrowableSource } from '../world/throwablePlay.js';
+import { recordGrievance } from '../world/grievances.js';
+import { ownerOfCart } from '../world/postedNpcs.js';
 import { removeAgent, reportAgent } from '../world/agents.js';
 import ThrowableProjectiles from './ThrowableProjectiles.jsx';
 import { reportMajorStreetEvent } from '../world/majorStreetEvents.js';
@@ -137,6 +139,10 @@ function Pushcart({ spec }) {
     `road-obstacle:${spec.id}:${index}`));
   const throwableId = (index) => `${spec.id}:${spec.pieces[index].throwable}:${index}`;
   const takePiece = (index) => {
+    // Helping yourself to a manned cart is theft, and the man remembers it.
+    // An unmanned cart has nobody to mind.
+    const owner = ownerOfCart(spec.id);
+    if (owner) recordGrievance(owner.id, 'theft');
     removeThrowableSource(throwableId(index));
     setTaken((previous) => {
       if (previous.has(index)) return previous;

@@ -9,9 +9,28 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
-    <!-- The opening reveal waits for this avatar; start its 7.5 MB fetch
-         while the JavaScript bundle initializes instead of after it. -->
-    <link rel="preload" href="/models/tripo-victorian-player.glb?v=carriage-climb-2" as="fetch" crossorigin />
+    <!-- The opening reveal waits on the player avatar, the largest file on the
+         boot path. Preloading it here starts the fetch while the bundle is
+         still downloading — but it has to name the same build PlayerAvatar
+         will ask for, or the preload buys a second download instead of saving
+         the first. The device test mirrors mobileGraphics.js; the module
+         cannot be imported this early, so tests/player-avatar-preload.test.js
+         fails if the two drift apart. -->
+    <script>
+      (function () {
+        var mobile = navigator.maxTouchPoints > 0
+          && window.matchMedia('(pointer: coarse)').matches
+          && Math.min(screen.width, screen.height) <= 1100;
+        var link = document.createElement('link');
+        link.rel = 'preload';
+        link.as = 'fetch';
+        // Matches three's FileLoader: CORS mode, same-origin credentials.
+        link.crossOrigin = 'anonymous';
+        link.href = '/models/tripo-victorian-player'
+          + (mobile ? '-mobile' : '') + '.glb?v=player-opt-1';
+        document.head.appendChild(link);
+      })();
+    </script>
     <title>Ghosts of the Machine Age — Dev Slice</title>
   </head>
   <body>

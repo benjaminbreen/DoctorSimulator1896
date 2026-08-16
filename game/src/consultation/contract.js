@@ -1,3 +1,7 @@
+import { TREATMENT_LIBRARY } from './treatments.js';
+
+const TREATMENT_IDS = new Set(TREATMENT_LIBRARY.map((item) => item.id));
+
 export const CONSULTATION_STAGES = Object.freeze([
   'opening', 'inquiry', 'decision', 'case-note', 'result', 'terminated',
 ]);
@@ -24,11 +28,15 @@ export function validateConsultationPatient(patient) {
   if (!(patient.facts?.length > 0)) errors.push('at least one fact is required');
   if (!(patient.examinations?.length > 0)) errors.push('at least one examination is required');
   if (!(patient.diagnoses?.length > 0)) errors.push('at least one diagnosis is required');
-  if (!(patient.treatments?.length > 0)) errors.push('at least one treatment is required');
+  // Treatments come from the shared library; a patient supplies overrides only
+  // for the ones that matter in its case.
+  for (const id of Object.keys(patient.treatmentOverrides || {})) {
+    if (!TREATMENT_IDS.has(id)) errors.push(`treatment override ${id} is not in the library`);
+  }
 
   for (const [label, items] of [
     ['fact', patient.facts], ['examination', patient.examinations],
-    ['diagnosis', patient.diagnoses], ['treatment', patient.treatments],
+    ['diagnosis', patient.diagnoses],
   ]) {
     const values = items || [];
     if (ids(values).size !== values.length) errors.push(`${label} ids must be unique`);

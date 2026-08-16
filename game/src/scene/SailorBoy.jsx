@@ -5,7 +5,16 @@ import { CapsuleCollider, RigidBody } from '@react-three/rapier';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
+import { gameDebug } from '../debug.js';
 import { removeAgent, reportAgent } from '../world/agents.js';
+import { clearActorImpacts, takeActorImpacts } from '../world/actorImpacts.js';
+import {
+  confrontationFor,
+  provokeConfrontation,
+  releaseConfrontation,
+  stepConfrontation,
+} from '../world/confrontation.js';
+import { hashString } from '../world/npcIdentity.js';
 import {
   SAILOR_BOY_CAROUSEL_LOOK_AT,
   SAILOR_BOY_MODEL_FILE,
@@ -17,6 +26,7 @@ import {
   sailorBoyRoutePoint,
 } from '../world/sailorBoy.js';
 import { normalizeNonmetallicCharacterMaterial } from './characterMaterials.js';
+import { fadeInAction } from './characterGestures.js';
 
 const ACTOR_ID = 'gapstow-sailor-boy';
 const BOY_SCALE = 1.22;
@@ -45,7 +55,9 @@ function playState(actor, key, state) {
     action.setEffectiveTimeScale(1);
   }
   previous?.fadeOut(ACTION_BLEND);
-  action.fadeIn(ACTION_BLEND).play();
+  // Through fadeInAction: a clip returned to after its fade-out completed is
+  // disabled, and would otherwise stay at zero weight in the bind pose.
+  fadeInAction(action, ACTION_BLEND);
   actor.action = action;
   actor.mixer.update(0);
 }
@@ -132,7 +144,42 @@ export default function SailorBoy() {
       }
     }
 
-    playState(actor, behavior.phase, behavior);
+    // Hit by a thrown object, he stops playing and comes to say so.
+    for (const impact of takeActorImpacts(ACTOR_ID)) {
+      if (impact.cause !== 'projectile') continue;
+      provokeConfrontation(ACTOR_ID, {
+        itemLabel: impact.itemLabel,
+        archetype: 'b',
+        name: 'A boy in a sailor suit',
+        dialogueId: ACTOR_ID,
+        now,
+      });
+    }
+    const player = gameDebug.player.position;
+    const march = confrontationFor(ACTOR_ID)
+      ? stepConfrontation(ACTOR_ID, {
+        x: actor.worldX,
+        z: actor.worldZ,
+        playerX: player[0],
+        playerZ: player[2],
+        delta,
+        now,
+      })
+      : null;
+    if (march) {
+      actor.worldX = march.x;
+      actor.worldZ = march.z;
+      actor.wrapper.rotation.y = march.yaw;
+      actor.velocity[0] = 0;
+      actor.velocity[1] = 0;
+      playState(actor, `confront:${march.phase}`, {
+        animation: march.walking ? 'Running' : 'SailorBoyIdle',
+      });
+    } else {
+      if (actor.confronted) releaseConfrontation(ACTOR_ID);
+      playState(actor, behavior.phase, behavior);
+    }
+    actor.confronted = Boolean(march);
     actor.mixer.update(step);
     actor.figure.rotation.x = 0;
     actor.figure.rotation.z = 0;
@@ -142,11 +189,21 @@ export default function SailorBoy() {
       kind: 'pedestrian',
       gender: 'male',
       velocity: [...actor.velocity],
+      dialogueId: ACTOR_ID,
+      dialogueName: 'A boy in a sailor suit',
+      dialogueContext: {
+        archetype: 'b',
+        role: 'play',
+        activity: 'walking',
+        seed: hashString(ACTOR_ID),
+      },
     });
   });
 
   useEffect(() => () => {
     removeAgent(ACTOR_ID);
+    clearActorImpacts(ACTOR_ID);
+    releaseConfrontation(ACTOR_ID);
     actor.mixer.stopAllAction();
     actor.figure.traverse((node) => {
       if (!node.isMesh && !node.isSkinnedMesh) return;

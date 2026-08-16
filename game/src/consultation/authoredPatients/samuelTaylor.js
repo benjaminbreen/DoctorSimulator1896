@@ -294,14 +294,70 @@ export const SAMUEL_TAYLOR = Object.freeze({
     Object.freeze({ id: 'samuel-dx-dyspepsia', label: 'Chronic dyspepsia', description: 'Constipation and abdominal pain are genuine, but this diagnosis leaves the exposure, gums, hands, and mental change unexplained.', selector: { basePriority: 1, supportFactIds: ['samuel-digestion'], contraryFactIds: ['samuel-metal-work', 'samuel-gum-line', 'samuel-wrist-weakness'] }, evaluation: { quality: 2, patientAcceptance: 1 } }),
     Object.freeze({ id: 'samuel-dx-malingering', label: 'Malingering to escape work', description: 'Treat his account as a calculated attempt to avoid the metal room.', selector: { basePriority: -4, contraryFactIds: ['samuel-course', 'samuel-digestion', 'samuel-gum-line', 'samuel-wrist-weakness'] }, evaluation: { quality: 0, patientAcceptance: -14 } }),
   ]),
-  treatments: Object.freeze([
-    Object.freeze({ id: 'samuel-tx-reassign', label: 'Remove the exposure while preserving his wages', description: 'Write for immediate reassignment from metal, dross, and dust; require washing and meals away from type; relieve constipation, nourish, and review him within one week.', evaluation: { quality: 10, patientAcceptance: 9, healthChange: 8, functionChange: 7, episodesChange: -6, incomeChangeCents: 0, immediateText: 'The letter gives him something practical to place before his foreman without declaring him unfit for the trade.', monthText: 'A month later, Samuel is working on proofs and press records away from the metal room. The colic has ceased, his bowels are regular, and he has set two clean pages without an error. The gum line remains faint and the wrist weakness still warrants review.', modernText: 'Stopping lead exposure is the decisive intervention. Hygiene and follow-up matter; a historical purgative may relieve constipation but is not a substitute for removal and modern toxicologic care.' } }),
-    Object.freeze({ id: 'samuel-tx-leave-trade', label: 'Order him to abandon printing entirely', description: 'Remove him from all printing work at once, without arranging replacement wages or a narrower clean-work restriction.', evaluation: { quality: 7, patientAcceptance: -7, healthChange: 8, functionChange: 0, episodesChange: -6, incomeChangeCents: -2600, immediateText: 'He accepts the danger but hears the order as the destruction of a thirty-year skilled livelihood.', monthText: 'A month later, the colic and headache are improving away from the shop, but Samuel and Daniel are behind on rent. His health is better; his ordinary function and independence are not.', modernText: 'Complete exposure removal protects health, but an unnecessarily broad work ban creates avoidable financial harm when clean reassignment is available.' } }),
-    Object.freeze({ id: 'samuel-tx-medicine-only', label: 'Give iodide and a purgative; leave work unchanged', description: 'Treat constipation and presumed lead retention while he continues at the metal pot.', evaluation: { quality: 5, patientAcceptance: 7, healthChange: 0, functionChange: -2, episodesChange: -1, incomeChangeCents: -250, immediateText: 'A bottle and prescription feel concrete, and he is relieved not to lose wages, but the cause remains at his hands each day.', monthText: 'A month later, the purgative has sometimes relieved the constipation, but the headache, colic, and setting errors return after each long spell at the metal pot.', modernText: 'Period medicines cannot compensate for continuing lead exposure. Symptom relief without source control allows toxicity to continue.' } }),
-    Object.freeze({ id: 'samuel-tx-companionship', label: 'Treat melancholia with companionship and regular occupation', description: 'Ask church friends and his son to keep him company while he remains in the same shop duties.', evaluation: { quality: 4, patientAcceptance: 10, healthChange: -3, functionChange: -4, episodesChange: 2, incomeChangeCents: 0, immediateText: 'He appreciates that you have taken his isolation seriously and leaves believing the plan humane.', monthText: 'A month later, Samuel has attended two church suppers and felt less alone, but the abdominal attacks and errors have worsened. He has now dropped a composing stick because his wrists gave way.', modernText: 'Social support may help distress, but treating mood alone misses ongoing occupational neurotoxicity and delays source control.' } }),
-    Object.freeze({ id: 'samuel-tx-seclusion', label: 'Prescribe a private rest cure and seclusion', description: 'Remove him from work, church, son, and ordinary decisions under a diagnosis of melancholia.', evaluation: { quality: 1, patientAcceptance: -11, healthChange: -2, functionChange: -8, episodesChange: 1, incomeChangeCents: -2200, immediateText: 'He regards confinement and separation from Daniel as punishment for having answered honestly.', monthText: 'A month later, isolation has deepened Samuel’s hopelessness and ended his wages. Lead exposure has stopped incidentally, but the plan has obscured the cause and damaged the ties that protected him.', modernText: 'Seclusion is not justified by a passive death wish without present intent, and it creates psychiatric, social, and financial harm even though it incidentally ends workplace exposure.' } }),
-    Object.freeze({ id: 'samuel-tx-galvanism', label: 'Prescribe galvanism for nervous exhaustion', description: 'Offer repeated electrical treatments while leaving work, dust, and meals unchanged.', evaluation: { quality: 2, patientAcceptance: 3, healthChange: -4, functionChange: -5, episodesChange: 3, incomeChangeCents: -600, immediateText: 'Samuel asks quietly how electricity is expected to remove metal from a man’s workroom.', monthText: 'A month later, the office treatments have cost six afternoons and the metal-room exposure continues. The pain, constipation, weakness, and errors are all more frequent.', modernText: 'Galvanism does not remove lead or prevent further absorption; it adds cost and delay.' } }),
-  ]),
+  // Only the treatments that matter in this case. Everything else in the
+  // library resolves to its default, which for Samuel is a null result.
+  treatmentOverrides: Object.freeze({
+    'move-lighter-work': Object.freeze({
+      label: 'Remove the exposure while preserving his wages',
+      detail: 'Write for immediate reassignment from metal, dross, and dust; require washing and meals away from type; relieve constipation, nourish, and review him within one week.',
+      evaluation: Object.freeze({
+        quality: 10, patientAcceptance: 9, recovery: 10, cost: 1,
+        immediateText: 'The letter gives him something practical to place before his foreman without declaring him unfit for the trade.',
+        monthText: 'A month later, Samuel is working on proofs and press records away from the metal room. The colic has ceased, his bowels are regular, and he has set two clean pages without an error. The gum line remains faint and the wrist weakness still warrants review.',
+        modernText: 'Stopping lead exposure is the decisive intervention. Hygiene and follow-up matter; a historical purgative may relieve constipation but is not a substitute for removal and modern toxicologic care.',
+      }),
+    }),
+    'move-leave-trade': Object.freeze({
+      label: 'Order him to abandon printing entirely',
+      detail: 'Remove him from all printing work at once, without arranging replacement wages or a narrower clean-work restriction.',
+      evaluation: Object.freeze({
+        quality: 7, patientAcceptance: -7, recovery: 10, cost: -11,
+        immediateText: 'He accepts the danger but hears the order as the destruction of a thirty-year skilled livelihood.',
+        monthText: 'A month later, the colic and headache are improving away from the shop, but Samuel and Daniel are behind on rent. His health is better; his ordinary function and independence are not.',
+        modernText: 'Complete exposure removal protects health, but an unnecessarily broad work ban creates avoidable financial harm when clean reassignment is available.',
+      }),
+    }),
+    'drug-iodide': Object.freeze({
+      label: 'Give iodide and a purgative; leave work unchanged',
+      detail: 'Treat constipation and presumed lead retention while he continues at the metal pot.',
+      evaluation: Object.freeze({
+        quality: 5, patientAcceptance: 7, recovery: 1, cost: -3,
+        immediateText: 'A bottle and prescription feel concrete, and he is relieved not to lose wages, but the cause remains at his hands each day.',
+        monthText: 'A month later, the purgative has sometimes relieved the constipation, but the headache, colic, and setting errors return after each long spell at the metal pot.',
+        modernText: 'Period medicines cannot compensate for continuing lead exposure. Symptom relief without source control allows toxicity to continue.',
+      }),
+    }),
+    'mind-companionship': Object.freeze({
+      label: 'Treat melancholia with companionship and regular occupation',
+      detail: 'Ask church friends and his son to keep him company while he remains in the same shop duties.',
+      evaluation: Object.freeze({
+        quality: 4, patientAcceptance: 10, recovery: -5, cost: -4,
+        immediateText: 'He appreciates that you have taken his isolation seriously and leaves believing the plan humane.',
+        monthText: 'A month later, Samuel has attended two church suppers and felt less alone, but the abdominal attacks and errors have worsened. He has now dropped a composing stick because his wrists gave way.',
+        modernText: 'Social support may help distress, but treating mood alone misses ongoing occupational neurotoxicity and delays source control.',
+      }),
+    }),
+    'rest-cure-home': Object.freeze({
+      label: 'Prescribe a private rest cure and seclusion',
+      detail: 'Remove him from work, church, son, and ordinary decisions under a diagnosis of melancholia.',
+      evaluation: Object.freeze({
+        quality: 1, patientAcceptance: -11, recovery: -3, cost: -14,
+        immediateText: 'He regards confinement and separation from Daniel as punishment for having answered honestly.',
+        monthText: 'A month later, isolation has deepened Samuel’s hopelessness and ended his wages. Lead exposure has stopped incidentally, but the plan has obscured the cause and damaged the ties that protected him.',
+        modernText: 'Seclusion is not justified by a passive death wish without present intent, and it creates psychiatric, social, and financial harm even though it incidentally ends workplace exposure.',
+      }),
+    }),
+    'elec-galvanization': Object.freeze({
+      label: 'Prescribe galvanism for nervous exhaustion',
+      detail: 'Offer repeated electrical treatments while leaving work, dust, and meals unchanged.',
+      evaluation: Object.freeze({
+        quality: 2, patientAcceptance: 3, recovery: -7, cost: -7,
+        immediateText: 'Samuel asks quietly how electricity is expected to remove metal from a man’s workroom.',
+        monthText: 'A month later, the office treatments have cost six afternoons and the metal-room exposure continues. The pain, constipation, weakness, and errors are all more frequent.',
+        modernText: 'Galvanism does not remove lead or prevent further absorption; it adds cost and delay.',
+      }),
+    }),
+  }),
   caseNote: Object.freeze({
     minimumWords: 0, minimumEvidenceSelections: 2, maximumEvidenceSelections: 3,
     requiredFactIds: ['samuel-course', 'samuel-digestion', 'samuel-metal-work', 'samuel-shop-hygiene', 'samuel-income', 'samuel-gum-line', 'samuel-wrist-weakness', 'samuel-safety'],

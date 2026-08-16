@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Treatment — Option C, The Shelf</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+SC:wght@600&family=Libre+Caslon+Text:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#120f0c; --tile-a:#372b22; --tile-b:#261d16; --tile-hi:#453529;
+  --cream:#f3ebda; --dim:rgba(243,235,218,.52); --faint:rgba(243,235,218,.3);
+  --gold:#e9b565; --ring:#ffd493;
+  --ok:#79cf98; --dear:#e2934e;
+  --serif:'Libre Caslon Text',Georgia,serif;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; min-height:100vh; font-family:var(--serif); color:var(--cream);
+  background:radial-gradient(80% 60% at 50% -10%,#2e2318,transparent 70%),var(--bg);
+  display:flex; flex-direction:column; align-items:center; padding:34px 20px 24px;
+}
+
+h1{margin:0; font-size:26px; font-weight:400; letter-spacing:.01em}
+.who{margin:6px 0 26px; font-size:14px; color:var(--dim)}
+
+/* the shelf */
+.shelf{width:min(760px,100%); display:grid; grid-template-columns:repeat(3,1fr); gap:14px}
+.tile{
+  position:relative; display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
+  gap:10px; min-height:176px; padding:18px 14px 16px; cursor:pointer;
+  border:1px solid rgba(255,220,170,.11); border-radius:18px;
+  background:linear-gradient(165deg,var(--tile-a),var(--tile-b));
+  box-shadow:0 6px 18px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,225,180,.07);
+  color:inherit; font-family:inherit;
+  transition:transform .16s cubic-bezier(.3,1.4,.5,1), box-shadow .16s, border-color .16s, background .16s;
+}
+.tile:hover{transform:translateY(-4px); background:linear-gradient(165deg,var(--tile-hi),#251c16);
+  box-shadow:0 12px 26px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,225,180,.11); border-color:rgba(255,220,170,.18)}
+.tile:focus-visible{outline:2px solid var(--ring); outline-offset:3px}
+.tile:active{transform:translateY(-1px)}
+.tile .art{width:96px; height:96px; display:grid; place-items:center; flex:1 1 auto}
+.tile .art svg{width:100%; height:100%; filter:drop-shadow(0 6px 9px rgba(0,0,0,.55))}
+.tile .name{font-size:16px; line-height:1.25; text-align:center; flex:0 0 auto}
+.badge{
+  position:absolute; top:11px; right:11px; min-width:30px; height:26px; padding:0 8px;
+  display:grid; place-items:center; border-radius:13px;
+  font-family:var(--serif); font-size:13px; color:#12100c; background:var(--ok);
+  box-shadow:0 2px 6px rgba(0,0,0,.4);
+}
+.badge.dear{background:var(--dear)}
+.tile.on{
+  border-color:var(--ring);
+  background:linear-gradient(165deg,#3d3020,#241b13);
+  box-shadow:0 0 0 1px var(--ring), 0 0 22px rgba(255,200,120,.28), 0 10px 24px rgba(0,0,0,.5);
+}
+.tile .tick{
+  position:absolute; top:11px; left:11px; width:24px; height:24px; border-radius:50%;
+  display:none; place-items:center; background:var(--ring); color:#1a1209; font-size:14px;
+}
+.tile.on .tick{display:grid}
+
+/* header of a drilled-in category */
+.head{width:min(760px,100%); display:flex; align-items:center; gap:14px; margin-bottom:16px; min-height:34px}
+.head button{
+  display:flex; align-items:center; gap:8px; padding:7px 14px 7px 10px; cursor:pointer;
+  border:0; border-radius:20px; background:rgba(255,225,180,.08); color:var(--dim);
+  font-family:var(--serif); font-size:14px;
+}
+.head button:hover{background:rgba(255,225,180,.14); color:var(--cream)}
+.head h2{margin:0; font-size:19px; font-weight:400}
+.head .eye{margin:0 0 0 auto; font-family:'Cormorant SC',serif; font-size:12px; letter-spacing:.22em; text-transform:uppercase; color:var(--faint)}
+
+/* the read-out: one line, only when something is selected */
+.readout{
+  width:min(760px,100%); margin-top:20px; min-height:64px; padding:16px 20px;
+  border-radius:14px; background:rgba(255,225,180,.045); border:1px solid rgba(255,220,170,.07);
+  display:flex; align-items:center; gap:16px;
+}
+.readout .txt{flex:1; font-size:15px; line-height:1.45; color:var(--dim)}
+.readout .txt b{color:var(--cream); font-weight:400}
+.readout .objection{display:block; margin-top:5px; font-style:italic; color:#e8a077}
+.readout .fee{font-size:20px; color:var(--gold)}
+
+/* what you have chosen */
+.chosen{width:min(760px,100%); display:flex; align-items:center; gap:12px; margin-top:18px; flex-wrap:wrap}
+.chosen .lbl{font-family:'Cormorant SC',serif; font-size:12px; letter-spacing:.22em; text-transform:uppercase; color:var(--faint)}
+.pill{display:inline-flex; align-items:center; gap:8px; padding:7px 10px 7px 13px; border-radius:18px;
+  background:rgba(255,200,120,.14); border:1px solid rgba(255,200,120,.3); font-size:14px}
+.pill button{background:none;border:0;cursor:pointer;color:rgba(243,235,218,.45);font-size:15px;padding:0 2px}
+.pill button:hover{color:var(--cream)}
+.go{
+  margin-top:22px; padding:14px 40px; cursor:pointer; border:0; border-radius:26px;
+  font-family:var(--serif); font-size:16px; color:#1a1209;
+  background:linear-gradient(180deg,#f6cd86,#e0a655); box-shadow:0 6px 20px rgba(230,170,90,.3);
+  transition:transform .15s, box-shadow .15s;
+}
+.go:hover{transform:translateY(-2px); box-shadow:0 10px 26px rgba(230,170,90,.42)}
+.go:disabled{opacity:.35; cursor:default; transform:none; box-shadow:none}
+
+@media(max-width:620px){.shelf{grid-template-columns:repeat(2,1fr)}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<h1>Consider Treatment</h1>
+<p class="who">Miss Nora Byrne · aged 28 · copyist</p>
+
+<div class="head" id="head"></div>
+<div class="shelf" id="shelf"></div>
+
+<div class="readout" id="readout"><span class="txt" style="color:var(--faint)">Choose where to begin.</span></div>
+
+<div class="chosen" id="chosen"></div>
+<button class="go" id="go" disabled>Write it out</button>
+
+<script>
+/* chunky filled placeholder objects — sized for a drop-in illustration later */
+const ART = {
+bottle:`<svg viewBox="0 0 64 64"><defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d99a4e"/><stop offset="1" stop-color="#8a5622"/></linearGradient></defs>
+<rect x="26" y="6" width="12" height="9" rx="2" fill="#8a6a44"/>
+<path d="M25 14h14v6l6 12v22a4 4 0 0 1-4 4H23a4 4 0 0 1-4-4V32l6-12z" fill="url(#g1)"/>
+<rect x="22" y="34" width="20" height="14" rx="2" fill="#f2e6cc"/><rect x="25" y="38" width="14" height="1.6" fill="#a08258"/><rect x="25" y="42" width="10" height="1.6" fill="#a08258"/>
+<path d="M25 14h5v6l-5 10z" fill="#fff" opacity=".18"/></svg>`,
+bed:`<svg viewBox="0 0 64 64"><path d="M6 30h34a14 14 0 0 1 14 14v8H6z" fill="#7a5d3e"/><rect x="6" y="20" width="6" height="32" rx="3" fill="#9c7a52"/>
+<rect x="14" y="26" width="20" height="12" rx="5" fill="#f2e6cc"/><rect x="6" y="46" width="48" height="6" rx="3" fill="#5d452c"/>
+<path d="M34 34h6a10 10 0 0 1 10 10v2H34z" fill="#8f6f4a"/></svg>`,
+milk:`<svg viewBox="0 0 64 64"><path d="M22 10h20l-3 8v4l5 10v24a4 4 0 0 1-4 4H24a4 4 0 0 1-4-4V32l5-10v-4z" fill="#e9e2d2"/>
+<path d="M20 38h24v18a4 4 0 0 1-4 4H24a4 4 0 0 1-4-4z" fill="#fbf8f0"/>
+<path d="M44 26c5 0 8 3 8 7s-3 7-8 7" fill="none" stroke="#cfc4ac" stroke-width="4"/>
+<path d="M25 22h4v10l-4 8z" fill="#fff" opacity=".7"/></svg>`,
+leaf:`<svg viewBox="0 0 64 64"><path d="M52 8C30 8 14 20 14 38c0 6 2 11 5 15C25 40 36 30 50 26 38 32 28 42 23 56c4 2 9 2 13 1 16-4 22-24 16-49z" fill="#7fa05c"/>
+<path d="M50 26C38 32 28 42 23 56" stroke="#5c7a40" stroke-width="2.4" fill="none"/></svg>`,
+water:`<svg viewBox="0 0 64 64"><defs><linearGradient id="g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fc7db"/><stop offset="1" stop-color="#3d7d99"/></linearGradient></defs>
+<path d="M32 6c0 0 16 17 16 27a16 16 0 1 1-32 0C16 23 32 6 32 6z" fill="url(#g2)"/>
+<path d="M24 34c0 6 4 10 9 10" stroke="#dff0f6" stroke-width="3.4" fill="none" stroke-linecap="round" opacity=".8"/>
+<ellipse cx="26" cy="18" rx="3.4" ry="5" fill="#fff" opacity=".45" transform="rotate(-20 26 18)"/></svg>`,
+spark:`<svg viewBox="0 0 64 64"><rect x="14" y="34" width="36" height="20" rx="4" fill="#6b5335"/><rect x="18" y="38" width="28" height="4" rx="2" fill="#c8a468"/>
+<path d="M36 4 18 32h11l-3 20 20-30H34z" fill="#ffd06b"/><path d="M36 4 18 32h11z" fill="#fff" opacity=".28"/></svg>`,
+mind:`<svg viewBox="0 0 64 64"><path d="M32 8c11 0 20 8 20 18 0 6-3 11-8 15l-1 10-9-5c-.7.1-1.4.1-2 .1-11 0-20-8-20-18S21 8 32 8z" fill="#9a7fc0"/>
+<path d="M32 34c4 0 7-2.6 7-6.2S36 22 33 22c-2.5 0-4.2 1.7-4.2 3.7s1.5 3.2 3 3.2" fill="none" stroke="#f0e6fa" stroke-width="3" stroke-linecap="round"/></svg>`,
+door:`<svg viewBox="0 0 64 64"><rect x="10" y="8" width="24" height="48" rx="3" fill="#7a5d3e"/><rect x="14" y="12" width="16" height="40" rx="2" fill="#5d452c"/>
+<circle cx="29" cy="33" r="2.6" fill="#e9b565"/><path d="M40 33h16" stroke="#e9b565" stroke-width="4" stroke-linecap="round"/><path d="M48 25l8 8-8 8" stroke="#e9b565" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+quill:`<svg viewBox="0 0 64 64"><path d="M8 56c14 1.4 24-5.4 29.6-14.8C42.6 32.6 44.4 24 44 14c-6.6.7-14.6 3.4-22 9.4C14 30 8 42 8 56z" fill="#d8cbb0"/>
+<path d="M8 56 26 38" stroke="#8a7350" stroke-width="3" stroke-linecap="round"/>
+<path d="M44 14c.4 10-1.4 18.6-6.4 27.2" stroke="#b3a punkt" stroke-width="0" fill="none"/></svg>`
+};
+
+const CATS=[
+ {art:'bottle',name:'Drugs',opts:[
+  ['Potassium bromide',1.25,'A nightly draught. Calms excitation; dulls the senses with continued use.'],
+  ['Chloral hydrate',1.60,'Twenty grains at bedtime. Promotes quiet sleep.'],
+  ['Laudanum',0.90,'Ten drops as needed. Quiets pain and the nerves.'],
+  ['Morphine',2.40,'A quarter grain, hypodermic. Certain relief; the habit forms readily.'],
+  ['Cannabis indica',1.75,'Five drops of the tincture. Relieves nervous agitation.'],
+  ['Coca wine',1.10,'A glass with meals. A restorative tonic.'],
+  ['Iron and arsenic',0.80,'Fowler’s solution, three drops. For debility and poor colour.'],
+  ['Valerian',0.55,'A dram of the tincture. Soothes nervous tension.'],
+ ]},
+ {art:'bed',name:'Rest',opts:[
+  ['An hour lying down',0,'Daily after dinner, curtains drawn.'],
+  ['Rest cure at home',4.00,'Six weeks in bed. No reading, no visitors, no letters.',
+   'Six weeks from the office costs her the place. She keeps her room on those wages.'],
+  ['Rest cure at a sanatorium',38.00,'Six weeks resident: seclusion, massage, feeding up, attendants.',
+   'More than she earns in a quarter.'],
+  ['A fortnight at Saratoga',16.00,'Change of scene and regular hours.'],
+  ['Seclusion from the family',0,'One month. No callers.'],
+ ]},
+ {art:'milk',name:'Diet',opts:[
+  ['Exclusive milk diet',2.20,'Four quarts daily and nothing else.'],
+  ['Feeding up',3.10,'Cream, chops, and eggs every two hours.'],
+  ['Beef tea',1.40,'Three times daily. Strengthens and supports.'],
+  ['Brandy',1.20,'A wineglass at noon and at night, as a stimulant.'],
+  ['Cod liver oil',0.75,'A spoonful before meals.'],
+  ['Abstinence',0,'No tea, coffee, tobacco, or excitement.'],
+ ]},
+ {art:'leaf',name:'Exercise & air',opts:[
+  ['Graduated walking',0,'A half mile daily, increased each week.'],
+  ['Swedish movements',6.00,'Medical gymnastics with an attendant.'],
+  ['Change of air',14.00,'One month at the shore or in the country.'],
+  ['A sea voyage',60.00,'Six weeks, Atlantic passage.'],
+  ['The camp cure',22.00,'Outdoor life, riding, rough living.'],
+  ['Mountain air',30.00,'The Adirondacks, through the summer.'],
+ ]},
+ {art:'water',name:'Hydrotherapy',opts:[
+  ['Cold sponging',0,'On rising, briskly, followed by friction.'],
+  ['The wet pack',1.00,'Wrapped in sheets for an hour.'],
+  ['Sitz bath',0.60,'Tepid, twice daily.'],
+  ['Turkish bath',2.00,'Weekly, followed by an hour’s rest.'],
+  ['Continuous warm bath',3.50,'For excitement and agitation.'],
+  ['A course at a water cure',24.00,'A fortnight, resident.'],
+ ]},
+ {art:'spark',name:'Electrotherapy',opts:[
+  ['General faradization',3.00,'Beard’s method, head to foot, thrice weekly.'],
+  ['Local faradization',1.80,'Ten minutes to the affected hand.'],
+  ['Galvanization',2.20,'Constant current, ten minutes.'],
+  ['Central galvanization',3.40,'Spine and head.'],
+  ['Static electricity',4.00,'The machine — sparks and the electric breeze.'],
+  ['The electric bath',5.00,'Current passed through the water.'],
+ ]},
+ {art:'mind',name:'Mind & suggestion',opts:[
+  ['Hypnotic suggestion',3.00,'The symptom addressed directly under trance.'],
+  ['Hypnotic investigation',3.00,'Reproduce the state and question it.',
+   'Questioning under suggestion has already produced accounts that changed with the questions.'],
+  ['Persuasion',0,'Tell her plainly what you believe is happening.'],
+  ['Moral management',0,'Firm authority. No indulgence of the symptom.'],
+  ['Leave the circle',0,'No more sittings at Mrs. Bell’s.'],
+  ['Endorse the writing',0,'Accept Mary’s agency and develop the communications.',
+   'She will be grateful. Nothing in the writings has contained anything she did not know.'],
+  ['Planchette, observed',0,'Recorded under your eye, as investigation.'],
+ ]},
+ {art:'door',name:'Removal & change',opts:[
+  ['Leave the trade',0,'Give up the copying desk entirely.',
+   'She has no other trade and no one to keep her.'],
+  ['Lighter work',0,'Fewer hours of close script at the same desk.'],
+  ['Reduced hours',0,'Half days for one month.'],
+  ['Change of lodgings',8.00,'Away from the damp and the noise.'],
+  ['A room of her own',12.00,'Separated from the household.'],
+  ['The country for a season',18.00,'Placed with relations upstate.'],
+ ]},
+ {art:'quill',name:'In your own words',custom:true},
+];
+
+const shelf=document.getElementById('shelf'), head=document.getElementById('head'),
+      readout=document.getElementById('readout'), chosenEl=document.getElementById('chosen'),
+      go=document.getElementById('go');
+const plan=[];
+let view=null;
+
+const money=n=>n?'$'+n.toFixed(2):'free';
+const affordable=n=>n<=4;
+
+function tile({art,name,badge,dear,on,tick}){
+  const b=document.createElement('button'); b.className='tile'+(on?' on':''); b.type='button';
+  b.innerHTML=(badge!==undefined?`<span class="badge${dear?' dear':''}">${badge}</span>`:'')
+    +(tick?'<span class="tick">✓</span>':'')
+    +`<span class="art">${ART[art]}</span><span class="name">${name}</span>`;
+  return b;
+}
+
+function showCabinet(){
+  view=null; head.innerHTML=''; shelf.innerHTML='';
+  readout.innerHTML='<span class="txt" style="color:var(--faint)">Choose where to begin.</span>';
+  CATS.forEach(c=>{
+    const t=tile({art:c.art,name:c.name});
+    t.onclick=()=>c.custom?showCustom():showCategory(c);
+    shelf.appendChild(t);
+  });
+}
+
+function showCategory(c){
+  view=c; shelf.innerHTML='';
+  head.innerHTML=`<button type="button" id="back">← All treatments</button><h2>${c.name}</h2><span class="eye">${c.opts.length} available</span>`;
+  document.getElementById('back').onclick=showCabinet;
+  c.opts.forEach(([name,fee,desc,objection],i)=>{
+    const on=plan.some(p=>p.name===name);
+    const t=tile({art:c.art,name,badge:money(fee),dear:!affordable(fee),on,tick:true});
+    // Placeholder variety so the shelf reads as different objects. Real
+    // artwork replaces this; the tint goes with it.
+    t.querySelector('.art svg').style.filter =
+      `drop-shadow(0 6px 9px rgba(0,0,0,.55)) hue-rotate(${i*41}deg) saturate(${1 + (i%3)*.25})`;
+    t.onclick=()=>{
+      const i=plan.findIndex(p=>p.name===name);
+      if(i<0) plan.push({name,fee}); else plan.splice(i,1);
+      t.classList.toggle('on',i<0); describe(name,fee,desc,objection); draw();
+    };
+    t.onmouseenter=()=>describe(name,fee,desc,objection);
+    shelf.appendChild(t);
+  });
+}
+
+function showCustom(){
+  view='custom'; shelf.innerHTML='';
+  head.innerHTML=`<button type="button" id="back">← All treatments</button><h2>In your own words</h2>`;
+  document.getElementById('back').onclick=showCabinet;
+  shelf.style.display='block';
+  shelf.innerHTML=`<textarea rows="4" placeholder="A substance, a regimen, a combination of your own devising…"
+    style="width:100%;padding:18px 20px;border-radius:16px;border:1px solid rgba(255,220,170,.14);
+    background:rgba(255,225,180,.045);color:var(--cream);font-family:var(--serif);font-size:16px;line-height:1.55;resize:vertical"></textarea>`;
+  readout.innerHTML='<span class="txt">It will be read, matched against what the dispensary knows, and dispensed as written.</span>';
+}
+
+function describe(name,fee,desc,objection){
+  readout.innerHTML=`<span class="txt"><b>${name}.</b> ${desc}`
+    +(objection?`<span class="objection">She said: ${objection}</span>`:'')
+    +`</span><span class="fee">${money(fee)}</span>`;
+}
+
+function draw(){
+  shelf.style.display='grid';
+  chosenEl.innerHTML = plan.length
+    ? `<span class="lbl">Prescribed</span>`+plan.map((p,i)=>
+        `<span class="pill">${p.name}<button onclick="drop(${i})" aria-label="Remove">×</button></span>`).join('')
+    : '';
+  go.disabled=!plan.length;
+  go.textContent = plan.length ? `Write it out — $${(plan.reduce((a,p)=>a+p.fee,0)+2).toFixed(2)}` : 'Write it out';
+}
+window.drop=i=>{ plan.splice(i,1); draw(); if(view&&view!=='custom') showCategory(view); };
+
+showCabinet(); draw();
+</script>
+</body>
+</html>

@@ -6,7 +6,11 @@ import {
   sampleRoute,
   stepCarriage,
 } from '../src/world/horselessCarriage.js';
-import { streetTrafficAdvice, trafficAgentDetails } from '../src/world/streetTraffic.js';
+import {
+  crossTrafficObstacles,
+  streetTrafficAdvice,
+  trafficAgentDetails,
+} from '../src/world/streetTraffic.js';
 
 const DT = 1 / 20;
 
@@ -178,4 +182,66 @@ test('an articulated rig stops its front, not its centre, at an intersection', (
     id: 'long-rig', lane: 1.5, cruise: 2.2, minGap: 4, length, priority: 50,
   }, DT);
   assert.equal(advice.cruise, 0, 'front axle has reached the stop line');
+});
+
+// A vehicle stalled across the road (post-collision, mid-box) must read as an
+// obstacle to crossing traffic; a vehicle waiting at a stop line must not.
+function wreckAt(routeIndex, s, lat, yawOffset, overrides = {}) {
+  const [x, z, tx, tz] = sampleRoute(ROUTES[routeIndex], s);
+  return {
+    id: 'wreck',
+    trafficId: 'wreck',
+    route: 2,
+    s: 0,
+    lane: 0,
+    x: x + -tz * lat,
+    z: z + tx * lat,
+    yaw: Math.atan2(tx, tz) + yawOffset,
+    speed: 0,
+    length: 5,
+    trafficWait: 0,
+    ...overrides,
+  };
+}
+
+test('cross-heading vehicles become obstacles; waiting or parallel ones do not', () => {
+  const sample = nearestSample(ROUTES[0], 135, 1);
+  const state = createCarriageState(0, sample.s, 1.5);
+  const crossing = wreckAt(0, sample.s + 14, 1.5, Math.PI / 2);
+  assert.equal(crossTrafficObstacles(state, [crossing], 'self').length, 2);
+  assert.equal(
+    crossTrafficObstacles(state, [wreckAt(0, sample.s + 14, 1.5, Math.PI / 2, { trafficWait: 3 })], 'self').length,
+    0,
+    'a vehicle waiting at a stop line stays invisible',
+  );
+  assert.equal(
+    crossTrafficObstacles(state, [wreckAt(0, sample.s + 14, 1.5, 0)], 'self').length,
+    0,
+    'same-direction traffic is handled by following logic',
+  );
+  assert.equal(
+    crossTrafficObstacles(state, [wreckAt(0, sample.s + 14, 1.5, Math.PI)], 'self').length,
+    0,
+    'oncoming parallel traffic is not an obstacle',
+  );
+});
+
+test('a carriage brakes short of a vehicle stalled across its path', () => {
+  const sample = nearestSample(ROUTES[0], 135, 1);
+  const wreck = wreckAt(0, sample.s + 14, 1.5, Math.PI / 2);
+  const runToward = (obstacles) => {
+    let state = createCarriageState(0, sample.s, 1.5);
+    let minDistance = Infinity;
+    for (let i = 0; i < 8 * 60; i += 1) {
+      state = stepCarriage(state, 1 / 60, obstacles);
+      minDistance = Math.min(minDistance, Math.hypot(state.x - wreck.x, state.z - wreck.z));
+    }
+    return minDistance;
+  };
+  const blind = runToward([]);
+  assert.ok(blind < 1.2, `without cross obstacles the carriage drives through, ${blind.toFixed(2)}`);
+  const seeing = runToward(
+    crossTrafficObstacles(createCarriageState(0, sample.s, 1.5), [wreck], 'self'),
+  );
+  assert.ok(seeing > 2, `with cross obstacles it stops short, ${seeing.toFixed(2)}`);
 });

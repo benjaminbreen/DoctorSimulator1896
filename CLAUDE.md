@@ -24,3 +24,10 @@ game, own package, `npm run game`, port 5175).
 - Style: write code comments, docs, and responses simply and clearly. No
   neologisms, no poetic language. Comment blocks stay under 3–4 lines unless
   truly needed. Simple beats ornate — in prose and in design.
+- Comments say why the code is the way it is, or name a gotcha. Never restate
+  what the line does.
+- Build the simplest thing that works. No shared constants, indirection layers,
+  or abstractions for a problem that has not happened yet. Duplicating a value
+  in two files with a one-line note beats a module that exists to hold it.
+- Test the behaviour that matters. Do not add tests to pin down details that
+  will change, and do not exhaustively verify a change that is obviously right.

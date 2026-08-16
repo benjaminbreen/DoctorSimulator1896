@@ -50,6 +50,7 @@ export default function ControlHelper({ hidden = false }) {
       className={`control-helper control-helper--${walked ? 'settled' : 'new'}`}
       aria-label="Game controls"
     >
+      <span className="control-helper__cap" aria-hidden="true">Controls</span>
       <button
         type="button"
         className="control-helper__close"
@@ -59,29 +60,26 @@ export default function ControlHelper({ hidden = false }) {
         ×
       </button>
       {!walked && (
-        <div className="control-helper__movement">
-          <p>Move through the world</p>
-          <div className="control-helper__walk-keys">
-            <KeyGroup keys={['W', 'A', 'S', 'D']} label="W A S D keys" />
-            <span className="control-helper__or">or</span>
-            <KeyGroup keys={['↑', '←', '↓', '→']} label="arrow keys" />
-            <strong>to walk</strong>
-          </div>
-        </div>
+        <p className="control-helper__walk">
+          <KeyGroup keys={['W', 'A', 'S', 'D']} label="W A S D keys" />
+          <span className="control-helper__or">or</span>
+          <KeyGroup keys={['↑', '←', '↓', '→']} label="arrow keys" />
+          {' to walk'}
+        </p>
       )}
 
-      <div className="control-helper__directions">
-        <span><b>Drag</b> to turn the camera</span>
-        <span><b>Scroll</b> to zoom</span>
-        <span><kbd>M</kbd> changes the camera view</span>
-      </div>
+      <p className="control-helper__directions">
+        <b>Drag</b> to turn the camera
+        <span className="control-helper__sep">·</span>
+        <b>Scroll</b> to zoom
+        <span className="control-helper__sep">·</span>
+        <kbd>M</kbd> changes view
+      </p>
 
       {!fastTravelUsed && (
         <p className="control-helper__travel">
-          Use{' '}
           <button type="button" onClick={() => requestHudOverlay('travel')}>Fast Travel</button>
-          {' '}to reach the <strong>waiting room</strong>, <strong>consulting room</strong>, or
-          Columbia <strong>psychology lab</strong>.
+          {' '}reaches the waiting room, consulting room, or Columbia lab.
         </p>
       )}
 

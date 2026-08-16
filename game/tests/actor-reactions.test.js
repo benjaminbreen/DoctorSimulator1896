@@ -18,22 +18,28 @@ import {
 } from '../src/world/actorImpacts.js';
 import { ledgeCandidate } from '../src/world/motionAffordances.js';
 
-test('walking bumps stagger while a real running hit knocks down', () => {
+test('bumps scale: flinch, stagger, then a real running hit knocks down', () => {
+  assert.equal(classifyPedestrianImpact({ cause: 'player-body', relativeSpeed: 1 }), 'flinch');
   assert.equal(classifyPedestrianImpact({ cause: 'player-body', relativeSpeed: 4.1 }), 'stagger');
   assert.equal(classifyPedestrianImpact({ cause: 'player-body', relativeSpeed: 5.2, running: true }), 'stagger');
   assert.equal(classifyPedestrianImpact({ cause: 'player-body', relativeSpeed: 8, running: true }), 'knockdown');
   assert.equal(classifyPedestrianImpact({ cause: 'horseless-carriage', relativeSpeed: 0.79 }), null);
   assert.equal(classifyPedestrianImpact({ cause: 'horseless-carriage', relativeSpeed: 1 }), 'knockdown');
+  assert.equal(classifyPedestrianImpact({ cause: 'horse-drawn-vehicle', relativeSpeed: 1.4 }), 'knockdown');
+  // Two walkers colliding head-on flinch; an overtaking brush passes.
+  assert.equal(classifyPedestrianImpact({ cause: 'pedestrian-body', relativeSpeed: 2.6 }), 'flinch');
+  assert.equal(classifyPedestrianImpact({ cause: 'pedestrian-body', relativeSpeed: 0.4 }), null);
 });
 
-test('ordinary pedestrians convert every meaningful impact to an upright startle', () => {
+test('ordinary pedestrians stay upright: knockdowns collapse to a stagger, light bumps flinch', () => {
   assert.equal(classifyPedestrianStartle({ cause: 'player-body', relativeSpeed: 0.2 }), null);
-  assert.equal(classifyPedestrianStartle({ cause: 'player-body', relativeSpeed: 1 }), 'stagger');
+  assert.equal(classifyPedestrianStartle({ cause: 'player-body', relativeSpeed: 1 }), 'flinch');
   assert.equal(
     classifyPedestrianStartle({ cause: 'player-body', relativeSpeed: 8, running: true }),
     'stagger',
   );
   assert.equal(classifyPedestrianStartle({ cause: 'horseless-carriage', relativeSpeed: 2 }), 'stagger');
+  assert.equal(classifyPedestrianStartle({ cause: 'horse-drawn-vehicle', relativeSpeed: 2 }), 'stagger');
 });
 
 test('prone recovery rises smoothly with chronological age', () => {

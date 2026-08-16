@@ -42,6 +42,28 @@ diagnosis and treatment mappings remain placeholders.
 Animation parameters are not clinical measurements unless the patient record
 defines them as such.
 
+## Dynamic patient answers
+
+A custom question that matches no authored rule is answered by GPT-5.6 Luna at
+zero reasoning effort, through the server-side route in `api/consult.mjs`.
+Authored prompts and custom questions that match an authored intent stay
+offline and instant. Replies take two to three seconds.
+
+Local testing needs nothing but `OPENAI_API_KEY` in the repo-root `.env.local`.
+The dev server mounts the same route at `/api/consult`, so `npm run game`
+behaves like the deployed build. The key is read into the node process only and
+never reaches the browser bundle.
+
+On Vercel, set `OPENAI_API_KEY` in the project's environment variables. The
+route is protected three ways: a WAF rate limit rule on `/api/consult`
+(60s window, 15 requests, key IP, action Deny), a same-origin check, and a
+per-client fixed window in the handler itself. The handler rejects any payload
+that is not a dialogue request. A `curl` without an `Origin` header gets 403 by
+design; add `-H 'origin: http://127.0.0.1:5175'` to test it by hand.
+
+If the route fails, times out, or is unconfigured, the custom question falls
+back to the offline reply and play continues.
+
 ## Automated checks
 
 Run:
@@ -49,6 +71,9 @@ Run:
 ```sh
 npm --prefix game test
 ```
+
+`luna-dialogue.test.js` covers the renderer and the route with a stubbed
+`fetch`. It never calls the real API.
 
 ## Headless design playtest
 
@@ -97,6 +122,10 @@ The tests cover:
 - Carmela's immediate approval diverging from one-month health;
 - state-based authored prompt selection;
 - custom inquiry finding unlisted but eligible evidence;
+- authored rules and insults answering offline without a model call;
+- a failed or unreachable dialogue route falling back to the offline reply;
+- the route rejecting cross-origin callers, non-dialogue payloads, and a client
+  over the rate limit;
 - locked evidence resisting forced prompt ids;
 - custom thought classification without time or patient reaction;
 - authored examinations and evidence-sensitive scoring;
@@ -162,7 +191,6 @@ For Samuel, test these paths:
 The current tests do not yet cover:
 
 - modular state-based choice selection for procedural patients;
-- GPT-5.6 Luna contracts and server failure handling;
 - practice-wide reputation and financial outcomes;
 - model-rendered William James and modern debrief prose;
 - full visual regression automation.

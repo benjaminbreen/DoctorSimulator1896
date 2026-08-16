@@ -91,10 +91,6 @@ export function checkWatch(hours) {
   notice(`You draw your watch: ${spokenTime(hours)}.`, { key: 'watch' });
 }
 
-export function checkWallet() {
-  notice('Four dollars and eighty-five cents, in coin and small notes.', { key: 'wallet' });
-}
-
 // Short front-page headings transcribed from the June 15 issue shipped in
 // public/newspapers. Keeping the list small is preferable to filling the
 // panel with plausible but unverified events.

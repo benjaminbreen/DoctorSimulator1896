@@ -126,6 +126,39 @@ function passingLaneClear(route, state, lane, traffic, originS = state.s) {
   });
 }
 
+// Route logic cannot see a vehicle crossing at an angle, so those become
+// obstacle circles. Vehicles waiting at a stop line stay invisible — the
+// intersection election schedules them, and braking would deadlock the box.
+const CROSS_HEADING_DOT = 0.6;
+const CROSS_WAIT_EXEMPT = 0.5;
+// Above 1: stepCarriage's "person against the hull" hold applies to r < 1
+// only, and a vehicle-sized circle must brake traffic, never freeze it.
+const CROSS_OBSTACLE_RADIUS = 1.05;
+
+export function crossTrafficObstacles(state, agents, selfId) {
+  const fx = Math.sin(state.yaw);
+  const fz = Math.cos(state.yaw);
+  const obstacles = [];
+  for (const agent of routeTraffic(agents, selfId)) {
+    if (!Number.isFinite(agent.yaw)) continue;
+    if ((agent.trafficWait ?? 0) > CROSS_WAIT_EXEMPT) continue;
+    const dot = fx * Math.sin(agent.yaw) + fz * Math.cos(agent.yaw);
+    if (Math.abs(dot) >= CROSS_HEADING_DOT) continue;
+    const [x, z] = physicalTrafficPosition(agent);
+    const ax = Math.sin(agent.yaw);
+    const az = Math.cos(agent.yaw);
+    const reach = Math.max(0, (agent.length ?? 3) * 0.3);
+    for (const offset of [-reach, reach]) {
+      obstacles.push({
+        x: x + ax * offset,
+        z: z + az * offset,
+        r: CROSS_OBSTACLE_RADIUS,
+      });
+    }
+  }
+  return obstacles;
+}
+
 export function streetTrafficAdvice(state, agents, config, dt) {
   const route = ROUTES[state.route];
   const traffic = routeTraffic(agents, config.id);

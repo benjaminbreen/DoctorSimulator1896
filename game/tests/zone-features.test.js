@@ -24,6 +24,7 @@ const KNOWN_FEATURES = [
   'horseless-carriage',
   'horse-drawn-traffic',
   'pushcarts',
+  'posted-npcs',
   'pigeon-flock',
   'bees',
   'butterflies',

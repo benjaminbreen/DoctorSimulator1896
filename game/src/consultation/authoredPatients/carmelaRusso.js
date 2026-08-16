@@ -303,14 +303,70 @@ export const CARMELA_RUSSO = Object.freeze({
     Object.freeze({ id: 'carmela-dx-anaemia', label: 'Anaemic debility', description: 'A common explanation for breathlessness that lacks supporting pallor or exertional symptoms.', selector: { basePriority: 1, contraryFactIds: ['carmela-general-exam', 'carmela-no-cardiac-red-flags'] }, evaluation: { quality: 2, patientAcceptance: 2 } }),
     Object.freeze({ id: 'carmela-dx-presentiment', label: 'Pathological presentiment', description: 'Treat the attacks as a special faculty warning her of approaching calamity.', selector: { basePriority: -3, supportFactIds: ['carmela-bell-avoidance'] }, evaluation: { quality: 0, patientAcceptance: 11 } }),
   ]),
-  treatments: Object.freeze([
-    Object.freeze({ id: 'carmela-tx-stop-coca', label: 'Stop coca wine; explain the cycle; resume ordinary activity', description: 'Remove the stimulant, preserve the shop, practise slow breathing, and gradually answer the bell herself with review in one week.', evaluation: { quality: 10, patientAcceptance: 7, healthChange: 7, functionChange: 6, episodesChange: -7, incomeChangeCents: 0, immediateText: 'The plan respects both the bodily terror and the arithmetic of keeping a shop.', monthText: 'A month later, Carmela has stopped the coca wine and again answers most rings herself. Two brief attacks occurred in the first week; neither became a full paroxysm, and none has occurred for twelve days.', modernText: 'Removing cocaine exposure and reversing avoidance addresses two major maintaining factors while safety advice and follow-up protect against missed cardiac disease.' } }),
-    Object.freeze({ id: 'carmela-tx-rest-cure', label: 'Close the shop for complete rest and seclusion', description: 'Withdraw her from commerce, visitors, and household decisions for several weeks.', evaluation: { quality: 2, patientAcceptance: -8, healthChange: -1, functionChange: -8, episodesChange: -2, incomeChangeCents: -2400, immediateText: 'She hears the recommendation as a sentence against the business she preserved after her husband’s death.', monthText: 'A month later, the attacks are less often provoked because Carmela seldom leaves her room, but Elena has lost customers and credit at the shop. The bell now frightens Carmela more than before.', modernText: 'Seclusion strengthens avoidance and imposes financial harm despite reducing immediate exposure to triggers.' } }),
-    Object.freeze({ id: 'carmela-tx-bromide', label: 'Bromide draught and early bed', description: 'Sedate the nervous system at night while leaving the tonic and avoidance unexamined.', evaluation: { quality: 4, patientAcceptance: 5, healthChange: 0, functionChange: -2, episodesChange: -1, incomeChangeCents: -200, immediateText: 'A bottle and dosage make the visit feel concrete, though she dislikes the prospect of dull mornings.', monthText: 'A month later, Carmela sleeps more heavily but is slow over the morning accounts. The attacks continue after coca wine and at the shop bell.', modernText: 'Sedation may blunt arousal but does not remove the stimulant or reverse conditioned avoidance.' } }),
-    Object.freeze({ id: 'carmela-tx-digitalis', label: 'Digitalis for a presumed weak heart', description: 'Treat the palpitation as cardiac weakness despite a normal rhythm and examination.', evaluation: { quality: 1, patientAcceptance: 8, healthChange: -3, functionChange: -3, episodesChange: 1, incomeChangeCents: -350, immediateText: 'Being given a heart medicine validates the danger she feared and briefly reassures her.', monthText: 'A month later, nausea and intermittent slow pulse have added new bodily alarms. She watches her heart more closely and ventures into the shop less often.', modernText: 'Unneeded digitalis adds toxicity risk and reinforces catastrophic monitoring of a structurally normal heart.' } }),
-    Object.freeze({ id: 'carmela-tx-galvanism', label: 'Course of galvanic treatments', description: 'Offer repeated electrical treatments for nervous tone without changing coca use or avoidance.', evaluation: { quality: 3, patientAcceptance: 4, healthChange: 0, functionChange: -1, episodesChange: 0, incomeChangeCents: -500, immediateText: 'She is willing to try a modern apparatus but asks how many afternoons it will take from the shop.', monthText: 'A month later, the office treatments have produced no clear change. Carmela continues the tonic and still calls Elena when the bell rings.', modernText: 'The treatment consumes time and money without addressing the stimulant exposure or learned fear cycle.' } }),
-    Object.freeze({ id: 'carmela-tx-heed-warning', label: 'Heed the warnings and avoid provoking places', description: 'Advise her to trust the attacks, leave the counter to Elena, and avoid crowded conveyances.', evaluation: { quality: 0, patientAcceptance: 13, healthChange: -5, functionChange: -7, episodesChange: 5, incomeChangeCents: -1400, immediateText: 'She leaves deeply relieved that you have confirmed the attacks mean something and pays without hesitation.', monthText: 'A month later, Carmela rarely enters the shop and will not ride the horse-car. The sphere of danger has widened from the bell to the street, church, and any room without a quick exit.', modernText: 'Confirming the feared meaning and prescribing avoidance strongly reinforces panic and functional restriction.' } }),
-  ]),
+  // Only the treatments that matter in this case. Everything else in the
+  // library resolves to its default, which for Carmela is a null result.
+  treatmentOverrides: Object.freeze({
+    'drug-stop-tonic': Object.freeze({
+      label: 'Stop coca wine; explain the cycle; resume ordinary activity',
+      detail: 'Remove the stimulant, preserve the shop, practise slow breathing, and gradually answer the bell herself with review in one week.',
+      evaluation: Object.freeze({
+        quality: 10, patientAcceptance: 7, recovery: 10, cost: 1,
+        immediateText: 'The plan respects both the bodily terror and the arithmetic of keeping a shop.',
+        monthText: 'A month later, Carmela has stopped the coca wine and again answers most rings herself. Two brief attacks occurred in the first week; neither became a full paroxysm, and none has occurred for twelve days.',
+        modernText: 'Removing cocaine exposure and reversing avoidance addresses two major maintaining factors while safety advice and follow-up protect against missed cardiac disease.',
+      }),
+    }),
+    'rest-cure-home': Object.freeze({
+      label: 'Close the shop for complete rest and seclusion',
+      detail: 'Withdraw her from commerce, visitors, and household decisions for several weeks.',
+      evaluation: Object.freeze({
+        quality: 2, patientAcceptance: -8, recovery: 1, cost: -14,
+        immediateText: 'She hears the recommendation as a sentence against the business she preserved after her husband’s death.',
+        monthText: 'A month later, the attacks are less often provoked because Carmela seldom leaves her room, but Elena has lost customers and credit at the shop. The bell now frightens Carmela more than before.',
+        modernText: 'Seclusion strengthens avoidance and imposes financial harm despite reducing immediate exposure to triggers.',
+      }),
+    }),
+    'drug-bromide': Object.freeze({
+      label: 'Bromide draught and early bed',
+      detail: 'Sedate the nervous system at night while leaving the tonic and avoidance unexamined.',
+      evaluation: Object.freeze({
+        quality: 4, patientAcceptance: 5, recovery: 1, cost: -3,
+        immediateText: 'A bottle and dosage make the visit feel concrete, though she dislikes the prospect of dull mornings.',
+        monthText: 'A month later, Carmela sleeps more heavily but is slow over the morning accounts. The attacks continue after coca wine and at the shop bell.',
+        modernText: 'Sedation may blunt arousal but does not remove the stimulant or reverse conditioned avoidance.',
+      }),
+    }),
+    'drug-digitalis': Object.freeze({
+      label: 'Digitalis for a presumed weak heart',
+      detail: 'Treat the palpitation as cardiac weakness despite a normal rhythm and examination.',
+      evaluation: Object.freeze({
+        quality: 1, patientAcceptance: 8, recovery: -4, cost: -4,
+        immediateText: 'Being given a heart medicine validates the danger she feared and briefly reassures her.',
+        monthText: 'A month later, nausea and intermittent slow pulse have added new bodily alarms. She watches her heart more closely and ventures into the shop less often.',
+        modernText: 'Unneeded digitalis adds toxicity risk and reinforces catastrophic monitoring of a structurally normal heart.',
+      }),
+    }),
+    'elec-galvanization': Object.freeze({
+      label: 'Course of galvanic treatments',
+      detail: 'Offer repeated electrical treatments for nervous tone without changing coca use or avoidance.',
+      evaluation: Object.freeze({
+        quality: 3, patientAcceptance: 4, recovery: 0, cost: -2,
+        immediateText: 'She is willing to try a modern apparatus but asks how many afternoons it will take from the shop.',
+        monthText: 'A month later, the office treatments have produced no clear change. Carmela continues the tonic and still calls Elena when the bell rings.',
+        modernText: 'The treatment consumes time and money without addressing the stimulant exposure or learned fear cycle.',
+      }),
+    }),
+    'mind-endorse': Object.freeze({
+      label: 'Heed the warnings and avoid provoking places',
+      detail: 'Advise her to trust the attacks, leave the counter to Elena, and avoid crowded conveyances.',
+      evaluation: Object.freeze({
+        quality: 0, patientAcceptance: 13, recovery: -10, cost: -12,
+        immediateText: 'She leaves deeply relieved that you have confirmed the attacks mean something and pays without hesitation.',
+        monthText: 'A month later, Carmela rarely enters the shop and will not ride the horse-car. The sphere of danger has widened from the bell to the street, church, and any room without a quick exit.',
+        modernText: 'Confirming the feared meaning and prescribing avoidance strongly reinforces panic and functional restriction.',
+      }),
+    }),
+  }),
   caseNote: Object.freeze({
     minimumWords: 0, minimumEvidenceSelections: 2, maximumEvidenceSelections: 3,
     requiredFactIds: ['carmela-episode-pattern', 'carmela-coca-wine', 'carmela-dose-link', 'carmela-cardiac-exam', 'carmela-shop-stakes'],

@@ -1,0 +1,300 @@
+/* The billfold tipped out along the foot of the screen: notes fanned at one
+   end, the running total struck in gold at the centre, loose coin at the
+   other. Chrome matches the dialogue ribbon and control card. */
+
+.wallet-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+}
+
+.wallet-scrim {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: default;
+  pointer-events: auto;
+}
+
+.wallet-drawer {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  width: min(760px, 92vw);
+  transform: translateX(-50%);
+  pointer-events: auto;
+  padding: 16px 26px 18px;
+  border: 1px solid rgba(204, 164, 82, .58);
+  border-radius: 10px;
+  color: #efe3c8;
+  /* Glass over the park rather than a solid slab: a woven grain, a soft
+     top light, and the scene blurred behind it. */
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 240, 205, .022) 0 2px,
+      transparent 2px 4px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(0, 0, 0, .028) 0 2px,
+      transparent 2px 4px
+    ),
+    radial-gradient(130% 150% at 50% -10%, rgba(255, 226, 170, .1), transparent 62%),
+    linear-gradient(150deg, rgba(24, 42, 33, .62), rgba(6, 14, 11, .68));
+  backdrop-filter: blur(9px) saturate(1.15);
+  -webkit-backdrop-filter: blur(9px) saturate(1.15);
+  box-shadow:
+    0 16px 42px rgba(0, 6, 3, .5),
+    inset 0 1px 0 rgba(255, 236, 190, .16),
+    inset 0 0 26px rgba(0, 0, 0, .28);
+  animation: wallet-rise .32s cubic-bezier(.2, .9, .25, 1);
+}
+
+/* Gold hairline just inside the frame, as on the top bar. */
+.wallet-drawer::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(231, 202, 132, .16);
+  border-radius: 7px;
+  pointer-events: none;
+}
+
+@keyframes wallet-rise {
+  from { transform: translate(-50%, calc(100% + 18px)); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wallet-drawer { animation: none; }
+}
+
+.wallet-close {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  border: 0;
+  background: transparent;
+  color: #9db09f;
+  cursor: pointer;
+  font-size: 17px;
+  line-height: 1;
+}
+
+.wallet-close:hover { color: #e8d5a8; }
+
+.wallet-body {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 18px;
+  min-height: 118px;
+}
+
+/* Notes overlap the way they sit in a folded billfold. */
+.wallet-billfold {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: 6px;
+}
+
+.wallet-note {
+  position: relative;
+  line-height: 0;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .5));
+}
+
+.wallet-note + .wallet-note { margin-left: -104px; }
+.wallet-note:nth-child(1) { transform: rotate(-3.4deg); }
+.wallet-note:nth-child(2) { transform: rotate(1.8deg) translateY(3px); }
+.wallet-note:nth-child(3) { transform: rotate(-1deg) translateY(6px); }
+
+/* Loose coin, dropped rather than arranged. */
+.wallet-pocket {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  padding-right: 6px;
+}
+
+.wallet-coin {
+  position: relative;
+  line-height: 0;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .55));
+}
+
+.wallet-coin + .wallet-coin { margin-left: -18px; }
+.wallet-coin:nth-child(1) { transform: rotate(-9deg) translateY(-7px); }
+.wallet-coin:nth-child(2) { transform: rotate(6deg) translateY(5px); }
+.wallet-coin:nth-child(3) { transform: rotate(-4deg) translateY(-3px); }
+.wallet-coin:nth-child(4) { transform: rotate(11deg) translateY(6px); }
+.wallet-coin:nth-child(5) { transform: rotate(-7deg) translateY(-5px); }
+.wallet-coin:nth-child(6) { transform: rotate(3deg) translateY(4px); }
+
+.wallet-count {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  padding: 0 4px;
+  border-radius: 7px;
+  background: rgba(8, 16, 12, .9);
+  color: #e8d5a8;
+  font-size: 10px;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The figure is the point of the panel: small caps label, gold numerals. */
+.wallet-total {
+  text-align: center;
+  padding: 0 10px;
+}
+
+.wallet-total h2 {
+  margin: 0 0 2px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: #9db09f;
+}
+
+.wallet-total p {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.1;
+  font-weight: 600;
+  letter-spacing: .01em;
+  color: #e8c887;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, .55);
+}
+
+.wallet-spoken {
+  margin-top: 3px;
+  font-size: 11px;
+  font-style: italic;
+  color: #8fa392;
+}
+
+.wallet-empty {
+  margin: 0;
+  color: #7e8f81;
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* The same drawer, carrying a list instead of money. Icons are the ones the
+   held-item card uses, so a pocketed apple looks like the apple in hand. */
+.wallet-drawer--items { width: min(560px, 92vw); padding-bottom: 14px; }
+
+.items-title {
+  margin: 0 0 9px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: #9db09f;
+}
+
+.items-none { padding: 6px 0 4px; }
+
+.items-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: min(46vh, 340px);
+  overflow-y: auto;
+}
+
+.items-row {
+  display: grid;
+  grid-template-columns: 39px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 7px 9px;
+  border: 1px solid rgba(155, 133, 76, .34);
+  border-radius: 7px;
+  background: rgba(6, 18, 13, .5);
+}
+
+.items-row.is-held { border-color: rgba(227, 195, 124, .72); }
+
+.items-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.items-name strong {
+  color: #e8d5a8;
+  font-family: 'Cormorant SC', Georgia, serif;
+  font-size: 15px;
+  letter-spacing: .06em;
+}
+
+.items-name small { color: #8fa392; font-size: 11px; font-style: italic; }
+
+.items-verbs { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+
+.items-verbs button {
+  padding: 5px 11px;
+  border: 1px solid rgba(204, 164, 82, .6);
+  border-radius: 5px;
+  background: rgba(20, 40, 30, .82);
+  color: #efe3c8;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.items-verbs button:hover:not(:disabled) {
+  border-color: rgba(232, 213, 168, .9);
+  color: #f7ecd2;
+}
+
+.items-verbs button:disabled { opacity: .42; cursor: default; }
+
+@media (max-width: 620px) {
+  .wallet-body { grid-template-columns: 1fr; gap: 10px; min-height: 0; }
+  .items-row { grid-template-columns: 39px minmax(0, 1fr); }
+  .items-verbs { grid-column: 1 / -1; justify-content: flex-start; }
+  .wallet-billfold, .wallet-pocket { justify-content: center; padding: 0; }
+  .wallet-total p { font-size: 25px; }
+  .wallet-note + .wallet-note { margin-left: -84px; }
+}
+
+/* Scanned pieces: the paper gets a slight warm lift so it sits in the same
+   light as the drawn chrome, and the coins keep their own alpha shadow. */
+.money-note-img {
+  display: block;
+  height: auto;
+  border-radius: 2px;
+  filter: saturate(.94) contrast(1.02);
+}
+
+.money-coin-img {
+  display: block;
+  height: auto;
+}
+
+/* Plain stand-in for a denomination that has no scan yet. */
+.money-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(231, 202, 132, .45);
+  background: rgba(236, 226, 198, .12);
+  color: #e8d5a8;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.money-fallback-coin { border-radius: 50%; }
+.money-fallback-note { border-radius: 3px; }

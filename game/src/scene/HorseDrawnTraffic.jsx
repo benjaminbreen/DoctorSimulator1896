@@ -23,7 +23,7 @@ import {
   stepHorseDrawnState,
 } from '../world/horseDrawnTraffic.js';
 import { removeBoardable, reportBoardable } from '../world/carriageBoarding.js';
-import { streetTrafficAdvice, trafficAgentDetails } from '../world/streetTraffic.js';
+import { crossTrafficObstacles, streetTrafficAdvice, trafficAgentDetails } from '../world/streetTraffic.js';
 import {
   applyTrafficImpacts,
   beginTrafficFrame,
@@ -394,6 +394,7 @@ export default function HorseDrawnTraffic({ runtime }) {
         obstacles.push(agent);
       }
       const trafficConfig = horseDrawnTrafficConfig(unit);
+      obstacles.push(...crossTrafficObstacles(unit.state, agents, trafficConfig.id));
       unit.accumulator = Math.min(
         unit.accumulator + frameDt,
         HORSE_DRAWN_FIXED_DT * MAX_FIXED_STEPS,

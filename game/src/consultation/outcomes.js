@@ -1,3 +1,5 @@
+import { resolveTreatmentPlan } from './treatments.js';
+
 function clamp(value, minimum, maximum) {
   return Math.max(minimum, Math.min(maximum, value));
 }
@@ -18,7 +20,7 @@ function band(value, boundaries) {
   return 'low';
 }
 
-function healthBand(change) {
+function recoveryBand(change) {
   if (change >= 4) return 'improved';
   if (change >= -1) return 'little-change';
   if (change >= -5) return 'worse';
@@ -103,13 +105,14 @@ export function resolveAuthoredOutcome(patient, state, noteCoverage) {
   const model = patient.outcomeModel;
   if (!model) return null;
   const diagnosis = patient.diagnoses.find((item) => item.id === state.diagnosisId);
-  const treatment = patient.treatments.find((item) => item.id === state.treatmentId);
+  const plan = resolveTreatmentPlan(patient, state.treatmentIds);
+  if (!plan) return null;
   const knownFactIds = [...new Set([...state.disclosedFactIds, ...state.observedFactIds])];
   const evidenceRatio = ratioFor(model.evidenceFactIds, knownFactIds);
   const criticalRatio = ratioFor(model.criticalFactIds, knownFactIds);
 
   const diagnosisBase = diagnosis.evaluation?.quality ?? 0;
-  const treatmentBase = treatment.evaluation?.quality ?? 0;
+  const treatmentBase = plan.evaluation.quality;
   const observationScore = Math.round(evidenceRatio * 10);
   const diagnosisScore = Math.round(diagnosisBase * (0.65 + criticalRatio * 0.35));
   const treatmentScore = Math.round(treatmentBase * (0.72 + evidenceRatio * 0.28));
@@ -121,18 +124,17 @@ export function resolveAuthoredOutcome(patient, state, noteCoverage) {
   const satisfaction = clamp(Math.round(
     state.satisfaction
       + (diagnosis.evaluation?.patientAcceptance || 0)
-      + (treatment.evaluation?.patientAcceptance || 0),
+      + plan.evaluation.patientAcceptance,
   ), 0, 100);
   const experienceBand = band(satisfaction, { high: 70, middle: 43 });
   const reputation = experienceBand === 'high' ? 3 : experienceBand === 'middle' ? 0 : -3;
   const payment = experienceBand === 'low' ? model.fee.reduced : model.fee.full;
-  const healthChange = treatment.evaluation?.healthChange || 0;
-  const functionChange = treatment.evaluation?.functionChange || 0;
-  const episodesChange = treatment.evaluation?.episodesChange || 0;
-  const outcomeBand = healthBand(healthChange);
+  const recovery = plan.evaluation.recovery;
+  const cost = plan.evaluation.cost;
+  const outcomeBand = recoveryBand(recovery);
   const immediateLead = model.immediateNarratives[experienceBand];
-  const immediateDetail = treatment.evaluation?.immediateText || '';
-  const monthLead = treatment.evaluation?.monthText || model.monthNarratives[outcomeBand];
+  const immediateDetail = plan.evaluation.immediateText;
+  const monthLead = plan.evaluation.monthText || model.monthNarratives[outcomeBand];
   const scores = {
     observation: observationScore,
     diagnosis: diagnosisScore,
@@ -145,7 +147,8 @@ export function resolveAuthoredOutcome(patient, state, noteCoverage) {
   const result = {
     kind: 'authored-outcome',
     diagnosisId: diagnosis.id,
-    treatmentId: treatment.id,
+    treatmentIds: plan.treatments.map((item) => item.id),
+    treatmentLabels: plan.treatments.map((item) => item.label),
     noteCoverage,
     evidenceCoverage: Math.round(evidenceRatio * 100),
     reputation,
@@ -163,17 +166,15 @@ export function resolveAuthoredOutcome(patient, state, noteCoverage) {
     oneMonth: {
       band: outcomeBand,
       narrative: monthLead,
-      healthChange,
-      functionChange,
-      episodesChange,
-      incomeChangeCents: treatment.evaluation?.incomeChangeCents || 0,
+      recovery,
+      cost,
     },
     scores,
     james: {
       letter: jamesLetter(patient, scores, model),
       disclaimer: 'The assessment explains fixed scores derived from the case record.',
     },
-    modernDebrief: `${model.modernDebrief} ${treatment.evaluation?.modernText || ''}`.trim(),
+    modernDebrief: `${model.modernDebrief} ${plan.evaluation.modernText}`.trim(),
   };
   return attachSummary(result, state);
 }
@@ -196,7 +197,8 @@ export function resolveFollowUpOutcome(patient, state) {
   const result = {
     kind: 'follow-up-outcome',
     diagnosisId: null,
-    treatmentId: null,
+    treatmentIds: [],
+    treatmentLabels: [],
     noteCoverage: 0,
     evidenceCoverage: Math.round(evidenceRatio * 100),
     reputation: 0,
@@ -214,10 +216,8 @@ export function resolveFollowUpOutcome(patient, state) {
     oneMonth: {
       band: 'little-change',
       narrative: model.followUpMonthText || 'No treatment has yet been begun; the later course depends on the arranged return visit.',
-      healthChange: 0,
-      functionChange: 0,
-      episodesChange: 0,
-      incomeChangeCents: 0,
+      recovery: 0,
+      cost: 0,
     },
     scores,
     james: {

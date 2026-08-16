@@ -7,11 +7,14 @@ import {
 } from './contract.js';
 import { relationshipEffects, resolveInquiryRule, ruleIsAvailable } from './patientLogic.js';
 import { resolveAuthoredOutcome, resolveFollowUpOutcome } from './outcomes.js';
+import { resolveTreatment, resolveTreatmentPlan } from './treatments.js';
 
 const SPEECH_MINUTES = 5;
 const EXAMINATION_MINUTES = 3;
 const APPOINTMENT_MINUTES = 30;
 const OVERTIME_EXTENSION_MINUTES = 5;
+// A prescription the patient could plausibly carry out at once.
+const MAX_PLAN_ITEMS = 3;
 
 function addUnique(values, additions) {
   return [...new Set([...(values || []), ...(additions || [])])];
@@ -132,7 +135,7 @@ export function startConsultation(patient) {
     .filter((fact) => fact.disclosure === 'open')
     .map((fact) => fact.id);
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     patientId: patient.id,
     stage: 'opening',
     mode: 'patient',
@@ -148,7 +151,7 @@ export function startConsultation(patient) {
     customInterpretations: [],
     provisionalDiagnosisId: null,
     diagnosisId: null,
-    treatmentId: null,
+    treatmentIds: [],
     caseNote: '',
     caseRecordFactIds: [],
     pendingResponseId: null,
@@ -316,14 +319,18 @@ export function consultationTransition(state, patient, action) {
     case 'select-treatment': {
       const error = requireStage(state, 'decision');
       if (error) return withError(state, error);
-      return patient.treatments.some((item) => item.id === action.id)
-        ? { ...state, treatmentId: action.id }
-        : withError(state, `unknown treatment ${action.id}`);
+      if (!resolveTreatment(patient, action.id)) return withError(state, `unknown treatment ${action.id}`);
+      const chosen = state.treatmentIds || [];
+      if (chosen.includes(action.id)) {
+        return { ...state, treatmentIds: chosen.filter((id) => id !== action.id) };
+      }
+      if (chosen.length >= MAX_PLAN_ITEMS) return withError(state, `a plan carries no more than ${MAX_PLAN_ITEMS} treatments`);
+      return { ...state, treatmentIds: [...chosen, action.id] };
     }
     case 'begin-case-note': {
       const error = requireStage(state, 'decision');
       if (error) return withError(state, error);
-      if (!state.diagnosisId || !state.treatmentId) return withError(state, 'select a diagnosis and treatment first');
+      if (!state.diagnosisId || !(state.treatmentIds?.length > 0)) return withError(state, 'select a diagnosis and at least one treatment first');
       return { ...state, stage: 'case-note', caseRecordFactIds: [] };
     }
     case 'select-record-fact': {
@@ -353,7 +360,7 @@ export function consultationTransition(state, patient, action) {
       }
       if (minimum > 0 && wordCount(state.caseNote) < minimum) return withError(state, `case note requires at least ${minimum} words`);
       const diagnosis = patient.diagnoses.find((item) => item.id === state.diagnosisId);
-      const treatment = patient.treatments.find((item) => item.id === state.treatmentId);
+      const plan = resolveTreatmentPlan(patient, state.treatmentIds);
       const required = patient.caseNote?.requiredFactIds || [];
       const knownFacts = new Set([...state.disclosedFactIds, ...state.observedFactIds]);
       const mentioned = required.filter((factId) => {
@@ -372,13 +379,13 @@ export function consultationTransition(state, patient, action) {
         ...state,
         stage: 'result',
         result: authoredResult || {
-          reputation: Math.round((diagnosis.reputation + treatment.reputation + noteRatio * 4) * 10) / 10,
-          record: Math.round((diagnosis.record + treatment.record + noteRatio * 4) * 10) / 10,
+          reputation: Math.round((diagnosis.reputation + plan.evaluation.patientAcceptance / 2 + noteRatio * 4) * 10) / 10,
+          record: Math.round((diagnosis.record + plan.evaluation.quality / 2 + noteRatio * 4) * 10) / 10,
           noteCoverage,
           diagnosisId: diagnosis.id,
-          treatmentId: treatment.id,
+          treatmentIds: [...state.treatmentIds],
         },
-      }, { kind: 'result', diagnosisId: diagnosis.id, treatmentId: treatment.id });
+      }, { kind: 'result', diagnosisId: diagnosis.id, treatmentIds: [...state.treatmentIds] });
     }
     case 'continue-overtime': {
       const error = requireStage(state, 'inquiry');

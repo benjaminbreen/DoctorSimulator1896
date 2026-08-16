@@ -11,7 +11,7 @@
 // each carries its own collider spec. Everything is seeded from the cart id.
 // Loads: coal, apples, cabbages, firewood, fish.
 
-import { ROAD_TOP } from './streetGrid.js';
+import { ROAD_TOP, WALK_TOP } from './streetGrid.js';
 
 // This cart is an authored opening beat: the first horseless carriage is
 // allowed to hit it. Once that contact happens the scene begins publishing
@@ -404,7 +404,7 @@ function buildCart(site) {
   return {
     id: site.id,
     load: site.load,
-    position: [site.x, ROAD_TOP + 0.02, site.z],
+    position: [site.x, (site.onWalk ? WALK_TOP : ROAD_TOP) + 0.02, site.z],
     yaw: site.yaw,
     wheelRadius: R,
     chassis,
@@ -433,9 +433,12 @@ function buildCart(site) {
 // Vendor pitches: produce outside the hotels, fish and firewood along the
 // park wall, coal by the El stairs. Yaw runs with the street.
 const SITES = [
-  { id: 'cart-plaza', x: 104.8, z: 76, yaw: Math.PI / 2, load: 'apples' },
+  // The two manned carts stand at the curb, where pushcart men actually
+  // worked, rather than out in the roadbed. cart-savoy stays in the road: it
+  // is the authored cabbage-cart collision.
+  { id: 'cart-plaza', x: 98.3, z: 76, yaw: Math.PI / 2, load: 'apples', onWalk: true },
   { id: 'cart-savoy', x: 104.8, z: 104, yaw: Math.PI / 2, load: 'cabbages' },
-  { id: 'cart-cps', x: -20, z: 88.4, yaw: 0, load: 'fish' },
+  { id: 'cart-cps', x: -20, z: 85.3, yaw: 0, load: 'fish', onWalk: true },
   { id: 'cart-cps-west', x: -64, z: 88.4, yaw: 0, load: 'firewood' },
   { id: 'cart-el', x: -30, z: 137.6, yaw: Math.PI, load: 'coal' },
 ];

@@ -1757,3 +1757,314 @@
   .gcon-result-actions { grid-template-columns: 1fr; }
   .gcon-result-actions button { min-height: 52px; }
 }
+
+/* ---------------- treatment shelf ---------------- */
+/* Option C: one grid that starts as the eight categories and becomes the
+   contents of whichever is opened. Big objects, one price, no hairlines. */
+
+.gcon-shelf { display: block; }
+
+.gcon-shelf-grid {
+  display: grid;
+  /* Held to three columns at any width: the cabinet is a shape, not a strip. */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  max-width: 660px;
+  margin: 0 auto;
+}
+
+@container (max-width: 470px) {
+  .gcon-shelf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.gcon-shelf-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  min-height: 106px;
+  padding: 11px 8px 9px;
+  cursor: pointer;
+  border: 1px solid rgba(255, 220, 170, 0.11);
+  border-radius: 14px;
+  background: linear-gradient(165deg, rgba(46, 37, 28, 0.72), rgba(26, 20, 15, 0.82));
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 225, 180, 0.06);
+  font-family: var(--gc-serif);
+  color: var(--gc-cream);
+  transition: transform 0.16s cubic-bezier(0.3, 1.4, 0.5, 1), box-shadow 0.16s, border-color 0.16s;
+}
+
+.gcon-shelf-tile:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 220, 170, 0.22);
+  box-shadow: 0 11px 24px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 225, 180, 0.1);
+}
+
+.gcon-shelf-tile:focus-visible { outline: 2px solid var(--gc-line-strong); outline-offset: 3px; }
+
+.gcon-shelf-tile.is-chosen {
+  border-color: rgba(255, 212, 147, 0.85);
+  box-shadow:
+    0 0 0 1px rgba(255, 212, 147, 0.85),
+    0 0 18px rgba(255, 200, 120, 0.26),
+    0 9px 22px rgba(0, 0, 0, 0.5);
+}
+
+.gcon-shelf-art { flex: 1 1 auto; display: grid; place-items: center; width: 100%; min-height: 44px; }
+.gcon-shelf-art img {
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+  filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.55));
+}
+.gcon-shelf-name { flex: 0 0 auto; font-size: 12.5px; line-height: 1.25; text-align: center; color: var(--gc-cream-hi); }
+.gcon-shelf-note {
+  flex: 0 0 auto;
+  font-family: var(--gc-sc);
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gc-cream-faint);
+}
+
+.gcon-shelf-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  min-width: 26px;
+  height: 21px;
+  padding: 0 7px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  font-size: 11.5px;
+  color: #12100c;
+  background: #79cf98;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+}
+.gcon-shelf-badge.is-dear { background: #e2934e; }
+
+.gcon-shelf-tick {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 212, 147, 0.95);
+  color: #1a1209;
+  font-size: 12px;
+}
+
+.gcon-shelf-head { display: flex; align-items: center; gap: 12px; margin-bottom: 11px; }
+.gcon-shelf-head h3 { margin: 0; font-size: 17px; font-weight: 400; color: var(--gc-cream-hi); }
+.gcon-shelf-back {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 13px;
+  cursor: pointer;
+  border: 0;
+  border-radius: 16px;
+  background: rgba(255, 225, 180, 0.08);
+  font-family: var(--gc-serif);
+  font-size: 13px;
+  color: var(--gc-cream-dim);
+}
+.gcon-shelf-back:hover { background: rgba(255, 225, 180, 0.14); color: var(--gc-cream-hi); }
+
+.gcon-shelf-readout {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 12px;
+  min-height: 46px;
+  padding: 11px 15px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 220, 170, 0.07);
+  background: rgba(255, 225, 180, 0.04);
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--gc-cream-dim);
+}
+.gcon-shelf-readout b { color: var(--gc-cream-hi); font-weight: 400; }
+.gcon-shelf-readout .is-faint { color: var(--gc-cream-faint); }
+.gcon-shelf-readout span:first-child { flex: 1; }
+.gcon-shelf-fee { font-size: 16px; color: var(--gc-gold); }
+
+.gcon-shelf-plan { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.gcon-shelf-plan-label {
+  font-family: var(--gc-sc);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gc-cream-faint);
+}
+.gcon-shelf-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px 5px 11px;
+  border-radius: 15px;
+  border: 1px solid rgba(255, 200, 120, 0.3);
+  background: rgba(255, 200, 120, 0.13);
+  font-size: 13px;
+}
+.gcon-shelf-pill button {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--gc-cream-faint);
+}
+.gcon-shelf-pill button:hover { color: var(--gc-cream-hi); }
+.gcon-shelf-total { margin-left: auto; font-size: 15px; color: var(--gc-gold); }
+
+.gcon-shelf-custom textarea {
+  width: 100%;
+  padding: 13px 15px;
+  border: 1px dashed rgba(203, 168, 92, 0.4);
+  border-radius: 11px;
+  background: rgba(6, 11, 9, 0.5);
+  color: var(--gc-cream);
+  font-family: var(--gc-serif);
+  font-size: 14.5px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.gcon-shelf-custom p { margin: 8px 2px 0; font-size: 12.5px; font-style: italic; color: var(--gc-cream-faint); }
+
+@media (prefers-reduced-motion: reduce) {
+  .gcon-shelf-tile { transition: none; }
+}
+
+/* ---------------- prescribing: the paper surface ---------------- */
+/* By the decision the room has done its work: the stage turns to paper, the
+   rail recedes, and the only colour left is the green of a chosen remedy. */
+
+.gcon-rail.is-receded {
+  opacity: 0.22;
+  transition: opacity 0.35s ease;
+}
+.gcon-rail.is-receded:hover,
+.gcon-rail.is-receded:focus-within { opacity: 1; }
+
+.gcon-stage--paper {
+  --gc-ink-0: #ece5d6;
+  --gc-ink-1: #f7f2e7;
+  --gc-line: rgba(62, 78, 66, 0.26);
+  --gc-line-soft: rgba(62, 78, 66, 0.13);
+  --gc-line-strong: rgba(38, 92, 66, 0.85);
+  --gc-cream: #332d25;
+  --gc-cream-hi: #1d1913;
+  --gc-cream-dim: rgba(51, 45, 37, 0.7);
+  --gc-cream-faint: rgba(51, 45, 37, 0.44);
+  --gc-gold: #2c6b4d;
+  --gc-gold-soft: #4a8064;
+  --gc-corner-ink: rgba(62, 90, 70, 0.4);
+  background:
+    radial-gradient(130% 80% at 50% 0%, rgba(255, 255, 255, 0.7), transparent 60%),
+    linear-gradient(172deg, #f8f4ea 0%, #efe8d9 55%, #e6dece 100%);
+  box-shadow:
+    0 18px 50px rgba(20, 14, 8, 0.5),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.55),
+    inset 0 0 34px rgba(120, 100, 70, 0.09);
+  color: var(--gc-cream);
+}
+
+.gcon-stage--paper .gcon-frame::after,
+.gcon-stage--paper::after {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.36 0 0 0 0 0.32 0 0 0 0 0.24 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E") repeat 0 0 / 140px 140px;
+}
+
+.gcon-stage--paper .gcon-eyebrow { color: #4a7a5f; }
+
+/* diagnosis cards on paper */
+.gcon-stage--paper .gcon-card {
+  background: linear-gradient(180deg, #fffdf7, #f2ebdc);
+  border-color: rgba(62, 78, 66, 0.2);
+  box-shadow: 0 2px 5px rgba(60, 48, 30, 0.08);
+  color: var(--gc-cream);
+}
+.gcon-stage--paper .gcon-card:hover { border-color: rgba(44, 107, 77, 0.55); }
+.gcon-stage--paper .gcon-card.is-chosen {
+  border-color: #2c6b4d;
+  background: linear-gradient(180deg, #eaf5ee, #dcecdf);
+  color: #17301f;
+  box-shadow: 0 0 0 1px #2c6b4d, 0 3px 12px rgba(44, 107, 77, 0.22);
+  --gc-corner-ink: rgba(44, 107, 77, 0.7);
+}
+
+/* the working diagnosis needs to be read, not squinted at */
+.gcon-options--decisions .gcon-card--speech { font-size: 14px; }
+.gcon-options--decisions .gcon-card-sub {
+  font-size: 11.5px;
+  line-height: 1.4;
+  opacity: 0.9;
+}
+
+/* shelf on paper: bigger objects, a lift on hover, green when taken */
+.gcon-stage--paper .gcon-shelf-tile {
+  min-height: 128px;
+  border-color: rgba(62, 78, 66, 0.18);
+  background: linear-gradient(178deg, #fffdf8, #f1eade);
+  box-shadow: 0 2px 6px rgba(60, 48, 30, 0.1);
+}
+.gcon-stage--paper .gcon-shelf-tile:hover {
+  transform: translateY(-4px);
+  border-color: rgba(44, 107, 77, 0.5);
+  background: linear-gradient(178deg, #ffffff, #f6f1e6);
+  box-shadow: 0 12px 22px rgba(60, 48, 30, 0.18);
+}
+.gcon-stage--paper .gcon-shelf-tile:hover .gcon-shelf-art img {
+  transform: translateY(-2px) scale(1.09);
+  filter: drop-shadow(0 8px 10px rgba(60, 48, 30, 0.34));
+}
+.gcon-stage--paper .gcon-shelf-tile.is-chosen {
+  border-color: #2c6b4d;
+  background: linear-gradient(178deg, #f0f8f2, #dfeee3);
+  box-shadow: 0 0 0 1px #2c6b4d, 0 4px 14px rgba(44, 107, 77, 0.24);
+}
+.gcon-stage--paper .gcon-shelf-badge { background: #2c6b4d; color: #f4fbf6; }
+.gcon-stage--paper .gcon-shelf-badge.is-dear { background: #a8552f; }
+.gcon-stage--paper .gcon-shelf-tick { background: #2c6b4d; color: #f4fbf6; }
+.gcon-stage--paper .gcon-shelf-readout {
+  background: rgba(255, 255, 255, 0.55);
+  border-color: rgba(62, 78, 66, 0.14);
+}
+.gcon-stage--paper .gcon-shelf-back { background: rgba(62, 90, 70, 0.09); }
+.gcon-stage--paper .gcon-shelf-back:hover { background: rgba(44, 107, 77, 0.16); }
+.gcon-stage--paper .gcon-shelf-pill {
+  border-color: rgba(44, 107, 77, 0.45);
+  background: rgba(44, 107, 77, 0.12);
+}
+.gcon-stage--paper .gcon-shelf-custom textarea {
+  background: rgba(255, 255, 255, 0.6);
+  border-color: rgba(62, 78, 66, 0.3);
+  color: var(--gc-cream);
+}
+.gcon-stage--paper .gcon-hint-link { color: #2c6b4d; }
+.gcon-stage--paper .gcon-close { color: var(--gc-cream-dim); }
+
+/* bigger objects everywhere, with the hover transition they need */
+.gcon-shelf-art { min-height: 62px; }
+.gcon-shelf-art img {
+  width: 66px;
+  height: 66px;
+  transition: transform 0.18s cubic-bezier(0.3, 1.4, 0.5, 1), filter 0.18s ease;
+}
+.gcon-shelf-tile { min-height: 128px; }
+.gcon-shelf-name { font-size: 13.5px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gcon-shelf-art img,
+  .gcon-rail.is-receded { transition: none; }
+  .gcon-stage--paper .gcon-shelf-tile:hover { transform: none; }
+  .gcon-stage--paper .gcon-shelf-tile:hover .gcon-shelf-art img { transform: none; }
+}

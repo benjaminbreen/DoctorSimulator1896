@@ -23,6 +23,8 @@ const MIRROR_RES = 512;
 // The distorted, blurred surface hides intermediate reflection frames well.
 // Avoid redrawing the entire park for the mirror on half of all frames.
 const MIRROR_INTERVAL = 4;
+// How many mirror-eligible frames a cached exclusion list stays valid.
+const MIRROR_EXCLUDE_REFRESH = 240;
 const MAX_IMPULSES = 8;
 const IMPULSE_LIFETIME = 5;
 
@@ -372,6 +374,23 @@ const FRAGMENT = /* glsl */ `
   }
 `;
 
+// The mirror keeps architecture, trees, and sky. Skinned figures re-skin on
+// every pass and scatter chunks redraw thousands of instances, while the
+// ripple distortion smears both to nothing — so they are not worth drawing.
+function collectMirrorExclusions(scene) {
+  const objects = [];
+  scene.traverse((object) => {
+    if (
+      object.isSkinnedMesh ||
+      object.isPoints ||
+      (object.isInstancedMesh && object.userData.distanceCull)
+    ) {
+      objects.push(object);
+    }
+  });
+  return objects;
+}
+
 // Planar mirror bookkeeping (the math is three's Reflector, inlined).
 const mirrorPlane = new THREE.Plane();
 const mirrorNormal = new THREE.Vector3();
@@ -472,6 +491,7 @@ export default function Water({ runtime, outline, level = -0.5 }) {
   });
   const meshRef = useRef();
   const renderMirrorRef = useRef(() => {});
+  const mirrorExclusions = useRef({ frame: -Infinity, objects: [] });
 
   // Claimed from useFrame every frame so the handle always belongs to the
   // live instance, whatever hot reload leaves behind.
@@ -623,6 +643,21 @@ export default function Water({ runtime, outline, level = -0.5 }) {
     proj.elements[10] = clipPlane.z + 1 - 0.003;
     proj.elements[14] = clipPlane.w;
 
+    const exclusions = mirrorExclusions.current;
+    if (mirror.frame - exclusions.frame >= MIRROR_EXCLUDE_REFRESH) {
+      exclusions.objects = collectMirrorExclusions(scene);
+      exclusions.frame = mirror.frame;
+    }
+    // Hide only what is currently visible, and restore exactly that set, so
+    // the distance-cull system's own visibility flags are never clobbered.
+    const hidden = [];
+    for (const object of exclusions.objects) {
+      if (object.visible && object.parent) {
+        object.visible = false;
+        hidden.push(object);
+      }
+    }
+
     mesh.visible = false;
     const previousTarget = renderer.getRenderTarget();
     const previousShadowAuto = renderer.shadowMap.autoUpdate;
@@ -634,6 +669,7 @@ export default function Water({ runtime, outline, level = -0.5 }) {
     renderer.shadowMap.autoUpdate = previousShadowAuto;
     renderer.setRenderTarget(previousTarget);
     mesh.visible = true;
+    for (const object of hidden) object.visible = true;
 
     if (!mirror.live) {
       mirror.live = true;

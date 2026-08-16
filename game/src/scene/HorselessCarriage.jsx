@@ -23,7 +23,7 @@ import { takeCarriageProjectileHit } from '../world/carriageImpacts.js';
 import { queueActorImpact } from '../world/actorImpacts.js';
 import { getPlayer, harm } from '../world/player.js';
 import { listAgents, reportAgent, removeAgent } from '../world/agents.js';
-import { streetTrafficAdvice, trafficAgentDetails } from '../world/streetTraffic.js';
+import { crossTrafficObstacles, streetTrafficAdvice, trafficAgentDetails } from '../world/streetTraffic.js';
 import {
   applyTrafficImpacts,
   beginTrafficFrame,
@@ -35,13 +35,9 @@ import {
 import { gameDebug } from '../debug.js';
 import { reportMajorStreetEvent } from '../world/majorStreetEvents.js';
 
-// A small fleet of 1895 electric road wagons (after the Morris & Salom
-// Electrobat press photograph) working the streets outside the park. Each
-// spawn draws a period livery and its own pace and lane manner, so no two
-// sessions run the same traffic. Drivers are either the coated Tripo model
-// (carriage-driver.glb) or, one time in four, the Strawhat woman with her
-// purpose-made driving motions. The deterministic route/steering sim lives
-// in world/horselessCarriage.js; this component owns only the looks.
+// Looks only for the 1895 electric road wagons (after the Morris & Salom
+// Electrobat). Each spawn draws its own livery, pace, and driver model.
+// The deterministic route and steering sim is world/horselessCarriage.js.
 
 const MAX_DT = 1 / 30;
 // Vehicle local frame: +z forward, y up from the roadbed.
@@ -252,22 +248,26 @@ function makeDriver(source, animations, phase, spheres, {
   // The export loses Blender's Y-up conversion for the applied armature:
   // the file's figure lies on its face. Stand it up here.
   figure.rotation.x = rotationX;
+  const skinned = [];
   figure.traverse((node) => {
     if (!node.isMesh && !node.isSkinnedMesh) return;
     node.castShadow = true;
-    if (node.isSkinnedMesh) {
-      // Same trick as Pedestrians: a padded bind-pose sphere keeps frustum
-      // culling honest without per-frame sphere updates.
-      let sphere = spheres.get(node.geometry.uuid);
-      if (!sphere) {
-        node.computeBoundingSphere();
-        sphere = node.boundingSphere.clone();
-        sphere.radius *= POSE_PADDING;
-        spheres.set(node.geometry.uuid, sphere);
-      }
-      node.boundingSphere = sphere;
-    }
+    if (node.isSkinnedMesh) skinned.push(node);
   });
+  // Same trick as Pedestrians: a padded bind-pose sphere keeps frustum
+  // culling honest without per-frame sphere updates. It has to come after
+  // the clone's matrices resolve, or every vertex lands on the origin.
+  figure.updateMatrixWorld(true);
+  for (const node of skinned) {
+    let sphere = spheres.get(node.geometry.uuid);
+    if (!sphere) {
+      node.computeBoundingSphere();
+      sphere = node.boundingSphere.clone();
+      sphere.radius *= POSE_PADDING;
+      spheres.set(node.geometry.uuid, sphere);
+    }
+    node.boundingSphere = sphere;
+  }
   const mixer = new THREE.AnimationMixer(figure);
   const actions = {};
   for (const mood of moods) {
@@ -425,6 +425,7 @@ export default function HorselessCarriage({ runtime }) {
         if (agent.trafficId) continue;
         obstacles.push(agent);
       }
+      obstacles.push(...crossTrafficObstacles(unit.state, agents, unit.params.id));
 
       const trafficImpacts = takeTrafficImpacts(`carriage-${unit.id}`);
       const impactedState = applyTrafficImpacts(unit.state, trafficImpacts);

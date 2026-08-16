@@ -2,15 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
+  CROWD_CAST_AGES,
   currentPedestrianCast,
   PEDESTRIAN_ARCHETYPES,
   PEDESTRIAN_BENCH_SITTERS,
   PEDESTRIAN_FULL_MIXAMO_CLIPS,
-  PEDESTRIAN_ROUTES,
   PEDESTRIAN_STANDERS,
   PEDESTRIAN_STRAWHAT_MOTION_FILE,
   pedestrianScheduleActive,
 } from '../src/world/pedestrianCatalog.js';
+import { CROWD_SLOT_ARCHETYPES } from '../src/world/crowdScheduler.js';
 import { parkItems } from '../src/world/centralPark.js';
 import { streetItems } from '../src/world/streetGrid.js';
 
@@ -26,15 +27,16 @@ test('the shipped Strawhat body material is opaque', async () => {
 
 test('the review catalog describes every current game-world pedestrian', () => {
   const cast = currentPedestrianCast();
-  assert.equal(cast.length, 27);
+  assert.equal(cast.length, 23 + CROWD_SLOT_ARCHETYPES.length);
   assert.equal(new Set(cast.map((entry) => entry.id)).size, cast.length);
-  assert.deepEqual(new Set(cast.map((entry) => entry.archetype)), new Set(['m', 'w', 'd', 's', 'f', 'h', 'o', 'p', 'y']));
-  assert.equal(cast.find((entry) => entry.id === 'metropolitan-club-strawhat-walker')?.animation, 'Walk');
+  assert.deepEqual(new Set(cast.map((entry) => entry.archetype)), new Set(['m', 'w', 'd', 's', 'f', 'h', 'n', 'l', 'r', 'o', 'p', 'y']));
+  assert.equal(cast.filter((entry) => entry.role === 'Ambient crowd').length, CROWD_SLOT_ARCHETYPES.length);
   assert.equal(cast.find((entry) => entry.id === 'green-bench-strawhat-sitter')?.animation, 'SittingIdle');
   assert.equal(cast.filter((entry) => entry.role === 'Pushing a stroller').length, 2);
   assert.equal(cast.filter((entry) => entry.role === 'Doorman').length, 2);
   assert.equal(cast.filter((entry) => entry.role === 'Policeman').length, 2);
   assert.equal(cast.filter((entry) => entry.archetype === 'y').length, 4);
+  assert.equal(CROWD_CAST_AGES.length, CROWD_SLOT_ARCHETYPES.length);
 });
 
 test('two bowler-hat men attend the Cop Cot speech only from 9:30 to 10:00', () => {
@@ -62,7 +64,7 @@ test('the summer-dress woman is seated or on the timed carousel itinerary only',
   assert.deepEqual(new Set(summerDress.map((entry) => entry.role)), new Set(['Seated', 'Scheduled visitor']));
   assert.ok(summerDress.some((entry) => /^Sitting/.test(entry.animation)));
   assert.ok(summerDress.some((entry) => entry.id === 'pond-walk-visitor'));
-  assert.equal(PEDESTRIAN_ROUTES.some((entry) => entry.who === 'd'), false);
+  assert.equal(CROWD_SLOT_ARCHETYPES.includes('d'), false);
 });
 
 test('pedestrian rigs expose a startle but no fall or prone actions', () => {
@@ -92,11 +94,7 @@ test('every current pedestrian action is valid for that rig', () => {
   }
 });
 
-test('the first Strawhat placements use the club sidewalk and a real park bench', () => {
-  const walker = PEDESTRIAN_ROUTES.find((entry) => entry.id === 'metropolitan-club-strawhat-walker');
-  assert.ok(walker);
-  assert.ok(walker.points.some(([x, z]) => Math.hypot(x - 122, z - 42) < 16));
-
+test('the Strawhat bench sitter uses a real park bench', () => {
   const sitter = PEDESTRIAN_BENCH_SITTERS.find((entry) => entry.id === 'green-bench-strawhat-sitter');
   assert.ok(sitter);
   const bench = parkItems.find((entry) => entry.id === sitter.benchId);

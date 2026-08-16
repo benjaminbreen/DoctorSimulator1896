@@ -1,0 +1,314 @@
+.npc-dialogue-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 55;
+  pointer-events: none;
+  font-family: 'Cormorant', Georgia, serif;
+  --npc-gold: #c49a48;
+  --npc-gold-bright: #e5c984;
+  --npc-gold-dim: #7c622b;
+  --npc-paper: #f5ecd9;
+}
+
+.npc-dialogue-ribbon {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(22px, 3.4vh, 38px);
+  width: min(990px, calc(100% - 64px));
+  min-height: 172px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(285px, .75fr);
+  color: var(--npc-paper);
+  border: 1px solid rgba(204, 164, 82, .78);
+  border-radius: 8px;
+  outline: none;
+  pointer-events: auto;
+  background:
+    linear-gradient(102deg, rgba(6, 18, 13, .96), rgba(13, 39, 29, .95) 54%, rgba(5, 17, 12, .98));
+  box-shadow:
+    0 18px 52px rgba(0, 6, 3, .6),
+    inset 0 0 0 3px rgba(231, 202, 132, .06);
+  transform: translateX(-50%);
+  animation: npc-dialogue-enter 220ms ease-out both;
+}
+
+.npc-dialogue-ribbon::before,
+.npc-dialogue-ribbon::after {
+  content: '◆';
+  position: absolute;
+  top: 50%;
+  color: var(--npc-gold-dim);
+  font-size: 9px;
+  transform: translateY(-50%);
+}
+
+.npc-dialogue-ribbon::before { left: -5px; }
+.npc-dialogue-ribbon::after { right: -5px; }
+
+.npc-dialogue-speaker-copy {
+  position: relative;
+  min-width: 0;
+  padding: 31px 32px 24px 66px;
+}
+
+.npc-dialogue-speaker-copy::before {
+  content: '“';
+  position: absolute;
+  left: 27px;
+  top: 31px;
+  color: var(--npc-gold);
+  font-size: 52px;
+  line-height: .8;
+  opacity: .72;
+}
+
+.npc-dialogue-speaker-tab {
+  position: absolute;
+  top: -17px;
+  left: 34px;
+  min-width: 230px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 16px 6px;
+  border: 1px solid rgba(204, 164, 82, .8);
+  border-radius: 5px 5px 2px 2px;
+  background: linear-gradient(180deg, #1e4b3b, #0d2b20);
+  box-shadow: 0 5px 16px rgba(0, 7, 4, .38), inset 0 0 0 2px rgba(231, 202, 132, .06);
+}
+
+.npc-dialogue-speaker-tab strong {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: .04em;
+}
+
+.npc-dialogue-speaker-tab small {
+  color: #bbaa86;
+  font-size: 10px;
+  font-style: italic;
+}
+
+.npc-dialogue-line {
+  min-height: 70px;
+  margin: 0;
+  color: var(--npc-paper);
+  font-size: clamp(17px, 1.5vw, 21px);
+  line-height: 1.48;
+  text-wrap: balance;
+}
+
+.npc-dialogue-line.is-waiting { color: #c8bea7; font-style: italic; }
+
+.npc-dialogue-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  color: #91a391;
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 9px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.npc-dialogue-status::before {
+  content: '';
+  width: 20px;
+  height: 1px;
+  flex: 0 0 auto;
+  background: var(--npc-gold-dim);
+}
+
+.npc-dialogue-replies {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  margin: 18px 18px 18px 0;
+  padding: 13px 0 2px 20px;
+  border-left: 1px solid rgba(196, 154, 72, .32);
+}
+
+.npc-dialogue-replies h2 {
+  margin: 0 0 1px;
+  color: var(--npc-gold);
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 9px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+}
+
+.npc-dialogue-topic {
+  position: relative;
+  width: 100%;
+  padding: 3px 24px 5px 0;
+  color: #ddd1b9;
+  text-align: left;
+  border: 0;
+  border-bottom: 1px solid rgba(196, 154, 72, .16);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+/* A purchase is an action, not a question: gold, with the price on the right
+   where the chevron sits for the others. */
+.npc-dialogue-buy {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-right: 5px;
+  color: #e6c887;
+}
+
+.npc-dialogue-buy::after {
+  content: none;
+}
+
+.npc-dialogue-buy em {
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .04em;
+  opacity: .82;
+}
+
+.npc-dialogue-buy:disabled {
+  color: #8e8674;
+  opacity: .45;
+  cursor: default;
+}
+
+.npc-dialogue-topic::after {
+  content: '›';
+  position: absolute;
+  right: 5px;
+  top: 2px;
+  color: var(--npc-gold-dim);
+  font-size: 18px;
+}
+
+.npc-dialogue-topic:hover,
+.npc-dialogue-topic:focus-visible {
+  color: #fff4da;
+  outline: none;
+  border-bottom-color: rgba(229, 201, 132, .72);
+}
+
+.npc-dialogue-question {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  margin-top: 3px;
+}
+
+.npc-dialogue-question label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.npc-dialogue-question input {
+  min-width: 0;
+  height: 32px;
+  padding: 5px 9px;
+  color: #f4ead4;
+  border: 1px solid rgba(196, 154, 72, .34);
+  border-radius: 4px;
+  background: rgba(0, 8, 5, .38);
+  outline: none;
+  font: inherit;
+  font-size: 12px;
+}
+
+.npc-dialogue-question input::placeholder { color: #8e927e; }
+.npc-dialogue-question input:focus { border-color: rgba(229, 201, 132, .8); }
+
+.npc-dialogue-question button {
+  height: 32px;
+  padding: 4px 10px;
+  color: var(--npc-gold-bright);
+  border: 1px solid rgba(196, 154, 72, .52);
+  border-radius: 4px;
+  background: rgba(30, 75, 59, .48);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.npc-dialogue-question button:hover:not(:disabled),
+.npc-dialogue-question button:focus-visible {
+  color: #fff6df;
+  border-color: var(--npc-gold-bright);
+}
+
+.npc-dialogue-question button:disabled,
+.npc-dialogue-topic:disabled { cursor: default; opacity: .5; }
+
+.npc-dialogue-close {
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  right: 8px;
+  width: 27px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: #ad9f7e;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: 20px/1 Georgia, serif;
+}
+
+.npc-dialogue-close:hover,
+.npc-dialogue-close:focus-visible { color: #f7eed8; outline: none; }
+
+@keyframes npc-dialogue-enter {
+  from { opacity: 0; transform: translate(-50%, 18px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@media (max-width: 980px) {
+  .npc-dialogue-ribbon {
+    width: calc(100% - 36px);
+    grid-template-columns: minmax(0, 1.35fr) minmax(250px, .75fr);
+  }
+  .npc-dialogue-speaker-copy { padding-left: 56px; }
+  .npc-dialogue-speaker-copy::before { left: 21px; }
+}
+
+@media (max-width: 700px) {
+  .npc-dialogue-ribbon {
+    bottom: 10px;
+    width: calc(100% - 20px);
+    grid-template-columns: 1fr;
+  }
+  .npc-dialogue-speaker-copy { padding: 28px 22px 10px 49px; }
+  .npc-dialogue-speaker-copy::before { left: 17px; top: 29px; font-size: 42px; }
+  .npc-dialogue-speaker-tab { left: 19px; min-width: 205px; }
+  .npc-dialogue-line { min-height: 0; font-size: 15px; }
+  .npc-dialogue-status { display: none; }
+  .npc-dialogue-replies {
+    margin: 0 14px 13px;
+    padding: 10px 0 0;
+    border-top: 1px solid rgba(196, 154, 72, .28);
+    border-left: 0;
+  }
+  .npc-dialogue-topic { padding-block: 4px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .npc-dialogue-ribbon { animation-duration: .01ms; }
+}
+

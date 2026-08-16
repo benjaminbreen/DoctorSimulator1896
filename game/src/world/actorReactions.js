@@ -12,6 +12,9 @@ export const REACTION_PHASE = Object.freeze({
 
 export const REACTION_MOTION = Object.freeze({
   stagger: Object.freeze({ clip: 'Collision Reaction', duration: 3.38, timeScale: 1 }),
+  // Same clip, cut inside the opening recoil, well before the descent
+  // begins. Ordinary shoulder bumps use this; only hard hits play the fall.
+  flinch: Object.freeze({ clip: 'Collision Reaction', duration: 0.55, timeScale: 1 }),
   fallShoulder: Object.freeze({ clip: 'FallShoulder', duration: 2.58, timeScale: 1.2 }),
   fallGeneric: Object.freeze({ clip: 'FallGeneric', duration: 2.27, timeScale: 1 }),
   prone: Object.freeze({ clip: 'FallenIdle', duration: 1.5, timeScale: 1 }),
@@ -43,21 +46,33 @@ export function proneHoldSeconds(age) {
 
 export function classifyPedestrianImpact({ cause, relativeSpeed = 0, running = false }) {
   const speed = Math.max(0, Number(relativeSpeed) || 0);
-  if (cause === 'horseless-carriage') {
+  if (cause === 'horseless-carriage' || cause === 'horse-drawn-vehicle') {
     return speed >= 0.8 ? 'knockdown' : null;
   }
   if (cause === 'player-body') {
     if (running && speed >= 5.25) return 'knockdown';
-    return speed >= 0.35 ? 'stagger' : null;
+    if (speed >= 3.2) return 'stagger';
+    return speed >= 0.35 ? 'flinch' : null;
+  }
+  // Two walkers meeting head-on close above this; an overtaking brush stays
+  // below it and passes without remark.
+  if (cause === 'pedestrian-body') {
+    return speed >= 1.8 ? 'flinch' : null;
+  }
+  // A thrown object: a lob smarts, a hard throw rocks them.
+  if (cause === 'projectile') {
+    if (speed >= 7) return 'stagger';
+    return speed >= 2 ? 'flinch' : null;
   }
   return null;
 }
 
-// Ordinary pedestrians only startle. Preserve the old impact thresholds, but
-// collapse what used to be a knockdown into the same upright reaction so a
-// route walker can never resume while a prone animation is still displayed.
+// Ordinary pedestrians never go down. A knockdown-grade hit becomes the full
+// upright stagger, so a route walker can never resume while a prone
+// animation is still displayed; light contact stays a brief flinch.
 export function classifyPedestrianStartle(event) {
-  return classifyPedestrianImpact(event) ? 'stagger' : null;
+  const response = classifyPedestrianImpact(event);
+  return response === 'knockdown' ? 'stagger' : response;
 }
 
 function normalizedDirection(direction) {
@@ -82,14 +97,14 @@ export function beginReaction(current, event, now, actor = {}) {
   const serial = (current?.serial ?? 0) + 1;
   const direction = normalizedDirection(event.direction);
 
-  if (response === 'stagger') {
+  if (response === 'stagger' || response === 'flinch') {
     if (current.phase !== REACTION_PHASE.NORMAL) return current;
     return {
       serial,
       phase: REACTION_PHASE.STAGGER,
-      variant: 'stagger',
+      variant: response,
       cause: event.cause ?? null,
-      phaseUntil: now + REACTION_MOTION.stagger.duration,
+      phaseUntil: now + REACTION_MOTION[response].duration,
       proneUntil: Infinity,
       direction,
     };

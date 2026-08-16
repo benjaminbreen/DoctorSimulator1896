@@ -8,6 +8,14 @@ import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { gameDebug } from '../debug.js';
 import { handlesAlive } from '../physics/useCharacterController.js';
 import { removeAgent, reportAgent } from '../world/agents.js';
+import { clearActorImpacts, takeActorImpacts } from '../world/actorImpacts.js';
+import {
+  confrontationFor,
+  provokeConfrontation,
+  releaseConfrontation,
+  stepConfrontation,
+} from '../world/confrontation.js';
+import { hashString } from '../world/npcIdentity.js';
 import {
   DANDY_MODEL_FILE,
   DANDY_MOTION_FILE,
@@ -228,13 +236,49 @@ export default function Dandies({ runtime }) {
       }
 
       const [placementX, y, placementZ] = actor.placement.position;
-      if (!actor.placement.route || conversing) {
+
+      // Being pelted takes him off his stroll: he walks over and objects.
+      for (const impact of takeActorImpacts(actor.placement.id)) {
+        if (impact.cause !== 'projectile') continue;
+        provokeConfrontation(actor.placement.id, {
+          itemLabel: impact.itemLabel,
+          archetype: 'y',
+          name: 'A well-dressed young man',
+          dialogueId: actor.placement.id,
+          now,
+        });
+      }
+      const march = confrontationFor(actor.placement.id)
+        ? stepConfrontation(actor.placement.id, {
+          x: actor.worldX,
+          z: actor.worldZ,
+          playerX: player[0],
+          playerZ: player[2],
+          delta,
+          now,
+        })
+        : null;
+      if (march) {
+        if (actor.active) finishGesture(actor);
+        actor.worldX = march.x;
+        actor.worldZ = march.z;
+        actor.wrapper.rotation.y = march.yaw;
+        actor.velocity[0] = 0;
+        actor.velocity[1] = 0;
+        setBaseAnimation(actor, march.walking ? 'WalkingStickWalk' : 'WalkingStickIdle');
+      } else if (actor.confronted) {
+        actor.confronted = false;
+        releaseConfrontation(actor.placement.id);
+      }
+      actor.confronted = Boolean(march);
+
+      if (!march && (!actor.placement.route || conversing)) {
         actor.worldX = placementX;
         actor.worldZ = placementZ;
         actor.wrapper.rotation.y = actor.placement.yaw;
       }
       if (handlesAlive(world, actor.body, actor.collider)) {
-        const groundY = actor.placement.route && !conversing
+        const groundY = march || (actor.placement.route && !conversing)
           ? dandyGroundY(actor.worldX, actor.worldZ)
           : y;
         actor.body.setNextKinematicTranslation({ x: actor.worldX, y: groundY, z: actor.worldZ });
@@ -243,7 +287,19 @@ export default function Dandies({ runtime }) {
         kind: 'pedestrian',
         gender: 'male',
         velocity: [...actor.velocity],
+        dialogueId: actor.placement.id,
+        dialogueName: 'A well-dressed young man',
+        dialogueContext: {
+          archetype: 'y',
+          role: 'idler',
+          activity: 'standing',
+          hour: runtime.values.timeOfDay,
+          seed: hashString(actor.placement.id),
+        },
       });
+
+      // Mid-confrontation nothing else gets a say.
+      if (march) continue;
 
       const playerDistance = Math.hypot(actor.worldX - player[0], actor.worldZ - player[2]);
       const bumping = playerDistance < BUMP_DISTANCE;
@@ -275,6 +331,8 @@ export default function Dandies({ runtime }) {
   useEffect(() => () => {
     for (const actor of actors) {
       removeAgent(actor.placement.id);
+      clearActorImpacts(actor.placement.id);
+      releaseConfrontation(actor.placement.id);
       actor.mixer.stopAllAction();
       actor.walkingStick.dispose();
       actor.figure.traverse((node) => {

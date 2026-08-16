@@ -2,6 +2,8 @@
 // contacts; observers keep their own cursor, so two policemen can react to
 // the same crash without racing to drain a shared mailbox.
 
+import { recordWitnesses } from './witnessMemory.js';
+
 const events = [];
 let serial = 0;
 const MAX_EVENTS = 32;
@@ -19,6 +21,8 @@ export function reportMajorStreetEvent(event) {
   });
   events.push(entry);
   if (events.length > MAX_EVENTS) events.splice(0, events.length - MAX_EVENTS);
+  // Bystanders in eyeshot remember what they saw; dialogue reads this back.
+  recordWitnesses(entry);
   return entry;
 }
 

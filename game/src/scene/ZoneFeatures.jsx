@@ -16,6 +16,7 @@ const FEATURES = {
   'sailor-boy': lazy(() => import('./SailorBoy.jsx')),
   'hotel-doormen': lazy(() => import('./HotelDoormen.jsx')),
   'street-police': lazy(() => import('./StreetPolice.jsx')),
+  'posted-npcs': lazy(() => import('./PostedNpcs.jsx')),
   'gapstow-bridge': lazy(() => import('./GapstowBridge.jsx')),
   'schist-outcrops': lazy(() => import('./SchistOutcrops.jsx')),
   'rustic-shelters': lazy(() => import('./RusticShelters.jsx')),

@@ -48,6 +48,9 @@ const PROFILES = Object.freeze({
       ['Standing Holding Object One Hand.fbx', 'HoldingObjectOneHand'],
       ['Standing Leaning on Wall.fbx', 'StandingLeaningWall'],
       ['Standing Idle.fbx', 'StandingIdleAlternate'],
+      // Leaving the post to come and complain about a thrown object. The
+      // policeman shares this pack, so he gets the walk from here too.
+      ['Strawhat-Walking.fbx', 'Walk'],
     ]),
   }),
   policeman: Object.freeze({
@@ -120,6 +123,81 @@ const PROFILES = Object.freeze({
       ['Strawhat Sitting Idle.fbx', 'BenchRest'],
     ]),
   }),
+  // The next three share the 65-bone crowd pack rather than shipping their
+  // own copies of clips it already carries. `sharesMotions` means model-only:
+  // no motion build, and validation proves every joint the pack animates
+  // exists on this model.
+  nursemaid: Object.freeze({
+    label: 'Nursemaid with perambulator',
+    generated: 'nursemaid',
+    source: 'Nursemaid Skinned Idle.fbx',
+    modelRaw: 'nursemaid.raw.glb',
+    modelOutput: 'nursemaid.glb',
+    modelClip: 'NursemaidIdle',
+    expectedBones: 65,
+    motions: Object.freeze([]),
+    sharesMotions: 'strawhat-motions.glb',
+  }),
+  vendor: Object.freeze({
+    label: 'Pushcart vendor',
+    generated: 'pushcart-vendor',
+    source: 'Vendor Skinned Idle.fbx',
+    modelRaw: 'pushcart-vendor.raw.glb',
+    modelOutput: 'pushcart-vendor.glb',
+    modelClip: 'VendorIdle',
+    expectedBones: 65,
+    motions: Object.freeze([]),
+    sharesMotions: 'strawhat-motions.glb',
+  }),
+  lilacwoman: Object.freeze({
+    label: 'Lilac-dress woman',
+    generated: 'lilac-dress-woman',
+    source: 'Lilac dress woman skinned Standing Idle.fbx',
+    modelRaw: 'lilac-dress-woman.raw.glb',
+    modelOutput: 'lilac-dress-woman.glb',
+    modelClip: 'StandingIdle',
+    expectedBones: 65,
+    motions: Object.freeze([]),
+    sharesMotions: 'strawhat-motions.glb',
+  }),
+  rationalwoman: Object.freeze({
+    label: 'Rational-dress woman',
+    generated: 'rational-dress-woman',
+    source: 'Rational Dress Woman Skinned Standing Idle.fbx',
+    modelRaw: 'rational-dress-woman.raw.glb',
+    modelOutput: 'rational-dress-woman.glb',
+    modelClip: 'StandingIdle',
+    expectedBones: 65,
+    motions: Object.freeze([]),
+    sharesMotions: 'strawhat-motions.glb',
+  }),
+  cabdriver: Object.freeze({
+    label: 'Hansom cab driver',
+    generated: 'cab-driver',
+    source: 'Cab Driver Skinned Idle.fbx',
+    modelRaw: 'cab-driver.raw.glb',
+    modelOutput: 'cab-driver.glb',
+    modelClip: 'CabDriverIdle',
+    expectedBones: 65,
+    motions: Object.freeze([]),
+    sharesMotions: 'strawhat-motions.glb',
+  }),
+  // 33-bone rig: the 65-bone crowd clips would target finger bones he does
+  // not have, so he gets his own pack from a matching-skeleton source.
+  newsboy: Object.freeze({
+    label: 'Newsboy',
+    generated: 'news-boy',
+    source: 'News Boy Skinned Idle.fbx',
+    modelRaw: 'news-boy.raw.glb',
+    motionsRaw: 'news-boy-motions.raw.glb',
+    modelOutput: 'news-boy.glb',
+    motionOutput: 'news-boy-motions.glb',
+    modelClip: 'NewsBoyIdle',
+    expectedBones: 33,
+    motions: Object.freeze([
+      ['Walking-2.fbx', 'Walk'],
+    ]),
+  }),
   sailorboy: Object.freeze({
     label: 'Sailor-suit boy',
     generated: 'sailorsuit-boy',
@@ -145,9 +223,12 @@ if (!PROFILE) throw new Error(`Unknown Mixamo NPC profile: ${PROFILE_NAME}`);
 const GENERATED = path.join(ROOT, 'character-lab/.generated', PROFILE.generated);
 const MODEL_SOURCE = sourcePath(PROFILE.source);
 const RAW_MODEL = path.join(GENERATED, PROFILE.modelRaw);
-const RAW_MOTIONS = path.join(GENERATED, PROFILE.motionsRaw);
+// Model-only profiles carry no motion paths; they reuse another actor's pack.
+const RAW_MOTIONS = PROFILE.motionsRaw ? path.join(GENERATED, PROFILE.motionsRaw) : null;
 const MODEL_OUTPUT = path.join(ROOT, 'game/public/models', PROFILE.modelOutput);
-const MOTION_OUTPUT = path.join(ROOT, 'game/public/models', PROFILE.motionOutput);
+const MOTION_OUTPUT = PROFILE.motionOutput
+  ? path.join(ROOT, 'game/public/models', PROFILE.motionOutput)
+  : null;
 const MOTIONS = PROFILE.motions;
 const MOTION_SOURCES = MOTIONS.map(([filename, name]) => [sourcePath(filename), name]);
 
@@ -205,9 +286,8 @@ async function validate() {
   const io = new NodeIO()
     .registerExtensions(ALL_EXTENSIONS)
     .registerDependencies({ 'meshopt.decoder': MeshoptDecoder });
-  const [model, motions] = await Promise.all([io.read(MODEL_OUTPUT), io.read(MOTION_OUTPUT)]);
+  const model = await io.read(MODEL_OUTPUT);
   const modelRoot = model.getRoot();
-  const motionRoot = motions.getRoot();
   if (modelRoot.listMeshes().length < 1 || modelRoot.listSkins().length !== 1) {
     throw new Error(`${PROFILE.label} model must contain one skin and at least one mesh`);
   }
@@ -216,6 +296,40 @@ async function validate() {
       throw new Error(`${PROFILE.label} material ${material.getName()} must be opaque`);
     }
   }
+  const modelClipNames = modelRoot.listAnimations().map((clip) => clip.getName());
+  if (!sameValues(modelClipNames, [PROFILE.modelClip])) {
+    throw new Error(`Unexpected ${PROFILE.label} model clips: ${modelClipNames.join(', ')}`);
+  }
+
+  // Model-only: the figure animates entirely from another actor's pack, so
+  // every node that pack drives has to exist here or the clips half-bind.
+  if (PROFILE.sharesMotions) {
+    const shared = await io.read(path.join(ROOT, 'game/public/models', PROFILE.sharesMotions));
+    const joints = modelRoot.listSkins()[0].listJoints().map((joint) => joint.getName());
+    if (joints.length !== PROFILE.expectedBones) {
+      throw new Error(`${PROFILE.label} skeleton mismatch: model=${joints.length}`);
+    }
+    const nodes = new Set(modelRoot.listNodes().map((node) => node.getName()));
+    for (const animation of shared.getRoot().listAnimations()) {
+      for (const channel of animation.listChannels()) {
+        const target = channel.getTargetNode()?.getName();
+        if (target && !nodes.has(target)) {
+          throw new Error(
+            `${PROFILE.label} cannot share ${PROFILE.sharesMotions}: `
+            + `${animation.getName()} targets missing node ${target}`,
+          );
+        }
+      }
+    }
+    return {
+      bones: joints.length,
+      modelBytes: (await stat(MODEL_OUTPUT)).size,
+      sharesMotions: PROFILE.sharesMotions,
+    };
+  }
+
+  const motions = await io.read(MOTION_OUTPUT);
+  const motionRoot = motions.getRoot();
   if (motionRoot.listSkins().length !== 1) {
     throw new Error(`${PROFILE.label} motion pack must contain its Mixamo skeleton carrier`);
   }
@@ -226,10 +340,6 @@ async function validate() {
     throw new Error(`${PROFILE.label} skeleton mismatch: model=${modelJoints.length}, motions=${motionJoints.length}`);
   }
 
-  const modelClips = modelRoot.listAnimations().map((clip) => clip.getName());
-  if (!sameValues(modelClips, [PROFILE.modelClip])) {
-    throw new Error(`Unexpected ${PROFILE.label} model clips: ${modelClips.join(', ')}`);
-  }
   const expectedMotions = MOTIONS.map(([, name]) => name).sort();
   const actualMotions = motionRoot.listAnimations().map((clip) => clip.getName()).sort();
   if (!sameValues(actualMotions, expectedMotions)) {
@@ -296,15 +406,17 @@ await runBlender(path.join(ROOT, 'scripts/characters/export_mixamo_character.py'
   '--clip-name', PROFILE.modelClip,
   '--texture-size', '1024',
 ]);
-await runBlender(path.join(ROOT, 'scripts/characters/convert_mixamo_motion.py'), [
-  '--source-dir', ROOT,
-  '--output', RAW_MOTIONS,
-  '--in-place',
-  ...MOTION_SOURCES.flatMap(([filename, name]) => ['--clip', `${filename}=${name}`]),
-]);
+if (MOTION_SOURCES.length > 0) {
+  await runBlender(path.join(ROOT, 'scripts/characters/convert_mixamo_motion.py'), [
+    '--source-dir', ROOT,
+    '--output', RAW_MOTIONS,
+    '--in-place',
+    ...MOTION_SOURCES.flatMap(([filename, name]) => ['--clip', `${filename}=${name}`]),
+  ]);
+}
 await Promise.all([
   compress(RAW_MODEL, MODEL_OUTPUT),
-  compress(RAW_MOTIONS, MOTION_OUTPUT),
+  ...(MOTION_SOURCES.length > 0 ? [compress(RAW_MOTIONS, MOTION_OUTPUT)] : []),
 ]);
 const result = await validate();
 process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);

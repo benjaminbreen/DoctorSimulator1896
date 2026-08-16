@@ -21,6 +21,7 @@ export const STREET_POLICEMAN_ANIMATIONS = Object.freeze([
   'ArmsCrossedFidget',
   'RightTurn',
   'LeftTurn',
+  'Walk',
 ]);
 
 export const POLICE_BUMP_SEQUENCE = Object.freeze(['MildlyAnnoyed', 'StandingArguing']);

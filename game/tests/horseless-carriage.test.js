@@ -252,3 +252,31 @@ test('lighter throwable types deliver proportionally less carriage knockback', (
   assert.ok(apple.knockX < cabbage.knockX * 0.4);
   assert.ok(apple.speed > cabbage.speed);
 });
+
+test('a sideways escape from a stop does not spin the heading off the road', () => {
+  // Straight stretch: tangent steady over the next eight metres.
+  let straightS = null;
+  for (let s = 0; s < ROUTES[0].total; s += 0.5) {
+    const [, , ax, az] = sampleRoute(ROUTES[0], s);
+    const [, , bx, bz] = sampleRoute(ROUTES[0], s + 8);
+    if (Math.abs(shortestArc(Math.atan2(ax, az), Math.atan2(bx, bz))) < 0.01) {
+      straightS = s;
+      break;
+    }
+  }
+  assert.ok(straightS !== null);
+  let state = {
+    ...createCarriageState(0, straightS, 1.5),
+    speed: 0,
+    collisionRecovery: { role: 'yield', otherId: 'other', time: 3, hold: 0, escapeLane: -1.5 },
+  };
+  // The escape is a lane change from a standstill: heading may swing with the
+  // swerve, but must never read as perpendicular to the road (the old spin).
+  let peak = 0;
+  for (let i = 0; i < 2 * 60; i += 1) {
+    state = stepCarriage(state, DT, []);
+    const [, , tx, tz] = sampleRoute(ROUTES[0], state.s);
+    peak = Math.max(peak, Math.abs(shortestArc(state.yaw, Math.atan2(tx, tz))));
+  }
+  assert.ok(peak < 0.7, `heading stayed near the road tangent, peak ${peak.toFixed(2)}`);
+});

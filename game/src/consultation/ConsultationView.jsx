@@ -6,11 +6,11 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { buildCaseNotebook } from './caseNotebook.js';
 import { consultationTiming } from './engine.js';
+import TreatmentShelf from './TreatmentShelf.jsx';
 import {
   availableDiagnoses,
   availableDialoguePrompts,
   availableExaminations,
-  availableTreatments,
   classifyCustomThought,
 } from './patientLogic.js';
 import {
@@ -370,7 +370,6 @@ export default function ConsultationView({
   const examined = new Set(state?.observedFactIds ?? []);
   const examinations = useMemo(() => (patient && state ? availableExaminations(patient, state) : []), [patient, state]);
   const diagnoses = useMemo(() => (patient && state && !showAllDecisions ? availableDiagnoses(patient, state) : patient?.diagnoses || []), [patient, state, showAllDecisions]);
-  const treatments = useMemo(() => (patient && state && !showAllDecisions ? availableTreatments(patient, state) : patient?.treatments || []), [patient, state, showAllDecisions]);
   const timing = patient && state ? consultationTiming(patient, state, previewMinutes) : null;
   const currentTiming = patient && state ? consultationTiming(patient, state) : null;
   const hasRuminated = noted.size > 0 || (state?.customInterpretations?.length ?? 0) > 0;
@@ -543,14 +542,11 @@ export default function ConsultationView({
     nav.cols = 2;
     nav.select = (index) => runExam(examinations[index]);
   } else if (stage === 'decision') {
-    const pool = [...diagnoses, ...treatments];
+    const pool = diagnoses;
     nav.count = pool.length;
     nav.cols = pool.length || 1;
     nav.select = (index) => {
-      const diagnosis = index < diagnoses.length;
-      runtime.dispatch(diagnosis
-        ? { type: 'select-diagnosis', id: diagnoses[index].id }
-        : { type: 'select-treatment', id: treatments[index - diagnoses.length].id });
+      runtime.dispatch({ type: 'select-diagnosis', id: diagnoses[index].id });
     };
   }
 
@@ -898,32 +894,15 @@ export default function ConsultationView({
             ))}
           </div>
           <div style={{ height: 14 }} />
-          <p className="gcon-eyebrow">Course of Treatment</p>
-          <div className="gcon-options gcon-options--row gcon-options--decisions">
-            {treatments.map((item, index) => {
-              const navIndex = diagnoses.length + index;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={`gcon-card gcon-card--speech${cursor === navIndex ? ' is-hot' : ''}${state.treatmentId === item.id ? ' is-chosen' : ''}`}
-                  {...cardMouse(navIndex)}
-                  onClick={() => runtime.dispatch({ type: 'select-treatment', id: item.id })}
-                >
-                  {item.label}
-                  {item.description && <span className="gcon-card-sub">{item.description}</span>}
-                </button>
-              );
-            })}
-          </div>
+          <TreatmentShelf patient={patient} state={state} runtime={runtime} />
           <footer className="gcon-hint">
             <button type="button" className="gcon-hint-link" onClick={() => setShowAllDecisions((value) => !value)}>
-              {showAllDecisions ? 'Show likely options' : 'Consider other diagnoses and treatments'}
+              {showAllDecisions ? 'Show likely diagnoses' : 'Consider other diagnoses'}
             </button>
             <button
               type="button"
               className="gcon-hint-link"
-              disabled={!state.diagnosisId || !state.treatmentId}
+              disabled={!state.diagnosisId || !(state.treatmentIds?.length > 0)}
               onClick={() => runtime.dispatch({ type: 'begin-case-note' })}
             >
               Write the case note
@@ -1015,7 +994,10 @@ export default function ConsultationView({
       aria-label="Consultation"
     >
       {patient && state && (
-        <aside className="gcon-rail gcon-frame" aria-label="Consultation actions">
+        <aside
+          className={`gcon-rail gcon-frame${stage === 'decision' || stage === 'case-note' ? ' is-receded' : ''}`}
+          aria-label="Consultation actions"
+        >
           <h2 className="gcon-rail-title">Consultation</h2>
           <Ornament />
           {timing && stage !== 'result' && (
@@ -1066,7 +1048,10 @@ export default function ConsultationView({
         </aside>
       )}
 
-      <section className={`gcon-stage gcon-frame${wideStage ? ' gcon-stage--wide' : ''}`} aria-label="The patient before you">
+      <section
+        className={`gcon-stage gcon-frame${wideStage ? ' gcon-stage--wide' : ''}${stage === 'decision' ? ' gcon-stage--paper' : ''}`}
+        aria-label="The patient before you"
+      >
         {(canEnd || queueVisible) && (
           <button
             type="button"

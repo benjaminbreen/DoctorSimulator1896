@@ -12,11 +12,27 @@ import {
   useRapier,
 } from '@react-three/rapier';
 import { handlesAlive } from '../physics/useCharacterController.js';
+import { shortestArc } from '../movement/mathUtils.js';
 import { terrainHeight } from '../world/terrain.js';
 import { parkItems } from '../world/centralPark.js';
 import { APRON_W, GAPSTOW, walkY as gapstowWalkY } from '../world/gapstow.js';
-import { reportAgent, removeAgent } from '../world/agents.js';
+import { listAgents, removeAgent, reportAgent } from '../world/agents.js';
+import { getInteraction } from '../world/interaction.js';
+import { crowdSpeakerDetails } from '../world/crowdDialogue.js';
+import {
+  createQuirkState,
+  maybeStartQuirk,
+  quirkCooldown,
+  rollWalkerQuirk,
+} from '../world/crowdQuirks.js';
 import { clearActorImpacts, queueActorImpact, takeActorImpacts } from '../world/actorImpacts.js';
+import {
+  CONFRONT_PHASE,
+  confrontationFor,
+  provokeConfrontation,
+  releaseConfrontation,
+  stepConfrontation,
+} from '../world/confrontation.js';
 import {
   REACTION_MOTION,
   REACTION_PHASE,
@@ -26,7 +42,7 @@ import {
   stepReaction,
 } from '../world/actorReactions.js';
 import { gameDebug } from '../debug.js';
-import { applyPlayerEvent, npcStartleEffect } from '../world/player.js';
+import { applyPlayerEvent, getPlayer, npcStartleEffect } from '../world/player.js';
 import {
   PEDESTRIAN_STROLLER_CIRCUITS as STROLLER_CIRCUITS,
   strollerScheduleState,
@@ -35,26 +51,33 @@ import {
   PARK_VISITOR_ITINERARY,
   parkVisitorItineraryState,
 } from '../world/parkVisitorItinerary.js';
+import { ROAD_TOP, ROADS } from '../world/streetGrid.js';
+import { buildWalkGraph } from '../world/walkGraph.js';
 import {
-  PING_PONG_PHASE,
-  createPingPongRouteState,
-  interpolateRouteTurnYaw,
-  routeTurnProgress,
-  stepPingPongRoute,
-} from '../world/pingPongRoute.js';
+  CROWD_SLOT_ARCHETYPES,
+  createCrowdState,
+  createIncidentBudget,
+  crowdRoll,
+  crowdSlotLogical,
+  incidentAllowed,
+  isSlotActive,
+  recordIncident,
+} from '../world/crowdScheduler.js';
+import { createCrowdAgentState, samplePolyline, stepCrowdAgent } from '../world/crowdAgent.js';
 import { buildPeriodStroller } from './strollerModel.js';
 import { normalizeNonmetallicCharacterMaterial } from './characterMaterials.js';
-import { restoreLoopingIdle } from './characterGestures.js';
+import { fadeInAction, restoreLoopingIdle } from './characterGestures.js';
 import {
+  CROWD_CAST_AGES,
   PEDESTRIAN_ARCHETYPES,
   PEDESTRIAN_BENCH_SITTERS as BENCH_SITTERS,
   PEDESTRIAN_MAN_CLIP_FILES as MAN_CLIP_FILES,
   PEDESTRIAN_POSERS as POSERS,
   PEDESTRIAN_REACTION_FILE,
-  PEDESTRIAN_ROUTES as ROUTES,
   PEDESTRIAN_SHARED_CLIPS as SHARED_CLIPS,
   PEDESTRIAN_STANDERS as STANDERS,
   pedestrianScheduleActive,
+  PEDESTRIAN_STANDUP_FILE,
   PEDESTRIAN_STRAWHAT_MOTION_FILE,
   PEDESTRIAN_WOMAN_CLIP_FILES as WOMAN_CLIP_FILES,
 } from '../world/pedestrianCatalog.js';
@@ -79,8 +102,18 @@ const POSE_PADDING = 1.7;
 const BUMP_DISTANCE = 0.85;
 const BUMP_RELEASE_DISTANCE = 1.15;
 const BUMP_COOLDOWN = 4;
+// A near miss: the vehicle's own radius plus an arm's length, and fast enough
+// that it reads as being swept past rather than idling by.
+const NEAR_MISS_MARGIN = 1.1;
+const NEAR_MISS_SPEED = 2;
 const STANDING_COLLIDER = Object.freeze({ halfHeight: 0.55, radius: 0.28, y: 0.88 });
 const Y_AXIS = new THREE.Vector3(0, 1, 0);
+
+// Reused every frame by the crowd loop. Rapier and the agent registry read
+// these synchronously, so a single instance is enough and a fresh one per
+// figure per frame is the crowd's largest source of garbage.
+const scratchVehicles = [];
+const scratchTranslation = { x: 0, y: 0, z: 0 };
 
 function playReactionPhase(entry) {
   const { phase } = entry.reaction;
@@ -88,11 +121,28 @@ function playReactionPhase(entry) {
   const previous = entry.activeAction;
   const next = phase === REACTION_PHASE.STAGGER ? entry.actions.stagger : null;
 
+  // Reaction poses leave the bind-pose bounding sphere; culling a figure
+  // mid-stagger reads as a blink out of existence.
+  for (const mesh of entry.meshes) mesh.frustumCulled = phase === REACTION_PHASE.NORMAL;
+
   if (phase === REACTION_PHASE.NORMAL) {
-    previous?.fadeOut(0.25);
-    entry.base.fadeIn(0.28).play();
+    if (previous) {
+      // Freeze the outgoing pose during the blend; letting the clip keep
+      // playing drags the figure toward the ground while it fades.
+      previous.setEffectiveTimeScale(0);
+      previous.fadeOut(0.25);
+    }
+    // The base was faded out when the reaction began, and a completed fade
+    // leaves the action disabled: fading it in again is a no-op unless it is
+    // re-enabled first, and the figure stays in its face-down bind pose.
+    fadeInAction(entry.base, 0.28);
     entry.activeAction = null;
   } else if (next) {
+    // A habit is stopped outright rather than blended out, because a clamped
+    // one-shot holds its final root transform. That leaves nothing to blend
+    // from, so the reaction takes full weight at once instead of ramping up
+    // from an empty skeleton.
+    const hardStopped = Boolean(entry.ambientAction);
     if (entry.ambientAction) {
       entry.ambientAction.stop();
       entry.ambientAction = null;
@@ -101,10 +151,55 @@ function playReactionPhase(entry) {
     }
     entry.base.fadeOut(0.14);
     if (previous && previous !== next) previous.fadeOut(0.16);
-    next.reset().setEffectiveTimeScale(REACTION_MOTION.stagger.timeScale).fadeIn(0.12).play();
+    // A flinch plays only the opening recoil of the shared clip; the phase
+    // ends and fades back to the base before the clip reaches the ground.
+    const spec = REACTION_MOTION[entry.reaction.variant] ?? REACTION_MOTION.stagger;
+    next.reset().setEffectiveTimeScale(spec.timeScale);
+    if (hardStopped) next.setEffectiveWeight(1);
+    else next.fadeIn(0.12);
+    next.play();
     entry.activeAction = next;
   }
   entry.renderedPhase = phase;
+}
+
+// One pose per confrontation phase. A habit or a lingering recoil is dropped
+// outright: the figure has somewhere to be.
+function playConfrontPose(entry, phase) {
+  if (entry.confrontPose === phase) return;
+  entry.confrontPose = phase;
+  if (entry.ambientAction) {
+    entry.ambientAction.stop();
+    entry.ambientAction = null;
+    entry.ambientName = null;
+  }
+  if (entry.activeAction) {
+    entry.activeAction.fadeOut(0.2);
+    entry.activeAction = null;
+    entry.renderedPhase = REACTION_PHASE.NORMAL;
+  }
+  for (const mesh of entry.meshes) mesh.frustumCulled = true;
+  const { actions } = entry;
+  if (phase === CONFRONT_PHASE.ROUSING) setBaseAction(entry, actions.confrontStand);
+  else if (phase === CONFRONT_PHASE.APPROACHING) setBaseAction(entry, actions.confrontWalk);
+  else setBaseAction(entry, actions.confrontIdle);
+}
+
+// Clips that leave a figure sitting upright on a bench or the grass, and the
+// gestures that read as talking from that pose.
+const SEATED_CLIPS = new Set(['Sit', 'SittingIdle', 'Bench Sit', 'Sit Ground']);
+const SEATED_TALK_CLIPS = Object.freeze([
+  'SittingGesticulating', 'SittingTalkingIntensely', 'SittingCrossedLegTalking',
+]);
+// Standing habits a figure can fall into while waiting on the pavement. A
+// crowd walker only ever stands for a few seconds, so one clip is enough.
+const CROWD_AMBIENT_CLIPS = Object.freeze(['SmokingOrEating']);
+
+// A seated speaker gestures every couple of seconds. The ambient crowd stays
+// far quieter than an authored figure: fourteen of them share the street.
+function ambientGap(entry, speaking) {
+  if (speaking) return 1.5;
+  return entry.crowdActions ? 40 : 7;
 }
 
 function playAmbient(entry, name, now) {
@@ -119,12 +214,12 @@ function playAmbient(entry, name, now) {
   return true;
 }
 
-function finishAmbient(entry, now) {
+function finishAmbient(entry, now, gap = 7) {
   restoreLoopingIdle(entry.mixer, entry.base, entry.ambientAction);
   entry.ambientAction = null;
   entry.ambientName = null;
   entry.ambientIndex += 1;
-  entry.nextAmbientAt = now + 7 + hash01(entry.ambientIndex * 17.3 + entry.age) * 12;
+  entry.nextAmbientAt = now + gap + hash01(entry.ambientIndex * 17.3 + entry.age) * 12;
 }
 
 function benchSitterPose({ benchId, along, yawOffset = 0 }) {
@@ -224,6 +319,17 @@ function routeGroundY(route, x, z) {
   return route.onTerrain ? terrainHeight(x, z) : WALK_TOP;
 }
 
+const ROAD_BANDS = new Map(ROADS.map((road) => [road.id, road]));
+
+// A crossing edge spans pavement centre to pavement centre; only the part
+// between the curbs is down at road level.
+function crossingGroundY(segment, x, z) {
+  const road = ROAD_BANDS.get(segment.roadId);
+  if (!road) return ROAD_TOP + 0.02;
+  const at = road.axis === 'z' ? z : x;
+  return at > road.lo && at < road.hi ? ROAD_TOP + 0.02 : WALK_TOP;
+}
+
 function setBaseAction(entry, next) {
   if (!next || next === entry.base) return;
   entry.base.fadeOut(0.24);
@@ -240,14 +346,18 @@ export default function Pedestrians({ runtime }) {
   const somberGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.s.modelPath, withMeshopt);
   const fortiesGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.f.modelPath, withMeshopt);
   const strawhatGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.h.modelPath, withMeshopt);
+  const nursemaidGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.n.modelPath, withMeshopt);
+  const lilacGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.l.modelPath, withMeshopt);
+  const rationalGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.r.modelPath, withMeshopt);
   const strawhatMotionGltf = useLoader(GLTFLoader, PEDESTRIAN_STRAWHAT_MOTION_FILE, withMeshopt);
+  const standupGltf = useLoader(GLTFLoader, PEDESTRIAN_STANDUP_FILE, withMeshopt);
   const manClipGltfs = useLoader(GLTFLoader, MAN_CLIP_FILES, withMeshopt);
   const womanClipGltfs = useLoader(GLTFLoader, WOMAN_CLIP_FILES, withMeshopt);
   const reactGltf = useLoader(GLTFLoader, PEDESTRIAN_REACTION_FILE, withMeshopt);
   const { world, rapier } = useRapier();
   const bodyQuaternion = useRef(new THREE.Quaternion());
 
-  const { group, walkers, figures } = useMemo(() => {
+  const { group, walkers, figures, crowdGraph } = useMemo(() => {
     const reactClip = reactGltf.animations[0];
     const manClips = compatibleClips(manGltf.scene, [
       ...manGltf.animations,
@@ -295,7 +405,37 @@ export default function Pedestrians({ runtime }) {
           ...strawhatMotionGltf.animations,
         ]),
       },
+      // Like the nursemaid: own rig carries only a standing idle, everything
+      // else comes from the shared strawhat pack.
+      l: {
+        source: lilacGltf.scene,
+        clips: compatibleClips(lilacGltf.scene, [
+          ...lilacGltf.animations,
+          ...strawhatMotionGltf.animations,
+        ]),
+      },
+      r: {
+        source: rationalGltf.scene,
+        clips: compatibleClips(rationalGltf.scene, [
+          ...rationalGltf.animations,
+          ...strawhatMotionGltf.animations,
+        ]),
+      },
+      // Her own rig carries only an idle; everything she does comes from the
+      // shared strawhat pack, including the perambulator clips.
+      n: {
+        source: nursemaidGltf.scene,
+        clips: compatibleClips(nursemaidGltf.scene, [
+          ...nursemaidGltf.animations,
+          ...strawhatMotionGltf.animations,
+        ]),
+      },
     };
+    // Getting up off a bench is the one thing every rig needs and none of the
+    // packs carried, so it is added to all of them in one pass.
+    for (const member of Object.values(cast)) {
+      member.clips = [...member.clips, ...compatibleClips(member.source, standupGltf.animations)];
+    }
     const findClip = (who, name) => {
       const clip = cast[who].clips.find((candidate) => candidate.name === name);
       if (!clip) throw new Error(`Pedestrian ${who} is missing animation ${name}`);
@@ -319,16 +459,6 @@ export default function Pedestrians({ runtime }) {
         node.castShadow = true;
         node.receiveShadow = true;
         meshes.push(node);
-        if (node.isSkinnedMesh) {
-          let sphere = spheres.get(node.geometry.uuid);
-          if (!sphere) {
-            node.computeBoundingSphere();
-            sphere = node.boundingSphere.clone();
-            sphere.radius *= POSE_PADDING;
-            spheres.set(node.geometry.uuid, sphere);
-          }
-          node.boundingSphere = sphere;
-        }
         // One suit reads as a uniform; drift the colour a little per figure.
         // Kept small and symmetric: the figure has one material, so any
         // lightness drop darkens the face along with the suit.
@@ -357,6 +487,22 @@ export default function Pedestrians({ runtime }) {
         meshes.push(...stroller.meshes);
       }
       root.add(wrapper);
+      // The bind pose only resolves once the clone's own matrices are updated.
+      // Computing the sphere before that collapses every vertex onto the
+      // origin and leaves a two-centimetre sphere for the frustum to cull
+      // against, so the figure vanishes the moment its feet leave the view.
+      wrapper.updateMatrixWorld(true);
+      for (const node of meshes) {
+        if (!node.isSkinnedMesh) continue;
+        let sphere = spheres.get(node.geometry.uuid);
+        if (!sphere) {
+          node.computeBoundingSphere();
+          sphere = node.boundingSphere.clone();
+          sphere.radius *= POSE_PADDING;
+          spheres.set(node.geometry.uuid, sphere);
+        }
+        node.boundingSphere = sphere;
+      }
       if (/Briefcase/.test(clipName)) attachBriefcase(figure);
       const clip = findClip(who, clipName);
       const mixer = new THREE.AnimationMixer(figure);
@@ -371,8 +517,25 @@ export default function Pedestrians({ runtime }) {
         stagger: action(REACTION_MOTION.stagger.clip),
       };
       for (const name of spec.ambientClips ?? []) actions[name] = action(name);
+      // Gestures for a seated figure being spoken to. Only the full Mixamo
+      // rigs carry them; the bowler man and the somber sitter just sit.
+      const talkClips = SEATED_TALK_CLIPS.filter((name) => {
+        const found = action(name);
+        if (found) actions[name] = found;
+        return Boolean(found);
+      });
       actions.stagger?.setLoop(THREE.LoopOnce, 1);
       if (actions.stagger) actions.stagger.clampWhenFinished = true;
+      // Coming over to complain about a thrown object: get up if seated, walk
+      // across, then quarrel. Any rig missing a piece just skips that step.
+      actions.confrontStand = action('StandUp');
+      actions.confrontWalk = action('Walk');
+      actions.confrontIdle = action('StandingArguing') ?? action('Idle') ?? action('StandingIdle');
+      // What they do once they have said their piece: they are on their feet
+      // in the middle of a path, so it is a standing idle, never the bench.
+      actions.confrontRest = action('Idle') ?? action('StandingIdle') ?? actions.confrontIdle;
+      actions.confrontStand?.setLoop(THREE.LoopOnce, 1);
+      if (actions.confrontStand) actions.confrontStand.clampWhenFinished = true;
       const entry = {
         id: spec.id,
         age: spec.age,
@@ -391,7 +554,10 @@ export default function Pedestrians({ runtime }) {
         ambientIndex: 0,
         ambientUntil: Infinity,
         nextAmbientAt: 8 + hash01(index * 19.7 + 4) * 13,
+        talkClips: talkClips.length > 0 ? talkClips : null,
+        seated: SEATED_CLIPS.has(clipName),
         renderedPhase: REACTION_PHASE.NORMAL,
+        confrontPose: null,
         cooldownUntil: 0,
         playerNear: false,
         velocity: [0, 0],
@@ -415,6 +581,14 @@ export default function Pedestrians({ runtime }) {
       const entry = spawn(index, spec);
       entry.wrapper.position.set(spec.x, spec.onTerrain ? terrainHeight(spec.x, spec.z) : WALK_TOP, spec.z);
       entry.wrapper.rotation.y = spec.yaw;
+      entry.dialogueProfile = crowdSpeakerDetails({
+        archetype: spec.who,
+        role: spec.clip === 'Briefcase Idle' ? 'commuter' : 'stroller',
+        activity: 'standing',
+        hour: 12,
+        seed: index + 1,
+        age: spec.age,
+      });
     });
 
     POSERS.forEach((spec, index) => {
@@ -423,6 +597,9 @@ export default function Pedestrians({ runtime }) {
       entry.wrapper.rotation.y = spec.yaw;
       // Ground figures stay in repose when bumped; only their collider acts.
       entry.poser = true;
+      entry.dialogueProfile = crowdSpeakerDetails({
+        archetype: spec.who, role: 'rest', activity: 'resting', hour: 12, seed: index + 21, age: spec.age,
+      });
     });
 
     BENCH_SITTERS.forEach((sitter, index) => {
@@ -431,27 +608,64 @@ export default function Pedestrians({ runtime }) {
       entry.wrapper.position.set(x, terrainHeight(x, z), z);
       entry.wrapper.rotation.y = yaw;
       entry.poser = true;
+      entry.dialogueProfile = crowdSpeakerDetails({
+        archetype: sitter.who, role: 'rest', activity: 'sitting', hour: 12, seed: index + 31, age: sitter.age,
+      });
     });
 
-    ROUTES.forEach((route, index) => {
-      const entry = spawn(index + 40, route, 'Walk');
-      const idleName = cast[route.who].clips.some((clip) => clip.name === 'Idle')
+    // The ambient crowd: pool slots driven by the scheduler over the walk
+    // graph. They spawn hidden; the frame loop materializes them once their
+    // logical position is far enough from the player to appear unseen.
+    const graph = buildWalkGraph();
+    CROWD_SLOT_ARCHETYPES.forEach((who, index) => {
+      const entry = spawn(index + 80, {
+        id: `crowd-${index}`,
+        who,
+        age: CROWD_CAST_AGES[index],
+      }, 'Walk');
+      const idleName = cast[who].clips.some((clip) => clip.name === 'Idle')
         ? 'Idle'
         : 'StandingIdle';
-      const idle = entry.mixer.clipAction(findClip(route.who, idleName));
+      const idle = entry.mixer.clipAction(findClip(who, idleName));
       idle.setLoop(THREE.LoopRepeat, Infinity);
-      const length = routeLength(route.points);
-      // Same object in both lists, so the bump state is shared.
+      // A quick nod for figures whose rig carries the clip; the bowler rig
+      // simply stops and faces instead.
+      if (cast[who].clips.some((clip) => clip.name === 'StandingAcknowledging')) {
+        entry.actions.StandingAcknowledging = entry.mixer.clipAction(findClip(who, 'StandingAcknowledging'));
+      }
+      // A habit for the corners and crossings where the walk stalls.
+      const ambient = CROWD_AMBIENT_CLIPS.filter((name) => {
+        if (!cast[who].clips.some((clip) => clip.name === name)) return false;
+        entry.actions[name] = entry.mixer.clipAction(findClip(who, name));
+        return true;
+      });
+      // Resting clips this rig can play at a bench or lawn spot.
+      const rest = {};
+      for (const clipName of ['Sit', 'SittingIdle', 'Sit Ground', 'Lie Down']) {
+        if (cast[who].clips.some((clip) => clip.name === clipName)) {
+          rest[clipName] = entry.mixer.clipAction(findClip(who, clipName));
+          rest[clipName].setLoop(THREE.LoopRepeat, Infinity);
+        }
+      }
+      entry.wrapper.visible = false;
+      entry.dialogueProfile = crowdSpeakerDetails({
+        archetype: who, role: 'stroller', activity: 'walking', hour: 12, seed: index + 80, age: CROWD_CAST_AGES[index],
+      });
       walking.push(Object.assign(entry, {
-        route,
-        length,
-        routeMotion: createPingPongRouteState({
-          distance: hash01(index * 5.9) * length,
-          seed: index + 40,
-        }),
-        routeActions: { walk: entry.base, idle },
-        turnFromYaw: entry.wrapper.rotation.y,
-        turnToYaw: entry.wrapper.rotation.y,
+        crowdSlot: index,
+        crowdAgent: createCrowdAgentState(),
+        crowdActions: { walk: entry.base, idle },
+        crowdRest: rest,
+        crowdRestClip: null,
+        ambientClips: ambient.length > 0 ? ambient : null,
+        standingSince: Infinity,
+        crowdWalking: true,
+        crowdHidden: true,
+        wasYielding: false,
+        nextAcknowledgeAt: 0,
+        quirk: null,
+        quirkState: createQuirkState(),
+        nextQuirkCheckAt: 0,
       }));
     });
 
@@ -473,6 +687,9 @@ export default function Pedestrians({ runtime }) {
 
     STROLLER_CIRCUITS.forEach((route, index) => {
       const entry = spawn(index + 60, route, 'StrollerWalk');
+      entry.dialogueProfile = crowdSpeakerDetails({
+        archetype: route.who, role: 'stroller', activity: 'walking', hour: 12, seed: index + 61, age: route.age,
+      });
       const length = routeLength(route.points);
       const idleClip = findClip(route.who, 'StrollerIdle');
       walking.push(Object.assign(entry, {
@@ -490,8 +707,11 @@ export default function Pedestrians({ runtime }) {
       }));
     });
 
-    return { group: root, walkers: walking, figures: all };
-  }, [manGltf, womanGltf, dressGltf, somberGltf, fortiesGltf, strawhatGltf, strawhatMotionGltf, manClipGltfs, womanClipGltfs, reactGltf]);
+    return { group: root, walkers: walking, figures: all, crowdGraph: graph };
+  }, [manGltf, womanGltf, dressGltf, somberGltf, fortiesGltf, strawhatGltf, nursemaidGltf, lilacGltf, rationalGltf, strawhatMotionGltf, standupGltf, manClipGltfs, womanClipGltfs, reactGltf]);
+
+  // Crowd scheduling state survives re-renders but resets on a new game day.
+  const crowdRef = useRef(null);
 
   const frameCount = useRef(0);
   const trackedPeople = useMemo(
@@ -517,22 +737,56 @@ export default function Pedestrians({ runtime }) {
     const eye = state.camera.position;
     const t = state.clock.elapsedTime;
     frameCount.current += 1;
-    for (const [index, entry] of figures.entries()) {
+    const values = runtime.values;
+    const civilSeconds = (values.dayOfYear ?? 0) * 86400 + (values.timeOfDay ?? 0) * 3600;
+    if (!crowdRef.current || crowdRef.current.day !== values.dayOfYear) {
+      const isRollover = crowdRef.current !== null;
+      crowdRef.current = {
+        day: values.dayOfYear,
+        state: createCrowdState(values.dayOfYear ?? 0),
+        budget: createIncidentBudget(),
+        // Quarrels are rationed separately from crossing lapses.
+        quirkBudget: createIncidentBudget(300),
+      };
+      // A new day rebuilds every chain; relocate figures unseen rather than
+      // letting the night walker snap to a fresh spawn in view.
+      if (isRollover) {
+        for (const walker of walkers) {
+          if (walker.crowdActions) walker.crowdHidden = true;
+        }
+      }
+    }
+    const crowd = crowdRef.current;
+    const vehicleAgents = scratchVehicles;
+    vehicleAgents.length = 0;
+    for (const agent of listAgents()) {
+      if (agent.trafficId) vehicleAgents.push(agent);
+    }
+    const conversation = getInteraction().using;
+    const speakingId = conversation?.kind === 'conversation' ? conversation.agentId : null;
+    for (let index = 0; index < figures.length; index += 1) {
+      const entry = figures[index];
       const { x, z } = entry.wrapper.position;
       const tracked = trackedPeople[index];
       tracked.position[0] = x;
       tracked.position[1] = entry.wrapper.position.y;
       tracked.position[2] = z;
       tracked.yaw = entry.wrapper.rotation.y;
-      const scheduleActive = pedestrianScheduleActive(entry.schedule, runtime.values.timeOfDay);
+      const scheduleActive = pedestrianScheduleActive(entry.schedule, runtime.values.timeOfDay)
+        && !entry.crowdHidden;
       entry.wrapper.visible = scheduleActive;
+      tracked.hidden = !scheduleActive;
       if (!scheduleActive) {
         removeAgent(entry.id);
+        releaseConfrontation(entry.id);
         const inactiveCollider = entry.poser
           ? entry.refs.restingCollider
           : entry.refs.standingCollider;
         if (entry.refs.body && handlesAlive(world, entry.refs.body, inactiveCollider)) {
-          entry.refs.body.setNextKinematicTranslation({ x: 0, y: -100, z: 0 });
+          scratchTranslation.x = 0;
+          scratchTranslation.y = -100;
+          scratchTranslation.z = 0;
+          entry.refs.body.setNextKinematicTranslation(scratchTranslation);
         }
         continue;
       }
@@ -543,7 +797,15 @@ export default function Pedestrians({ runtime }) {
       // Accumulate time so a throttled figure moves at true speed, just in
       // coarser steps. The +index staggers mid-tier updates across frames.
       const reacting = entry.reaction.phase !== REACTION_PHASE.NORMAL;
-      if (entry.ambientAction && t >= entry.ambientUntil) finishAmbient(entry, t);
+      // Gesturing only reads from a seated pose, so a standing speaker keeps
+      // the nod it already gets from the yield path.
+      const speaking = entry.id === speakingId;
+      const gesturing = speaking && Boolean(entry.talkClips) && (entry.crowdActions
+        ? SEATED_CLIPS.has(entry.crowdRestClip)
+        : entry.seated);
+      if (entry.ambientAction && t >= entry.ambientUntil) {
+        finishAmbient(entry, t, ambientGap(entry, gesturing));
+      }
       entry.pending = Math.min(entry.pending + delta * (reacting ? 1 : entry.speed), 1);
       const animate =
         dist2 < ANIM_NEAR * ANIM_NEAR ||
@@ -558,53 +820,153 @@ export default function Pedestrians({ runtime }) {
       // feet, so traffic clears the whole rig.
       const yaw = entry.wrapper.rotation.y;
       const agentOffset = entry.stroller ? 0.55 : 0;
-      reportAgent(
+      const agent = reportAgent(
         entry.id,
         x + Math.sin(yaw) * agentOffset,
         z + Math.cos(yaw) * agentOffset,
         entry.stroller ? 0.9 : 0.45,
-        {
-          kind: 'pedestrian',
-          gender: entry.gender,
-          velocity: [...entry.velocity],
-        },
       );
+      agent.kind = 'pedestrian';
+      agent.gender = entry.gender;
+      // The figure's own array, not a copy: every reader uses it within the
+      // frame it was reported.
+      agent.velocity = entry.velocity;
+      if (entry.dialogueProfile) {
+        const profile = entry.dialogueProfile;
+        // One context object per figure, updated in place. Readers spread it
+        // before use, so none of them holds on to a stale snapshot.
+        entry.agentContext ??= { ...profile.dialogueContext };
+        const context = entry.agentContext;
+        context.hour = values.timeOfDay;
+        context.activity = entry.crowdActivity ?? profile.dialogueContext.activity;
+        context.role = entry.crowdRole ?? profile.dialogueContext.role;
+        context.seed = entry.crowdDialogueSeed ?? profile.dialogueContext.seed;
+        agent.dialogueId = entry.id;
+        agent.dialogueName = profile.dialogueName;
+        agent.dialogueContext = context;
+      }
+
+      // Someone hit by a thrown object leaves whatever they were doing and
+      // comes over. This runs before the collider write so the capsule
+      // follows them across rather than trailing a frame behind.
+      const confronting = confrontationFor(entry.id);
+      if (confronting) {
+        const playerPosition = gameDebug.player.position;
+        // Pavement sits above the terrain surface; holding the gap the figure
+        // already had keeps them level whether they set off from a kerb or
+        // from the grass, without asking which route they were on.
+        entry.confrontLift ??= entry.wrapper.position.y - terrainHeight(x, z);
+        const march = stepConfrontation(entry.id, {
+          x: entry.wrapper.position.x,
+          z: entry.wrapper.position.z,
+          playerX: playerPosition[0],
+          playerZ: playerPosition[2],
+          delta,
+          now: t,
+        });
+        if (march) {
+          entry.wrapper.position.x = march.x;
+          entry.wrapper.position.z = march.z;
+          entry.wrapper.position.y = terrainHeight(march.x, march.z) + entry.confrontLift;
+          entry.wrapper.rotation.y = march.yaw;
+          playConfrontPose(entry, march.phase);
+          entry.velocity[0] = 0;
+          entry.velocity[1] = 0;
+        }
+      } else if (entry.confrontPose) {
+        // Finished. A seated figure does not go back to the bench — they have
+        // left it, and their seated habits go with it. Crowd walkers pick
+        // their own animation back up in the walker loop below.
+        entry.confrontPose = null;
+        entry.confrontLift = null;
+        entry.poser = false;
+        entry.seated = false;
+        if (!entry.crowdActions) {
+          entry.ambientClips = null;
+          entry.talkClips = null;
+          setBaseAction(entry, entry.actions.confrontRest);
+        }
+        releaseConfrontation(entry.id);
+      }
 
       // The collider tracks the figure; the player's controller resolves
       // against it, so nobody can be walked through.
-      const activeCollider = entry.poser
+      const activeCollider = entry.poser && !confronting
         ? entry.refs.restingCollider
         : entry.refs.standingCollider;
       const { body } = entry.refs;
       if (body && handlesAlive(world, body, activeCollider)) {
         const p = entry.wrapper.position;
-        body.setNextKinematicTranslation({ x: p.x, y: p.y, z: p.z });
+        scratchTranslation.x = p.x;
+        scratchTranslation.y = p.y;
+        scratchTranslation.z = p.z;
+        body.setNextKinematicTranslation(scratchTranslation);
         if (entry.stroller) {
           bodyQuaternion.current.setFromAxisAngle(Y_AXIS, entry.wrapper.rotation.y);
           body.setNextKinematicRotation(bodyQuaternion.current);
         }
       }
 
-      if (!entry.poser) {
-        for (const impact of takeActorImpacts(entry.id)) {
-          const sourceVelocity = impact.sourceVelocity ?? [0, 0, 0];
-          const relativeSpeed = Math.hypot(
-            sourceVelocity[0] - entry.velocity[0],
-            sourceVelocity[2] - entry.velocity[1],
-          );
-          const next = beginReaction(
-            entry.reaction,
-            {
-              ...impact,
-              relativeSpeed,
-              response: classifyPedestrianStartle({ ...impact, relativeSpeed }),
-            },
-            t,
-          );
-          if (next !== entry.reaction) {
+      // Everyone reads their queue, seated figures included: a thrown object
+      // gets a person off a bench even though a shoulder bump does not.
+      for (const impact of takeActorImpacts(entry.id)) {
+        if (impact.cause === 'projectile') {
+          provokeConfrontation(entry.id, {
+            itemLabel: impact.itemLabel,
+            archetype: entry.archetype,
+            name: entry.dialogueProfile?.dialogueName,
+            dialogueId: entry.id,
+            seated: entry.seated || entry.crowdActivity === 'resting',
+            now: t,
+          });
+        }
+        if (entry.poser) continue;
+        // The kinematic capsules re-enter contact every frame while the
+        // player stands inside someone; without the cooldown the reaction
+        // restarts the moment it ends, forever.
+        if (t < entry.cooldownUntil) break;
+        const sourceVelocity = impact.sourceVelocity ?? [0, 0, 0];
+        const relativeSpeed = Math.hypot(
+          sourceVelocity[0] - entry.velocity[0],
+          sourceVelocity[2] - entry.velocity[1],
+        );
+        const next = beginReaction(
+          entry.reaction,
+          {
+            ...impact,
+            relativeSpeed,
+            response: classifyPedestrianStartle({ ...impact, relativeSpeed }),
+          },
+          t,
+        );
+        if (next !== entry.reaction) {
+          entry.reaction = next;
+          entry.cooldownUntil = t + BUMP_COOLDOWN;
+          playReactionPhase(entry);
+        }
+      }
+
+      if (!entry.poser && !confronting) {
+
+        // A carriage that passes close enough to feel is worth a recoil even
+        // when it never touches. Contact itself arrives as an impact above.
+        if (entry.reaction.phase === REACTION_PHASE.NORMAL && t > entry.cooldownUntil) {
+          for (const vehicle of vehicleAgents) {
+            if ((vehicle.speed ?? 0) < NEAR_MISS_SPEED) continue;
+            const dx = vehicle.x - x;
+            const dz = vehicle.z - z;
+            const reach = (vehicle.r ?? 1.7) + NEAR_MISS_MARGIN;
+            if (dx * dx + dz * dz > reach * reach) continue;
+            const next = beginReaction(entry.reaction, {
+              cause: vehicle.id.startsWith('carriage-') ? 'horseless-carriage' : 'horse-drawn-vehicle',
+              response: 'flinch',
+              direction: [-dx, -dz],
+            }, t);
+            if (next === entry.reaction) break;
             entry.reaction = next;
             entry.cooldownUntil = t + BUMP_COOLDOWN;
             playReactionPhase(entry);
+            break;
           }
         }
 
@@ -615,20 +977,32 @@ export default function Pedestrians({ runtime }) {
         }
       }
 
+      // A crowd walker only picks up a habit while it is genuinely stalled:
+      // held up for a few seconds, not seated, not busy with a quirk. The
+      // clip runs nine seconds and freezes the figure for all of them, so a
+      // walker pausing at a kerb must not start one.
+      const clips = gesturing ? entry.talkClips : entry.ambientClips;
+      const idleEnough = !entry.crowdActions || (
+        t - entry.standingSince > 4
+        && entry.crowdActivity !== 'resting'
+        && t >= entry.quirkState.until
+      );
       if (
-        entry.ambientClips
+        clips
+        && !confronting
+        && (gesturing || (!speaking && idleEnough))
         && entry.reaction.phase === REACTION_PHASE.NORMAL
         && !entry.ambientAction
         && t >= entry.nextAmbientAt
       ) {
-        const name = entry.ambientClips[entry.ambientIndex % entry.ambientClips.length];
+        const name = clips[entry.ambientIndex % clips.length];
         if (!playAmbient(entry, name, t)) entry.nextAmbientAt = t + 2;
       }
 
       // Preserve the forgiving proximity trigger from the original reaction:
       // Rapier contacts are precise, but the character controller may stop a
       // fraction before two kinematic capsules technically overlap.
-      if (!entry.poser) {
+      if (!entry.poser && !confronting) {
         const player = gameDebug.player.position;
         const separation2 = (x - player[0]) ** 2 + (z - player[2]) ** 2;
         const bumped = separation2 < BUMP_DISTANCE * BUMP_DISTANCE;
@@ -667,6 +1041,9 @@ export default function Pedestrians({ runtime }) {
     }
 
     for (const walker of walkers) {
+      // Coming over to complain overrides the route entirely; the figures
+      // loop above has already placed them.
+      if (confrontationFor(walker.id)) continue;
       // Any full-body reaction owns the route until its standing pose returns.
       if (walker.reaction.phase !== REACTION_PHASE.NORMAL) {
         walker.velocity[0] = 0;
@@ -716,51 +1093,226 @@ export default function Pedestrians({ runtime }) {
         }
       }
 
-      if (walker.routeMotion) {
-        const stepped = stepPingPongRoute(walker.routeMotion, {
-          delta,
+      if (walker.crowdActions) {
+        const playerPos = gameDebug.player.position;
+        // Mid-conversation the figure stands still and faces the player; the
+        // slowed clock keeps the schedule from drifting far meanwhile.
+        if (walker.id === speakingId) {
+          // A seated speaker stays seated; a walker turns to face the player.
+          if (walker.crowdActivity !== 'resting') {
+            walker.wrapper.rotation.y = Math.atan2(
+              playerPos[0] - walker.wrapper.position.x,
+              playerPos[2] - walker.wrapper.position.z,
+            );
+            walker.crowdWalking = false;
+            setBaseAction(walker, walker.crowdActions.idle);
+          }
+          walker.velocity[0] = 0;
+          walker.velocity[1] = 0;
+          continue;
+        }
+        const active = isSlotActive(values.timeOfDay ?? 12, walker.crowdSlot);
+        if (!active) {
+          // Leave only while unobserved; otherwise finish the walk first.
+          if (!walker.crowdHidden) {
+            const dx = walker.wrapper.position.x - playerPos[0];
+            const dz = walker.wrapper.position.z - playerPos[2];
+            if (dx * dx + dz * dz > 40 * 40) walker.crowdHidden = true;
+          }
+          if (walker.crowdHidden) {
+            walker.velocity[0] = 0;
+            walker.velocity[1] = 0;
+            continue;
+          }
+        }
+        const pose = crowdSlotLogical(crowd.state, walker.crowdSlot, crowdGraph, civilSeconds);
+        const assignment = pose.assignment;
+        if (!assignment.polyline) {
+          walker.crowdActivity = 'standing';
+          walker.crowdWalking = false;
+          setBaseAction(walker, walker.crowdActions.idle);
+          walker.velocity[0] = 0;
+          walker.velocity[1] = 0;
+          continue;
+        }
+        const wx = walker.wrapper.position.x;
+        const wz = walker.wrapper.position.z;
+        const neighbours = [];
+        for (const tracked of trackedPeople) {
+          if (tracked.id === walker.id || tracked.hidden) continue;
+          const dx = tracked.position[0] - wx;
+          const dz = tracked.position[2] - wz;
+          if (dx * dx + dz * dz < 9) {
+            neighbours.push({ x: tracked.position[0], z: tracked.position[2] });
+          }
+        }
+        const nearPlayer = (wx - playerPos[0]) ** 2 + (wz - playerPos[2]) ** 2 < 60 * 60;
+        // The shared loop scales clip time by entry.speed; keep the walk
+        // cycle in step with this assignment's pace so feet do not slide.
+        if (walker.crowdAgent.assignmentIndex !== assignment.index) {
+          walker.speed = assignment.pace / WALK_SPEED;
+          // A new assignment is a new logical person; they roll their own
+          // habits.
+          walker.quirk = rollWalkerQuirk(
+            walker.dialogueProfile?.dialogueContext.archetype,
+            assignment.seed,
+          );
+        }
+        const step = stepCrowdAgent(walker.crowdAgent, {
+          dt: delta,
           now: t,
-          length: walker.length,
-          speed: WALK_SPEED * walker.speed,
+          logicalDistance: pose.distance,
+          dwelling: pose.dwelling,
+          assignment,
+          neighbours,
+          vehicles: vehicleAgents,
+          intruder: { x: playerPos[0], z: playerPos[2] },
+          frozen: Boolean(walker.ambientAction) || t < walker.quirkState.until,
+          crossingRoll: crowdRoll(assignment.seed, 100 + Math.floor(civilSeconds / 8)),
+          incidentAllowed: incidentAllowed(crowd.budget, civilSeconds) && nearPlayer,
         });
-        const [x, z, dx, dz] = routePoint(walker.route.points, walker.routeMotion.distance);
-        const y = routeGroundY(walker.route, x, z);
-        walker.wrapper.position.set(x, y, z);
-        const targetYaw = Math.atan2(
-          dx * walker.routeMotion.direction,
-          dz * walker.routeMotion.direction,
-        );
-        if (stepped.phaseChanged) {
-          if (stepped.phase === PING_PONG_PHASE.WALKING) {
-            setBaseAction(walker, walker.routeActions.walk);
-            walker.wrapper.rotation.y = targetYaw;
-          } else {
-            setBaseAction(walker, walker.routeActions.idle);
-            if (stepped.phase === PING_PONG_PHASE.TURNING) {
-              walker.turnFromYaw = walker.wrapper.rotation.y;
-              walker.turnToYaw = targetYaw;
+        if (step.lapse) recordIncident(crowd.budget, civilSeconds);
+        // Reaching a door means going inside: the figure vanishes there,
+        // in full view if need be — the door explains it.
+        if (pose.dwelling && assignment.insideDoor) {
+          walker.crowdHidden = true;
+          walker.velocity[0] = 0;
+          walker.velocity[1] = 0;
+          continue;
+        }
+        if (walker.crowdHidden) {
+          // Measure from where the figure would actually appear (its logical
+          // position), not from the route start the fresh agent sits at.
+          const [lx, lz] = samplePolyline(
+            assignment.polyline,
+            Math.min(pose.distance, assignment.length),
+          );
+          const dx = lx - playerPos[0];
+          const dz = lz - playerPos[2];
+          // Stepping out of a door is visible on purpose; anywhere else
+          // needs to be far enough away to appear unseen.
+          const emerging = assignment.fromDoor && !pose.dwelling && pose.distance < 8;
+          if (emerging || dx * dx + dz * dz > 35 * 35) {
+            walker.crowdAgent.distance = Math.min(pose.distance, assignment.length);
+            walker.crowdHidden = false;
+          }
+          walker.velocity[0] = 0;
+          walker.velocity[1] = 0;
+          continue;
+        }
+        walker.crowdRole = assignment.role;
+        walker.crowdDialogueSeed = assignment.seed;
+        // Settled at a bench or lawn spot: sit there in the spot's clip.
+        if (pose.dwelling && step.dwelling && assignment.occupy) {
+          const spot = assignment.occupy;
+          const restAction = walker.crowdRest[spot.clip] ?? walker.crowdActions.idle;
+          walker.crowdActivity = 'resting';
+          walker.crowdRestClip = walker.crowdRest[spot.clip] ? spot.clip : null;
+          walker.wrapper.position.set(spot.x, terrainHeight(spot.x, spot.z), spot.z);
+          walker.wrapper.rotation.y = spot.yaw;
+          if (walker.base !== restAction) {
+            setBaseAction(walker, restAction);
+            walker.crowdWalking = false;
+          }
+          walker.velocity[0] = 0;
+          walker.velocity[1] = 0;
+          continue;
+        }
+        walker.crowdActivity = step.moving ? 'walking' : pose.dwelling ? 'standing' : 'waiting';
+        walker.crowdRestClip = null;
+        const segment = step.segment;
+        const y = segment?.surface === 'road'
+          ? crossingGroundY(segment, step.x, step.z)
+          : routeGroundY({
+            crossesGapstow: segment?.crossesGapstow ?? false,
+            onTerrain: segment?.surface === 'terrain',
+          }, step.x, step.z);
+        walker.wrapper.position.set(step.x, y, step.z);
+        if (step.moving) walker.wrapper.rotation.y = step.yaw;
+        const movingNow = step.moving;
+        // Set every frame, not only on the moving/standing edge: a figure that
+        // stops resting and then stands still shares `crowdWalking === false`
+        // with the rest it just left, and would carry the sitting clip onto
+        // the path. setBaseAction ignores a repeat of the current action.
+        walker.crowdWalking = movingNow;
+        walker.standingSince = movingNow ? Infinity : Math.min(walker.standingSince, t);
+        setBaseAction(walker, movingNow ? walker.crowdActions.walk : walker.crowdActions.idle);
+        const quirkState = walker.quirkState;
+        if (t < quirkState.until) {
+          // Mid-quirk: hold still (the frozen flag above), face the object of
+          // attention, and keep a quarrel's gestures coming.
+          walker.wrapper.rotation.y += shortestArc(walker.wrapper.rotation.y, quirkState.faceYaw)
+            * Math.min(1, delta * 5);
+          if (quirkState.kind === 'quarrel' && t >= walker.nextAcknowledgeAt
+            && playAmbient(walker, 'StandingArguing', t)) {
+            walker.nextAcknowledgeAt = t + 2.2;
+          }
+        } else if (movingNow && walker.quirk && !walker.ambientAction
+          && t >= quirkState.cooldownUntil && t >= walker.nextQuirkCheckAt && nearPlayer) {
+          walker.nextQuirkCheckAt = t + 1.6;
+          const others = [];
+          for (const other of walkers) {
+            if (other === walker || other.crowdSlot === undefined || other.crowdHidden) continue;
+            const ox = other.wrapper.position.x;
+            const oz = other.wrapper.position.z;
+            if ((ox - step.x) ** 2 + (oz - step.z) ** 2 > 16) continue;
+            others.push({
+              id: other.id,
+              x: ox,
+              z: oz,
+              archetype: other.dialogueProfile?.dialogueContext.archetype,
+              moving: other.crowdWalking,
+              busy: t < other.quirkState.until || Boolean(other.ambientAction),
+            });
+          }
+          const action = maybeStartQuirk({
+            quirk: walker.quirk,
+            x: step.x,
+            z: step.z,
+            now: t,
+            roll: crowdRoll(assignment.seed, 300 + Math.floor(civilSeconds / 10)),
+            partnerRoll: crowdRoll(assignment.seed, 400 + Math.floor(civilSeconds / 10)),
+            others,
+            quarrelAllowed: incidentAllowed(crowd.quirkBudget, civilSeconds),
+          });
+          if (action) {
+            Object.assign(quirkState, {
+              kind: action.kind,
+              until: action.until,
+              faceYaw: action.faceYaw,
+              partnerId: action.partnerId,
+              cooldownUntil: quirkCooldown(action.kind, t),
+            });
+            if (action.kind === 'quarrel') recordIncident(crowd.quirkBudget, civilSeconds);
+            if (action.kind.startsWith('gallant')) playAmbient(walker, 'QuickFormalBow', t);
+            if (action.partner) {
+              const partner = walkers.find((other) => other.id === action.partner.id);
+              if (partner?.quirkState) {
+                Object.assign(partner.quirkState, {
+                  kind: action.partner.kind,
+                  until: action.partner.until,
+                  faceYaw: action.partner.faceYaw,
+                  partnerId: walker.id,
+                  cooldownUntil: quirkCooldown(action.partner.kind, t),
+                });
+              }
             }
           }
         }
-        if (stepped.phase === PING_PONG_PHASE.TURNING) {
-          walker.wrapper.rotation.y = interpolateRouteTurnYaw(
-            walker.turnFromYaw,
-            walker.turnToYaw,
-            routeTurnProgress(walker.routeMotion, t),
-          );
-        } else if (stepped.phase === PING_PONG_PHASE.WALKING) {
-          walker.wrapper.rotation.y = targetYaw;
+        if (step.yielding) {
+          // Turn toward whoever is pressing close; nod if the rig can.
+          if (step.faceYaw !== null) {
+            walker.wrapper.rotation.y += shortestArc(walker.wrapper.rotation.y, step.faceYaw)
+              * Math.min(1, delta * 5);
+          }
+          if (!walker.wasYielding && t > walker.nextAcknowledgeAt
+            && playAmbient(walker, 'StandingAcknowledging', t)) {
+            walker.nextAcknowledgeAt = t + 12;
+          }
         }
-        if (stepped.moving) {
-          const tangentLength = Math.hypot(dx, dz) || 1;
-          walker.velocity[0] = (dx / tangentLength) * WALK_SPEED
-            * walker.routeMotion.direction * walker.speed;
-          walker.velocity[1] = (dz / tangentLength) * WALK_SPEED
-            * walker.routeMotion.direction * walker.speed;
-        } else {
-          walker.velocity[0] = 0;
-          walker.velocity[1] = 0;
-        }
+        walker.wasYielding = step.yielding;
+        walker.velocity[0] = step.moving ? step.tx * assignment.pace : 0;
+        walker.velocity[1] = step.moving ? step.tz * assignment.pace : 0;
         continue;
       }
 
@@ -794,6 +1346,7 @@ export default function Pedestrians({ runtime }) {
       figures.forEach((entry) => {
         removeAgent(entry.id);
         clearActorImpacts(entry.id);
+        releaseConfrontation(entry.id);
       });
       for (const entry of figures) {
         entry.stroller?.dispose();
@@ -815,14 +1368,31 @@ export default function Pedestrians({ runtime }) {
           position={[0, -30 - index * 3, 0]}
           userData={{ gameKind: 'pedestrian', actorId: entry.id }}
           onCollisionEnter={({ other }) => {
-            if (entry.poser || other.rigidBodyObject?.userData?.gameKind !== 'player') return;
-            const velocity = gameDebug.player.velocity;
-            queueActorImpact(entry.id, {
-              cause: 'player-body',
-              running: gameDebug.player.running,
-              sourceVelocity: [...velocity],
-              direction: [velocity[0], velocity[2]],
-            });
+            if (entry.poser) return;
+            const data = other.rigidBodyObject?.userData;
+            if (data?.gameKind === 'player') {
+              const velocity = gameDebug.player.velocity;
+              queueActorImpact(entry.id, {
+                cause: 'player-body',
+                running: gameDebug.player.running,
+                sourceVelocity: [...velocity],
+                direction: [velocity[0], velocity[2]],
+              });
+            } else if (data?.gameKind === 'pedestrian' && data.actorId) {
+              // Crowd agents can genuinely clip shoulders; each capsule's own
+              // handler fires, so both figures react. Rate-limited per pair
+              // partner so a lingering contact cannot retrigger every frame.
+              const now = getPlayer().clock;
+              if (now - (entry.lastPedestrianBumpAt ?? -Infinity) < 4) return;
+              const source = figures.find((figure) => figure.id === data.actorId);
+              if (!source) return;
+              entry.lastPedestrianBumpAt = now;
+              queueActorImpact(entry.id, {
+                cause: 'pedestrian-body',
+                sourceVelocity: [source.velocity[0], 0, source.velocity[1]],
+                direction: [source.velocity[0], source.velocity[1]],
+              });
+            }
           }}
         >
           {entry.poser ? (

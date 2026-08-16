@@ -1,6 +1,7 @@
 // Persistent practice records assembled from consultation events. The store
 // keeps only what the player observed, recorded, or chose; it never copies a
 // patient's hidden ground truth into the casebook.
+import { resolveTreatmentPlan } from '../consultation/treatments.js';
 
 export const CASEBOOK_STORAGE_KEY = 'ghosts.casebook.records.v1';
 
@@ -91,14 +92,14 @@ function resultSignature(state) {
     state.patientId,
     state.history?.length || 0,
     state.diagnosisId || '',
-    state.treatmentId || '',
+    (state.treatmentIds || []).join(','),
     state.result?.oneMonth?.band || '',
   ].join(':');
 }
 
 function projectVisit(patient, state, stamp, previous, id) {
   const diagnosis = patient.diagnoses.find((item) => item.id === state.diagnosisId);
-  const treatment = patient.treatments.find((item) => item.id === state.treatmentId);
+  const plan = resolveTreatmentPlan(patient, state.treatmentIds);
   const complete = state.stage === 'result';
   const closed = state.stage === 'terminated';
   return {
@@ -111,11 +112,11 @@ function projectVisit(patient, state, stamp, previous, id) {
     observations: observationEntries(state),
     evidence: selectedEvidence(patient, state),
     diagnosis: diagnosis ? { id: diagnosis.id, label: diagnosis.label } : null,
-    treatment: treatment ? {
-      id: treatment.id,
-      label: treatment.label,
-      description: treatment.description || '',
-    } : null,
+    treatments: plan ? plan.treatments.map((item) => ({
+      id: item.id,
+      label: item.label,
+      description: item.detail || '',
+    })) : [],
     caseNote: String(state.caseNote || '').trim(),
     immediateOutcome: complete ? {
       narrative: state.result?.immediate?.narrative || '',

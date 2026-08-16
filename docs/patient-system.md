@@ -175,11 +175,12 @@ such.
 
 ### 5. Diagnosis, treatment, and case record
 
-When the player selects **Consider Treatment**, the three diagnoses and
-treatments most relevant to discovered evidence are shown first. The player
-may expand the complete lists. The player chooses a diagnosis and treatment,
-then signs the record by selecting two or three findings that best support the
-decision. Free prose is optional for authored cases that use this concise
+When the player selects **Consider Treatment**, the three diagnoses most
+relevant to discovered evidence are shown first, with the complete list still
+available. Treatments come from a shared library of eight categories, opened as
+a cabinet of nine tiles. A plan may hold up to three treatments; their effects
+are summed. The player chooses a diagnosis and a plan, then signs the record by
+selecting two or three findings that best support the decision. Free prose is optional for authored cases that use this concise
 record format.
 
 The case notebook begins with name, age, and residence. It adds only information
@@ -250,12 +251,13 @@ history alone is not enough to prevent invented facts.
 
 ## Custom input and model use
 
-The intended runtime model is GPT-5.6 Luna through a server-side Responses API
-route. API keys must not be exposed to the browser.
+The runtime model is GPT-5.6 Luna at zero reasoning effort, reached through the
+server-side Responses API route in `api/consult.mjs`. API keys must not be
+exposed to the browser.
 
 Model calls during play are limited to:
 
-- custom spoken questions;
+- custom spoken questions that match no authored rule;
 - custom private thoughts;
 - fallback conversation after deterministic content is exhausted.
 
@@ -264,8 +266,14 @@ return topic, intent, tone, hypothesis, and prose. The deterministic resolver
 decides disclosure and state changes. A model response that asserts an
 unauthorized fact is rejected.
 
+Two guards keep the model inside the record. The request schema restricts
+`disclosedNow` to the ids the simulation already authorized, so the model cannot
+name any other fact, and the engine rejects an unauthorized id if one arrives
+anyway. Decorum and termination are never delegated: an insult ends the visit
+before a call is made.
+
 If the API is unavailable, the three ordinary choices and all deterministic
-gameplay remain usable. The custom control reports that it is unavailable.
+gameplay remain usable. A custom question falls back to the offline reply.
 
 For testing and later research, save the player input, structured
 interpretation, resolved state change, model identifier, and final prose.
@@ -359,6 +367,11 @@ As of 2026-08-13, the game has:
 - an immediate patient-reaction card and a separate one-month outcome for each
   authored case;
 - deterministic local versions of the James assessment and modern debrief;
+- a GPT-5.6 Luna route answering custom questions that match no authored rule;
+- a shared library of fifty treatments in eight categories, with per-patient
+  overrides for the few that matter in each case;
+- four outcome axes: recovery, cost to the patient, acceptance, and reasoning
+  quality, with quality kept separate from outcome;
 - keyboard, pointer, and narrow-screen support.
 
 The source and design records are in
@@ -371,8 +384,10 @@ Animation parameters are not valid clinical observations by themselves.
 
 The following parts of the final design are not yet implemented:
 
+- authored interactions between treatments in one plan;
+- evidence-driven objections on treatment tiles;
+- reading a written prescription through the model;
 - modular state-based choice assembly for procedural patients;
-- the server-side GPT-5.6 Luna route;
 - persistent practice-wide reputation effects;
 - the multi-day practice economy;
 - model-rendered James letters and modern debriefs;

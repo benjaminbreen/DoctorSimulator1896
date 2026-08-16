@@ -2,7 +2,8 @@ import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { useLoader } from '@react-three/fiber';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { modelUrl } from '../world/modelPacks.js';
+import { MeshoptDecoder } from 'meshoptimizer';
+import { TREE_MODEL_URLS, TREE_SOURCE_VARIANTS } from '../world/treeModels.js';
 import { applyWind } from './foliageWind.js';
 
 // How far a canopy top travels, as a fraction of the tree's height. A big elm
@@ -10,27 +11,11 @@ import { applyWind } from './foliageWind.js';
 const TREE_SWAY = 0.03;
 
 // Instanced trees from the Shapespark exterior plants kit, split into pieces
-// by the model converter. Two well-separated source variants per species keep
-// the silhouettes varied while random spin, scale and canopy tint supply the
-// rest. Loading all four doubled the tree payload and render buckets for very
-// little visible gain at park viewing distances.
-const SOURCE_VARIANTS = [0, 2];
-const SOURCE_VARIANT_STRIDE = 4;
-const VARIANTS = SOURCE_VARIANTS.length;
-const ARCHETYPE_MODELS = ['Tree-01', 'Tree-02', 'Tree-03'];
+// by the model converter; world/treeModels.js lists which pieces.
+const VARIANTS = TREE_SOURCE_VARIANTS.length;
 // Model height relative to trunkH + canopyR, tuned per archetype: elms tall,
 // oaks broad, pond willows low.
 const HEIGHT_SCALE = [2.05, 1.85, 1.5];
-
-// The converter names a split piece `<source>__<group>`, and the kit's groups
-// retain their original four-variant index even though only variants 1 and 3
-// are loaded here: Tree-01-1_0, Tree-01-3_2, … Tree-03-3_10.
-const MODEL_NAMES = ARCHETYPE_MODELS.flatMap((name, archetype) =>
-  SOURCE_VARIANTS.map((sourceVariant) => (
-    `shapespark_plants__${name}-${sourceVariant + 1}_${archetype * SOURCE_VARIANT_STRIDE + sourceVariant}`
-  )),
-);
-const MODEL_URLS = MODEL_NAMES.map(modelUrl);
 
 // Leaf cards take per-instance canopy colors; the trunk keeps its own bark.
 function isLeafMaterial(name) {
@@ -73,7 +58,7 @@ const scratchColor = new THREE.Color();
 const UP = new THREE.Vector3(0, 1, 0);
 
 export default function TreeField({ items }) {
-  const gltfs = useLoader(GLTFLoader, MODEL_URLS);
+  const gltfs = useLoader(GLTFLoader, TREE_MODEL_URLS, (loader) => loader.setMeshoptDecoder(MeshoptDecoder));
 
   const meshes = useMemo(() => {
     const models = gltfs.map(extractParts);

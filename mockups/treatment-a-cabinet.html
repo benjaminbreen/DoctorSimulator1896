@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Treatment — Option A, The Cabinet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500&family=Cormorant+SC:wght@500;600;700&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Tangerine:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink-0:#060a0c; --ink-1:#0b1310; --ink-2:#0e1a15;
+  --panel-a:rgba(16,28,23,.72); --panel-b:rgba(8,15,13,.86);
+  --line:rgba(203,168,92,.30); --line-soft:rgba(203,168,92,.14); --line-hot:rgba(240,199,116,.9);
+  --cream:#ecdfbe; --cream-hi:#f7efd7; --cream-dim:rgba(236,223,190,.62); --cream-faint:rgba(236,223,190,.32);
+  --gold:#e3aa4e; --gold-soft:#c9a45a;
+  --radium:#9fe0ab; --radium-line:rgba(159,224,171,.85);
+  --warn:#e08b62;
+  --serif:'Libre Caslon Text',Georgia,serif;
+  --display:'Bodoni Moda',Georgia,serif;
+  --sc:'Cormorant SC',serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; font-family:var(--serif); color:var(--cream);
+  background:
+    radial-gradient(120% 90% at 50% 8%, rgba(58,44,26,.55), transparent 62%),
+    radial-gradient(90% 70% at 12% 88%, rgba(70,50,22,.35), transparent 60%),
+    linear-gradient(180deg,#0c0a07,#050604 70%);
+  min-height:100vh; display:flex; flex-direction:column;
+}
+/* faint suggestion of the consulting room behind the modal */
+body::before{
+  content:''; position:fixed; inset:0; pointer-events:none; opacity:.5;
+  background:
+    radial-gradient(28% 40% at 14% 46%, rgba(255,196,110,.16), transparent 70%),
+    radial-gradient(30% 46% at 76% 30%, rgba(120,140,120,.07), transparent 70%);
+}
+body::after{
+  content:''; position:fixed; inset:0; pointer-events:none;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .94 0 0 0 0 .87 0 0 0 0 .70 0 0 0 .045 0'/%3E%3C/filter%3E%3Crect width='150' height='150' filter='url(%23n)'/%3E%3C/svg%3E") repeat;
+}
+
+/* ---------- clinic bar ---------- */
+.bar{
+  position:relative; z-index:2; display:flex; align-items:center; gap:28px;
+  padding:12px 26px; border-bottom:1px solid var(--line-soft);
+  background:linear-gradient(180deg,rgba(6,10,12,.9),rgba(6,10,12,.55));
+}
+.bar h1{margin:0; font-family:var(--display); font-size:17px; font-weight:400; letter-spacing:.01em; color:var(--cream-hi)}
+.bar .sub{font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--cream-faint); margin-top:2px}
+.bar .clock{margin-left:auto; text-align:right; font-family:var(--display); font-size:15px; color:var(--gold)}
+.bar .clock span{display:block; font-family:var(--sc); font-size:10px; letter-spacing:.22em; color:var(--cream-faint)}
+
+/* ---------- modal ---------- */
+.stage{position:relative; z-index:2; flex:1; display:flex; align-items:center; justify-content:center; padding:26px 20px 34px}
+.modal{width:min(1180px,100%);}
+.title{text-align:center; margin-bottom:6px}
+.title h2{
+  margin:0; font-family:var(--display); font-weight:400; font-size:clamp(30px,3.4vw,44px);
+  letter-spacing:.02em; color:var(--cream-hi); text-shadow:0 2px 18px rgba(0,0,0,.7);
+}
+.rule{display:flex; align-items:center; gap:14px; max-width:520px; margin:10px auto 4px; color:var(--gold-soft)}
+.rule::before,.rule::after{content:''; flex:1; height:1px; background:linear-gradient(90deg,transparent,var(--line) 18%,var(--line) 82%,transparent)}
+.title .who{font-family:var(--sc); font-size:12.5px; letter-spacing:.26em; text-transform:uppercase; color:var(--gold-soft)}
+
+/* framed cabinet */
+.frame{
+  position:relative; margin-top:20px; padding:26px 26px 20px;
+  border:1px solid var(--line); border-radius:10px;
+  background:
+    radial-gradient(140% 90% at 50% 0%, rgba(46,66,54,.22), transparent 58%),
+    linear-gradient(180deg,var(--panel-a),var(--panel-b));
+  box-shadow:0 26px 70px rgba(0,0,0,.66), inset 0 0 0 1px rgba(4,7,6,.8), inset 0 0 56px rgba(0,4,2,.5);
+}
+.frame::after{content:''; position:absolute; inset:7px; border:1px solid var(--line-soft); border-radius:6px; pointer-events:none}
+
+.eyebrow{
+  font-family:var(--sc); font-size:11px; font-weight:700; letter-spacing:.32em;
+  text-transform:uppercase; color:var(--gold-soft); text-align:center; margin:0 0 18px;
+}
+
+/* ---------- category grid ---------- */
+.grid{display:grid; grid-template-columns:repeat(3,1fr); gap:12px}
+.tile{
+  position:relative; display:flex; flex-direction:column; align-items:center; gap:9px;
+  padding:20px 14px 16px; cursor:pointer; color:var(--cream);
+  border:1px solid var(--line); border-radius:7px;
+  background:linear-gradient(180deg,rgba(18,30,25,.55),rgba(9,15,13,.66));
+  transition:border-color .18s,box-shadow .18s,background .18s,transform .18s;
+  font-family:var(--serif);
+}
+/* notched corners, drawn with gradients so no artwork is needed */
+.tile::before{
+  content:''; position:absolute; inset:4px; border-radius:4px; pointer-events:none;
+  background:
+    linear-gradient(var(--gold-soft),var(--gold-soft)) 0 0/9px 1px no-repeat,
+    linear-gradient(var(--gold-soft),var(--gold-soft)) 0 0/1px 9px no-repeat,
+    linear-gradient(var(--gold-soft),var(--gold-soft)) 100% 0/9px 1px no-repeat,
+    linear-gradient(var(--gold-soft),var(--gold-soft)) 100% 0/1px 9px no-repeat,
+    linear-gradient(var(--gold-soft),var(--gold-soft)) 0 100%/9px 1px no-repeat,
+    linear-gradient(var(--gold-soft),var(--gold-soft)) 0 100%/1px 9px no-repeat,
+    linear-gradient(var(--gold-soft),var(--gold-soft)) 100% 100%/9px 1px no-repeat,
+    linear-gradient(var(--gold-soft),var(--gold-soft)) 100% 100%/1px 9px no-repeat;
+  opacity:.5; transition:opacity .18s, background-color .18s;
+}
+.tile:hover{border-color:rgba(240,199,116,.6); background:linear-gradient(180deg,rgba(26,42,34,.66),rgba(12,20,17,.72)); transform:translateY(-1px)}
+.tile:hover::before{opacity:.9}
+.tile:focus-visible{outline:2px solid var(--radium-line); outline-offset:2px}
+.tile svg{width:30px; height:30px; stroke:var(--gold); fill:none; stroke-width:1.15; stroke-linecap:round; stroke-linejoin:round; opacity:.95}
+.tile .name{font-size:15px; letter-spacing:.005em; color:var(--cream-hi); text-align:center; line-height:1.25}
+.tile .count{font-family:var(--sc); font-size:10.5px; letter-spacing:.2em; text-transform:uppercase; color:var(--cream-faint)}
+.tile.custom{background:linear-gradient(180deg,rgba(30,26,14,.5),rgba(14,12,7,.66)); border-style:dashed; border-color:rgba(203,168,92,.42)}
+.tile.custom svg{stroke:var(--cream-dim)}
+
+/* ---------- drill-down ---------- */
+.panel{display:none}
+.panel.open{display:block; animation:rise .22s ease both}
+@keyframes rise{from{opacity:0; transform:translateY(7px)} to{opacity:1; transform:none}}
+.back{
+  display:inline-flex; align-items:center; gap:9px; margin-bottom:14px; padding:6px 12px 6px 8px;
+  background:none; border:1px solid var(--line-soft); border-radius:5px; cursor:pointer;
+  font-family:var(--sc); font-size:11px; font-weight:600; letter-spacing:.2em; text-transform:uppercase; color:var(--cream-dim);
+}
+.back:hover{color:var(--cream-hi); border-color:var(--line)}
+.back svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.5}
+.panel h3{margin:0 0 3px; font-family:var(--display); font-weight:400; font-size:24px; color:var(--cream-hi)}
+.panel .lede{margin:0 0 16px; font-size:13.5px; font-style:italic; color:var(--cream-dim)}
+.options{display:grid; grid-template-columns:repeat(2,1fr); gap:10px}
+.opt{
+  position:relative; display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:14px;
+  padding:13px 16px; cursor:pointer; text-align:left; color:var(--cream);
+  border:1px solid var(--line); border-radius:6px; font-family:var(--serif);
+  background:linear-gradient(180deg,rgba(16,27,22,.5),rgba(8,14,12,.62));
+  transition:border-color .18s,box-shadow .18s,background .18s;
+}
+.opt:hover{border-color:rgba(240,199,116,.65)}
+.opt:focus-visible{outline:2px solid var(--radium-line); outline-offset:2px}
+.opt svg{width:22px;height:22px;stroke:var(--gold-soft);fill:none;stroke-width:1.15;stroke-linecap:round;stroke-linejoin:round}
+.opt .t{display:block; font-size:15.5px; color:var(--cream-hi); line-height:1.3}
+.opt .d{display:block; font-size:12.5px; font-style:italic; color:var(--cream-dim); margin-top:3px; line-height:1.4}
+.opt .fee{font-family:var(--display); font-size:14px; color:var(--gold); white-space:nowrap}
+.opt.on{
+  border-color:var(--radium-line); background:linear-gradient(180deg,rgba(22,44,31,.7),rgba(10,20,15,.8));
+  box-shadow:0 0 1px rgba(190,255,205,.8),0 0 10px rgba(120,220,150,.3),0 0 26px rgba(90,200,130,.14);
+}
+.opt.on .t{color:#f2ffe9}
+/* an objection the player has earned by asking the right question */
+.opt .objection{
+  grid-column:1/-1; display:flex; gap:9px; align-items:flex-start;
+  margin-top:9px; padding-top:9px; border-top:1px dashed rgba(224,139,98,.35);
+  font-size:12.5px; font-style:italic; line-height:1.45; color:var(--warn);
+}
+.opt .objection b{font-style:normal; font-family:var(--sc); font-weight:700; letter-spacing:.16em; text-transform:uppercase; font-size:10px; color:rgba(224,139,98,.85); flex:0 0 auto; padding-top:2px}
+
+.customwrap{margin-top:4px}
+.customwrap textarea{
+  width:100%; min-height:92px; resize:vertical; padding:14px 16px;
+  border:1px dashed rgba(203,168,92,.42); border-radius:6px; background:rgba(6,11,9,.5);
+  color:var(--cream-hi); font-family:var(--serif); font-size:15px; line-height:1.55;
+}
+.customwrap textarea::placeholder{color:var(--cream-faint); font-style:italic}
+.customwrap textarea:focus{outline:none; border-color:var(--line-hot); border-style:solid}
+.customwrap .hint{margin:9px 2px 0; font-size:12.5px; font-style:italic; color:var(--cream-faint)}
+
+/* ---------- prescription strip ---------- */
+.strip{
+  display:flex; align-items:center; gap:18px; margin-top:20px; padding:14px 18px;
+  border:1px solid var(--line-soft); border-radius:7px; background:rgba(4,9,7,.55);
+}
+.strip .label{font-family:var(--sc); font-size:10.5px; font-weight:700; letter-spacing:.26em; text-transform:uppercase; color:var(--gold-soft); flex:0 0 auto}
+.chips{display:flex; flex-wrap:wrap; gap:8px; flex:1; min-height:30px; align-items:center}
+.chips .empty{font-size:13px; font-style:italic; color:var(--cream-faint)}
+.chip{
+  display:inline-flex; align-items:center; gap:9px; padding:6px 9px 6px 11px;
+  border:1px solid var(--radium-line); border-radius:4px; background:rgba(24,48,34,.6);
+  font-size:13.5px; color:#eafbe6;
+}
+.chip button{background:none;border:0;cursor:pointer;color:rgba(234,251,230,.55);font-size:15px;line-height:1;padding:0 2px}
+.chip button:hover{color:#fff}
+.total{font-family:var(--display); font-size:17px; color:var(--gold); flex:0 0 auto}
+.total span{display:block; font-family:var(--sc); font-size:9.5px; letter-spacing:.22em; text-transform:uppercase; color:var(--cream-faint); text-align:right}
+
+.actions{display:flex; justify-content:center; gap:12px; margin-top:16px}
+.btn{
+  padding:11px 26px; border:1px solid var(--line); border-radius:6px; cursor:pointer;
+  font-family:var(--serif); font-size:14.5px; color:var(--cream);
+  background:linear-gradient(180deg,rgba(16,27,22,.6),rgba(8,14,12,.7)); transition:all .18s;
+}
+.btn:hover{border-color:var(--line-hot); color:var(--cream-hi)}
+.btn.go{border-color:var(--radium-line); color:#eafbe6; background:linear-gradient(180deg,rgba(22,48,32,.75),rgba(10,22,16,.8)); box-shadow:0 0 12px rgba(120,220,150,.2)}
+.btn.go:hover{box-shadow:0 0 20px rgba(120,220,150,.34)}
+.foot{margin-top:14px; text-align:center; font-size:12.5px; font-style:italic; color:var(--cream-faint)}
+
+@media (max-width:860px){
+  .grid{grid-template-columns:repeat(2,1fr)}
+  .options{grid-template-columns:1fr}
+  .strip{flex-wrap:wrap}
+  .bar{gap:14px; padding:10px 16px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div>
+    <h1>Blackwell Nervous Disorders Clinic</h1>
+    <div class="sub">West 10th Street, New York</div>
+  </div>
+  <div class="clock">4:41 p.m.<span>Thursday · March 12, 1896</span></div>
+</div>
+
+<div class="stage">
+<div class="modal">
+
+  <div class="title">
+    <h2>Consider Treatment</h2>
+    <div class="rule">◆</div>
+    <div class="who">Miss Nora Byrne · aged 28 · copyist</div>
+  </div>
+
+  <div class="frame">
+
+    <!-- ============ level 1: the cabinet ============ -->
+    <div id="cabinet">
+      <p class="eyebrow">Open a compartment</p>
+      <div class="grid" id="grid"></div>
+    </div>
+
+    <!-- ============ level 2: one compartment ============ -->
+    <div class="panel" id="panel">
+      <button class="back" id="back">
+        <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg> All treatments
+      </button>
+      <h3 id="pTitle"></h3>
+      <p class="lede" id="pLede"></p>
+      <div class="options" id="pOptions"></div>
+      <div class="customwrap" id="pCustom" style="display:none">
+        <textarea placeholder="Write the prescription in your own words — a substance, a regimen, a course of treatment, a combination…"></textarea>
+        <p class="hint">Anything without a recognised equivalent will be dispensed as written, and will do what it does.</p>
+      </div>
+    </div>
+
+    <!-- ============ the running plan ============ -->
+    <div class="strip">
+      <div class="label">Prescription</div>
+      <div class="chips" id="chips"><span class="empty">Nothing prescribed.</span></div>
+      <div class="total" id="total">$0.00<span>Her fee</span></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn go">Write it out</button>
+      <button class="btn">Case notebook</button>
+      <button class="btn">Back to the room</button>
+    </div>
+    <p class="foot">She is waiting. Nothing is prescribed until you write it out.</p>
+
+  </div>
+</div>
+</div>
+
+<script>
+const I = {
+  drug:'<path d="M9 3h6M10 3v4.2L5.8 16A3 3 0 0 0 8.5 20.5h7A3 3 0 0 0 18.2 16L14 7.2V3"/><path d="M6.6 14h10.8"/>',
+  rest:'<path d="M3 18v-6h13a5 5 0 0 1 5 5v1"/><path d="M3 18h18"/><path d="M3 8v4"/><circle cx="7.5" cy="9.5" r="2.2"/>',
+  diet:'<path d="M6 3v8a3 3 0 0 0 6 0V3"/><path d="M9 11v10"/><path d="M17.5 3c-1.6 1.6-2 3.4-2 5.5V13h4V8.5c0-2.1-.4-3.9-2-5.5Z"/><path d="M17.5 13v8"/>',
+  air:'<path d="M3 8h11a3 3 0 1 0-3-3"/><path d="M3 12h15a2.6 2.6 0 1 1-2.6 2.6"/><path d="M3 16h8a2.2 2.2 0 1 1-2.2 2.2"/>',
+  water:'<path d="M12 3s6 6.6 6 10.6A6 6 0 0 1 6 13.6C6 9.6 12 3 12 3Z"/><path d="M9.4 14.6a2.6 2.6 0 0 0 2.6 2.6"/>',
+  electric:'<path d="M13.5 2 5 13h5.5L9.5 22 19 10h-5.8l.3-8Z"/>',
+  mind:'<path d="M12 20.5c4.7 0 8.5-3.6 8.5-8S16.7 3.5 12 3.5 3.5 7.6 3.5 12c0 1.7.6 3.3 1.6 4.6L4 21l4.6-1.3a9 9 0 0 0 3.4.8Z"/><path d="M12 16c2 0 3.4-1.4 3.4-3.2S14 9.6 12.4 9.6c-1.3 0-2.2.9-2.2 2s.8 1.7 1.6 1.7"/>',
+  remove:'<path d="M13 3H5v18h8"/><path d="M9.5 12h11"/><path d="M17 8.2 20.8 12 17 15.8"/>',
+  custom:'<path d="M4 20c6.5.6 11-2.4 13.4-6.6C19.6 9.5 20.4 5.9 20 3c-3 .3-6.6 1.5-10 4.2C6.2 10 4 14.2 4 20Z"/><path d="M4 20 11 13"/>'
+};
+const CATS = [
+  { id:'drug', icon:'drug', name:'Drugs', lede:'The dispensary shelf. Dose and duration matter as much as the choice.', opts:[
+    ['Potassium bromide','calms excitation; dulls with continued use','$1.25','drug', null],
+    ['Chloral hydrate','promotes quiet sleep','$1.60','drug', null],
+    ['Laudanum','opium tincture; quiets pain and the nerves','$0.90','drug', null],
+    ['Morphine, hypodermic','certain relief; habit forms readily','$2.40','drug', null],
+    ['Cannabis indica tincture','relieves nervous agitation','$1.75','drug', null],
+    ['Coca wine','a restorative tonic, taken with meals','$1.10','drug', null],
+    ['Iron and arsenic tonic','for debility and poor colour','$0.80','drug', null],
+    ['Valerian tincture','soothes nervous tension','$0.55','drug', null],
+  ]},
+  { id:'rest', icon:'rest', name:'Rest', lede:'From an hour lying down to Weir Mitchell entire.', opts:[
+    ['An hour recumbent, daily','after dinner, curtains drawn','$0.00','rest', null],
+    ['Rest cure at home','six weeks in bed; no reading, no visitors','$4.00','rest',
+      'Six weeks from the office costs her the place. She told you she keeps her room on those wages.'],
+    ['Rest cure at a sanatorium','seclusion, massage, feeding up, attendants','$38.00','rest',
+      'Beyond anything she earns in a quarter.'],
+    ['A fortnight at a health resort','Saratoga or the Catskills','$16.00','rest', null],
+    ['Seclusion from the family','no letters, no callers','$0.00','rest', null],
+  ]},
+  { id:'diet', icon:'diet', name:'Diet & stimulants', lede:'Feeding is treatment. So, in 1896, is brandy.', opts:[
+    ['Exclusive milk diet','four quarts daily, nothing else','$2.20','diet', null],
+    ['Feeding up','cream, chops, and eggs at every hour','$3.10','diet', null],
+    ['Beef tea and meat extract','strengthens and supports','$1.40','diet', null],
+    ['Brandy as a stimulant','a wineglass at noon and at night','$1.20','diet', null],
+    ['Cod liver oil and malt','a spoonful before meals','$0.75','diet', null],
+    ['Abstinence from tea and coffee','and from tobacco','$0.00','diet', null],
+  ]},
+  { id:'air', icon:'air', name:'Exercise & air', lede:'What was prescribed to men for the complaint that put women to bed.', opts:[
+    ['Graduated walking','a half mile, increased weekly','$0.00','air', null],
+    ['Swedish movements','medical gymnastics with an attendant','$6.00','air', null],
+    ['Change of air','the country or the shore, one month','$14.00','air', null],
+    ['A sea voyage','six weeks, Atlantic passage','$60.00','air', null],
+    ['The camp cure','outdoor life, riding, rough living','$22.00','air', null],
+    ['Mountain air','the Adirondacks, through the summer','$30.00','air', null],
+  ]},
+  { id:'water', icon:'water', name:'Hydrotherapy', lede:'Cheap, harmless, and mostly ineffective. The patient rarely minds.', opts:[
+    ['Cold sponging','on rising, briskly','$0.00','water', null],
+    ['The wet pack','wrapped in sheets for an hour','$1.00','water', null],
+    ['Sitz bath','twice daily, tepid','$0.60','water', null],
+    ['Turkish bath','weekly, followed by rest','$2.00','water', null],
+    ['Continuous warm bath','for excitement and agitation','$3.50','water', null],
+    ['A course at a water cure','a fortnight, resident','$24.00','water', null],
+  ]},
+  { id:'electric', icon:'electric', name:'Electrotherapy', lede:'The apparatus is impressive. That is not nothing.', opts:[
+    ['General faradization','Beard’s method, head to foot','$3.00','electric', null],
+    ['Local faradization','applied to the affected hand','$1.80','electric', null],
+    ['Galvanization','constant current, ten minutes','$2.20','electric', null],
+    ['Central galvanization','spine and head','$3.40','electric', null],
+    ['Static electricity','the machine, sparks and breeze','$4.00','electric', null],
+    ['The electric bath','current passed through the water','$5.00','electric', null],
+  ]},
+  { id:'mind', icon:'mind', name:'Mind & suggestion', lede:'Charcot, Bernheim, Janet. This year, the whole argument is open.', opts:[
+    ['Hypnotic suggestion','the symptom addressed directly under trance','$3.00','mind', null],
+    ['Hypnotic investigation','reproduce the state and question it','$3.00','mind',
+      'Repeated questioning under suggestion has produced accounts that changed with the questions.'],
+    ['Persuasion and explanation','tell her plainly what you believe is happening','$0.00','mind', null],
+    ['Moral management','firm authority; no indulgence of the symptom','$0.00','mind', null],
+    ['Remove her from the circle','no more sittings at Mrs. Bell’s','$0.00','mind', null],
+    ['Endorse the communications','accept Mary, and develop the writing','$0.00','mind',
+      'She will be grateful. Nothing in the writings has yet contained anything she did not already know.'],
+    ['Planchette, as investigation','record the writing under observation','$0.00','mind', null],
+  ]},
+  { id:'remove', icon:'remove', name:'Removal & change', lede:'Not a tonic. Stopping the thing that is doing it.', opts:[
+    ['Leave the trade','give up the copying desk entirely','$0.00','remove',
+      'She has no other trade and no one to keep her.'],
+    ['Lighter work at the same desk','fewer hours of close script','$0.00','remove', null],
+    ['Reduced hours','half days for one month','$0.00','remove', null],
+    ['Change of lodgings','away from the damp and the noise','$8.00','remove', null],
+    ['Separation from the household','a room of her own elsewhere','$12.00','remove', null],
+    ['The country for a season','placed with relations upstate','$18.00','remove', null],
+  ]},
+];
+
+const grid = document.getElementById('grid');
+const panel = document.getElementById('panel');
+const cabinet = document.getElementById('cabinet');
+const chips = document.getElementById('chips');
+const totalEl = document.getElementById('total');
+const plan = [];
+
+const svg = k => `<svg viewBox="0 0 24 24">${I[k]}</svg>`;
+
+CATS.forEach(c=>{
+  const b=document.createElement('button');
+  b.className='tile'; b.type='button';
+  b.innerHTML = `${svg(c.icon)}<span class="name">${c.name}</span><span class="count">${c.opts.length} available</span>`;
+  b.onclick=()=>open(c);
+  grid.appendChild(b);
+});
+const cb=document.createElement('button');
+cb.className='tile custom'; cb.type='button';
+cb.innerHTML = `${svg('custom')}<span class="name">In your own words</span><span class="count">Write it</span>`;
+cb.onclick=()=>open({id:'custom',name:'In your own words',lede:'Compound what you like. It will be dispensed as written.',opts:[],custom:true});
+grid.appendChild(cb);
+
+function open(c){
+  cabinet.style.display='none';
+  panel.classList.add('open');
+  document.getElementById('pTitle').textContent=c.name;
+  document.getElementById('pLede').textContent=c.lede;
+  const box=document.getElementById('pOptions'); box.innerHTML='';
+  document.getElementById('pCustom').style.display = c.custom ? 'block':'none';
+  c.opts.forEach(([t,d,fee,icon,objection])=>{
+    const b=document.createElement('button');
+    b.className='opt'; b.type='button';
+    b.innerHTML = `${svg(icon)}<span><span class="t">${t}</span><span class="d">${d}</span></span><span class="fee">${fee}</span>` +
+      (objection?`<span class="objection"><b>She said</b><span>${objection}</span></span>`:'');
+    b.onclick=()=>{ b.classList.toggle('on'); toggle(t,fee,b.classList.contains('on')); };
+    if(plan.find(p=>p.t===t)) b.classList.add('on');
+    box.appendChild(b);
+  });
+}
+document.getElementById('back').onclick=()=>{ panel.classList.remove('open'); cabinet.style.display='block'; };
+
+function toggle(t,fee,on){
+  const i=plan.findIndex(p=>p.t===t);
+  if(on && i<0) plan.push({t,fee:parseFloat(fee.slice(1))});
+  if(!on && i>=0) plan.splice(i,1);
+  render();
+}
+function render(){
+  if(!plan.length){ chips.innerHTML='<span class="empty">Nothing prescribed.</span>'; }
+  else chips.innerHTML = plan.map((p,i)=>`<span class="chip">${p.t}<button onclick="drop(${i})" aria-label="Remove">×</button></span>`).join('');
+  const sum = plan.reduce((a,p)=>a+p.fee,0) + 2;
+  totalEl.innerHTML = `$${sum.toFixed(2)}<span>Her fee</span>`;
+}
+window.drop = i => { plan.splice(i,1); render(); document.querySelectorAll('.opt.on').forEach(o=>{
+  if(!plan.find(p=>p.t===o.querySelector('.t').textContent)) o.classList.remove('on'); }); };
+render();
+</script>
+</body>
+</html>

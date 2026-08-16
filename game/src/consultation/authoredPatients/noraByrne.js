@@ -57,7 +57,7 @@ const recipe = patientToRendererCRecipe(profile, {
   id,
   asset: {
     kind: 'authored-character',
-    path: '/models/characters/nora-byrne.glb?v=3',
+    path: '/models/characters/nora-byrne.glb?v=4',
     applyRecipe: false,
     opaque: true,
     modelRotationX: -Math.PI / 2,
@@ -410,14 +410,70 @@ export const NORA_BYRNE = Object.freeze({
     Object.freeze({ id: 'nora-dx-malingering', label: 'Malingering', description: 'Regard the symptoms and writing as consciously produced for attention or advantage.', selector: { basePriority: -4 }, evaluation: { quality: 0, patientAcceptance: -20 } }),
     Object.freeze({ id: 'nora-dx-spirit', label: 'Spirit control', description: 'Regard the writing as communication from Mary through an external agency.', selector: { basePriority: -3, supportFactIds: ['nora-seance'] }, evaluation: { quality: 0, patientAcceptance: 9 } }),
   ]),
-  treatments: Object.freeze([
-    Object.freeze({ id: 'nora-tx-support', label: 'Support, sleep, continued work, and observation', description: 'Reduce séance exposure, protect ordinary occupation, improve food and sleep, and arrange return visits.', evaluation: { quality: 10, patientAcceptance: 6, healthChange: 7, functionChange: 5, episodesChange: -5, incomeChangeCents: 0, immediateText: 'The practical attention to her work and lodging makes the advice feel possible to follow.', monthText: 'A month later, Miss Byrne has remained at work, sleeps more regularly, and has stopped attending the circle. The gaps have not recurred and the tremor is less frequent.', modernText: 'The supportive plan reduces suggestion and stress without removing ordinary function.' } }),
-    Object.freeze({ id: 'nora-tx-rest-cure', label: 'Complete rest and seclusion', description: 'Bed rest, isolation, abundant feeding, and withdrawal from work.', evaluation: { quality: 4, patientAcceptance: 1, healthChange: 1, functionChange: -8, episodesChange: -2, incomeChangeCents: -1800, immediateText: 'She is relieved to hear that the condition has a recognized regimen, but plainly fears losing her position.', monthText: 'A month later, the visible tremor is quieter in seclusion, but Miss Byrne has lost her copyist’s place and can no longer afford her former room. Her dependence and isolation have increased.', modernText: 'Seclusion suppresses some visible stress while imposing serious social and functional harm.' } }),
-    Object.freeze({ id: 'nora-tx-bromide', label: 'Bromide draught at night', description: 'A sedating nightly medicine with no direct effect on the underlying process.', evaluation: { quality: 3, patientAcceptance: 5, healthChange: -1, functionChange: -2, episodesChange: 0, incomeChangeCents: -200, immediateText: 'A bottle and a clear nightly direction make the visit feel medically substantial.', monthText: 'A month later, the bromide sometimes helps Miss Byrne fall asleep but leaves her dull at the office. The gaps and automatic writing remain when she attends the circle.', modernText: 'Sedation changes sleep and alertness but does not address the dissociation or its maintaining conditions.' } }),
-    Object.freeze({ id: 'nora-tx-hypnosis', label: 'Repeated hypnotic investigation', description: 'Use suggestion to reproduce the state and question the alternate stream of awareness.', evaluation: { quality: 5, patientAcceptance: 3, healthChange: 0, functionChange: -1, episodesChange: 2, incomeChangeCents: -100, immediateText: 'She is hopeful that the strange state might finally be made intelligible.', monthText: 'A month later, the sessions have produced elaborate new accounts, but the details vary with the questions put to her. The episodes are more prominent in her thoughts and no more settled.', modernText: 'Repeated suggestive questioning risks contaminating the account and reinforcing the symptom.' } }),
-    Object.freeze({ id: 'nora-tx-spirit', label: 'Encourage the communications', description: 'Accept Mary’s agency and direct continued sittings to develop the writing.', evaluation: { quality: 0, patientAcceptance: 13, healthChange: -7, functionChange: -5, episodesChange: 6, incomeChangeCents: -600, immediateText: 'She leaves feeling believed and tells Mrs. Bell that you understood what other doctors would have mocked.', monthText: 'A month later, Miss Byrne is a valued subject at the circle and speaks warmly of your insight. Her missing intervals are longer, her office attendance has suffered, and the writings still contain no knowledge unavailable to her.', modernText: 'Endorsement increases satisfaction while reinforcing the social setting and attention that maintain the episodes.' } }),
-    Object.freeze({ id: 'nora-tx-dismiss', label: 'Dismiss the complaint as deception', description: 'Offer no treatment and warn her to stop performing the symptoms.', evaluation: { quality: 0, patientAcceptance: -22, healthChange: -5, functionChange: -4, episodesChange: 4, incomeChangeCents: -300, immediateText: 'She leaves the fee on the desk only after being reminded and will not meet your eye.', monthText: 'A month later, Miss Byrne has not returned. Fear and poor sleep have worsened, and she relies more heavily on the circle that does not accuse her of deceit.', modernText: 'Accusation removes clinical support and drives her toward the group that confirms the symptom’s supernatural meaning.' } }),
-  ]),
+  // Only the treatments that matter in this case. Everything else in the
+  // library resolves to its default, which for Nora is a null result.
+  treatmentOverrides: Object.freeze({
+    'mind-remove-influence': Object.freeze({
+      label: 'Support, sleep, continued work, and observation',
+      detail: 'Reduce séance exposure, protect ordinary occupation, improve food and sleep, and arrange return visits.',
+      evaluation: Object.freeze({
+        quality: 10, patientAcceptance: 6, recovery: 9, cost: 1,
+        immediateText: 'The practical attention to her work and lodging makes the advice feel possible to follow.',
+        monthText: 'A month later, Miss Byrne has remained at work, sleeps more regularly, and has stopped attending the circle. The gaps have not recurred and the tremor is less frequent.',
+        modernText: 'The supportive plan reduces suggestion and stress without removing ordinary function.',
+      }),
+    }),
+    'rest-cure-home': Object.freeze({
+      label: 'Complete rest and seclusion',
+      detail: 'Bed rest, isolation, abundant feeding, and withdrawal from work.',
+      evaluation: Object.freeze({
+        quality: 4, patientAcceptance: 1, recovery: 2, cost: -12,
+        immediateText: 'She is relieved to hear that the condition has a recognized regimen, but plainly fears losing her position.',
+        monthText: 'A month later, the visible tremor is quieter in seclusion, but Miss Byrne has lost her copyist’s place and can no longer afford her former room. Her dependence and isolation have increased.',
+        modernText: 'Seclusion suppresses some visible stress while imposing serious social and functional harm.',
+      }),
+    }),
+    'drug-bromide': Object.freeze({
+      label: 'Bromide draught at night',
+      detail: 'A sedating nightly medicine with no direct effect on the underlying process.',
+      evaluation: Object.freeze({
+        quality: 3, patientAcceptance: 5, recovery: -1, cost: -3,
+        immediateText: 'A bottle and a clear nightly direction make the visit feel medically substantial.',
+        monthText: 'A month later, the bromide sometimes helps Miss Byrne fall asleep but leaves her dull at the office. The gaps and automatic writing remain when she attends the circle.',
+        modernText: 'Sedation changes sleep and alertness but does not address the dissociation or its maintaining conditions.',
+      }),
+    }),
+    'mind-hypnotic-investigation': Object.freeze({
+      label: 'Repeated hypnotic investigation',
+      detail: 'Use suggestion to reproduce the state and question the alternate stream of awareness.',
+      evaluation: Object.freeze({
+        quality: 5, patientAcceptance: 3, recovery: -2, cost: -2,
+        immediateText: 'She is hopeful that the strange state might finally be made intelligible.',
+        monthText: 'A month later, the sessions have produced elaborate new accounts, but the details vary with the questions put to her. The episodes are more prominent in her thoughts and no more settled.',
+        modernText: 'Repeated suggestive questioning risks contaminating the account and reinforcing the symptom.',
+      }),
+    }),
+    'mind-endorse': Object.freeze({
+      label: 'Encourage the communications',
+      detail: 'Accept Mary’s agency and direct continued sittings to develop the writing.',
+      evaluation: Object.freeze({
+        quality: 0, patientAcceptance: 13, recovery: -9, cost: -7,
+        immediateText: 'She leaves feeling believed and tells Mrs. Bell that you understood what other doctors would have mocked.',
+        monthText: 'A month later, Miss Byrne is a valued subject at the circle and speaks warmly of your insight. Her missing intervals are longer, her office attendance has suffered, and the writings still contain no knowledge unavailable to her.',
+        modernText: 'Endorsement increases satisfaction while reinforcing the social setting and attention that maintain the episodes.',
+      }),
+    }),
+    'mind-dismiss': Object.freeze({
+      label: 'Dismiss the complaint as deception',
+      detail: 'Offer no treatment and warn her to stop performing the symptoms.',
+      evaluation: Object.freeze({
+        quality: 0, patientAcceptance: -22, recovery: -7, cost: -5,
+        immediateText: 'She leaves the fee on the desk only after being reminded and will not meet your eye.',
+        monthText: 'A month later, Miss Byrne has not returned. Fear and poor sleep have worsened, and she relies more heavily on the circle that does not accuse her of deceit.',
+        modernText: 'Accusation removes clinical support and drives her toward the group that confirms the symptom’s supernatural meaning.',
+      }),
+    }),
+  }),
   caseNote: Object.freeze({
     minimumWords: 0,
     minimumEvidenceSelections: 2,

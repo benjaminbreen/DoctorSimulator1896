@@ -103,10 +103,6 @@ export function availableDiagnoses(patient, state, limit = 3) {
   return rankedDecisionItems(patient.diagnoses, state, state.diagnosisId, limit);
 }
 
-export function availableTreatments(patient, state, limit = 3) {
-  return rankedDecisionItems(patient.treatments, state, state.treatmentId, limit);
-}
-
 export function classifyCustomThought(patient, text) {
   const ranked = (patient.thoughtIntents || [])
     .map((intent, index) => ({ intent, index, score: scoreTerms(text, intent.matchTerms) }))

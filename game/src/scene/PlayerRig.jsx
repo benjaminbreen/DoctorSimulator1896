@@ -56,6 +56,10 @@ import {
   interruptThrowablePlay,
 } from '../world/throwablePlay.js';
 import { throwableDefinition } from '../world/throwables.js';
+import { goodOfThrowable, handVerb } from '../world/goods.js';
+import { runHeldVerb } from '../world/pocket.js';
+import { findReachableDialogueAgent } from '../world/agents.js';
+import { npcDialogueDefinition } from '../world/npcDialogue.js';
 
 const MAX_DT = 1 / 30;
 const stillInput = { x: 0, z: 0, run: false, jump: false };
@@ -96,8 +100,20 @@ export default function PlayerRig({
   // walk-and-aim, which is the slow part of checking one.
   useEffect(() => {
     gameDebug.enterInstrument = useInstrument;
+    gameDebug.talk = (npcId = 'park-keeper') => {
+      const npc = npcDialogueDefinition(npcId);
+      if (!npc) return false;
+      useInstrument({
+        id: `conversation:debug:${npcId}`,
+        kind: 'conversation',
+        npcId,
+        dialogueName: npc.name,
+      });
+      return true;
+    };
     return () => {
       gameDebug.enterInstrument = null;
+      gameDebug.talk = null;
     };
   }, []);
   const controllerRef = useCharacterController(runtime);
@@ -471,12 +487,20 @@ export default function PlayerRig({
         gameDebug.prompt = `Picking up ${label}`;
         if (!keyboard.state.interact) interactLatch.current = false;
       } else if (throwPlay.phase === 'held') {
-        gameDebug.prompt = `Hold E to throw ${label}`;
+        // The good's first verb decides what E does. Only 'throw' charges;
+        // anything else runs once on the press.
+        const held = goodOfThrowable(throwPlay.heldType);
+        const verb = held && handVerb(held.id);
+        const throwing = verb?.id === 'throw';
+        gameDebug.prompt = throwing ? `Hold E to throw ${label}` : verb?.label ?? 'Use it';
         if (!keyboard.state.interact) interactLatch.current = false;
         else if (!interactLatch.current) {
           interactLatch.current = true;
-          if (gameDebug.stats.cameraYaw !== null) state.yaw = gameDebug.stats.cameraYaw;
-          beginThrowableCharge();
+          if (!throwing) runHeldVerb();
+          else {
+            if (gameDebug.stats.cameraYaw !== null) state.yaw = gameDebug.stats.cameraYaw;
+            beginThrowableCharge();
+          }
         }
       } else if (throwPlay.phase === 'charging') {
         gameDebug.prompt = `Release E · ${Math.round(estimateThrowableRange(throwPlay.charge, throwPlay.heldType))} m`;
@@ -494,10 +518,13 @@ export default function PlayerRig({
     }
 
     const boardable = active ? null : findBoardable(gameDebug.player.position, state.yaw);
-    const item = active || boardable
+    const dialogueAgent = active || boardable
+      ? null
+      : findReachableDialogueAgent(gameDebug.player.position, state.yaw);
+    const item = active || boardable || dialogueAgent
       ? null
       : findReachable(reachable, gameDebug.player.position, state.yaw);
-    const throwable = active || boardable || item
+    const throwable = active || boardable || dialogueAgent || item
       ? null
       : findReachableThrowable(gameDebug.player.position, state.yaw);
     const throwableLabel = throwableDefinition(throwable?.type)?.label.toLowerCase();
@@ -506,6 +533,8 @@ export default function PlayerRig({
       ? active.label
       : boardable
         ? boardable.profile.label
+      : dialogueAgent
+        ? `Speak with ${dialogueAgent.dialogueName}`
       : item
         ? `${item.affordance.verb} ${item.affordance.name ?? ''}`.trim()
         : throwable
@@ -513,7 +542,7 @@ export default function PlayerRig({
           : null;
 
     if (!keyboard.state.interact) interactLatch.current = false;
-    else if (!interactLatch.current && (active || boardable || item || throwable)) {
+    else if (!interactLatch.current && (active || boardable || dialogueAgent || item || throwable)) {
       interactLatch.current = true;
       if (active) requestTravel(runtime, active);
       else if (boardable) {
@@ -522,6 +551,17 @@ export default function PlayerRig({
         state.velocity = [0, 0, 0];
         gameDebug.player.climbing = true;
         gameDebug.player.climbSerial += 1;
+        setReach(null);
+        gameDebug.prompt = null;
+      }
+      else if (dialogueAgent) {
+        useInstrument({
+          id: `conversation:${dialogueAgent.id}`,
+          kind: 'conversation',
+          npcId: dialogueAgent.dialogueId,
+          agentId: dialogueAgent.id,
+          dialogueName: dialogueAgent.dialogueName,
+        });
         setReach(null);
         gameDebug.prompt = null;
       }

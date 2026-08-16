@@ -2,5 +2,20 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm --prefix game install",
   "buildCommand": "npm --prefix game run build",
-  "outputDirectory": "game/dist"
+  "outputDirectory": "game/dist",
+  "functions": {
+    "api/consult.mjs": { "maxDuration": 20 },
+    "api/npc-dialogue.mjs": { "maxDuration": 20 }
+  },
+  "headers": [
+    {
+      "source": "/(models|textures|ui|newspapers)/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
+        }
+      ]
+    }
+  ]
 }

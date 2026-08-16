@@ -121,7 +121,7 @@ test('source control and clean reassignment produce full payment and meaningful 
   const result = finish(
     focusedEvidence(),
     'samuel-dx-lead',
-    'samuel-tx-reassign',
+    'move-lighter-work',
     ['samuel-metal-work', 'samuel-digestion', 'samuel-gum-line'],
   );
   assert.equal(result.stage, 'result');
@@ -130,7 +130,7 @@ test('source control and clean reassignment produce full payment and meaningful 
   assert.equal(result.result.summary.questionsAsked, 4);
   assert.equal(result.result.summary.examinationsPerformed, 2);
   assert.equal(result.result.immediate.paymentCents, 300);
-  assert.ok(result.result.oneMonth.healthChange > 0);
+  assert.ok(result.result.oneMonth.recovery > 0);
   assert.match(result.result.oneMonth.narrative, /proofs and press records/);
 });
 
@@ -143,12 +143,12 @@ test('a humane mood-only plan can satisfy Samuel immediately while the missed ex
   const result = finish(
     state,
     'samuel-dx-melancholia',
-    'samuel-tx-companionship',
+    'mind-companionship',
     ['samuel-course', 'samuel-bereavement', 'samuel-safety'],
   );
   assert.equal(result.result.immediate.paymentCents, 300);
   assert.ok(result.result.immediate.satisfactionOutOfTen >= 7);
-  assert.ok(result.result.oneMonth.healthChange < 0);
+  assert.ok(result.result.oneMonth.recovery < 0);
   assert.match(result.result.oneMonth.narrative, /wrists gave way/);
 });
 
@@ -162,10 +162,10 @@ test('moralizing and seclusion damage trust, satisfaction, and payment', () => {
   const result = finish(
     state,
     'samuel-dx-melancholia',
-    'samuel-tx-seclusion',
+    'rest-cure-home',
     ['samuel-metal-work', 'samuel-digestion', 'samuel-gum-line'],
   );
   assert.equal(result.result.immediate.paymentCents, 150);
   assert.ok(result.result.immediate.satisfactionOutOfTen < 5);
-  assert.ok(result.result.oneMonth.functionChange < 0);
+  assert.ok(result.result.oneMonth.cost < 0);
 });

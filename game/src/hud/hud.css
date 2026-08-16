@@ -165,6 +165,32 @@
 .throw-icon--apple i,
 .throw-icon--apple b { display: none; }
 
+.throw-icon--herring {
+  border-radius: 52% 30% 52% 30%;
+  background: linear-gradient(158deg, #ddd0a8 6%, #a8853f 54%, #634d22 94%);
+  box-shadow: inset -4px -5px 8px rgba(52, 40, 16, 0.45), 0 0 0 1px rgba(227, 205, 150, 0.62);
+}
+
+/* A dark back and one eye: enough to read as a fish at 39px. */
+.throw-icon--herring::before {
+  inset: 11px 8px 21px;
+  border: 0;
+  border-radius: 3px;
+  background: rgba(52, 39, 17, 0.48);
+  transform: rotate(-17deg);
+}
+
+.throw-icon--herring::after {
+  inset: 12px 25px 23px 8px;
+  border: 0;
+  border-radius: 50%;
+  background: #2a2112;
+  transform: none;
+}
+
+.throw-icon--herring i,
+.throw-icon--herring b { display: none; }
+
 .throw-copy {
   display: flex;
   min-width: 0;
@@ -522,36 +548,130 @@
   filter: drop-shadow(0 1px 1px rgba(90, 60, 20, 0.35));
 }
 
+/* A patient's portrait in the same brass ring as the engraved cameo. */
+.ghud-portrait-cameo {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 32%, #ddc9a2, #b99e6f);
+  box-shadow:
+    0 0 0 1px var(--g-gold-dim),
+    inset 0 0 0 1px rgba(120, 90, 40, 0.35),
+    0 1px 1px rgba(90, 60, 20, 0.35);
+}
+
+.ghud-portrait-cameo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 22%;
+  filter: grayscale(1) sepia(0.32) contrast(1.02);
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.ghud-cameo-button {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* The lift is on the face, not the button, so the tooltip does not ride it. */
+.ghud-cameo-button > .ghud-portrait-cameo,
+.ghud-cameo-button > .ghud-cameo {
+  transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1), filter 200ms ease;
+}
+
+/* Hover card on a queue portrait. Same plate as the meter tooltips, sized
+   down to a calling card. */
+.ghud-cameo-tip {
+  position: absolute;
+  top: calc(100% + 9px);
+  left: 50%;
+  z-index: 12;
+  display: grid;
+  width: max-content;
+  max-width: 15rem;
+  gap: 2px;
+  padding: 8px 12px 9px;
+  border: 1px solid rgba(195, 154, 72, 0.72);
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(30, 52, 42, 0.98), rgba(13, 31, 24, 0.98));
+  box-shadow:
+    inset 0 0 0 2px rgba(227, 195, 124, 0.08),
+    0 10px 24px rgba(4, 9, 7, 0.52);
+  color: #eee3c3;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, -4px);
+  transition: opacity 120ms ease, transform 120ms ease, visibility 120ms;
+  pointer-events: none;
+  text-align: left;
+}
+
+.ghud-cameo-tip::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: calc(50% - 5px);
+  width: 9px;
+  height: 9px;
+  border-top: 1px solid rgba(195, 154, 72, 0.72);
+  border-left: 1px solid rgba(195, 154, 72, 0.72);
+  background: #1d3329;
+  transform: rotate(45deg);
+}
+
+.ghud-cameo-tip strong {
+  color: #f3e8cc;
+  font: 600 14px/1.2 'Cormorant SC', 'Cormorant', Georgia, serif;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.ghud-cameo-tip em {
+  color: #c3ac81;
+  font: italic 400 13px/1.3 'Cormorant', Georgia, serif;
+}
+
+/* Occupations are stored lowercase mid-sentence; only the opening letter lifts. */
+.ghud-cameo-tip em::first-letter { text-transform: uppercase; }
+
+.ghud-cameo-tip small {
+  margin-top: 3px;
+  color: var(--g-gold);
+  font: 400 11px/1 'Cormorant', Georgia, serif;
+  letter-spacing: 0.08em;
+}
+
+.ghud-cameo-button:hover .ghud-cameo-tip,
+.ghud-cameo-button:focus-visible .ghud-cameo-tip {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+
+.ghud-cameo-button:focus-visible {
+  outline: 2px solid var(--g-gold-dim);
+  outline-offset: 2px;
+  border-radius: 50%;
+}
+
+.ghud-cameo-button:hover > .ghud-portrait-cameo,
+.ghud-cameo-button:hover > .ghud-cameo {
+  filter: drop-shadow(0 0 4px rgba(227, 195, 124, 0.55));
+  transform: translateY(-1px) scale(1.1);
+}
+
 /* Already seen: muted, not erased — the bust should stay readable. */
 .ghud-cameo--seen {
   opacity: 0.58;
   filter: grayscale(0.5) saturate(0.7);
-}
-
-.ghud-count-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 23px;
-  height: 23px;
-  margin-left: 5px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 38% 30%, #2a4d3f, var(--g-green-deep));
-  border: 1px solid var(--g-gold-dim);
-  box-shadow: inset 0 0 0 1px rgba(227, 195, 124, 0.35);
-  color: #ecdcae;
-  font-size: 13.5px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.ghud-count-word {
-  font-family: 'Cormorant SC', 'Cormorant', serif;
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  color: var(--g-olive);
-  margin-left: 2px;
 }
 
 .ghud-letters-row {
@@ -2347,14 +2467,15 @@ button.ghud-plate--time:focus-visible {
 }
 
 @container (max-width: 1170px) {
-  .ghud-queue-row .ghud-cameo:nth-of-type(n + 4) { display: none; }
+  .ghud-queue-row > .ghud-cameo:nth-of-type(n + 4),
+  .ghud-queue-row > .ghud-cameo-button:nth-of-type(n + 4) { display: none; }
   .ghud-plate--letters .ghud-label { display: none; }
   .ghud-track { width: 88px; }
 }
 
 @container (max-width: 1010px) {
-  .ghud-queue-row .ghud-cameo { display: none; }
-  .ghud-count-badge { margin-left: 0; }
+  .ghud-queue-row > .ghud-cameo,
+  .ghud-queue-row > .ghud-cameo-button { display: none; }
   .ghud-loc-text { font-size: 13px; }
   .ghud-plate--queue .ghud-label { display: none; }
   .ghud-plate--queue { flex-direction: row; gap: 7px; }
@@ -2397,7 +2518,6 @@ button.ghud-plate--time:focus-visible {
 
   .ghud-plate--queue .ghud-label,
   .ghud-plate--letters .ghud-label,
-  .ghud-count-word,
   .ghud-plate--time .ghud-time-date { display: none; }
 
   .ghud-time-big { font-size: 16px; }
@@ -2407,7 +2527,6 @@ button.ghud-plate--time:focus-visible {
   .ghud-loc-text { font-size: 11px; letter-spacing: 0.03em; }
   .ghud-loc-text--full { display: none; }
   .ghud-loc-text--short { display: inline; }
-  .ghud-count-badge { width: 22px; height: 22px; font-size: 12px; }
   .ghud-envelope-img { height: 21px; }
   .ghud-letters-count { font-size: 16px; }
   .ghud-gauge { min-height: 17px; gap: 4px; padding: 0; }

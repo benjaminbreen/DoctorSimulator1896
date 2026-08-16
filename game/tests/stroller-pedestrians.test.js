@@ -13,10 +13,10 @@ import {
 
 test('two stroller women have distinct closed park itineraries', () => {
   assert.equal(PEDESTRIAN_STROLLER_CIRCUITS.length, 2);
-  assert.deepEqual(new Set(PEDESTRIAN_STROLLER_CIRCUITS.map((entry) => entry.who)), new Set(['h', 'w']));
+  assert.deepEqual(new Set(PEDESTRIAN_STROLLER_CIRCUITS.map((entry) => entry.who)), new Set(['h', 'n']));
   assert.equal(new Set(PEDESTRIAN_STROLLER_CIRCUITS.map((entry) => entry.label)).size, 2);
   assert.equal(new Set(PEDESTRIAN_STROLLER_CIRCUITS.map((entry) => entry.points.length)).size, 2);
-  assert.equal(PEDESTRIAN_STROLLER_CIRCUITS.find((entry) => entry.who === 'w')?.labelOverride, 'Middle-aged nursemaid');
+  assert.equal(PEDESTRIAN_STROLLER_CIRCUITS.find((entry) => entry.who === 'n')?.labelOverride, 'Middle-aged nursemaid');
 
   for (const circuit of PEDESTRIAN_STROLLER_CIRCUITS) {
     assert.equal(circuit.loop, true);

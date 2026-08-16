@@ -10,7 +10,6 @@ import {
   availableDiagnoses,
   availableDialoguePrompts,
   availableExaminations,
-  availableTreatments,
 } from '../src/consultation/patientLogic.js';
 
 const rawArgs = process.argv.slice(2);
@@ -74,7 +73,8 @@ function options(state) {
     ...availableDialoguePrompts(patient, state).map((item) => `${item.id} (${item.minutes ?? 5}m)`),
     ...availableExaminations(patient, state).map((item) => `${item.id} (${item.minutes ?? 3}m)`),
     ...availableDiagnoses(patient, state).map((item) => `dx:${item.id}`),
-    ...availableTreatments(patient, state).map((item) => `tx:${item.id}`),
+    // Every library treatment is offerable; list the ones this case answers to.
+    ...Object.keys(patient.treatmentOverrides || {}).map((id) => `tx:${id}`),
   ];
 }
 
@@ -129,7 +129,7 @@ const noraScenarios = [
       'think:nora-approach-history',
       'nora-ask-onset', 'nora-ask-work', 'nora-ask-hand-agency', 'nora-response-respect',
       'nora-ask-memory', 'nora-ask-messages', 'nora-exam-neurologic', 'overtime', 'nora-exam-general',
-      'decide:nora-dx-automatism:nora-tx-support:nora-automatic-writing,nora-missing-time,nora-sensory-pattern',
+      'decide:nora-dx-automatism:mind-remove-influence:nora-automatic-writing,nora-missing-time,nora-sensory-pattern',
     ],
   },
   {
@@ -137,7 +137,7 @@ const noraScenarios = [
     tokens: [
       'think:nora-approach-hysteria',
       'nora-ask-hand-agency', 'nora-response-dismiss', 'nora-exam-neurologic',
-      'decide:nora-dx-neurasthenia:nora-tx-rest-cure:nora-automatic-writing,nora-sensory-pattern,nora-sleep',
+      'decide:nora-dx-neurasthenia:rest-cure-home:nora-automatic-writing,nora-sensory-pattern,nora-sleep',
     ],
   },
   {
@@ -154,7 +154,7 @@ const carmelaScenarios = [
       'carmela-ask-pattern', 'carmela-ask-calamity', 'carmela-response-steady',
       'carmela-ask-tonics', 'carmela-ask-red-flags', 'carmela-exam-cardiorespiratory',
       'carmela-ask-shop',
-      'decide:carmela-dx-nervous-coca:carmela-tx-stop-coca:carmela-episode-pattern,carmela-coca-wine,carmela-cardiac-exam',
+      'decide:carmela-dx-nervous-coca:drug-stop-tonic:carmela-episode-pattern,carmela-coca-wine,carmela-cardiac-exam',
     ],
   },
   {
@@ -163,7 +163,7 @@ const carmelaScenarios = [
       'think:carmela-approach-sequence',
       'carmela-ask-pattern', 'carmela-ask-calamity', 'carmela-response-omen',
       'carmela-ask-shop', 'carmela-exam-cardiorespiratory',
-      'decide:carmela-dx-presentiment:carmela-tx-heed-warning:carmela-episode-pattern,carmela-bell-avoidance,carmela-cardiac-exam',
+      'decide:carmela-dx-presentiment:mind-endorse:carmela-episode-pattern,carmela-bell-avoidance,carmela-cardiac-exam',
     ],
   },
   {
@@ -172,7 +172,7 @@ const carmelaScenarios = [
       'think:carmela-approach-heart',
       'carmela-ask-pattern', 'carmela-ask-calamity', 'carmela-response-dismiss',
       'carmela-ask-shop', 'carmela-exam-cardiorespiratory',
-      'decide:carmela-dx-irritable-heart:carmela-tx-rest-cure:carmela-episode-pattern,carmela-shop-stakes,carmela-cardiac-exam',
+      'decide:carmela-dx-irritable-heart:rest-cure-home:carmela-episode-pattern,carmela-shop-stakes,carmela-cardiac-exam',
     ],
   },
 ];
@@ -185,7 +185,7 @@ const samuelScenarios = [
       'samuel-ask-course', 'samuel-ask-work', 'samuel-response-test',
       'samuel-ask-bowels', 'samuel-exam-mouth-hands', 'samuel-ask-income',
       'samuel-exam-abdomen',
-      'decide:samuel-dx-lead:samuel-tx-reassign:samuel-metal-work,samuel-digestion,samuel-gum-line',
+      'decide:samuel-dx-lead:move-lighter-work:samuel-metal-work,samuel-digestion,samuel-gum-line',
     ],
   },
   {
@@ -194,7 +194,7 @@ const samuelScenarios = [
       'think:samuel-approach-melancholia',
       'samuel-ask-course', 'samuel-ask-bereavement', 'samuel-ask-safety',
       'samuel-ask-work', 'samuel-response-test',
-      'decide:samuel-dx-melancholia:samuel-tx-companionship:samuel-course,samuel-bereavement,samuel-safety',
+      'decide:samuel-dx-melancholia:mind-companionship:samuel-course,samuel-bereavement,samuel-safety',
     ],
   },
   {
@@ -203,7 +203,7 @@ const samuelScenarios = [
       'think:samuel-approach-melancholia',
       'samuel-ask-course', 'samuel-ask-work', 'samuel-response-moralize',
       'samuel-ask-bowels', 'samuel-exam-mouth-hands', 'samuel-ask-income',
-      'decide:samuel-dx-melancholia:samuel-tx-seclusion:samuel-metal-work,samuel-digestion,samuel-gum-line',
+      'decide:samuel-dx-melancholia:rest-cure-home:samuel-metal-work,samuel-digestion,samuel-gum-line',
     ],
   },
 ];

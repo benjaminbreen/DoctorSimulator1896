@@ -42,6 +42,9 @@ earlier consultation proposals.
   intent and render a response, but it may not invent ground truth or assign rewards.
 - LLM calls are optional fallbacks for custom input or exhausted branches. The
   authored and procedural systems must remain playable without them.
+- The runtime model is GPT-5.6 Luna at zero reasoning effort, reached through a
+  server-side route at `api/consult.mjs`. A custom question is sent only when it
+  matches no authored rule, so written answers always win.
 - The end of each visit gives immediate feedback about patient experience,
   satisfaction, payment, and likely word of mouth.
 - A one-month follow-up separately resolves health, reputation, and economic

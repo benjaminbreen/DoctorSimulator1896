@@ -3,6 +3,7 @@ import { createCharacterRecipe } from '../../../../shared/characters/recipe.js';
 
 // Technical cast for the Phase 1 runtime check. These are not authored
 // patients and contain no historical or clinical claims.
+// The ?v= suffix must match CACHE_BUST in scripts/characters/publish-renderer-c.mjs.
 export const phase1Cast = Object.freeze([
   createActorInstance({
     id: 'phase1-woman',
@@ -24,7 +25,7 @@ export const phase1Cast = Object.freeze([
       restingFace: { browInnerUp: 0.035, mouthPressLeft: 0.035, mouthPressRight: 0.031 },
       presentation: { outfitId: 'golden-dress' },
       animation: { body: 'clinic-idle', expression: 'neutral', gaze: 'doctor' },
-      asset: { path: '/models/characters/renderer-c-women.glb' },
+      asset: { path: '/models/characters/renderer-c-women.glb?v=cast-opt-2' },
       placement: { position: [0.45, 0, -1.7], rotation: [0, Math.PI, 0], scale: 1 },
     }),
   }),
@@ -48,7 +49,7 @@ export const phase1Cast = Object.freeze([
       restingFace: { browDownLeft: 0.04, browDownRight: 0.036 },
       presentation: { outfitId: 'sack-suit' },
       animation: { body: 'sitting-talking', expression: 'guarded', gaze: 'away', speaking: false },
-      asset: { path: '/models/characters/renderer-c-men.glb' },
+      asset: { path: '/models/characters/renderer-c-men.glb?v=cast-opt-2' },
       placement: { position: [0.45, 0, -1.7], rotation: [0, Math.PI, 0], scale: 1 },
     }),
   }),

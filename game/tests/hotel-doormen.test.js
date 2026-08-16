@@ -8,7 +8,7 @@ import {
   hotelDoormenForZone,
   isPassingPedestrian,
 } from '../src/world/hotelDoormen.js';
-import { PEDESTRIAN_ROUTES } from '../src/world/pedestrianCatalog.js';
+import { buildWalkGraph } from '../src/world/walkGraph.js';
 
 function glbJson(bytes) {
   const jsonLength = bytes.readUInt32LE(12);
@@ -53,12 +53,14 @@ test('only nearby moving pedestrians qualify for an exterior nod', () => {
   assert.equal(isPassingPedestrian({ kind: 'pedestrian', x: 95, z: 73, velocity: [0, 1], r: 0.45 }, position), false);
 });
 
-test('the Fifth Avenue walker actually passes the exterior doorman', () => {
-  const route = PEDESTRIAN_ROUTES.find((entry) => entry.id === 'metropolitan-club-strawhat-walker');
+test('a crowd sidewalk edge actually passes the exterior doorman', () => {
+  const graph = buildWalkGraph();
   const point = [HOTEL_DOORMAN_PLACEMENTS[0].position[0], HOTEL_DOORMAN_PLACEMENTS[0].position[2]];
-  const nearest = Math.min(...route.points.slice(1).map((end, index) =>
-    pointToSegmentDistance(point, route.points[index], end)));
-  assert.ok(nearest < 1.5, `nearest route distance ${nearest}`);
+  const nearest = Math.min(...graph.edges
+    .filter((edge) => edge.kind === 'sidewalk')
+    .flatMap((edge) => edge.points.slice(1).map((end, index) =>
+      pointToSegmentDistance(point, edge.points[index], end))));
+  assert.ok(nearest < 1.6, `nearest sidewalk distance ${nearest}`);
 });
 
 test('the shipped doorman assets contain the full approved motion library', async () => {

@@ -487,7 +487,15 @@ export function stepCarriage(state, dt, obstacles = [], params = {}) {
 
   const dx = baseX - previousBaseX;
   const dz = baseZ - previousBaseZ;
-  const heading = Math.hypot(dx, dz) > 1e-5 ? Math.atan2(dx, dz) : Math.atan2(ntx, ntz);
+  // Heading follows the position delta only as far as the motion is forward.
+  // A near-stationary vehicle nudged sideways (collision escape, lane change
+  // from a stop) otherwise reads a perpendicular heading and the rig spins;
+  // wheels cannot yaw a cart that is barely rolling.
+  const travel = Math.hypot(dx, dz);
+  const tangentHeading = Math.atan2(ntx, ntz);
+  const authority = travel > 1e-5 ? clamp((dx * ntx + dz * ntz) / travel, 0, 1) ** 2 : 0;
+  const heading = tangentHeading
+    + shortestArc(tangentHeading, Math.atan2(dx, dz)) * authority;
   const yaw = dampAngle(state.yaw, heading, 8, dt);
   const steer = damp(state.steer, clamp(shortestArc(yaw, heading) * 3, -0.5, 0.5), 6, dt);
 

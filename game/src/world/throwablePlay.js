@@ -103,6 +103,31 @@ export function pickUpThrowable(id) {
   return true;
 }
 
+// Buying something, or taking it out of the pocket, puts it straight in the
+// hand: there is no world object to walk over to and no pickup to animate.
+export function grantThrowable(type) {
+  if (state.phase !== 'empty' || !throwableDefinition(type)) return false;
+  publish({
+    phase: 'held',
+    heldId: null,
+    heldType: type,
+    pickupElapsed: 0,
+    pickupTaken: false,
+    pickupPosition: null,
+    charge: 0,
+  });
+  return true;
+}
+
+// The inverse. Returns the type so the caller can pocket it; without this the
+// only way to empty a hand is to throw what is in it.
+export function stowThrowable() {
+  if (state.phase !== 'held') return null;
+  const type = state.heldType;
+  publish({ phase: 'empty', heldId: null, heldType: null, charge: 0 });
+  return type;
+}
+
 function abandonPickup() {
   publish({
     phase: 'empty',

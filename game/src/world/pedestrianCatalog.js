@@ -1,5 +1,6 @@
-// One inventory for the live park crowd and the NPC review panel. Placement
-// stays authored for now; this file does not add procedural spawning.
+// One inventory for the live park crowd and the NPC review panel. Set
+// pieces stay authored; the ambient walkers come from the crowd pool.
+import { CROWD_SLOT_ARCHETYPES } from './crowdScheduler.js';
 import { PEDESTRIAN_STROLLER_CIRCUITS } from './strollerPedestrians.js';
 import { PARK_VISITOR_ITINERARY } from './parkVisitorItinerary.js';
 import { shouldRecycleWebGLContextOnTravel } from '../scene/mobileGraphics.js';
@@ -43,6 +44,11 @@ export const PEDESTRIAN_WOMAN_CLIP_FILES = Object.freeze([
 // quality-gated on the other pedestrian meshes without loading duplicate art.
 export const PEDESTRIAN_STRAWHAT_MOTION_FILE = '/models/strawhat-motions.glb';
 
+// Getting off a bench to come and complain. Exported from a 33-bone Mixamo
+// download, whose bone names are a subset of the 65-bone rig's, so it binds
+// on every pedestrian figure — the fingers simply do not move.
+export const PEDESTRIAN_STANDUP_FILE = '/models/ped-anim-standup.glb';
+
 // Background figures are close enough to deserve the full models on desktop,
 // but phone screens cannot resolve their 1024px costume maps at park viewing
 // distances. These variants retain the same skeleton and clips while reducing
@@ -58,6 +64,10 @@ const SUMMER_DRESS_MODEL = backgroundModelPath('pedestrian-d');
 const SOMBER_WOMAN_MODEL = backgroundModelPath('pedestrian-e');
 const FORTIES_WOMAN_MODEL = backgroundModelPath('pedestrian-f');
 const STRAWHAT_MODEL = backgroundModelPath('strawhat-pedestrian');
+// 65-bone rigs sharing the strawhat motion pack; no motion files of their own.
+const NURSEMAID_MODEL = '/models/nursemaid.glb';
+const LILAC_WOMAN_MODEL = '/models/lilac-dress-woman.glb';
+const RATIONAL_WOMAN_MODEL = '/models/rational-dress-woman.glb';
 
 export const PEDESTRIAN_SHARED_CLIPS = Object.freeze(['Sit Ground', 'Lie Down', 'Sit']);
 
@@ -71,6 +81,7 @@ export const PEDESTRIAN_FULL_MIXAMO_CLIPS = Object.freeze([
   'SittingHopeless', 'SittingIdle', 'SittingThinking',
   'SittingTalkingIntensely', 'SmokingOrEating',
   'StrollerIdle', 'StrollerWalk',
+  'StandingArguing', 'QuickFormalBow', 'AnnoyedHeadShake', 'PlayingViolin',
 ]);
 
 export const PEDESTRIAN_ARCHETYPES = Object.freeze({
@@ -82,6 +93,7 @@ export const PEDESTRIAN_ARCHETYPES = Object.freeze({
       BOWLER_MODEL,
       ...PEDESTRIAN_MAN_CLIP_FILES,
       PEDESTRIAN_REACTION_FILE,
+      PEDESTRIAN_STANDUP_FILE,
     ]),
     animations: Object.freeze([
       'Idle',
@@ -91,6 +103,7 @@ export const PEDESTRIAN_ARCHETYPES = Object.freeze({
       'Lie Down',
       'Sit',
       'Collision Reaction',
+      'StandUp',
     ]),
   }),
   w: Object.freeze({
@@ -104,6 +117,7 @@ export const PEDESTRIAN_ARCHETYPES = Object.freeze({
       '/models/ped-anim-lie.glb',
       '/models/ped-anim-sit.glb',
       PEDESTRIAN_STRAWHAT_MOTION_FILE,
+      PEDESTRIAN_STANDUP_FILE,
     ]),
     animations: Object.freeze([
       'Idle',
@@ -113,6 +127,7 @@ export const PEDESTRIAN_ARCHETYPES = Object.freeze({
       'Sit',
       ...PEDESTRIAN_FULL_MIXAMO_CLIPS,
       'Collision Reaction',
+      'StandUp',
     ]),
   }),
   d: Object.freeze({
@@ -123,18 +138,69 @@ export const PEDESTRIAN_ARCHETYPES = Object.freeze({
       SUMMER_DRESS_MODEL,
       ...PEDESTRIAN_WOMAN_CLIP_FILES,
       PEDESTRIAN_STRAWHAT_MOTION_FILE,
+      PEDESTRIAN_STANDUP_FILE,
     ]),
     animations: Object.freeze([
-      'Idle', 'Walk', ...PEDESTRIAN_FULL_MIXAMO_CLIPS, 'Collision Reaction',
+      'Idle', 'Walk', ...PEDESTRIAN_FULL_MIXAMO_CLIPS, 'Collision Reaction', 'StandUp',
     ]),
   }),
+  // She sits all day, and only leaves the bench to complain about a thrown
+  // object — hence the walk and the quarrelling pose but no standing idle.
   s: Object.freeze({
     id: 'somber-seated-woman',
     label: 'Somber seated woman',
     modelPath: SOMBER_WOMAN_MODEL,
-    animationSources: Object.freeze([SOMBER_WOMAN_MODEL]),
-    animations: Object.freeze(['Bench Sit']),
+    animationSources: Object.freeze([
+      SOMBER_WOMAN_MODEL,
+      ...PEDESTRIAN_WOMAN_CLIP_FILES,
+      PEDESTRIAN_STRAWHAT_MOTION_FILE,
+      PEDESTRIAN_STANDUP_FILE,
+    ]),
+    animations: Object.freeze([
+      'Bench Sit', 'Walk', 'StandingArguing', 'Collision Reaction', 'StandUp',
+    ]),
   }),
+  n: Object.freeze({
+    id: 'nursemaid',
+    label: 'Nursemaid',
+    modelPath: NURSEMAID_MODEL,
+    animationSources: Object.freeze([
+      NURSEMAID_MODEL,
+      PEDESTRIAN_STRAWHAT_MOTION_FILE,
+      PEDESTRIAN_STANDUP_FILE,
+    ]),
+    animations: Object.freeze([
+      'NursemaidIdle', ...PEDESTRIAN_FULL_MIXAMO_CLIPS, 'Walk', 'Collision Reaction', 'StandUp',
+    ]),
+  }),
+  l: Object.freeze({
+    id: 'lilac-dress-woman',
+    label: 'Lilac-dress woman',
+    modelPath: LILAC_WOMAN_MODEL,
+    animationSources: Object.freeze([
+      LILAC_WOMAN_MODEL,
+      PEDESTRIAN_STRAWHAT_MOTION_FILE,
+      PEDESTRIAN_STANDUP_FILE,
+    ]),
+    animations: Object.freeze([
+      'StandingIdle', 'Walk', ...PEDESTRIAN_FULL_MIXAMO_CLIPS, 'Collision Reaction', 'StandUp',
+    ]),
+  }),
+  r: Object.freeze({
+    id: 'rational-dress-woman',
+    label: 'Rational-dress woman',
+    modelPath: RATIONAL_WOMAN_MODEL,
+    animationSources: Object.freeze([
+      RATIONAL_WOMAN_MODEL,
+      PEDESTRIAN_STRAWHAT_MOTION_FILE,
+      PEDESTRIAN_STANDUP_FILE,
+    ]),
+    animations: Object.freeze([
+      'StandingIdle', 'Walk', ...PEDESTRIAN_FULL_MIXAMO_CLIPS, 'Collision Reaction', 'StandUp',
+    ]),
+  }),
+  // Her baked-in Walk reads badly (skirt drags, feet slide), so she no longer
+  // takes crowd slots — she stands, and is kept as a consultation-scene model.
   f: Object.freeze({
     id: 'forties-walking-woman',
     label: 'Woman in her forties',
@@ -143,9 +209,10 @@ export const PEDESTRIAN_ARCHETYPES = Object.freeze({
       FORTIES_WOMAN_MODEL,
       STRAWHAT_MODEL,
       PEDESTRIAN_STRAWHAT_MOTION_FILE,
+      PEDESTRIAN_STANDUP_FILE,
     ]),
     animations: Object.freeze([
-      'Walk', 'StandingIdle', ...PEDESTRIAN_FULL_MIXAMO_CLIPS, 'Collision Reaction',
+      'Walk', 'StandingIdle', ...PEDESTRIAN_FULL_MIXAMO_CLIPS, 'Collision Reaction', 'StandUp',
     ]),
   }),
   h: Object.freeze({
@@ -155,9 +222,10 @@ export const PEDESTRIAN_ARCHETYPES = Object.freeze({
     animationSources: Object.freeze([
       STRAWHAT_MODEL,
       PEDESTRIAN_STRAWHAT_MOTION_FILE,
+      PEDESTRIAN_STANDUP_FILE,
     ]),
     animations: Object.freeze([
-      'StandingIdle', 'Walk', 'Collision Reaction',
+      'StandingIdle', 'Walk', 'Collision Reaction', 'StandUp',
       ...PEDESTRIAN_FULL_MIXAMO_CLIPS,
       'Driving', 'HonkingHorn',
     ]),
@@ -193,11 +261,12 @@ export const PEDESTRIAN_ARCHETYPES = Object.freeze({
   }),
 });
 
+// Authored loiterers keep hours: they are somewhere else the rest of the day.
 export const PEDESTRIAN_STANDERS = Object.freeze([
-  Object.freeze({ id: 'fifth-avenue-clerk', x: 108.4, z: 20, yaw: -1.6, onTerrain: false, clip: 'Briefcase Idle', who: 'm', age: 34, label: 'Fifth Avenue' }),
-  Object.freeze({ id: 'west-boundary-worker', x: -8, z: 88.4, yaw: 3.0, onTerrain: false, clip: 'Idle', who: 'w', age: 61, label: 'West park boundary' }),
-  Object.freeze({ id: 'metropolitan-club-wall-leaner', wallId: 'metropolitan-club', x: 109, z: 47, yaw: -Math.PI / 2, onTerrain: false, clip: 'StandingLeaningWall', who: 'w', age: 38, label: 'Metropolitan Club wall' }),
-  Object.freeze({ id: 'central-park-south-wall-leaner', wallId: 'cps-south-b-0', x: -26.7, z: 98.7, yaw: Math.PI, onTerrain: false, clip: 'StandingLeaningWall', who: 'f', age: 49, label: 'Central Park South apartment wall' }),
+  Object.freeze({ id: 'fifth-avenue-clerk', x: 108.4, z: 20, yaw: -1.6, onTerrain: false, clip: 'Briefcase Idle', who: 'm', age: 34, label: 'Fifth Avenue', schedule: Object.freeze({ startHour: 8.25, endHour: 9.75 }) }),
+  Object.freeze({ id: 'west-boundary-worker', x: -8, z: 88.4, yaw: 3.0, onTerrain: false, clip: 'Idle', who: 'w', age: 61, label: 'West park boundary', schedule: Object.freeze({ startHour: 6.5, endHour: 9.5 }) }),
+  Object.freeze({ id: 'metropolitan-club-wall-leaner', wallId: 'metropolitan-club', x: 109, z: 47, yaw: -Math.PI / 2, onTerrain: false, clip: 'StandingLeaningWall', who: 'w', age: 38, label: 'Metropolitan Club wall', schedule: Object.freeze({ startHour: 8.5, endHour: 12 }) }),
+  Object.freeze({ id: 'central-park-south-wall-leaner', wallId: 'cps-south-b-0', x: -26.7, z: 98.7, yaw: Math.PI, onTerrain: false, clip: 'StandingLeaningWall', who: 'f', age: 49, label: 'Central Park South apartment wall', schedule: Object.freeze({ startHour: 14, endHour: 18.5 }) }),
   Object.freeze({
     id: 'roosevelt-speech-bowler-a',
     x: -38.7, z: 75.7, yaw: Math.atan2(4.7, -2.7), onTerrain: true, clip: 'Idle', who: 'm', age: 44,
@@ -219,8 +288,9 @@ export function pedestrianScheduleActive(schedule, timeOfDay) {
 }
 
 export const PEDESTRIAN_POSERS = Object.freeze([
-  Object.freeze({ id: 'pond-lawn-sitter', x: 75, z: 57, yaw: -0.9, clip: 'Sit Ground', who: 'm', age: 45, label: 'Pond lawn' }),
-  Object.freeze({ id: 'pond-lawn-recliner', x: 70, z: 56, yaw: 0.6, clip: 'Lie Down', who: 'm', age: 68, label: 'Pond lawn' }),
+  // Lawn loungers keep daylight hours; nobody sunbathes at midnight.
+  Object.freeze({ id: 'pond-lawn-sitter', x: 75, z: 57, yaw: -0.9, clip: 'Sit Ground', who: 'm', age: 45, label: 'Pond lawn', schedule: Object.freeze({ startHour: 7, endHour: 19.5 }) }),
+  Object.freeze({ id: 'pond-lawn-recliner', x: 70, z: 56, yaw: 0.6, clip: 'Lie Down', who: 'm', age: 68, label: 'Pond lawn', schedule: Object.freeze({ startHour: 8.5, endHour: 18 }) }),
 ]);
 
 export const PEDESTRIAN_BENCH_SITTERS = Object.freeze([
@@ -232,6 +302,7 @@ export const PEDESTRIAN_BENCH_SITTERS = Object.freeze([
     who: 's',
     age: 52,
     label: 'North walk bench',
+    schedule: Object.freeze({ startHour: 13, endHour: 17.5 }),
   }),
   Object.freeze({
     id: 'green-bench-strawhat-sitter',
@@ -242,6 +313,7 @@ export const PEDESTRIAN_BENCH_SITTERS = Object.freeze([
     who: 'h',
     age: 42,
     label: 'The Green bench',
+    schedule: Object.freeze({ startHour: 9, endHour: 13 }),
   }),
   Object.freeze({
     id: 'center-drive-bench-conversation-a',
@@ -253,6 +325,7 @@ export const PEDESTRIAN_BENCH_SITTERS = Object.freeze([
     who: 'w',
     age: 35,
     label: 'Center Drive bench conversation',
+    schedule: Object.freeze({ startHour: 10, endHour: 12.75 }),
   }),
   Object.freeze({
     id: 'center-drive-bench-conversation-b',
@@ -264,43 +337,15 @@ export const PEDESTRIAN_BENCH_SITTERS = Object.freeze([
     who: 'd',
     age: 31,
     label: 'Center Drive bench conversation',
+    schedule: Object.freeze({ startHour: 10, endHour: 12.75 }),
   }),
 ]);
 
-export const PEDESTRIAN_ROUTES = Object.freeze([
-  Object.freeze({
-    id: 'metropolitan-club-strawhat-walker',
-    label: 'Metropolitan Club sidewalk',
-    points: Object.freeze([[107.2, 84], [107.2, 59], [107.6, 43], [107.2, 25]]),
-    onTerrain: false,
-    who: 'h',
-    age: 42,
-  }),
-  Object.freeze({
-    id: 'north-sidewalk-walker',
-    label: 'North sidewalk',
-    points: Object.freeze([[40, 97.6], [0, 97.6], [-44, 97.6]]),
-    onTerrain: false,
-    who: 'm',
-    age: 63,
-  }),
-  Object.freeze({
-    id: 'north-shore-walker',
-    label: 'North shore path',
-    points: Object.freeze([[84, 72], [60, 71], [34, 76], [8, 80]]),
-    onTerrain: true,
-    who: 'w',
-    age: 36,
-  }),
-  Object.freeze({
-    id: 'dairy-approach-walker',
-    label: 'Dairy approach',
-    points: Object.freeze([[52, -6], [38, -10], [26, -12], [17, -14], [11.2, -14.2]]),
-    onTerrain: true,
-    who: 'f',
-    age: 46,
-  }),
-]);
+// Ambient route walkers were replaced by the scheduled crowd pool
+// (crowdScheduler.js + walkGraph.js); slots below appear in the cast list.
+export const CROWD_CAST_AGES = Object.freeze(
+  CROWD_SLOT_ARCHETYPES.map((_, index) => 24 + ((index * 7) % 40)),
+);
 
 export function currentPedestrianCast() {
   const standers = PEDESTRIAN_STANDERS.map((row) => ({
@@ -330,14 +375,14 @@ export function currentPedestrianCast() {
     animation: row.clip,
     location: row.label,
   }));
-  const walkers = PEDESTRIAN_ROUTES.map((row) => ({
-    id: row.id,
+  const walkers = CROWD_SLOT_ARCHETYPES.map((who, index) => ({
+    id: `crowd-${index}`,
     kind: 'pedestrian',
-    archetype: row.who,
-    age: row.age,
-    role: 'Walking',
+    archetype: who,
+    age: CROWD_CAST_AGES[index],
+    role: 'Ambient crowd',
     animation: 'Walk',
-    location: row.label,
+    location: 'Streets and park walks',
   }));
   const strollerWalkers = PEDESTRIAN_STROLLER_CIRCUITS.map((row) => ({
     id: row.id,

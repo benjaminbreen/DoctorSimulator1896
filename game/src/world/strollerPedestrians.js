@@ -47,7 +47,7 @@ export const PEDESTRIAN_STROLLER_CIRCUITS = Object.freeze([
     onTerrain: true,
     crossesGapstow: true,
     loop: true,
-    who: 'w',
+    who: 'n',
     age: 47,
     labelOverride: 'Middle-aged nursemaid',
     strollerVariant: 'green',

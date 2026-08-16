@@ -81,7 +81,7 @@ test('Nora is the first playable patient and satisfies the authored contract', (
   assert.equal(patient.profileStatus, 'authored-composite');
   assert.equal(patient.sources.length, 4);
   assert.ok(patient.groundTruth.exclusions.includes('malingering'));
-  assert.equal(patient.actor.recipe.asset.path, '/models/characters/nora-byrne.glb?v=3');
+  assert.equal(patient.actor.recipe.asset.path, '/models/characters/nora-byrne.glb?v=4');
   assert.equal(patient.actor.recipe.asset.motionPath, undefined);
   assert.equal(patient.actor.recipe.asset.kind, 'authored-character');
   assert.deepEqual(patient.actor.recipe.placement.position, [0.45, 0.22, -1.7]);
@@ -233,14 +233,14 @@ test('a deliberate follow-up produces reduced payment and complete modal summary
 
 test('immediate approval can diverge from one-month health', () => {
   const evidence = discoverCoreEvidence();
-  const supportive = finish(evidence, 'nora-dx-automatism', 'nora-tx-support');
-  const spirit = finish(evidence, 'nora-dx-spirit', 'nora-tx-spirit');
+  const supportive = finish(evidence, 'nora-dx-automatism', 'mind-remove-influence');
+  const spirit = finish(evidence, 'nora-dx-spirit', 'mind-endorse');
   assert.equal(supportive.stage, 'result');
   assert.equal(spirit.stage, 'result');
   assert.equal(supportive.result.kind, 'authored-outcome');
   assert.ok(spirit.result.immediate.satisfaction > supportive.result.immediate.satisfaction);
-  assert.ok(spirit.result.oneMonth.healthChange < 0);
-  assert.ok(supportive.result.oneMonth.healthChange > 0);
+  assert.ok(spirit.result.oneMonth.recovery < 0);
+  assert.ok(supportive.result.oneMonth.recovery > 0);
   assert.match(spirit.result.oneMonth.narrative, /valued subject at the circle/);
   assert.equal(supportive.result.noteCoverage, 100);
   assert.equal(supportive.result.evidenceCoverage, 100);
@@ -253,8 +253,8 @@ test('immediate approval can diverge from one-month health', () => {
 test('diagnostic scores depend on discovered evidence as well as the selected label', () => {
   let thin = begin();
   thin = consultationTransition(thin, patient, { type: 'examine', id: 'nora-exam-neurologic' });
-  const thinResult = finish(thin, 'nora-dx-automatism', 'nora-tx-support');
-  const fullResult = finish(discoverCoreEvidence(), 'nora-dx-automatism', 'nora-tx-support');
+  const thinResult = finish(thin, 'nora-dx-automatism', 'mind-remove-influence');
+  const fullResult = finish(discoverCoreEvidence(), 'nora-dx-automatism', 'mind-remove-influence');
   assert.ok(fullResult.result.scores.diagnosis > thinResult.result.scores.diagnosis);
   assert.ok(fullResult.result.scores.observation > thinResult.result.scores.observation);
   assert.ok(fullResult.result.noteCoverage > thinResult.result.noteCoverage);
@@ -273,7 +273,7 @@ test('model payloads expose only the facts appropriate to their role', () => {
   assert.deepEqual(thought.knownFacts.map((fact) => fact.id), ['nora-sleep', 'nora-tremor']);
   assert.ok(!JSON.stringify(thought).includes(patient.groundTruth.etiologyId));
 
-  const completed = finish(discoverCoreEvidence(), 'nora-dx-automatism', 'nora-tx-support');
+  const completed = finish(discoverCoreEvidence(), 'nora-dx-automatism', 'mind-remove-influence');
   const james = buildJamesModelPayload(patient, completed, completed.result);
   const modern = buildModernDebriefModelPayload(patient, completed, completed.result);
   assert.ok(!JSON.stringify(james).includes(patient.groundTruth.etiologyId));
@@ -293,10 +293,10 @@ test('the outcome evaluates the player’s private reasoning without changing pa
     type: 'interpret-custom', text: carelessText,
     classification: classifyCustomThought(patient, carelessText),
   });
-  const carefulResult = finish(careful, 'nora-dx-automatism', 'nora-tx-support');
-  const carelessResult = finish(careless, 'nora-dx-automatism', 'nora-tx-support');
+  const carefulResult = finish(careful, 'nora-dx-automatism', 'mind-remove-influence');
+  const carelessResult = finish(careless, 'nora-dx-automatism', 'mind-remove-influence');
   assert.ok(carefulResult.result.scores.interpretation > carelessResult.result.scores.interpretation);
-  assert.equal(carefulResult.result.oneMonth.healthChange, carelessResult.result.oneMonth.healthChange);
+  assert.equal(carefulResult.result.oneMonth.recovery, carelessResult.result.oneMonth.recovery);
 });
 
 test('the runtime supports an asynchronous dialogue adapter and reports failures without advancing time', async () => {

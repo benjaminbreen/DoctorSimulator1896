@@ -130,7 +130,7 @@ test('an optional technical case note can be submitted with zero prose', () => {
   });
   state = consultationTransition(state, patient, { type: 'begin-decision' });
   state = consultationTransition(state, patient, { type: 'select-diagnosis', id: patient.diagnoses[0].id });
-  state = consultationTransition(state, patient, { type: 'select-treatment', id: patient.treatments[0].id });
+  state = consultationTransition(state, patient, { type: 'select-treatment', id: 'drug-morphine' });
   state = consultationTransition(state, patient, { type: 'begin-case-note' });
   assert.equal(patient.caseNote.minimumWords, 0);
   assert.equal(state.caseNote, '');
@@ -228,7 +228,7 @@ test('a complete consultation reaches distinct reputation and record ledgers', (
   });
   state = consultationTransition(state, patient, { type: 'begin-decision' });
   state = consultationTransition(state, patient, { type: 'select-diagnosis', id: 'a-diagnosis-1' });
-  state = consultationTransition(state, patient, { type: 'select-treatment', id: 'a-treatment-1' });
+  state = consultationTransition(state, patient, { type: 'select-treatment', id: 'drug-morphine' });
   state = consultationTransition(state, patient, { type: 'begin-case-note' });
   state = consultationTransition(state, patient, {
     type: 'write-case-note',
@@ -238,10 +238,10 @@ test('a complete consultation reaches distinct reputation and record ledgers', (
   assert.equal(state.stage, 'result');
   assert.deepEqual(state.result, {
     reputation: 12,
-    record: 11,
+    record: 8,
     noteCoverage: 100,
     diagnosisId: 'a-diagnosis-1',
-    treatmentId: 'a-treatment-1',
+    treatmentIds: ['drug-morphine'],
   });
 });
 

@@ -19,6 +19,9 @@ const HEMI_GROUND = { night: new THREE.Color('#1b2533'), day: new THREE.Color('#
 const AMBIENT_NIGHT = new THREE.Color('#526b91');
 const AMBIENT_DAY = new THREE.Color('#e4e7de');
 const scratch = new THREE.Color();
+// The moving sun makes autoUpdate redraw the park's whole depth map every
+// frame. Every other frame is indistinguishable and halves that cost.
+const SHADOW_UPDATE_INTERVAL = 2;
 export default function SkyRig({
   config,
   runtime,
@@ -26,10 +29,12 @@ export default function SkyRig({
   maxShadowDistance = Infinity,
 }) {
   const scene = useThree((state) => state.scene);
+  const gl = useThree((state) => state.gl);
   const sunRef = useRef();
   const ambientRef = useRef();
   const hemisphereRef = useRef();
   const shadowExtentRef = useRef(0);
+  const shadowFrameRef = useRef(0);
   // The sun's map covers 50m against an interior light's few metres, so it
   // needs the extra rank to resolve thin casters. A bench is slats and iron
   // bars: below about 3cm per texel it writes nothing and casts no shadow.
@@ -56,15 +61,9 @@ export default function SkyRig({
   const sky = useMemo(() => {
     const dome = new Sky();
     dome.scale.setScalar(1000);
-    // Preetham's shader ends on pow(radiance, 1/2.4) — a display-gamma curve
-    // that squeezes a 7:1 blue-to-red ratio down to 2.2:1, so the sky reads
-    // grey whatever the uniforms say. Undo it and rescale, then let the scene
-    // tone mapper roll off the highlights. Never clamp per channel: a ceiling
-    // on each of r, g, b separately is what turned the sky flat white.
-    //
-    // 2.4 is exact: vSunfade is 1 for any unit-length sun vector, so the
-    // shader's exponent is always 1/(1.2 + 1.2). Its radiance runs 1 to 14
-    // over a daylit sky; /8 puts the zenith near 1 and the horizon above it.
+    // Undo Preetham's display-gamma curve (exponent is exactly 1/2.4 for a
+    // unit-length sun vector), then /8 to put the zenith near 1. Clamping r,
+    // g, b separately instead turns the sky flat white.
     dome.material.onBeforeCompile = (shader) => {
       shader.uniforms.uSkyGain = grade.uSkyGain;
       shader.uniforms.uSkySaturation = grade.uSkySaturation;
@@ -112,7 +111,23 @@ void main() {`,
     };
   }, [scene, config, runtime]);
 
+  // Interior lights keep the default per-frame shadows: restore on unmount.
+  useEffect(() => {
+    const shadowMap = gl.shadowMap;
+    const previous = shadowMap.autoUpdate;
+    shadowMap.autoUpdate = false;
+    shadowMap.needsUpdate = true;
+    return () => {
+      shadowMap.autoUpdate = previous;
+      shadowMap.needsUpdate = true;
+    };
+  }, [gl]);
+
   useFrame((_, delta) => {
+    shadowFrameRef.current += 1;
+    if (shadowFrameRef.current % SHADOW_UPDATE_INTERVAL === 0) {
+      gl.shadowMap.needsUpdate = true;
+    }
     const values = runtime.values;
     const ramps = solarRamps(
       values.timeOfDay,

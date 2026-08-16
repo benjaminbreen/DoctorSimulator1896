@@ -3,6 +3,8 @@
 // ships as code and stays crisp at any scale. Painterly PNGs can replace
 // individual pieces later without touching the layout.
 
+import { useState } from 'react';
+
 // Shared brass palette for strokes and fills inside the SVGs.
 const GOLD = '#c39a48';
 const GOLD_BRIGHT = '#e3c37c';
@@ -113,6 +115,38 @@ export function Cameo({ variant = 'man', seen = false, size = 27 }) {
       <circle cx="14.5" cy="14.5" r="12.4" fill="none" stroke="rgba(120,90,40,0.35)" strokeWidth="0.6" />
       <path d={BUSTS[variant] ?? BUSTS.man} transform="translate(0.2,1.2) scale(0.93)" fill="#3d2c1a" />
     </svg>
+  );
+}
+
+// A patient's own portrait in the cameo's brass ring. Falls back to the
+// engraved silhouette when a queue entry has no portrait yet, so procedurally
+// added patients degrade instead of leaving a hole in the row.
+export function PortraitCameo({
+  src, label, name, age, occupation, variant = 'man', seen = false, size = 27, onClick,
+}) {
+  const [failed, setFailed] = useState(false);
+  const face = !src || failed
+    ? <Cameo variant={variant} seen={seen} size={size} />
+    : (
+      <span
+        className={`ghud-portrait-cameo${seen ? ' ghud-cameo--seen' : ''}`}
+        style={{ width: size, height: size }}
+      >
+        <img src={src} alt="" onError={() => setFailed(true)} draggable={false} />
+      </span>
+    );
+  if (!onClick) return face;
+  return (
+    <button type="button" className="ghud-cameo-button" onClick={onClick} aria-label={label}>
+      {face}
+      {name && (
+        <span className="ghud-cameo-tip" role="tooltip">
+          <strong>{name}{age ? `, ${age}` : ''}</strong>
+          {occupation && <em>{occupation}</em>}
+          <small>Click for more</small>
+        </span>
+      )}
+    </button>
   );
 }
 

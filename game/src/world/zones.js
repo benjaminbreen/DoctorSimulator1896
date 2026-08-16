@@ -145,6 +145,7 @@ export const zones = {
       'sailor-boy',
       'hotel-doormen',
       'street-police',
+      'posted-npcs',
       'gapstow-bridge',
       'schist-outcrops',
       'rustic-shelters',

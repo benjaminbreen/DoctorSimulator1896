@@ -192,10 +192,10 @@
         "RendererC_GoldenDressSeatedSkirt",
         "RendererC_GoldenDressDetails"
       ],
-      "bytes": 26480024,
+      "bytes": 8003900,
       "morphTargets": 128,
       "clips": 10,
-      "path": "/models/characters/renderer-c-women.glb"
+      "path": "/models/characters/renderer-c-women.glb?v=cast-opt-2"
     },
     "men": {
       "anchors": [
@@ -385,12 +385,12 @@
         "RendererC_VictorianGarment",
         "RendererC_AuthoredVictorianWaistcoat_01"
       ],
-      "bytes": 34424436,
+      "bytes": 13813076,
       "morphTargets": 128,
       "clips": 10,
-      "path": "/models/characters/renderer-c-men.glb"
+      "path": "/models/characters/renderer-c-men.glb?v=cast-opt-2"
     }
   },
   "publishedFor": "ghosts-game",
-  "motionPath": "/models/characters/renderer-c-mixamo-motions.glb"
+  "motionPath": "/models/characters/renderer-c-mixamo-motions.glb?v=cast-opt-2"
 }
