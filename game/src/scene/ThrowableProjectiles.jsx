@@ -11,6 +11,7 @@ import {
 import { throwableDefinition } from '../world/throwables.js';
 import { queueCarriageProjectileHit } from '../world/carriageImpacts.js';
 import { queueActorImpact } from '../world/actorImpacts.js';
+import { reportMajorStreetEvent } from '../world/majorStreetEvents.js';
 import { terrainHeight } from '../world/terrain.js';
 import { notice } from '../world/notices.js';
 import { gameDebug } from '../debug.js';
@@ -162,6 +163,16 @@ function ThrownObject({ item, onImpact, onExpire }) {
         sourceVelocity: incoming,
         direction: [incoming[0], incoming[2]],
         itemLabel: definition.label,
+      });
+      // Bystanders saw it too. The player is always the thrower here, which is
+      // what the witness prose assumes.
+      reportMajorStreetEvent({
+        kind: 'pelting',
+        sourceId: 'player',
+        targetId: actorId,
+        targetKind: kind,
+        x: position.x,
+        z: position.z,
       });
     }
     const carriageId = kind === 'horseless-carriage'

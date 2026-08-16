@@ -103,7 +103,7 @@ export default function NpcDialogueRibbon({ conversation, worldClock }) {
   // fact, and the reply only reports it. A refused sale never reaches Luna.
   function buy(good) {
     if (busy || !spendCents(good.priceCents)) return undefined;
-    const owed = Boolean(npc.grievance);
+    const owed = npc.grievance?.kind === 'theft';
     // Paying off a theft settles the debt for something already taken; a sale
     // hands over goods. `good.id` must name a row in goods.js.
     if (owed) settleGrievance(npc.id);

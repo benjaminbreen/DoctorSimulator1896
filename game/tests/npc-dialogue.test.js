@@ -107,6 +107,50 @@ test('the route sends identity, bulletin, and witness sentences to Luna', async 
   }
 });
 
+test('a pelting reaches Luna as an assault, not a debt', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalKey = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = 'test-key';
+  let upstreamBody;
+  globalThis.fetch = async (_url, init) => {
+    upstreamBody = JSON.parse(init.body);
+    return new Response(JSON.stringify({
+      output: [{
+        content: [{
+          type: 'output_text',
+          text: JSON.stringify({ dialogue: 'You threw that at me, sir.', behavior: 'squares up' }),
+        }],
+      }],
+    }), { status: 200 });
+  };
+  try {
+    const response = await POST(routeRequest({
+      ...PAYLOAD,
+      crowdContext: {
+        ...PAYLOAD.crowdContext,
+        archetype: 'p',
+        role: 'police',
+        attending: 'roosevelt-speech',
+        witnessed: [{
+          kind: 'pelting', targetKind: 'policeman', involvedPlayer: true,
+          involvedSelf: true, concern: 'outraged', nearness: 'here', minutesAgo: 1,
+        }],
+        grievance: { kind: 'pelted', count: 1, minutesAgo: 1 },
+      },
+    }, { 'x-forwarded-for': '198.51.100.47' }));
+    assert.equal(response.status, 200, 'a pelting is a valid payload');
+    const modelInput = JSON.parse(upstreamBody.input);
+    assert.match(modelInput.grievance, /threw an object at you/);
+    assert.match(modelInput.grievance, /Money does not settle/);
+    assert.match(modelInput.witnessed.join(' '), /threw something at you/);
+    assert.match(modelInput.attending, /Cop Cot/);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = originalKey;
+  }
+});
+
 test('a degenerate behavior line is dropped rather than shown', async () => {
   const originalFetch = globalThis.fetch;
   const originalKey = process.env.OPENAI_API_KEY;

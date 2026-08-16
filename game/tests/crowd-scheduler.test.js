@@ -154,6 +154,34 @@ test('a full day includes rests at real spots and trips through doors', () => {
   }
 });
 
+test('no two slots hold the same rest spot at once', () => {
+  for (const daySeed of [42, 1896, 7]) {
+    const state = createCrowdState(daySeed);
+    // Walk the day in strides and collect as we go: chains prune to the last
+    // two assignments, so a single jump to midnight loses the day's rests.
+    const rests = new Map();
+    for (let seconds = 0; seconds < 24 * 3600; seconds += 600) {
+      for (let slot = 0; slot < state.slots.length; slot += 1) {
+        ensureSlotCoverage(state, slot, graph, seconds);
+        for (const entry of state.slots[slot].assignments) {
+          if (entry.occupy) rests.set(`${slot}/${entry.index}`, { slot, ...entry });
+        }
+      }
+    }
+    const seated = [...rests.values()];
+    assert.ok(seated.length > 0, 'someone sat down');
+    for (const a of seated) {
+      for (const b of seated) {
+        if (a === b || a.occupy.spotId !== b.occupy.spotId) continue;
+        assert.ok(
+          a.startSeconds >= b.endSeconds || a.endSeconds <= b.startSeconds,
+          `${a.occupy.spotId} double-booked by slots ${a.slot} and ${b.slot}`,
+        );
+      }
+    }
+  }
+});
+
 test('the schedule advances at the civil pace, matching real-time legs', async () => {
   const { DEFAULT_CLOCK_RATE } = await import('../src/world/clock.js');
   const state = createCrowdState(9);

@@ -15,6 +15,8 @@ import {
   stepConfrontation,
 } from '../world/confrontation.js';
 import { grievanceAgainst } from '../world/grievances.js';
+import { getInteraction } from '../world/interaction.js';
+import { dampAngle } from '../movement/mathUtils.js';
 import { hashString } from '../world/npcIdentity.js';
 import {
   POSTED_NPCS,
@@ -103,6 +105,8 @@ export default function PostedNpcs({ runtime }) {
   useFrame((state, delta) => {
     const step = Math.min(delta, 0.1);
     const now = state.clock.elapsedTime;
+    const conversation = getInteraction().using;
+    const speakingId = conversation?.kind === 'conversation' ? conversation.agentId : null;
     for (const actor of actors) {
       const visible = activeIds.has(actor.spec.id);
       actor.wrapper.visible = visible;
@@ -194,6 +198,17 @@ export default function PostedNpcs({ runtime }) {
         releaseConfrontation(actor.spec.id);
         restoreLoopingIdle(actor.mixer, actor.idle, actor.active);
         actor.active = null;
+      }
+      // Spoken to, he turns from the cart to the customer, and turns back
+      // when the talk ends. A confrontation owns the facing while it runs.
+      if (!march && !actor.confrontPose) {
+        const facing = speakingId === actor.spec.id
+          ? Math.atan2(
+            gameDebug.player.position[0] - actor.worldX,
+            gameDebug.player.position[2] - actor.worldZ,
+          )
+          : actor.spec.yaw ?? 0;
+        actor.wrapper.rotation.y = dampAngle(actor.wrapper.rotation.y, facing, 7, step);
       }
       actor.body?.setNextKinematicTranslation({
         x: actor.worldX, y: actor.spec.position[1], z: actor.worldZ,

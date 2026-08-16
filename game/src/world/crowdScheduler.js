@@ -144,9 +144,37 @@ function destinationPool(byKind, role, park) {
   return byKind.junction;
 }
 
+// Rest spots are exclusive. A slot holds its seat from the moment it sets out
+// for it until it stands up, so nobody else walks to a taken bench and settles
+// into the same pose. Which slot wins a contested seat depends on generation
+// order, which is fine: the seat is always held by exactly one.
+function spotFree(state, spotId, start, end) {
+  const claims = state.claims.get(spotId);
+  if (!claims) return true;
+  return !claims.some((claim) => start < claim.end && end > claim.start);
+}
+
+function claimSpot(state, spotId, slot, index, start, end) {
+  const claims = state.claims.get(spotId);
+  if (claims) claims.push({ slot, index, start, end });
+  else state.claims.set(spotId, [{ slot, index, start, end }]);
+}
+
+// Drop a slot's claims for assignments that are no longer in its chain, or
+// the seat stays held forever.
+function releaseClaims(state, slot, belowIndex) {
+  for (const [spotId, claims] of state.claims) {
+    const kept = claims.filter((claim) => claim.slot !== slot || claim.index >= belowIndex);
+    if (kept.length === claims.length) continue;
+    if (kept.length === 0) state.claims.delete(spotId);
+    else state.claims.set(spotId, kept);
+  }
+}
+
 export function createCrowdState(daySeed, slotCount = CROWD_SLOT_ARCHETYPES.length) {
   return {
     daySeed: Math.trunc(daySeed),
+    claims: new Map(),
     slots: Array.from({ length: slotCount }, (_, index) => ({
       slot: index,
       archetype: CROWD_SLOT_ARCHETYPES[index % CROWD_SLOT_ARCHETYPES.length],
@@ -167,16 +195,33 @@ function generateAssignment(state, slotState, graph, index, startSeconds, previo
   const from = previous
     ? previous.to
     : pick(seed, 2, [...byKind.edge, ...(byKind.door ?? [])]);
+  const spec = ROLES[role];
+  const pace = range(seed, 6, spec.pace);
+  // The schedule lives in civil seconds, which run DEFAULT_CLOCK_RATE times
+  // faster than the real seconds the visible figure walks in. Logical
+  // motion therefore uses the civil pace; the figure's legs use `pace`.
+  const civilPace = pace / DEFAULT_CLOCK_RATE;
+  const dwellSeconds = range(seed, 7, spec.dwell);
 
   // A rest walks to a bench or lawn spot via its approach node and settles
   // there with a sitting clip. A resident walks to a door and goes inside.
   let occupy = null;
   let to = from;
   if (role === 'rest') {
+    // Try seats from a seeded starting point, taking the first one free for
+    // the whole trip; if every seat is claimed, fall through and stroll.
     const spots = spotsForArchetype(slotState.archetype);
-    const spot = spots[Math.floor(rng01(seed, 10) * spots.length) % spots.length];
-    const approach = graph.byKey.get(`${Math.round(spot.approach[0] * 100)}/${Math.round(spot.approach[1] * 100)}`);
-    if (approach !== undefined && approach !== from) {
+    const offset = Math.floor(rng01(seed, 10) * spots.length);
+    for (let i = 0; i < spots.length && !occupy; i += 1) {
+      const spot = spots[(offset + i) % spots.length];
+      const approach = graph.byKey.get(`${Math.round(spot.approach[0] * 100)}/${Math.round(spot.approach[1] * 100)}`);
+      if (approach === undefined || approach === from) continue;
+      const spotPath = cachedPath(graph, from, approach);
+      if (!spotPath || spotPath.edgeIndexes.length === 0) continue;
+      const legLength = Math.hypot(spot.x - graph.nodes[approach].x, spot.z - graph.nodes[approach].z);
+      const endSeconds = startSeconds + (spotPath.length + legLength) / civilPace + dwellSeconds;
+      if (!spotFree(state, spot.id, startSeconds, endSeconds)) continue;
+      claimSpot(state, spot.id, slotState.slot, index, startSeconds, endSeconds);
       to = approach;
       occupy = {
         spotId: spot.id,
@@ -186,11 +231,12 @@ function generateAssignment(state, slotState, graph, index, startSeconds, previo
         clip: spotClip(spot, slotState.archetype),
       };
     }
-  } else if (role === 'resident' && (byKind.door ?? []).length > 0) {
+  }
+  if (!occupy && role === 'resident' && (byKind.door ?? []).length > 0) {
     for (let attempt = 0; attempt < 4 && to === from; attempt += 1) {
       to = pick(seed, 20 + attempt, byKind.door);
     }
-  } else {
+  } else if (!occupy) {
     for (let attempt = 0; attempt < 6 && to === from; attempt += 1) {
       to = pick(seed, 3 + attempt, destinationPool(byKind, role, rng01(seed, 9) < 0.5));
     }
@@ -208,18 +254,11 @@ function generateAssignment(state, slotState, graph, index, startSeconds, previo
       traits: { attention: range(seed, 5, [0.35, 1]), hurry: 0.2 },
     };
   }
-  const spec = ROLES[role];
-  const pace = range(seed, 6, spec.pace);
-  // The schedule lives in civil seconds, which run DEFAULT_CLOCK_RATE times
-  // faster than the real seconds the visible figure walks in. Logical
-  // motion therefore uses the civil pace; the figure's legs use `pace`.
-  const civilPace = pace / DEFAULT_CLOCK_RATE;
   const approachLength = occupy
     ? Math.hypot(occupy.x - graph.nodes[to].x, occupy.z - graph.nodes[to].z)
     : 0;
   const length = path.length + approachLength;
   const walkSeconds = length / civilPace;
-  const dwellSeconds = range(seed, 7, spec.dwell);
   return {
     index, role, from, to, seed,
     path, polyline: null, segments: null, length, civilPace,
@@ -242,6 +281,7 @@ export function ensureSlotCoverage(state, slotIndex, graph, civilSeconds) {
   // A backward jump (the dev time dial) invalidates the chain; rebuild.
   if (slotState.assignments[0]?.startSeconds > civilSeconds) {
     slotState.assignments = [];
+    releaseClaims(state, slotIndex, Infinity);
   }
   let last = slotState.assignments.at(-1);
   if (!last) {
@@ -261,10 +301,13 @@ export function ensureSlotCoverage(state, slotIndex, graph, civilSeconds) {
     last = next;
     guard += 1;
   }
+  let dropped = false;
   while (slotState.assignments.length > 2
     && slotState.assignments[1].endSeconds < civilSeconds) {
     slotState.assignments.shift();
+    dropped = true;
   }
+  if (dropped) releaseClaims(state, slotIndex, slotState.assignments[0].index);
   return slotState.assignments.find((entry) => entry.endSeconds >= civilSeconds) ?? last;
 }
 

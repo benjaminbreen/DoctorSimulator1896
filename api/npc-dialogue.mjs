@@ -24,10 +24,11 @@ Who you are:
 What you know:
 - commonKnowledge (the date, the hour, the place) is always yours to state.
 - whereabouts is truthfully where you are headed or what you are doing.
+- attending, if present, is what is going on in front of you at this moment. It is nearer to you than anything you merely heard about or saw earlier; talk about it first if you talk about anything.
 - bulletin lines are what everyone in the park knows just now. Bring one up when it fits, in your own words.
-- witnessed lines are things you saw with your own eyes minutes ago. Each states how much it weighed on you — play that weight honestly. A shaken witness brings it up unasked; an annoyed one grumbles if it comes up; an unmoved one shrugs. If it happened to the very person you are speaking with, address it.
+- witnessed lines are things you saw with your own eyes minutes ago. Each states how much it weighed on you and how far off it was — play both honestly. A shaken witness brings it up unasked; an annoyed one grumbles if it comes up; an unmoved one shrugs. Do not describe a distant thing as though it happened at your feet. If it happened to the very person you are speaking with, address it.
 - If you sell goods, the sells list is your stock and its true price. You may hawk it. When the player hands money over, the sale has already happened — take it graciously and hand the thing across; never refuse, re-price, or ask for more.
-- A grievance means this player stole from you and you know it. Say so plainly and demand payment. If they have just paid, drop it at once and be gruffly civil again — a penny settled is a penny settled.
+- A grievance is something this player did to you personally, and you know it was them. Say so plainly. A theft is a debt: demand payment, and if they have just paid, drop it at once and be gruffly civil again. A pelting is not a debt: no money settles it, and offering some would insult you.
 - Beyond these, invent no public event and no named third person of consequence. Asked about something you cannot know, answer as a real stranger would: a guess, an opinion, a question back, or what you do know instead. A flat "couldn't say" is a last resort.
 - Do not diagnose the player, decide an outcome, offer a quest, or change game state.
 
@@ -82,17 +83,26 @@ function validWorldTime(t) {
 // sentences only here — a compromised client cannot inject prompt content.
 const WITNESS_TARGETS = new Set(['pedestrian', 'player', 'pushcart', 'doorman',
   'policeman', 'horse-drawn-vehicle', 'horseless-carriage', 'horse-team']);
+const WITNESS_KINDS = new Set(['vehicle-impact', 'pelting']);
 const CONCERNS = new Set(['unmoved', 'annoyed', 'concerned', 'shaken', 'outraged']);
+const NEARNESS = new Set(['here', 'nearby', 'off']);
 
 function validWitnessed(list) {
   if (list === undefined) return true;
   return Array.isArray(list) && list.length <= 4 && list.every((entry) => Boolean(entry)
+    && (entry.kind === undefined || WITNESS_KINDS.has(entry.kind))
     && (entry.targetKind === null || WITNESS_TARGETS.has(entry.targetKind))
     && typeof entry.involvedPlayer === 'boolean'
     && (entry.involvedSelf === undefined || typeof entry.involvedSelf === 'boolean')
     && (entry.concern === undefined || CONCERNS.has(entry.concern))
+    && (entry.nearness === undefined || NEARNESS.has(entry.nearness))
     && Number.isFinite(entry.minutesAgo) && entry.minutesAgo >= 0 && entry.minutesAgo <= 120);
 }
+
+// What is happening in front of this person right now, if anything.
+const ATTENDING_SENTENCES = {
+  'roosevelt-speech': 'You are standing in the gathering at the Cop Cot shelter this minute, listening to Mr. Roosevelt speak. It is going on in front of you as you talk.',
+};
 
 // How much the sight weighed on this particular witness. The simulation
 // grades it from proximity and rolled composure; the model must play the
@@ -105,22 +115,48 @@ const CONCERN_PHRASES = {
   outraged: 'You are the injured party and you are angry about it — this is YOUR loss, and you want it known.',
 };
 
+// Where it happened, as the witness would put it. The simulation graded the
+// distance; saying "near here" for everything in eyeshot made a thing a block
+// off sound like it happened at their feet.
+const WHERE_PHRASES = {
+  here: 'a few steps from where you stand',
+  nearby: 'a little way off along the way',
+  off: 'over the other side of the way, a good distance off',
+};
+
 function witnessSentence(entry) {
   const when = entry.minutesAgo <= 2 ? 'moments ago' : `some ${Math.round(entry.minutesAgo)} minutes ago`;
   const weight = CONCERN_PHRASES[entry.concern] ?? CONCERN_PHRASES.concerned;
+  const where = WHERE_PHRASES[entry.nearness] ?? 'in the street near here';
+  // Only the player throws things, so a pelting always names them.
+  if (entry.kind === 'pelting') {
+    if (entry.involvedSelf) {
+      return `${when[0].toUpperCase()}${when.slice(1)}, the very person you are now speaking with threw something at you and struck you. ${CONCERN_PHRASES.outraged}`;
+    }
+    return `With your own eyes, ${when}, you saw the person you are now speaking with throw an object and strike somebody, ${where}. ${weight}`;
+  }
   if (entry.involvedSelf) {
-    return `${when[0].toUpperCase()}${when.slice(1)}, a vehicle struck your own cart and goods in the street near here. ${CONCERN_PHRASES.outraged}`;
+    return `${when[0].toUpperCase()}${when.slice(1)}, a vehicle struck your own cart and goods, ${where}. ${CONCERN_PHRASES.outraged}`;
   }
   if (entry.involvedPlayer) {
-    return `With your own eyes, ${when}, you saw a vehicle strike the very person you are now speaking with, in the street near here. ${weight}`;
+    return `With your own eyes, ${when}, you saw a vehicle strike the very person you are now speaking with, ${where}. ${weight}`;
   }
   if (entry.targetKind === 'pushcart') {
-    return `With your own eyes, ${when}, you saw a vehicle smash into a vendor's pushcart in the street near here. ${weight}`;
+    return `With your own eyes, ${when}, you saw a vehicle smash into a vendor's pushcart, ${where}. ${weight}`;
   }
   if (entry.targetKind === 'pedestrian' || entry.targetKind === 'doorman' || entry.targetKind === 'policeman') {
-    return `With your own eyes, ${when}, you saw a vehicle strike somebody in the street near here. ${weight}`;
+    return `With your own eyes, ${when}, you saw a vehicle strike somebody, ${where}. ${weight}`;
   }
-  return `With your own eyes, ${when}, you saw two vehicles collide in the street near here. ${weight}`;
+  return `With your own eyes, ${when}, you saw two vehicles collide, ${where}. ${weight}`;
+}
+
+function grievanceSentence(g) {
+  const when = g.minutesAgo <= 2 ? 'moments ago' : `about ${g.minutesAgo} minutes ago`;
+  if (g.kind === 'pelted') {
+    const again = g.count > 1 ? `, and has now done it ${g.count} times` : '';
+    return `This same person threw an object at you and struck you, ${when}${again}. Money does not settle this; you want an apology, or an officer.`;
+  }
+  return `This same person took ${g.count > 1 ? `${g.count} items` : 'goods'} from your cart without paying, ${when}.`;
 }
 
 const windows = new Map();
@@ -155,7 +191,7 @@ function sameOrigin(request) {
 // Speakers exist only in the client's simulation. Their deterministic context
 // arrives with the request and rebuilds the identical definition here, so the
 // model still sees only simulation-owned identity and knowledge.
-const GRIEVANCE_KINDS = new Set(['theft']);
+const GRIEVANCE_KINDS = new Set(['theft', 'pelted']);
 
 function validGrievance(g) {
   if (g === undefined) return true;
@@ -182,6 +218,8 @@ function validCrowdContext(context) {
     && Number.isFinite(context.hour) && context.hour >= 0 && context.hour < 24
     && Number.isFinite(context.identitySeed)
     && (context.age === undefined || Number.isFinite(context.age))
+    && (context.attending === undefined
+      || Object.hasOwn(ATTENDING_SENTENCES, context.attending))
     && validWitnessed(context.witnessed)
     && validGrievance(context.grievance)
     && validSells(context.sells);
@@ -280,13 +318,12 @@ export async function POST(request) {
           whereabouts: npc.whereabouts,
           commonKnowledge: commonKnowledge(payload.worldTime),
           bulletin: npc.bulletin,
+          ...(npc.attending ? { attending: ATTENDING_SENTENCES[npc.attending] } : {}),
           witnessed: npc.witnessed.map(witnessSentence),
           ...(npc.sells.length > 0 ? {
             sells: npc.sells.map((good) => `${good.label}, price ${good.priceCents} cent${good.priceCents === 1 ? '' : 's'}`),
           } : {}),
-          ...(npc.grievance ? {
-            grievance: `This same person took ${npc.grievance.count > 1 ? `${npc.grievance.count} items` : 'goods'} from your cart without paying, ${npc.grievance.minutesAgo <= 2 ? 'moments ago' : `about ${npc.grievance.minutesAgo} minutes ago`}.`,
-          } : {}),
+          ...(npc.grievance ? { grievance: grievanceSentence(npc.grievance) } : {}),
           playerText: payload.playerText.trim(),
           recentTurns: (payload.recentTurns || []).slice(-6).map((turn) => ({
             player: String(turn?.player || '').slice(0, 400),

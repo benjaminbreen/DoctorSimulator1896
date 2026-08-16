@@ -6,10 +6,25 @@
 // as settled (docs/decisions.md, historical content).
 
 import {
+  ROOSEVELT_SPEECH_SITE,
   ROOSEVELT_SPEECH_START_HOUR,
   ROOSEVELT_SPEECH_END_HOUR,
   ROOSEVELT_PARK_DEPARTURE_HOUR,
 } from './teddyRoosevelt.js';
+
+// Close enough to the shelter to be part of the gathering rather than someone
+// who has merely heard about it.
+const AUDIENCE_RADIUS = 24;
+
+// What is happening in front of this person this second, if anything. The
+// bulletin is what the park knows; this is what they are looking at.
+export function attendingNow(hour, x, z) {
+  const h = ((Number(hour) || 0) % 24 + 24) % 24;
+  if (h < ROOSEVELT_SPEECH_START_HOUR || h >= ROOSEVELT_SPEECH_END_HOUR) return null;
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
+  const [sx, , sz] = ROOSEVELT_SPEECH_SITE.position;
+  return Math.hypot(x - sx, z - sz) <= AUDIENCE_RADIUS ? 'roosevelt-speech' : null;
+}
 
 export function parkBulletin(hour = 12) {
   const h = ((Number(hour) || 0) % 24 + 24) % 24;

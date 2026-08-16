@@ -10,12 +10,22 @@ import {
 import { npcDialogueDefinition, offlineNpcReply } from '../src/world/npcDialogue.js';
 import { renderNpcDialogue } from '../src/world/npcDialogueClient.js';
 import { rollIdentity } from '../src/world/npcIdentity.js';
-import { parkBulletin } from '../src/world/parkBulletin.js';
+import { attendingNow, parkBulletin } from '../src/world/parkBulletin.js';
+import { ROOSEVELT_SPEECH_SITE } from '../src/world/teddyRoosevelt.js';
+import {
+  recordGrievance,
+  resetGrievancesForTests,
+  settleGrievance,
+} from '../src/world/grievances.js';
 import {
   reportMajorStreetEvent,
   resetMajorStreetEventsForTests,
 } from '../src/world/majorStreetEvents.js';
-import { resetWitnessMemoryForTests, witnessedBy } from '../src/world/witnessMemory.js';
+import {
+  CONCERN_LEVELS,
+  resetWitnessMemoryForTests,
+  witnessedBy,
+} from '../src/world/witnessMemory.js';
 import { setRunSeedForTests } from '../src/world/runSeed.js';
 
 installCrowdDialogue();
@@ -222,6 +232,91 @@ test('the owner of a struck cart is outraged; bystander concern varies', () => {
     removeAgent('cop-near');
     resetMajorStreetEventsForTests();
     resetWitnessMemoryForTests();
+  }
+});
+
+test('a memory fades with time and reports how far off it was', () => {
+  resetMajorStreetEventsForTests();
+  resetWitnessMemoryForTests();
+  speak('crowd-fade-1', {
+    archetype: 'w', role: 'errand', activity: 'walking', hour: 14, seed: 3, age: 41,
+  }, 4, 0);
+  speak('crowd-fade-2', {
+    archetype: 'w', role: 'errand', activity: 'walking', hour: 14, seed: 3, age: 41,
+  }, 32, 0);
+  try {
+    const at = Date.now();
+    reportMajorStreetEvent({
+      sourceId: 'wagon-1', targetId: 'ped-9', targetKind: 'pedestrian', x: 0, z: 0,
+    });
+    const fresh = witnessedBy('crowd-fade-1', at)[0];
+    const later = witnessedBy('crowd-fade-1', at + 4 * 60 * 1000)[0];
+    assert.equal(fresh.nearness, 'here');
+    assert.equal(witnessedBy('crowd-fade-2', at)[0].nearness, 'off');
+    assert.ok(
+      CONCERN_LEVELS.indexOf(later.concern) < CONCERN_LEVELS.indexOf(fresh.concern),
+      `the same sight cools off: ${fresh.concern} then ${later.concern}`,
+    );
+  } finally {
+    removeAgent('crowd-fade-1');
+    removeAgent('crowd-fade-2');
+    resetMajorStreetEventsForTests();
+    resetWitnessMemoryForTests();
+  }
+});
+
+test('a spectacle in front of you outranks a faded memory but not a fresh shock', () => {
+  const base = {
+    archetype: 'g', role: 'keeper', activity: 'working', hour: 9.75, identitySeed: 77,
+    attending: 'roosevelt-speech',
+  };
+  const stale = buildCrowdDefinition('keeper-a', {
+    ...base,
+    witnessed: [{ kind: 'vehicle-impact', targetKind: 'pushcart', involvedPlayer: false, concern: 'annoyed', minutesAgo: 19 }],
+  });
+  const shock = buildCrowdDefinition('keeper-b', {
+    ...base,
+    witnessed: [{ kind: 'vehicle-impact', targetKind: 'pedestrian', involvedPlayer: false, concern: 'shaken', minutesAgo: 1 }],
+  });
+  assert.match(stale.opening, /Commissioner|speaking|floor/i);
+  assert.equal(stale.suggestedQuestions[0], 'What is he saying up there?');
+  assert.match(shock.opening, /start|bad business/i);
+});
+
+test('the speech gathering is a matter of place and hour', () => {
+  const [x, , z] = ROOSEVELT_SPEECH_SITE.position;
+  assert.equal(attendingNow(9.75, x, z), 'roosevelt-speech');
+  assert.equal(attendingNow(9.75, x + 200, z), null, 'across the park is not the audience');
+  assert.equal(attendingNow(14, x, z), null, 'he has finished and gone');
+});
+
+test('a thrown object is seen by the crowd and cannot be paid off', () => {
+  resetMajorStreetEventsForTests();
+  resetWitnessMemoryForTests();
+  resetGrievancesForTests();
+  speak('crowd-pelt-1', {
+    archetype: 'w', role: 'errand', activity: 'walking', hour: 14, seed: 3, age: 41,
+  }, 3, 0);
+  try {
+    reportMajorStreetEvent({
+      kind: 'pelting', sourceId: 'player', targetId: 'cop-1', targetKind: 'policeman', x: 0, z: 0,
+    });
+    const seen = witnessedBy('crowd-pelt-1')[0];
+    assert.equal(seen.kind, 'pelting');
+    assert.equal(seen.involvedPlayer, true, 'the player is named as the thrower');
+
+    recordGrievance('cop-1', 'pelted');
+    assert.equal(settleGrievance('cop-1'), false, 'a penny does not settle an assault');
+    const cop = buildCrowdDefinition('cop-1', {
+      archetype: 'p', role: 'police', activity: 'standing', identitySeed: 5,
+      grievance: { kind: 'pelted', count: 1, minutesAgo: 1 },
+    });
+    assert.match(cop.opening, /threw/i);
+  } finally {
+    removeAgent('crowd-pelt-1');
+    resetMajorStreetEventsForTests();
+    resetWitnessMemoryForTests();
+    resetGrievancesForTests();
   }
 });
 

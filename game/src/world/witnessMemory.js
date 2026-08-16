@@ -10,6 +10,7 @@ import { getRunSeed } from './runSeed.js';
 
 const EYESHOT = 40;
 const NEAR = 12;
+const NEARBY = 25;
 const MAX_PER_AGENT = 4;
 const MAX_AGENTS_REMEMBERED = 64;
 // Real milliseconds a memory stays vivid. At the default 4x clock this is
@@ -23,20 +24,29 @@ const memories = new Map();
 
 // How bad the thing itself is, before anyone's temperament weighs in.
 function severity(event) {
+  if (event.kind === 'pelting') return 0.7;
   if (event.targetKind === 'player' || event.targetKind === 'pedestrian'
     || event.targetKind === 'doorman' || event.targetKind === 'policeman') return 1;
   if (event.targetKind === 'pushcart') return 0.55;
   return 0.4;
 }
 
-export function concernLevel({ severity: base, distance, composure, involvedSelf }) {
-  if (involvedSelf) return 'outraged';
+export function concernScore({ severity: base, distance, composure, involvedSelf }) {
+  if (involvedSelf) return 1.5;
   const proximity = distance <= NEAR ? 1 : Math.max(0.35, 1 - (distance - NEAR) / (EYESHOT - NEAR) * 0.65);
-  const score = base * proximity * (1.4 - composure);
+  return base * proximity * (1.4 - composure);
+}
+
+export function concernFromScore(score) {
+  if (score >= 1.2) return 'outraged';
   if (score >= 0.75) return 'shaken';
   if (score >= 0.42) return 'concerned';
   if (score >= 0.22) return 'annoyed';
   return 'unmoved';
+}
+
+export function concernLevel(input) {
+  return concernFromScore(concernScore(input));
 }
 
 export function recordWitnesses(event, agents = listAgents(), now = Date.now()) {
@@ -70,12 +80,16 @@ export function recordWitnesses(event, agents = listAgents(), now = Date.now()) 
       targetKind: event.targetKind ?? null,
       involvedPlayer: event.targetKind === 'player' || event.sourceId === 'player',
       involvedSelf,
-      concern: concernLevel({
+      // The peak reaction, kept as a number so time can wear it down on the
+      // way out. Where it happened is kept too: dialogue says "a few steps
+      // off" or "over the way", not "near here" for everything in eyeshot.
+      score: concernScore({
         severity: severity(event),
         distance,
         composure: identity?.composure ?? 0.6,
         involvedSelf,
       }),
+      nearness: distance <= NEAR ? 'here' : distance <= NEARBY ? 'nearby' : 'off',
       at: now,
     });
     if (seen.length > MAX_PER_AGENT) seen.splice(0, seen.length - MAX_PER_AGENT);
@@ -83,6 +97,8 @@ export function recordWitnesses(event, agents = listAgents(), now = Date.now()) 
 }
 
 // What this agent still remembers, freshest last, with age in game minutes.
+// Concern fades linearly over the window, so the same sight is a shock at one
+// minute and a grumble at ten. Everything downstream ranks on the faded value.
 export function witnessedBy(dialogueId, now = Date.now()) {
   const seen = memories.get(dialogueId);
   if (!seen) return [];
@@ -94,7 +110,8 @@ export function witnessedBy(dialogueId, now = Date.now()) {
     targetKind: entry.targetKind,
     involvedPlayer: entry.involvedPlayer,
     involvedSelf: entry.involvedSelf,
-    concern: entry.concern,
+    concern: concernFromScore(entry.score * (1 - (now - entry.at) / MEMORY_MS)),
+    nearness: entry.nearness,
     minutesAgo: Math.max(1, Math.round((now - entry.at) * GAME_MINUTES_PER_MS)),
   }));
 }

@@ -31,7 +31,9 @@ export function grievanceAgainst(dialogueId, now = Date.now()) {
 
 // Paying for what you took clears it. The count stays on the entry only
 // while it is live, so a settled man starts fresh if you rob him again.
+// Only a debt can be paid off: a penny does not settle a thrown apple.
 export function settleGrievance(dialogueId) {
+  if (grievances.get(dialogueId)?.kind !== 'theft') return false;
   return grievances.delete(dialogueId);
 }
 

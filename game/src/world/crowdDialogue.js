@@ -5,7 +5,7 @@
 import { getAgent, listAgents } from './agents.js';
 import { registerNpcDialogueProvider } from './npcDialogue.js';
 import { hashSeed, knownArchetype, pickSeeded, rollIdentity } from './npcIdentity.js';
-import { parkBulletin } from './parkBulletin.js';
+import { attendingNow, parkBulletin } from './parkBulletin.js';
 import { CONCERN_LEVELS, witnessedBy } from './witnessMemory.js';
 import { grievanceAgainst } from './grievances.js';
 import { getRunSeed } from './runSeed.js';
@@ -34,6 +34,71 @@ const DESCRIPTORS = Object.freeze({
   l: { descriptor: 'A woman in a lilac dress', pronoun: 'She' },
   o: { descriptor: 'An old man on a bench', pronoun: 'He' },
 });
+
+// A person opens with whatever weighs most on them at this moment. Everything
+// that can weigh gets a number and the largest wins; witnessed memories have
+// already faded by age before they get here, so a fresh shock outranks the
+// speech going on beside them and a stale one does not.
+const CONCERN_WEIGHT = Object.freeze({
+  unmoved: 0, annoyed: 12, concerned: 30, shaken: 55, outraged: 80,
+});
+const GRIEVANCE_WEIGHT = 100;
+const ATTENDING_WEIGHT = 40;
+
+const GRIEVANCE_OPENINGS = Object.freeze({
+  theft: [
+    'You! I saw you take that. Do you think I keep this cart for charity?',
+    'A penny is the price, sir, and you did not pay it. Put it back or pay up.',
+  ],
+  pelted: [
+    'You are the man who threw that at me. I have not forgotten it, sir.',
+    'Come back for another go, have you? You threw a thing at me and said nothing for it.',
+  ],
+});
+
+const ATTENDING_OPENINGS = Object.freeze({
+  'roosevelt-speech': [
+    'Softly, sir — that is the Commissioner himself speaking, and I want to hear it.',
+    'You have come for the speaking? Mr. Roosevelt has the floor this half hour.',
+  ],
+});
+
+const ATTENDING_QUESTIONS = Object.freeze({
+  'roosevelt-speech': 'What is he saying up there?',
+});
+
+const WITNESS_OPENINGS = Object.freeze({
+  self: [
+    'You saw what that devil did? Right into my livelihood, and drove on!',
+    'Look at this — look what they’ve done, and not so much as a word of sorry!',
+  ],
+  player: [
+    'Merciful heavens — are you hurt, sir? I saw the whole thing.',
+    'Sir! That was a near thing in the street just now. Are you quite all right?',
+  ],
+  shaken: [
+    'Did you see that in the street, sir? It gave me a proper start.',
+    'Sir. A bad business in the street just now — I can hardly settle myself.',
+  ],
+  concerned: [
+    'A bad moment in the street just now, sir. I hope nobody was much hurt.',
+    'You saw that business in the street? Somebody might have been killed.',
+  ],
+  annoyed: [
+    'Mind how you cross, sir — the drivers are careless today.',
+    'Such carelessness on the drive just now. Well — was there something?',
+  ],
+});
+
+function witnessOpening(entry) {
+  if (entry.involvedSelf) return WITNESS_OPENINGS.self;
+  const level = CONCERN_LEVELS.indexOf(entry.concern ?? 'concerned');
+  // A man who was only mildly troubled does not gasp over the player's health.
+  if (entry.involvedPlayer && level >= 2) return WITNESS_OPENINGS.player;
+  if (level >= 3) return WITNESS_OPENINGS.shaken;
+  if (level === 2) return WITNESS_OPENINGS.concerned;
+  return WITNESS_OPENINGS.annoyed;
+}
 
 // Some stations answer with their own manner before activity matters.
 const ARCHETYPE_OPENINGS = Object.freeze({
@@ -128,6 +193,7 @@ export function crowdDialogueDefinition(id) {
   return buildCrowdDefinition(id, {
     ...context,
     identitySeed: hashSeed(getRunSeed(), context.seed ?? 1),
+    attending: attendingNow(context.hour, agent.x, agent.z),
     witnessed: witnessedBy(id),
     grievance: grievanceAgainst(id),
     sells: agent.sells ?? null,
@@ -142,9 +208,7 @@ export function buildCrowdDefinition(id, context) {
   const seed = Math.trunc(context.identitySeed ?? context.seed ?? 1);
   const identity = rollIdentity(context.archetype, seed, { age: context.age });
   const witnessed = Array.isArray(context.witnessed) ? context.witnessed.slice(0, 4) : [];
-  const sawPlayerHit = witnessed.some((entry) => entry.involvedPlayer);
-  // The single strongest reaction decides the opening; 'unmoved' entries
-  // still reach the model but do not hijack the greeting.
+  // 'unmoved' entries still reach the model but never offer an opening.
   const worstConcern = witnessed.reduce(
     (worst, entry) => Math.max(worst, CONCERN_LEVELS.indexOf(entry.concern ?? 'concerned')),
     -1,
@@ -152,50 +216,41 @@ export function buildCrowdDefinition(id, context) {
 
   const grievance = context.grievance ?? null;
   const sells = Array.isArray(context.sells) ? context.sells : [];
+  const attending = ATTENDING_OPENINGS[context.attending] ? context.attending : null;
 
-  const opening = grievance
-    ? pickSeeded([
-      'You! I saw you take that. Do you think I keep this cart for charity?',
-      'A penny is the price, sir, and you did not pay it. Put it back or pay up.',
-    ], seed, 7)
-    : witnessed.some((entry) => entry.involvedSelf)
-    ? pickSeeded([
-      'You saw what that devil did? Right into my livelihood, and drove on!',
-      'Look at this — look what they’ve done, and not so much as a word of sorry!',
-    ], seed, 2)
-    : sawPlayerHit && worstConcern >= 2
-      ? pickSeeded([
-        'Merciful heavens — are you hurt, sir? I saw the whole thing.',
-        'Sir! That was a near thing in the street just now. Are you quite all right?',
-      ], seed, 2)
-      : worstConcern >= 3
-        ? pickSeeded([
-          'Did you see that in the street, sir? It gave me a proper start.',
-          'Sir. A bad business in the street just now — I can hardly settle myself.',
-        ], seed, 2)
-        : worstConcern === 2
-          ? pickSeeded([
-            'A bad moment in the street just now, sir. I hope nobody was much hurt.',
-            'You saw that business in the street? Somebody might have been killed.',
-          ], seed, 2)
-          : worstConcern === 1
-            ? pickSeeded([
-              'Mind how you cross, sir — the drivers are careless today.',
-              'Such carelessness on the drive just now. Well — was there something?',
-            ], seed, 2)
-            : ARCHETYPE_OPENINGS[context.archetype]
-              ? pickSeeded(ARCHETYPE_OPENINGS[context.archetype], seed, 2)
-              : context.activity === 'resting' || context.activity === 'sitting'
-                ? pickSeeded([
-                  'Good day, sir. You find me resting my feet.',
-                  'Sir. There is room on the seat, if you want it.',
-                ], seed, 2)
-                : pickSeeded([
-                  'Good day to you, sir. Was there something?',
-                  'Sir? I can spare a moment, no more.',
-                ], seed, 2);
+  const idle = ARCHETYPE_OPENINGS[context.archetype]
+    ?? (context.activity === 'resting' || context.activity === 'sitting'
+      ? [
+        'Good day, sir. You find me resting my feet.',
+        'Sir. There is room on the seat, if you want it.',
+      ]
+      : [
+        'Good day to you, sir. Was there something?',
+        'Sir? I can spare a moment, no more.',
+      ]);
+
+  const loudest = [
+    { weight: 0, lines: idle },
+    ...(grievance
+      ? [{
+        weight: GRIEVANCE_WEIGHT,
+        lines: GRIEVANCE_OPENINGS[grievance.kind] ?? GRIEVANCE_OPENINGS.theft,
+      }]
+      : []),
+    ...(attending ? [{ weight: ATTENDING_WEIGHT, lines: ATTENDING_OPENINGS[attending] }] : []),
+    ...witnessed
+      .filter((entry) => entry.concern !== 'unmoved')
+      .map((entry) => ({
+        weight: (CONCERN_WEIGHT[entry.concern] ?? CONCERN_WEIGHT.concerned)
+          + (entry.involvedPlayer ? 10 : 0),
+        lines: witnessOpening(entry),
+      })),
+  ].reduce((best, candidate) => (candidate.weight > best.weight ? candidate : best));
+
+  const opening = pickSeeded(loudest.lines, seed, loudest.lines === idle ? 2 : 7);
 
   const suggestedQuestions = [
+    ...(attending ? [ATTENDING_QUESTIONS[attending]] : []),
     ...(worstConcern >= 1 ? ['What did you just see happen?'] : []),
     'Where are you bound?',
     'What is the news of the street?',
@@ -210,6 +265,7 @@ export function buildCrowdDefinition(id, context) {
     identity,
     whereabouts: BOUND[context.role] ?? BOUND.stroller,
     bulletin: parkBulletin(context.hour ?? 12),
+    attending,
     witnessed,
     grievance,
     sells,
@@ -234,6 +290,7 @@ export function buildCrowdDefinition(id, context) {
       identitySeed: seed,
       age: context.age,
       witnessed,
+      ...(attending ? { attending } : {}),
       ...(grievance ? { grievance } : {}),
       ...(sells.length > 0 ? { sells } : {}),
     },

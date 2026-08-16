@@ -12,7 +12,7 @@ import {
   useRapier,
 } from '@react-three/rapier';
 import { handlesAlive } from '../physics/useCharacterController.js';
-import { shortestArc } from '../movement/mathUtils.js';
+import { dampAngle, shortestArc } from '../movement/mathUtils.js';
 import { terrainHeight } from '../world/terrain.js';
 import { parkItems } from '../world/centralPark.js';
 import { APRON_W, GAPSTOW, walkY as gapstowWalkY } from '../world/gapstow.js';
@@ -273,10 +273,13 @@ function attachBriefcase(figure) {
   const worldScale = new THREE.Vector3();
   hand.getWorldScale(worldScale);
   const inverse = 1 / Math.max(worldScale.x, 1e-6);
-  // Hang below the grip, handle up. The bone's world scale already includes
-  // the figure scale, so dividing it out leaves the case in plain metres.
+  // The hand bone's +Y points roughly world-down in this pose, so flip the
+  // case to put the handle up, then drop it so the handle sits in the grip.
+  // The bone's world scale already includes the figure scale, so dividing it
+  // out leaves the case in plain metres.
+  case_.rotation.z = Math.PI;
   case_.scale.setScalar(inverse);
-  case_.position.set(0, 0.09 * inverse, 0.02 * inverse);
+  case_.position.set(0, 0.18 * inverse, 0.02 * inverse);
 }
 
 function routePoint(points, dist) {
@@ -568,6 +571,9 @@ export default function Pedestrians({ runtime }) {
           strollerCollider: null,
         },
         poser: false,
+        // Where a figure who holds one spot looks when nobody is talking to
+        // them. Route walkers have no post and leave this null.
+        postYaw: null,
         schedule: spec.schedule ?? null,
         stroller,
         speed: 0.92 + hash01(index * 13.7) * 0.16,
@@ -581,6 +587,7 @@ export default function Pedestrians({ runtime }) {
       const entry = spawn(index, spec);
       entry.wrapper.position.set(spec.x, spec.onTerrain ? terrainHeight(spec.x, spec.z) : WALK_TOP, spec.z);
       entry.wrapper.rotation.y = spec.yaw;
+      entry.postYaw = spec.yaw;
       entry.dialogueProfile = crowdSpeakerDetails({
         archetype: spec.who,
         role: spec.clip === 'Briefcase Idle' ? 'commuter' : 'stroller',
@@ -889,6 +896,21 @@ export default function Pedestrians({ runtime }) {
         releaseConfrontation(entry.id);
       }
 
+      // Being spoken to turns you toward the speaker. A seated figure keeps
+      // the pose the bench gave them; a stander goes back to facing their
+      // post (their cart, the street) once the talk ends.
+      if (!confronting && !entry.poser && entry.crowdActivity !== 'resting') {
+        const facing = speaking
+          ? Math.atan2(
+            gameDebug.player.position[0] - entry.wrapper.position.x,
+            gameDebug.player.position[2] - entry.wrapper.position.z,
+          )
+          : entry.postYaw;
+        if (facing !== null && facing !== undefined) {
+          entry.wrapper.rotation.y = dampAngle(entry.wrapper.rotation.y, facing, 7, delta);
+        }
+      }
+
       // The collider tracks the figure; the player's controller resolves
       // against it, so nobody can be walked through.
       const activeCollider = entry.poser && !confronting
@@ -1050,6 +1072,22 @@ export default function Pedestrians({ runtime }) {
         walker.velocity[1] = 0;
         continue;
       }
+      // Mid-conversation the figure holds still and lets the figures loop
+      // above turn them; the slowed clock keeps their schedule from drifting
+      // far meanwhile. A seated speaker keeps the pose the bench gave them.
+      if (walker.id === speakingId) {
+        walker.velocity[0] = 0;
+        walker.velocity[1] = 0;
+        if (walker.crowdActions && walker.crowdActivity !== 'resting') {
+          walker.crowdWalking = false;
+          setBaseAction(walker, walker.crowdActions.idle);
+        } else if (walker.itineraryActions) {
+          setBaseAction(walker, walker.itineraryActions.idle);
+        } else if (walker.strollerActions) {
+          setBaseAction(walker, walker.strollerActions.idle);
+        }
+        continue;
+      }
 
       if (walker.itinerary) {
         const itineraryState = parkVisitorItineraryState(runtime.values.timeOfDay);
@@ -1095,22 +1133,6 @@ export default function Pedestrians({ runtime }) {
 
       if (walker.crowdActions) {
         const playerPos = gameDebug.player.position;
-        // Mid-conversation the figure stands still and faces the player; the
-        // slowed clock keeps the schedule from drifting far meanwhile.
-        if (walker.id === speakingId) {
-          // A seated speaker stays seated; a walker turns to face the player.
-          if (walker.crowdActivity !== 'resting') {
-            walker.wrapper.rotation.y = Math.atan2(
-              playerPos[0] - walker.wrapper.position.x,
-              playerPos[2] - walker.wrapper.position.z,
-            );
-            walker.crowdWalking = false;
-            setBaseAction(walker, walker.crowdActions.idle);
-          }
-          walker.velocity[0] = 0;
-          walker.velocity[1] = 0;
-          continue;
-        }
         const active = isSlotActive(values.timeOfDay ?? 12, walker.crowdSlot);
         if (!active) {
           // Leave only while unobserved; otherwise finish the walk first.
