@@ -4,6 +4,7 @@
 
 import { GOODS, good, goodOfThrowable, handVerb } from './goods.js';
 import { applyPlayerEvent } from './player.js';
+import { readEdition } from './reading.js';
 import {
   getThrowablePlay, grantThrowable, stowThrowable, subscribeThrowablePlay,
 } from './throwablePlay.js';
@@ -102,6 +103,11 @@ export function runVerb(id, verbId) {
   if (!verb) return false;
   // Throwing happens in the world, not in a menu: the verb only arms the hand.
   if (verb.id === 'throw') return heldGood()?.id === id || equipGood(id);
+  // A `keep` verb leaves the thing where it is: a paper survives being read.
+  if (verb.keep) {
+    if (verb.reads) readEdition(verb.reads);
+    return true;
+  }
   if (!takeOne(id)) return false;
   if (verb.changes) {
     applyPlayerEvent({

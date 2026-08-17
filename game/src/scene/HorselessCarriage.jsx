@@ -14,7 +14,9 @@ import {
   HORSELESS_TRAFFIC_ROSTER,
   stepCarriage,
   RIDE_HEIGHT,
+  driverCallout,
 } from '../world/horselessCarriage.js';
+import { raiseDriverWarning } from '../world/outcry.js';
 import {
   PEDESTRIAN_ARCHETYPES,
   PEDESTRIAN_STRAWHAT_MOTION_FILE,
@@ -49,6 +51,9 @@ const REAR_Z = -0.85;
 // Rider animation is paid for only near the camera. Shadow distance follows
 // the outdoor tuning control shared with the sun's shadow camera.
 const ANIMATE_DISTANCE = 45;
+// She sounds the horn first; the words come when it has plainly not worked.
+const DRIVER_PATIENCE = 2.5;
+const DRIVER_SHOUT_GAP = 12;
 const POSE_PADDING = 1.7;
 
 // Coach-painter's card, not a color picker: Brewster green with carmine
@@ -494,6 +499,22 @@ export default function HorselessCarriage({ runtime }) {
       if (distSq < ANIMATE_DISTANCE * ANIMATE_DISTANCE) {
         updateDriverMood(unit.driver, state, dt);
         unit.driver.mixer.update(dt);
+        // She honks first and speaks once the horn has plainly not worked.
+        const callout = driverCallout(state, gameDebug.player.position);
+        const clock = getPlayer().clock;
+        if (callout && unit.driver.blockedTime >= (callout === 'blocked' ? DRIVER_PATIENCE : 0)
+          && clock >= (unit.nextShoutAt ?? 0)) {
+          unit.nextShoutAt = clock + DRIVER_SHOUT_GAP;
+          raiseDriverWarning({
+            x: state.x,
+            // Above the driver's hat: the road surface plus her seat.
+            y: 1.18 + 2.1,
+            z: state.z,
+            unitId: unit.id,
+            kind: callout === 'blocked' ? 'blocked' : 'motor',
+            seed: Math.round(clock),
+          });
+        }
       }
 
       // Keep the kinematic collider under the visual so the player cannot

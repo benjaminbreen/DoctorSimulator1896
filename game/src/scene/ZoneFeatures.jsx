@@ -17,6 +17,7 @@ const FEATURES = {
   'hotel-doormen': lazy(() => import('./HotelDoormen.jsx')),
   'street-police': lazy(() => import('./StreetPolice.jsx')),
   'posted-npcs': lazy(() => import('./PostedNpcs.jsx')),
+  'newspaper-stack': lazy(() => import('./NewspaperStack.jsx')),
   'lobby-staff': lazy(() => import('./LobbyStaff.jsx')),
   'gapstow-bridge': lazy(() => import('./GapstowBridge.jsx')),
   'schist-outcrops': lazy(() => import('./SchistOutcrops.jsx')),

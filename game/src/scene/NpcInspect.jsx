@@ -6,15 +6,12 @@ import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { useThree } from '@react-three/fiber';
 import { listAgents } from '../world/agents.js';
-import { announce, CARRY } from '../world/announcements.js';
-import { badgeFor } from '../world/acquaintance.js';
-import { npcDialogueDefinition } from '../world/npcDialogue.js';
+import { inspectAgent } from '../world/acquaintance.js';
 import { gameDebug } from '../debug.js';
 
 // Chest height above the floor the player is standing on, and how wide a
 // target a person is to a click.
 const CHEST = 1.15;
-const HEAD = 2.05;
 const HIT_RADIUS = 0.62;
 const MAX_DISTANCE = 40;
 // A drag of the canvas turns the camera; only a still click is a question.
@@ -67,21 +64,7 @@ export default function NpcInspect() {
       );
       raycaster.setFromCamera(pointer, camera);
       const floorY = gameDebug.player.position?.[1] ?? 0;
-      const agent = pickAgent(raycaster.ray, floorY);
-      if (!agent) return;
-      const badge = badgeFor(
-        agent.dialogueId,
-        npcDialogueDefinition(agent.dialogueId),
-        agent.dialogueName,
-      );
-      announce({
-        ...badge,
-        line: null,
-        carry: CARRY.inspect,
-        seconds: 4.5,
-        anchorId: agent.id,
-        headY: floorY + HEAD,
-      });
+      inspectAgent(pickAgent(raycaster.ray, floorY), floorY);
     };
 
     element.addEventListener('pointerdown', onDown);

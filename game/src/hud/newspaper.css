@@ -1,0 +1,127 @@
+/* The paper held up in front of the player: the scan fills the screen, with
+   a thin brass bar for the zoom controls. */
+
+/* Above the toast stack (z 50) and the dialogue ribbon, and taking clicks
+   in its own right: it renders beside the HUD, which does not. */
+.paper-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: auto;
+}
+
+.paper-scrim {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  cursor: default;
+  background: rgba(14, 15, 12, 0.82);
+}
+
+.paper-sheet {
+  position: absolute;
+  inset: 3vh 3vw;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px 12px;
+  border: 1px solid rgba(204, 164, 82, 0.58);
+  border-radius: 8px;
+  background: #1b1a16;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
+}
+
+.paper-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: #efe3c8;
+}
+
+.paper-bar-title {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+}
+
+.paper-bar-title strong {
+  color: #e3c37c;
+  font-family: 'Cormorant SC', Georgia, serif;
+  font-size: 19px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.paper-bar-title small {
+  color: #cfc0a0;
+  font-size: 13px;
+}
+
+.paper-bar-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.paper-bar-tools button {
+  min-width: 34px;
+  min-height: 30px;
+  padding: 2px 10px;
+  border: 1px solid rgba(204, 164, 82, 0.5);
+  border-radius: 5px;
+  background: rgba(46, 43, 33, 0.9);
+  color: #efe3c8;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.paper-bar-tools button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.paper-zoom {
+  min-width: 84px;
+  color: #cfc0a0;
+  font-size: 13px;
+  text-align: center;
+}
+
+.paper-viewport {
+  flex: 1;
+  overflow: auto;
+  border: 1px solid rgba(140, 120, 78, 0.35);
+  background: #0d0d0b;
+  text-align: center;
+}
+
+.paper-viewport.is-zoomed {
+  cursor: grab;
+  overflow: hidden;
+}
+
+.paper-viewport img {
+  display: block;
+  margin: 0 auto;
+  /* Fitted to the frame at 1×; wider than the frame once zoomed, which is
+     what makes the viewport scroll. */
+  max-width: none;
+  user-select: none;
+}
+
+.paper-source {
+  margin: 0;
+  color: #b6a789;
+  font-size: 12px;
+  text-align: right;
+}
+
+.paper-source a { color: #e3c37c; }
+
+@media (max-width: 720px) {
+  .paper-sheet { inset: 1vh 1vw; }
+  .paper-bar { flex-wrap: wrap; }
+}

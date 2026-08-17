@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "values": {
     "tuftAmount": 1,
-    "tuftSize": 1,
+    "tuftSize": 2,
     "interiorScaleS": 1,
     "interiorScaleM": 1,
     "interiorScaleL": 1,

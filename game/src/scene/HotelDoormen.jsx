@@ -6,6 +6,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { CapsuleCollider, RigidBody, useRapier } from '@react-three/rapier';
 import { gameDebug } from '../debug.js';
+import { raiseDoorGreeting } from '../world/outcry.js';
 import { listAgents, removeAgent, reportAgent } from '../world/agents.js';
 import { clearActorImpacts, takeActorImpacts } from '../world/actorImpacts.js';
 import {
@@ -225,6 +226,8 @@ export default function HotelDoormen({ runtime }) {
       if (!actor.playerGreetingNear && greetingNear && !bumping && now >= actor.nextNodAt) {
         if (playGesture(actor, 'HeadNod', now, 1)) actor.nextNodAt = now + NOD_COOLDOWN;
         actor.playerGreetingNear = true;
+        // The nod already fires here; the words go with it.
+        raiseDoorGreeting({ anchorId: actor.placement.id, seed: Math.round(now) });
       } else if (playerDistance > PLAYER_GREETING_RELEASE) {
         actor.playerGreetingNear = false;
       }

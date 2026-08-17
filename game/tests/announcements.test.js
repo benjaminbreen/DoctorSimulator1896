@@ -16,8 +16,10 @@ import {
   raiseTheftOutcry,
 } from '../src/world/outcry.js';
 import { isNearMiss } from '../src/world/horseDrawnTraffic.js';
+import { driverCallout } from '../src/world/horselessCarriage.js';
 import { hotelRegister, registerFor } from '../src/world/hotelRegister.js';
 import { inPlantedBed } from '../src/world/groundCover.js';
+import { EDITIONS, headlineFor } from '../src/world/newspapers.js';
 import { removeAgent, reportAgent } from '../src/world/agents.js';
 import { badgeFor, noteNameSpoken, resetAcquaintanceForTests } from '../src/world/acquaintance.js';
 
@@ -190,4 +192,38 @@ test('the keeper only objects to feet actually in his planting', () => {
   }
   assert.ok(inBed, 'the park has beds somewhere');
   assert.equal(inPlantedBed(onLawn[0], onLawn[1]), false);
+});
+
+test('a newsboy cries his own paper, and a different headline each hour', () => {
+  const cry = (paper, hour) => {
+    resetAnnouncementsForTests();
+    return raiseNewsboyCry({ paper, hour, anchorId: `boy-${paper}`, seed: 3 }).line;
+  };
+  const morning = cry('sun-1896-06-15', 8);
+  const noon = cry('sun-1896-06-15', 12);
+  assert.notEqual(morning, noon, 'the corner does not repeat itself all day');
+  for (const hour of [8, 12, 16]) {
+    const line = cry('sun-1896-06-15', hour).replace(/^The Sun! 2 cents! /, '');
+    assert.ok(
+      EDITIONS['sun-1896-06-15'].headlines.includes(line),
+      `off the front page: ${line}`,
+    );
+  }
+  assert.match(cry('journal-1896-06-15', 9), /Foraker|gold|Hanna|McKinley|ultimatum|Journal|Depew|band wagon/i);
+});
+
+test('two boys on one paper are never on the same headline', () => {
+  const a = headlineFor('sun-1896-06-15', 10, 0);
+  const b = headlineFor('sun-1896-06-15', 10, 4);
+  assert.notEqual(a, b);
+  assert.equal(headlineFor('no-such-paper', 10, 0), null);
+});
+
+test('a motorist speaks when blocked, and when bearing down, not otherwise', () => {
+  const car = { x: 0, z: 0, yaw: 0, speed: 0, blocked: true };
+  assert.equal(driverCallout(car, [0, 1, 3]), 'blocked');
+  assert.equal(driverCallout(car, [3, 1, 0]), null, 'beside her, not in her way');
+  assert.equal(driverCallout({ ...car, blocked: false, speed: 4 }, [0, 1, 3]), 'near-miss');
+  assert.equal(driverCallout({ ...car, blocked: false, speed: 4 }, [0, 1, 20]), null);
+  assert.equal(driverCallout({ ...car, blocked: false, speed: 0 }, [0, 1, 3]), null, 'parked and clear');
 });

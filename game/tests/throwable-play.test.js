@@ -117,7 +117,7 @@ test('each type owns its throw speed while sharing the same camera aim', () => {
 });
 
 test('throwable definitions contain the data needed by UI and physics', () => {
-  assert.deepEqual(Object.keys(THROWABLE_TYPES).sort(), ['apple', 'cabbage']);
+  assert.deepEqual(Object.keys(THROWABLE_TYPES).sort(), ['apple', 'cabbage', 'journal', 'newspaper']);
   for (const [id, definition] of Object.entries(THROWABLE_TYPES)) {
     assert.equal(definition.id, id);
     assert.ok(definition.label);

@@ -27,6 +27,7 @@ What you know:
 - attending, if present, is what is going on in front of you at this moment. It is nearer to you than anything you merely heard about or saw earlier; talk about it first if you talk about anything.
 - bulletin lines are what everyone out of doors knows just now. Bring one up when it fits, in your own words. Indoors the list is empty, and park news is not on your mind.
 - witnessed lines are things you saw with your own eyes minutes ago. Each states how much it weighed on you and how far off it was — play both honestly. A shaken witness brings it up unasked; an annoyed one grumbles if it comes up; an unmoved one shrugs. Do not describe a distant thing as though it happened at your feet. If it happened to the very person you are speaking with, address it.
+- headlines, if present, is the front page of the paper you are selling today. It is all the news you have. Quote from it, in your own words if you like; invent no other story, and do not claim to know more than the page says.
 - guests, if present, is the house register: everyone stopping at the hotel today, with their room. It is complete. If a caller asks after a name that is not on it, no such person is staying here — say so plainly, however certain he sounds and whatever room number he gives you. Do not confirm a guest, a room, or a message you were not given. You may say who is in the house if asked; you would not gossip about their business unasked.
 - If you sell goods, the sells list is your stock and its true price. You may hawk it. When the player hands money over, the sale has already happened — take it graciously and hand the thing across; never refuse, re-price, or ask for more.
 - A grievance is something this player did to you personally, and you know it was them. Say so plainly. A theft is a debt: demand payment, and if they have just paid, drop it at once and be gruffly civil again. A pelting is not a debt: no money settles it, and offering some would insult you.
@@ -234,6 +235,13 @@ function validGuests(list) {
       || (typeof guest.business === 'string' && guest.business.length <= 96)));
 }
 
+// The front page of the paper this boy is selling. Bounded like the rest.
+function validHeadlines(list) {
+  if (list === undefined) return true;
+  return Array.isArray(list) && list.length <= 10 && list.every((line) => (
+    typeof line === 'string' && line.length <= 160));
+}
+
 // Goods are echoed back to the model, so they are re-derived from the
 // simulation's own list rather than trusted from the wire.
 function validSells(list) {
@@ -259,7 +267,8 @@ function validCrowdContext(context) {
     && validGrievance(context.grievance)
     && validOffer(context.moneyOffer)
     && validSells(context.sells)
-    && validGuests(context.guests);
+    && validGuests(context.guests)
+    && validHeadlines(context.headlines);
 }
 
 function validPayload(body) {
@@ -360,6 +369,7 @@ export async function POST(request) {
           ...(npc.sells.length > 0 ? {
             sells: npc.sells.map((good) => `${good.label}, price ${good.priceCents} cent${good.priceCents === 1 ? '' : 's'}`),
           } : {}),
+          ...(npc.headlines?.length > 0 ? { headlines: npc.headlines } : {}),
           ...(npc.guests?.length > 0 ? {
             guests: npc.guests.map((guest) => `${guest.name}, room ${guest.room}${guest.business ? `, ${guest.business}` : ''}`),
           } : {}),

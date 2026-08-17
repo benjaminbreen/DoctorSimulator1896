@@ -6,6 +6,7 @@ import { movementStep, applySlide } from '../movement/movementStep.js';
 import { useCharacterController, handlesAlive } from '../physics/useCharacterController.js';
 import { requestTravel } from '../world/travel.js';
 import { gameDebug } from '../debug.js';
+import { inspectAgent } from '../world/acquaintance.js';
 import {
   findReachable,
   setReach,
@@ -96,6 +97,7 @@ export default function PlayerRig({
   const colliderPosture = useRef('standing');
   const edgeRef = useRef({ candidateId: null, since: 0, armed: true, active: null, cooldownUntil: 0 });
   const climbRef = useRef(null);
+  const lastDialogueAgent = useRef(null);
   const carriageSupportRef = useRef(null);
   // So `__game.use('colour-wheel')` can open an instrument view without the
   // walk-and-aim, which is the slow part of checking one.
@@ -535,6 +537,12 @@ export default function PlayerRig({
       : findReachableThrowable(gameDebug.player.position, state.yaw);
     const throwableLabel = throwableDefinition(throwable?.type)?.label.toLowerCase();
     setReach(item ? { id: item.id, item, affordance: item.affordance } : null);
+    // Close enough to speak to somebody: show who they are without waiting for
+    // a click. Only on the change, or it re-announces every frame.
+    if (dialogueAgent?.id !== lastDialogueAgent.current) {
+      lastDialogueAgent.current = dialogueAgent?.id ?? null;
+      if (dialogueAgent) inspectAgent(dialogueAgent, gameDebug.player.position[1]);
+    }
     gameDebug.prompt = active
       ? active.label
       : boardable

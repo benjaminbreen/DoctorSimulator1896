@@ -6,7 +6,7 @@ export const STARTING_ZONE = 'central-park';
 export const STARTING_TIME = 9.5;
 
 export const settingsSchema = {
-  version: 4,
+  version: 5,
   groups: [
     {
       id: 'world',
@@ -34,7 +34,7 @@ export const settingsSchema = {
         // Lawn tuft scatter in the park. Amount multiplies the planting
         // chance, size the clump scale; both rebuild the zone.
         { id: 'tuftAmount', label: 'Grass amount ×', type: 'range', min: 0, max: 2.5, step: 0.1, default: 1, mode: 'rebuild' },
-        { id: 'tuftSize', label: 'Grass size ×', type: 'range', min: 0.5, max: 2, step: 0.05, default: 1, mode: 'rebuild' },
+        { id: 'tuftSize', label: 'Grass size ×', type: 'range', min: 0.5, max: 2, step: 0.05, default: 2, mode: 'rebuild' },
       ],
     },
     {

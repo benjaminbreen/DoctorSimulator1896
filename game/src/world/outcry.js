@@ -10,10 +10,8 @@
 import { listAgents } from './agents.js';
 import { announce, CARRY } from './announcements.js';
 import { CONCERN_LEVELS } from './witnessMemory.js';
-import {
-  ROOSEVELT_SPEECH_END_HOUR,
-  ROOSEVELT_PARK_DEPARTURE_HOUR,
-} from './teddyRoosevelt.js';
+import { ROOSEVELT_SPEECH_END_HOUR } from './teddyRoosevelt.js';
+import { edition, headlineFor } from './newspapers.js';
 
 // An officer challenges what he can see happen, not what happens on the next
 // block. Roughly the eyeshot witnessMemory grants a bystander, tightened
@@ -53,14 +51,26 @@ const POLICE_CHALLENGES = Object.freeze({
   ],
 });
 
-// A driver who has just missed the player. He is past before he finishes it,
-// so the line is short.
-const DRIVER_WARNINGS = Object.freeze([
-  'Look alive there! Do you want the wheels over you?',
-  'Out of the road, sir! I cannot stop this for you!',
-  'Mind yourself! I have two ton behind me!',
-  'Hi! Off the carriageway, unless you fancy the hospital!',
-]);
+// A driver who has just missed the player, or one the player is standing in
+// front of. Both are past in a moment, so the lines are short.
+const DRIVER_WARNINGS = Object.freeze({
+  team: [
+    'Look alive there! Do you want the wheels over you?',
+    'Out of the road, sir! I cannot stop this for you!',
+    'Mind yourself! I have two ton behind me!',
+    'Hi! Off the carriageway, unless you fancy the hospital!',
+  ],
+  motor: [
+    'Have a care! This machine does not stop for anybody!',
+    'Out of the way of the motor, sir! Are you deaf as well as blind?',
+    'Mind yourself — I cannot pull this up like a horse!',
+  ],
+  blocked: [
+    'Will you kindly move, sir? I cannot drive through you.',
+    'You are standing in the road, sir. In the road, in front of a motor carriage.',
+    'Are you going to stand there all morning? Some of us are expected somewhere.',
+  ],
+});
 
 // A whistle is the officer's own noise; the words are what follows it.
 const POLICE_WHISTLE = Object.freeze([
@@ -69,12 +79,34 @@ const POLICE_WHISTLE = Object.freeze([
   'Clear the road! You there, stop that team!',
 ]);
 
-// What a newsboy shouts. Gated on the same schedule the park bulletin uses,
-// so he never cries a speech that has not happened (parkBulletin.js).
+// The fallback for a boy with no paper assigned. Everything else he shouts
+// comes off his own front page (newspapers.js).
 const PAPER_CRIES = Object.freeze([
-  'Papers! Morning papers, one cent!',
-  'Paper, sir? All the day’s news for a penny!',
-  'Get your paper here! World, Herald, Sun!',
+  'Papers! Morning papers, two cents!',
+  'Paper, sir? All the day’s news for two cents!',
+  'Get your Sun here! Convention news, full account!',
+]);
+
+// The man whose goods just left his cart, when no officer is there to say it
+// for him.
+const VENDOR_SCOLDS = Object.freeze([
+  'Oi! That is not free, sir! A penny is the price!',
+  'You put that back, sir, or you pay me for it!',
+  'I saw that! I see everything off this cart, sir!',
+]);
+
+// Walked into hard enough to stagger somebody.
+const BUMP_PROTESTS = Object.freeze([
+  'Mind yourself, sir! There is a whole park to walk in!',
+  'Steady on! You very nearly had me over.',
+  'Sir. You might look where you are going.',
+]);
+
+// The man on the door, to somebody coming up to it.
+const DOOR_GREETINGS = Object.freeze([
+  'Good day, sir. Guest of the house?',
+  'Sir. The door is this way, if you are stopping here.',
+  'Afternoon, sir. Shall I have somebody take your bag?',
 ]);
 
 // The keeper, finding somebody standing in his planting.
@@ -203,14 +235,19 @@ export function raiseTheftOutcry({ x, z, seed = 0 } = {}) {
   return challengeOfficer('theft', x, z, seed);
 }
 
-/** A vehicle has come within a yard of the player without hitting them. */
-export function raiseDriverWarning({ x, y, z, unitId = '', seed = 0 } = {}) {
+/**
+ * A vehicle has come within a yard of the player, or is stopped because he is
+ * standing in front of it. `kind` picks whose mouth it comes out of.
+ */
+export function raiseDriverWarning({
+  x, y, z, unitId = '', kind = 'team', seed = 0,
+} = {}) {
   return announce({
-    line: pick(DRIVER_WARNINGS, seed),
+    line: pick(DRIVER_WARNINGS[kind] ?? DRIVER_WARNINGS.team, seed),
     speaker: 'The driver',
     station: 'On the box',
     carry: CARRY.alarm,
-    key: `driver:${unitId}`,
+    key: `driver:${kind}:${unitId}`,
     seconds: 5,
     position: [x, y, z],
   });
@@ -262,19 +299,71 @@ export function raiseHawk({
  * A newsboy cries the papers. Once the Commissioner has spoken he has
  * something to sell them on; the hours match parkBulletin's.
  */
-export function raiseNewsboyCry({ hour, speaker = 'A newsboy', anchorId, seed = 0 } = {}) {
+export function raiseNewsboyCry({
+  hour, paper, speaker = 'A newsboy', anchorId, seed = 0,
+} = {}) {
   const h = ((Number(hour) || 0) % 24 + 24) % 24;
-  const spoken = h >= ROOSEVELT_SPEECH_END_HOUR && h < ROOSEVELT_PARK_DEPARTURE_HOUR;
+  const sheet = edition(paper);
+  const headline = headlineFor(paper, h, seed);
+  // The speech is the one thing he saw himself, and only while it is news.
+  const spoken = h >= ROOSEVELT_SPEECH_END_HOUR && h < ROOSEVELT_SPEECH_END_HOUR + 1.5;
+  // Every third cry leads with the masthead and the price: it is how a boy
+  // working one corner breaks up the same eight headlines all day.
+  const priceWord = sheet?.priceCents === 1 ? 'One cent' : `${sheet?.priceCents} cents`;
   const line = spoken
-    ? 'Extra! Commissioner Roosevelt speaks in the park! Full account, one cent!'
-    : pick(PAPER_CRIES, seed);
+    ? 'Commissioner Roosevelt speaks in the park this morning! Read it in to-morrow\u2019s paper!'
+    : (!headline || !sheet
+      ? pick(PAPER_CRIES, seed)
+      : (Math.abs(Math.trunc(seed) + h) % 3 === 0
+        ? `${sheet.masthead}! ${priceWord}! ${headline}`
+        : headline));
   return announce({
     line,
     speaker,
     station: 'Crying the papers',
     carry: CARRY.street,
     key: `papers:${anchorId}`,
+    seconds: 6,
+    anchorId,
+  });
+}
+
+/** The vendor says it himself, when there is no officer to say it for him. */
+export function raiseVendorScold({ speaker = 'A pushcart vendor', anchorId, seed = 0 } = {}) {
+  return announce({
+    line: pick(VENDOR_SCOLDS, seed),
+    speaker,
+    station: 'At his cart',
+    carry: CARRY.alarm,
+    key: `scold:${anchorId}`,
+    seconds: 6,
+    anchorId,
+  });
+}
+
+/** Somebody the player has just walked into hard enough to stagger. */
+export function raiseBumpProtest({ speaker, anchorId, seed = 0 } = {}) {
+  if (!speaker) return null;
+  return announce({
+    line: pick(BUMP_PROTESTS, seed),
+    speaker,
+    station: null,
+    carry: CARRY.street,
+    key: `bump:${anchorId}`,
     seconds: 5,
+    anchorId,
+  });
+}
+
+/** The doorman, as somebody comes up to his door. */
+export function raiseDoorGreeting({ speaker = 'A hotel doorman', anchorId, seed = 0 } = {}) {
+  return announce({
+    line: pick(DOOR_GREETINGS, seed),
+    speaker,
+    station: 'At the hotel door',
+    carry: CARRY.street,
+    key: `door:${anchorId}`,
+    seconds: 6,
     anchorId,
   });
 }

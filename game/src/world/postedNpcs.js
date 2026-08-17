@@ -90,6 +90,55 @@ export const POSTED_NPCS = Object.freeze([
     role: 'newsboy',
     activity: 'standing',
     dialogueName: 'A newsboy',
+    paper: 'sun-1896-06-15',
+    // Two cents is the price on the Sun's own masthead for this issue.
+    sells: Object.freeze([
+      Object.freeze({ id: 'newspaper', label: 'a copy of The Sun', priceCents: 2 }),
+    ]),
+  }),
+  // Two more corners, chosen where the block is otherwise empty: the park-side
+  // walk of Fifth well north of the hotel, and the west end of Central Park
+  // South by Sixth Avenue. Both are lit and paved sidewalk (streetGrid.js).
+  Object.freeze({
+    id: 'fifth-avenue-newsboy',
+    label: 'Newsboy (Fifth Avenue)',
+    location: 'Fifth Avenue at the park wall, above Sixty-second Street',
+    modelFile: '/models/news-boy.glb',
+    motionFile: '/models/news-boy-motions.glb',
+    idleClip: 'NewsBoyIdle',
+    ambientClips: Object.freeze([]),
+    position: Object.freeze([97.2, SIDEWALK, -20]),
+    yaw: Math.PI / 2,
+    height: figureHeight('news-boy'),
+    archetype: 'x',
+    role: 'newsboy',
+    activity: 'standing',
+    dialogueName: 'A newsboy',
+    // The Journal undercuts the Sun by a cent, which is its own selling point.
+    paper: 'journal-1896-06-15',
+    sells: Object.freeze([
+      Object.freeze({ id: 'journal', label: 'a copy of The Journal', priceCents: 1 }),
+    ]),
+  }),
+  Object.freeze({
+    id: 'park-south-west-newsboy',
+    label: 'Newsboy (Central Park South at Sixth Avenue)',
+    modelFile: '/models/news-boy.glb',
+    motionFile: '/models/news-boy-motions.glb',
+    location: 'Central Park South near Sixth Avenue',
+    idleClip: 'NewsBoyIdle',
+    ambientClips: Object.freeze([]),
+    position: Object.freeze([-66, SIDEWALK, CPS_SOUTH_SIDEWALK_Z]),
+    yaw: Math.PI,
+    height: figureHeight('news-boy'),
+    archetype: 'x',
+    role: 'newsboy',
+    activity: 'standing',
+    dialogueName: 'A newsboy',
+    paper: 'sun-1896-06-15',
+    sells: Object.freeze([
+      Object.freeze({ id: 'newspaper', label: 'a copy of The Sun', priceCents: 2 }),
+    ]),
   }),
 ]);
 

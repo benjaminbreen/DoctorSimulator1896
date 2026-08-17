@@ -11,6 +11,7 @@ import { CONCERN_LEVELS, witnessedBy } from './witnessMemory.js';
 import { grievanceAgainst } from './grievances.js';
 import { offerTo } from './moneyOffer.js';
 import { registerFor } from './hotelRegister.js';
+import { edition } from './newspapers.js';
 import { getRunSeed } from './runSeed.js';
 
 // What the ribbon shows for a stranger. The player never learns a name
@@ -148,7 +149,7 @@ const ARCHETYPE_OPENINGS = Object.freeze({
   b: ['Sir?', 'I wasn’t doing anything, sir.'],
   v: ['Fine goods, sir, best price on the avenue. What’ll you have?', 'Buy or don’t buy, sir, but the cart must earn its corner.'],
   c: ['Cab, sir? Anywhere in the city, and quicker than walking.', 'Mind the wheels there, sir. Needing a cab?'],
-  x: ['Paper, sir? All the day’s news for a penny.', 'Extra — well, near enough an extra. Paper, sir?'],
+  x: ['Paper, sir? All the day’s news, right here.', 'Extra — well, near enough an extra. Paper, sir?'],
   n: ['Softly, sir, if you please — the baby is only just asleep.', 'Good day, sir. Mind the perambulator, if you would.'],
   r: ['A fine day for wheeling, sir — I’ve left mine at home.', 'Good day. You may stare at the costume if you must; most do.'],
   o: ['Sit down if you like, young man. The bench holds two.', 'Good day to you. I’m in no hurry if you’re not.'],
@@ -263,6 +264,7 @@ export function crowdDialogueDefinition(id) {
     moneyOffer: offerTo(id),
     sells: agent.sells ?? null,
     guests: registerFor(context.archetype, context.place),
+    headlines: agent.paper ? (edition(agent.paper)?.headlines ?? []) : [],
   });
 }
 
@@ -285,6 +287,9 @@ export function buildCrowdDefinition(id, context) {
   const sells = Array.isArray(context.sells) ? context.sells : [];
   // Hotel staff answer for their own house; everyone else has no register.
   const guests = Array.isArray(context.guests) ? context.guests.slice(0, 8) : [];
+  // A newsboy carries his own front page, so asking him agrees with what he
+  // was shouting a moment ago.
+  const headlines = Array.isArray(context.headlines) ? context.headlines.slice(0, 10) : [];
   const attending = ATTENDING_OPENINGS[context.attending] ? context.attending : null;
   const manner = moneyMannerFor(context.archetype);
 
@@ -347,6 +352,7 @@ export function buildCrowdDefinition(id, context) {
     grievance,
     sells,
     guests,
+    headlines,
     moneyOffer: offer,
     moneyManner: manner,
     opening,
@@ -376,6 +382,7 @@ export function buildCrowdDefinition(id, context) {
       ...(offer ? { moneyOffer: offer } : {}),
       ...(sells.length > 0 ? { sells } : {}),
       ...(guests.length > 0 ? { guests } : {}),
+      ...(headlines.length > 0 ? { headlines } : {}),
     },
   };
 }

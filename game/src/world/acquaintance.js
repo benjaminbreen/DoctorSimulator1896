@@ -5,6 +5,9 @@
 // learns it. This only records that the name was said out loud, and it is
 // matched against the rolled name — nothing the model invents gets in.
 
+import { announce, CARRY } from './announcements.js';
+import { npcDialogueDefinition } from './npcDialogue.js';
+
 const known = new Map();
 const MAX_KNOWN = 64;
 
@@ -47,6 +50,31 @@ export function badgeFor(dialogueId, definition, fallbackName = 'A stranger') {
   const name = knownName(dialogueId);
   if (name) return { speaker: name, station: appearance };
   return { speaker: appearance, station: agePhrase(definition?.identity) };
+}
+
+// Above a figure's hat, measured from the floor they and the player share.
+const HEAD_HEIGHT = 2.05;
+
+/**
+ * Put this person's plate on screen: clicked, or simply come close enough to
+ * speak to. It is the quietest thing the panel carries and yields to anything
+ * anybody actually says.
+ */
+export function inspectAgent(agent, floorY = 0) {
+  if (!agent?.dialogueId) return null;
+  const badge = badgeFor(
+    agent.dialogueId,
+    npcDialogueDefinition(agent.dialogueId),
+    agent.dialogueName,
+  );
+  return announce({
+    ...badge,
+    line: null,
+    carry: CARRY.inspect,
+    seconds: 4.5,
+    anchorId: agent.id,
+    headY: floorY + HEAD_HEIGHT,
+  });
 }
 
 export function resetAcquaintanceForTests() {

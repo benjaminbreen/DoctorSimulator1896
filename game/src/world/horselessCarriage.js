@@ -295,6 +295,27 @@ export function createCarriageState(routeIndex = 0, startDist = 0, lane = CARRIA
 
 // The route remains authoritative; a thrown object adds a short-lived visual
 // and physical shove around it. This keeps traffic deterministic afterward.
+// Why the driver would call out: 'blocked' when the machine is held at a stop
+// and the player is the thing in front of it, 'near-miss' when it is moving
+// and he is a yard off the bonnet. Anything else is ordinary traffic.
+const BLOCK_RADIUS = 5;
+const NEAR_MISS_RADIUS = 3.6;
+const NEAR_MISS_SPEED = 2;
+const AHEAD = Math.cos(0.9);
+
+export function driverCallout(state, player) {
+  if (!state || !player) return null;
+  const dx = player[0] - state.x;
+  const dz = player[2] - state.z;
+  const distance = Math.hypot(dx, dz);
+  if (distance < 1e-3) return null;
+  const ahead = (dx / distance) * Math.sin(state.yaw) + (dz / distance) * Math.cos(state.yaw);
+  if (ahead < AHEAD) return null;
+  if (state.blocked && distance <= BLOCK_RADIUS) return 'blocked';
+  if (state.speed >= NEAR_MISS_SPEED && distance <= NEAR_MISS_RADIUS) return 'near-miss';
+  return null;
+}
+
 export function applyCarriageProjectileHit(state, velocity, power = 1) {
   const vx = Number(velocity?.x ?? velocity?.[0]) || 0;
   const vz = Number(velocity?.z ?? velocity?.[2]) || 0;

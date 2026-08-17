@@ -168,9 +168,12 @@ export default function PostedNpcs({ runtime }) {
           const cried = actor.spec.role === 'newsboy'
             ? raiseNewsboyCry({
               hour: runtime.values.timeOfDay,
+              paper: actor.spec.paper,
               speaker: actor.spec.dialogueName,
               anchorId: actor.spec.id,
-              seed: Math.round(now),
+              // Constant per boy: the headline turns over with the hour, and
+              // two boys on the same paper are never on the same one.
+              seed: hashString(actor.spec.id),
             })
             : raiseHawk({
               archetype: actor.spec.archetype,
@@ -263,6 +266,7 @@ export default function PostedNpcs({ runtime }) {
           // Witness memory reads this to tell an owner from a bystander.
           ...(actor.spec.ownsId ? { ownsId: actor.spec.ownsId } : {}),
           ...(actor.spec.sells ? { sells: actor.spec.sells } : {}),
+          ...(actor.spec.paper ? { paper: actor.spec.paper } : {}),
           dialogueId: actor.spec.id,
           dialogueName: actor.spec.dialogueName,
           dialogueContext: {

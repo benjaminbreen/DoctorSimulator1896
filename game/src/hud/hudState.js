@@ -91,12 +91,16 @@ export function checkWatch(hours) {
   notice(`You draw your watch: ${spokenTime(hours)}.`, { key: 'watch' });
 }
 
-// Short front-page headings transcribed from the June 15 issue shipped in
-// public/newspapers. Keeping the list small is preferable to filling the
-// panel with plausible but unverified events.
+// Short front-page headings transcribed from the June 15 issues shipped in
+// public/newspapers: the Journal page in the panel and the Sun page the
+// player can buy off the newsboy and read.
 export const dayNews = [
   'McKinley sold out to Foraker.',
   'Nothing but gold will do.',
+  'Ultimatum to Hanna: Platt says a gold plank or a fight.',
+  'The majority for gold, though some fear to insert the word.',
+  'Bradley out of the vice-presidential race.',
+  'Fair; warmer; northerly winds.',
 ];
 
 export const dayNewsSource = Object.freeze({
@@ -104,6 +108,47 @@ export const dayNewsSource = Object.freeze({
   date: 'June 15, 1896',
   sourceUrl: 'https://www.loc.gov/item/sn84031792/1896-06-15/ed-1/',
 });
+
+// What a reader of the New York papers would have had in mind this summer
+// beyond the day's convention news. Dated so the panel can say when each
+// thing happened rather than implying all of it is today's news.
+//
+// DRAFT CONTENT: these need Ben's verification before they are settled
+// (docs/decisions.md, historical content).
+export const widerWorld = Object.freeze([
+  Object.freeze({
+    date: 'May 18',
+    text: 'The Supreme Court decides Plessy against Ferguson, upholding separate railway cars for Black passengers, seven to one. Justice Harlan alone dissents.',
+  }),
+  Object.freeze({
+    date: 'Tomorrow',
+    text: 'The Republican national convention opens at St. Louis. McKinley is expected on the first ballot, and the gold plank is the whole fight.',
+  }),
+  Object.freeze({
+    date: 'March 1',
+    text: 'Menelik’s army destroyed an Italian force at Adwa, and Ethiopia remains independent. Terms are still being negotiated.',
+  }),
+  Object.freeze({
+    date: 'May 30',
+    text: 'Some thousands were crushed to death at Khodynka field in Moscow during the coronation festivities of Nicholas II.',
+  }),
+  Object.freeze({
+    date: 'Since February',
+    text: 'General Weyler’s reconcentration policy continues in Cuba, and the papers here print little else about the island.',
+  }),
+  Object.freeze({
+    date: 'This spring',
+    text: 'Röntgen’s X-rays in January and Becquerel’s uranium rays in March. Every hospital in the city wants a tube.',
+  }),
+  Object.freeze({
+    date: 'June 4',
+    text: 'Henry Ford ran a four-wheeled motor of his own building through the streets of Detroit.',
+  }),
+  Object.freeze({
+    date: 'Today',
+    text: 'A great sea wave has struck the Sanriku coast of Japan. No cable has reached New York yet; the scale of it will be known within the week.',
+  }),
+]);
 
 // Letter verbs, placeholders like the pocket verbs above. Learn is the hook
 // for the educational layer: the primary source and a historical note.

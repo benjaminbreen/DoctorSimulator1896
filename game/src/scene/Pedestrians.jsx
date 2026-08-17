@@ -25,6 +25,8 @@ import {
   quirkCooldown,
   rollWalkerQuirk,
 } from '../world/crowdQuirks.js';
+import { overhearBenchTalk, overhearQuirk } from '../world/overheard.js';
+import { raiseBumpProtest } from '../world/outcry.js';
 import { clearActorImpacts, queueActorImpact, takeActorImpacts } from '../world/actorImpacts.js';
 import {
   CONFRONT_PHASE,
@@ -103,6 +105,8 @@ const POSE_PADDING = 1.7;
 const BUMP_DISTANCE = 0.85;
 const BUMP_RELEASE_DISTANCE = 1.15;
 const BUMP_COOLDOWN = 4;
+// Seconds between looks for a pair of sitters worth overhearing.
+const OVERHEARD_CHECK = 3;
 // A near miss: the vehicle's own radius plus an arm's length, and fast enough
 // that it reads as being swept past rather than idling by.
 const NEAR_MISS_MARGIN = 1.1;
@@ -786,6 +790,18 @@ export default function Pedestrians({ runtime }) {
       }
     }
     const crowd = crowdRef.current;
+    // Two people sharing a bench near the player are talking about something
+    // they both know. Checked on its own slow beat, not per walker.
+    if (t >= (crowd.nextOverheardAt ?? 0)) {
+      crowd.nextOverheardAt = t + OVERHEARD_CHECK;
+      const listener = gameDebug.player.position;
+      overhearBenchTalk({
+        playerX: listener[0],
+        playerZ: listener[2],
+        hour: values.timeOfDay,
+        seed: Math.floor(civilSeconds / 30),
+      });
+    }
     const vehicleAgents = scratchVehicles;
     vehicleAgents.length = 0;
     for (const agent of listAgents()) {
@@ -988,6 +1004,15 @@ export default function Pedestrians({ runtime }) {
           entry.reaction = next;
           entry.cooldownUntil = t + BUMP_COOLDOWN;
           playReactionPhase(entry);
+          // Walked into hard enough to stagger somebody: they say so. Only
+          // the player earns a word; the crowd clipping shoulders does not.
+          if (impact.cause === 'player-body') {
+            raiseBumpProtest({
+              speaker: entry.dialogueProfile?.dialogueName,
+              anchorId: entry.id,
+              seed: Math.round(t),
+            });
+          }
         }
       }
 
@@ -1332,6 +1357,17 @@ export default function Pedestrians({ runtime }) {
             if (action.kind.startsWith('gallant')) playAmbient(walker, 'QuickFormalBow', t);
             if (action.partner) {
               const partner = walkers.find((other) => other.id === action.partner.id);
+              // Close enough and the player catches the answer he gets.
+              overhearQuirk({
+                kind: action.kind,
+                selfName: walker.dialogueProfile?.dialogueName,
+                partnerName: partner?.dialogueProfile?.dialogueName,
+                x: step.x,
+                z: step.z,
+                playerX: playerPos[0],
+                playerZ: playerPos[2],
+                seed: assignment.seed + Math.floor(civilSeconds / 60),
+              });
               if (partner?.quirkState) {
                 Object.assign(partner.quirkState, {
                   kind: action.partner.kind,

@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react
 import { Analytics } from '@vercel/analytics/react';
 import GameCanvas from './scene/GameCanvas.jsx';
 import Toasts from './hud/Toasts.jsx';
+import NewspaperReader from './hud/NewspaperReader.jsx';
 import InstrumentPanel from './hud/InstrumentPanel.jsx';
 import DebugHud from './hud/DebugHud.jsx';
 import GameHud from './hud/GameHud.jsx';
@@ -335,6 +336,9 @@ export default function App() {
             {/* Above everything, instrument mode included: the thing most
                 worth saying is that the machine has just hurt you. */}
             <Toasts />
+            {/* Held up in front of the face: above the toasts, and outside
+                the HUD layer, which does not take clicks. */}
+            <NewspaperReader />
             {tuningOpen && !usingInstrument && (
               <Suspense fallback={null}>
                 <ShotBar runtime={runtime} />

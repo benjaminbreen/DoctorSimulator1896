@@ -35,6 +35,38 @@ export const GOODS = Object.freeze({
       Object.freeze({ id: 'throw', label: 'Throw the cabbage' }),
     ]),
   }),
+  newspaper: Object.freeze({
+    id: 'newspaper',
+    label: 'a copy of The Sun',
+    short: 'The Sun',
+    icon: 'newspaper',
+    color: '#cfc4a6',
+    throwable: 'newspaper',
+    verbs: Object.freeze([
+      // `keep` because reading a paper does not use it up, and `reads` names
+      // the edition the reader opens (world/newspapers.js).
+      Object.freeze({
+        id: 'read', label: 'Read the paper', keep: true, reads: 'sun-1896-06-15',
+      }),
+      Object.freeze({ id: 'throw', label: 'Throw the paper' }),
+    ]),
+  }),
+  journal: Object.freeze({
+    id: 'journal',
+    label: 'a copy of The Journal',
+    short: 'The Journal',
+    icon: 'newspaper',
+    color: '#cfc4a6',
+    // Its own throwable type, or a Journal taken off the stack would come up
+    // in hand as a Sun: the hand slot is keyed by throwable, not by good.
+    throwable: 'journal',
+    verbs: Object.freeze([
+      Object.freeze({
+        id: 'read', label: 'Read the paper', keep: true, reads: 'journal-1896-06-15',
+      }),
+      Object.freeze({ id: 'throw', label: 'Throw the paper' }),
+    ]),
+  }),
   herring: Object.freeze({
     id: 'herring',
     label: 'a smoked herring',

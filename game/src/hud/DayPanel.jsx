@@ -6,7 +6,7 @@
 //
 import { useState } from 'react';
 import {
-  weekdayName, monthName, dayNews, dayNewsSource,
+  weekdayName, monthName, dayNews, dayNewsSource, widerWorld,
 } from './hudState.js';
 import { notice } from '../world/notices.js';
 import { recover, restEffect } from '../world/player.js';
@@ -117,17 +117,33 @@ export default function DayPanel({ open, onClose, runtime, worldClock, day }) {
           <div className="ghud-day-main">
             <h3 className="ghud-day-date">{dateLine}</h3>
             <img className="ghud-pt-name-rule" src="/ui/rule-fine.png" alt="" draggable={false} />
-            <ul className="ghud-day-news">
-              {dayNews.map((item) => (
-                <li key={item.slice(0, 24)}>
-                  <QuatrefoilIcon />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-            <p className="ghud-day-source">
-              Front page of <a href={dayNewsSource.sourceUrl} target="_blank" rel="noreferrer">{dayNewsSource.publication}</a>, {dayNewsSource.date}. Library of Congress.
-            </p>
+            <div className="ghud-day-columns">
+              <section className="ghud-day-column">
+                <h4 className="ghud-day-column-head">Today’s Headlines</h4>
+                <ul className="ghud-day-news">
+                  {dayNews.map((item) => (
+                    <li key={item.slice(0, 24)}>
+                      <QuatrefoilIcon />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="ghud-day-source">
+                  Front page of <a href={dayNewsSource.sourceUrl} target="_blank" rel="noreferrer">{dayNewsSource.publication}</a>, {dayNewsSource.date}. Library of Congress.
+                </p>
+              </section>
+              <section className="ghud-day-column">
+                <h4 className="ghud-day-column-head">The Wider World</h4>
+                <ul className="ghud-day-news ghud-day-news--wider">
+                  {widerWorld.map((item) => (
+                    <li key={item.text.slice(0, 24)}>
+                      <QuatrefoilIcon />
+                      <span><em>{item.date}.</em> {item.text}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            </div>
           </div>
 
           <div className="ghud-day-box ghud-day-box--travel">

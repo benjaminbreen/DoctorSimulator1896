@@ -20,6 +20,26 @@ function AppleVisual({ definition, castShadow }) {
   );
 }
 
+// A paper folded once: two leaves at a slight angle, with a grey printed
+// face so it reads as newsprint rather than a plank.
+function NewspaperVisual({ definition, castShadow }) {
+  return (
+    <group scale={definition.visualScale}>
+      {[-0.035, 0.035].map((offset, index) => (
+        <mesh
+          key={index}
+          position={[0, offset, 0]}
+          rotation={[0, 0, index === 0 ? 0.06 : -0.06]}
+          castShadow={castShadow}
+        >
+          <boxGeometry args={[0.3, 0.012, 0.22]} />
+          <meshStandardMaterial color={index === 0 ? '#b9ad8e' : definition.color} roughness={0.94} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
 export default function ThrowableVisual({ type, castShadow = true }) {
   const definition = throwableDefinition(type);
   if (!definition) return null;
@@ -31,6 +51,7 @@ export default function ThrowableVisual({ type, castShadow = true }) {
     );
   }
   if (definition.visual === 'apple') return <AppleVisual definition={definition} castShadow={castShadow} />;
+  if (definition.visual === 'newspaper') return <NewspaperVisual definition={definition} castShadow={castShadow} />;
   // A new round object can use the system without a scene component. Distinct
   // silhouettes can add another visual case when their art is ready.
   return (

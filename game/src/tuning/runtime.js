@@ -39,6 +39,10 @@ const MIGRATIONS = {
   4: (values) => {
     if (values.runSpeed === 12.9) values.runSpeed = 8;
   },
+  // Taller lawn tufts. The count is unchanged; each clump is bigger.
+  5: (values) => {
+    if (values.tuftSize === 1) values.tuftSize = 2;
+  },
 };
 
 export function migrateStoredTuning(stored, schema) {

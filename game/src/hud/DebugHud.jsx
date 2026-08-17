@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { gameDebug } from '../debug.js';
 import { getThrowablePlay } from '../world/throwablePlay.js';
 import { throwableDefinition } from '../world/throwables.js';
+import { goodOfThrowable, handVerb } from '../world/goods.js';
 
 // Corner readout and travel prompt, refreshed on an interval, never per frame.
 // The prompt remains game-facing; the stats block follows the tuning panel.
@@ -47,8 +48,10 @@ export default function DebugHud({ showStats = false }) {
   if (!snapshot) return null;
   const throwPlay = getThrowablePlay();
   const throwLabel = throwableDefinition(throwPlay.heldType)?.label.toLowerCase() ?? 'object';
+  // Not everything carried is for throwing: E runs the good's first verb.
+  const heldVerb = handVerb(goodOfThrowable(throwPlay.heldType)?.id);
   const contextualPrompt = throwPlay.phase === 'held'
-    ? `Throw ${throwLabel}`
+    ? (heldVerb && heldVerb.id !== 'throw' ? heldVerb.label : `Throw ${throwLabel}`)
     : throwPlay.phase === 'empty'
       ? snapshot.prompt
       : null;
