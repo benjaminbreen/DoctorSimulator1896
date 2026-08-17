@@ -7,6 +7,7 @@ import { moonState } from '../world/moon.js';
 import { environmentPalette } from '../world/skyPalette.js';
 import { gameDebug } from '../debug.js';
 import { windUniforms } from './foliageWind.js';
+import { cullSubTexelShadowCasters } from './shadowCulling.js';
 
 // Darwin's outdoor palette: sun and sky ramps keyed off solar altitude.
 const SUN_NIGHT = new THREE.Color('#41618f');
@@ -37,6 +38,7 @@ export default function SkyRig({
   const hemisphereRef = useRef();
   const shadowExtentRef = useRef(0);
   const shadowFrameRef = useRef(0);
+  const nextShadowCullAt = useRef(0);
   // The sun's map covers 50m against an interior light's few metres, so it
   // needs the extra rank to resolve thin casters. A bench is slats and iron
   // bars: below about 3cm per texel it writes nothing and casts no shadow.
@@ -125,7 +127,7 @@ void main() {`,
     };
   }, [gl]);
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     shadowFrameRef.current += 1;
     if (shadowFrameRef.current % SHADOW_UPDATE_INTERVAL === 0) {
       gl.shadowMap.needsUpdate = true;
@@ -182,6 +184,12 @@ void main() {`,
         camera.updateProjectionMatrix();
       }
       const texel = (shadowExtent * 2) / shadowMapSize;
+      // Zone stages keep arriving after boot, so this re-checks on a slow beat
+      // rather than once. Objects already decided cost only a bounds compare.
+      if (state.clock.elapsedTime >= nextShadowCullAt.current) {
+        nextShadowCullAt.current = state.clock.elapsedTime + 1;
+        gameDebug.stats.shadowCulled = cullSubTexelShadowCasters(state.scene, texel);
+      }
       const anchorX = Math.round(player[0] / texel) * texel;
       const anchorZ = Math.round(player[2] / texel) * texel;
       const daylightStrength = config.sun.intensity * values.sunIntensity * daylight;

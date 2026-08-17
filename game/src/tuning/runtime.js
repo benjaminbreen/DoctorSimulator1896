@@ -9,23 +9,46 @@ import indoorPreset from './presets/indoor.json' with { type: 'json' };
 const STORAGE_KEY = 'ghosts-game.tuning.v1';
 const storage = typeof localStorage === 'undefined' ? null : localStorage;
 
-// Version 2 changes only ambient-fauna defaults. Preserve every authored or
-// imported setting, replacing values that still equal the old defaults.
+// One step per schema version, applied in order. Each preserves every authored
+// or imported setting and rewrites only values that still equal the previous
+// default: a slider Ben has already moved is a decision, not a stale default.
+const MIGRATIONS = {
+  // Ambient fauna.
+  2: (values) => {
+    const replacements = {
+      pigeonSize: [1.5, 1.3],
+      pigeonSpeed: [1, 0.7],
+      pigeonAltitude: [-3, -0.5],
+      pigeonContinuous: [false, true],
+      beeSpread: [1, 1.5],
+    };
+    for (const [id, [before, after]] of Object.entries(replacements)) {
+      if (values[id] === before) values[id] = after;
+    }
+    if (values.beeSize === 1.4 || values.beeSize === 0.5) values.beeSize = 0.4;
+  },
+  // Half-size shadow maps for framerate, and a slightly warmer, richer grade.
+  // Contrast stays at 1. A key absent here was never stored, so it simply
+  // picks up the new schema default.
+  3: (values) => {
+    if (values.shadowMapSize === '2048') values.shadowMapSize = '1024';
+    if (values.gradeWarmth === 1) values.gradeWarmth = 1.2;
+    if (values.saturation === 1) values.saturation = 1.08;
+  },
+  // A slower run. Indoors it is refused outright, in PlayerRig.
+  4: (values) => {
+    if (values.runSpeed === 12.9) values.runSpeed = 8;
+  },
+};
+
 export function migrateStoredTuning(stored, schema) {
-  if (schema.version !== 2 || stored?.schemaVersion !== 1 || !stored.values) return stored;
+  if (!stored?.values || typeof stored.schemaVersion !== 'number') return stored;
+  if (stored.schemaVersion >= schema.version) return stored;
   const values = { ...stored.values };
-  const oldDefaults = {
-    pigeonSize: [1.5, 1.3],
-    pigeonSpeed: [1, 0.7],
-    pigeonAltitude: [-3, -0.5],
-    pigeonContinuous: [false, true],
-    beeSpread: [1, 1.5],
-  };
-  for (const [id, [before, after]] of Object.entries(oldDefaults)) {
-    if (values[id] === before) values[id] = after;
+  for (let version = stored.schemaVersion + 1; version <= schema.version; version += 1) {
+    MIGRATIONS[version]?.(values);
   }
-  if (values.beeSize === 1.4 || values.beeSize === 0.5) values.beeSize = 0.4;
-  return { ...stored, schemaVersion: 2, values };
+  return { ...stored, schemaVersion: schema.version, values };
 }
 
 function coerce(definition, value) {

@@ -15,9 +15,9 @@ import {
   currentPedestrianCast,
   PEDESTRIAN_ARCHETYPES,
 } from '../world/pedestrianCatalog.js';
+import { figureHeight } from '../world/figureHeights.js';
 
 const MANIFEST_PATH = '/models/characters/renderer-c-cohorts.json';
-const NPC_SCALE = 1.62;
 const GRID_COLUMNS = 4;
 const CELL_WIDTH = 2.2;
 const CELL_HEIGHT = 2.55;
@@ -139,7 +139,7 @@ function PedestrianFigure({ entry, animation, paused = false }) {
 
   return (
     <group ref={stageRef}>
-      <group scale={NPC_SCALE}>
+      <group scale={figureHeight(archetype.id)}>
         <primitive object={actor.root} />
       </group>
       {actor.stroller ? <primitive object={actor.stroller.group} /> : null}

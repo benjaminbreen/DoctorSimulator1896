@@ -160,6 +160,55 @@ function money(cents) {
   return `$${((Number(cents) || 0) / 100).toFixed(2)}`;
 }
 
+// The patient holds an opinion, not a score. The number stays in the aria
+// label and the dev panel.
+function satisfactionVerdict(value) {
+  if (value >= 8.5) return 'Went away grateful';
+  if (value >= 7) return 'Went away satisfied';
+  if (value >= 5.5) return 'Content enough';
+  if (value >= 4.5) return 'Guarded';
+  if (value >= 3) return 'Unconvinced';
+  return 'Left ill-used';
+}
+
+function usePrefersReducedMotion() {
+  const [reduced, setReduced] = useState(
+    () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches,
+  );
+  useEffect(() => {
+    if (typeof matchMedia !== 'function') return undefined;
+    const query = matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => setReduced(query.matches);
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
+  return reduced;
+}
+
+// The fee is the payoff of the visit, so it counts up as its row arrives
+// rather than sitting there pre-decided.
+function useCountUp(target, delayMs, durationMs = 640) {
+  const reduced = usePrefersReducedMotion();
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    if (reduced) {
+      setValue(target);
+      return undefined;
+    }
+    let raf = 0;
+    let start = 0;
+    const step = (now) => {
+      if (!start) start = now;
+      const t = Math.min(1, Math.max(0, (now - start - delayMs) / durationMs));
+      setValue(target * (1 - (1 - t) ** 3));
+      if (t < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target, delayMs, durationMs, reduced]);
+  return value;
+}
+
 function ResultModal({
   result,
   patientLabel,
@@ -169,12 +218,50 @@ function ResultModal({
   onWaitingRoom,
   onStreet,
 }) {
-  if (!result) return null;
-  const immediate = result.immediate || {};
-  const summary = result.summary || {};
+  const immediate = result?.immediate || {};
+  const summary = result?.summary || {};
   const satisfaction = Math.max(0, Math.min(10, immediate.satisfactionOutOfTen ?? (immediate.satisfaction || 0) / 10));
   const satisfactionBand = satisfaction >= 7 ? 'high' : satisfaction >= 4.5 ? 'mid' : 'low';
-  const month = result.oneMonth || {};
+  const month = result?.oneMonth || {};
+  const fee = useCountUp(Number(immediate.paymentCents) || 0, 420);
+  // The month report is a look ahead, so it costs a deliberate click rather
+  // than sitting in the header as an equal tab. A real time gate belongs at
+  // end of run, once the game advances a month.
+  const [seal, setSeal] = useState('sealed');
+  const primaryRef = useRef(null);
+  const breakTimer = useRef(null);
+
+  const openMonth = () => {
+    if (seal === 'open') return setView('month');
+    if (seal === 'breaking') return undefined;
+    setSeal('breaking');
+    breakTimer.current = setTimeout(() => {
+      setSeal('open');
+      setView('month');
+    }, 380);
+    return undefined;
+  };
+  useEffect(() => () => clearTimeout(breakTimer.current), []);
+
+  useEffect(() => {
+    primaryRef.current?.focus({ preventScroll: true });
+  }, []);
+
+  useEffect(() => {
+    const onKey = (event) => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      // Enter on a focused button is that button's own business.
+      if (event.key === 'Enter' && event.target?.tagName === 'BUTTON') return;
+      const exit = { 1: onNextPatient, 2: onWaitingRoom, 3: onStreet, Enter: onNextPatient }[event.key];
+      if (!exit) return;
+      event.preventDefault();
+      exit();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onNextPatient, onWaitingRoom, onStreet]);
+
+  if (!result) return null;
   const outcomeLabel = {
     improved: 'Improved',
     'little-change': 'Little change',
@@ -192,63 +279,80 @@ function ResultModal({
             <button type="button" role="tab" aria-selected={view === 'immediate'} className={view === 'immediate' ? 'is-active' : ''} onClick={() => setView('immediate')}>
               Patient reaction
             </button>
-            <button type="button" role="tab" aria-selected={view === 'month'} className={view === 'month' ? 'is-active' : ''} onClick={() => setView('month')}>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={view === 'month'}
+              className={`${view === 'month' ? 'is-active' : ''} ${seal === 'open' ? '' : `is-sealed is-${seal}`}`}
+              title={seal === 'open' ? undefined : 'Sealed. Opening it reads a month ahead.'}
+              onClick={openMonth}
+            >
+              {seal === 'open' ? null : <i className="gcon-seal" aria-hidden="true" />}
               One month later
             </button>
           </div>
         </header>
         <Ornament />
-        {view === 'immediate' ? (
-          <>
-            <blockquote className="gcon-result-departure">{immediate.departureLine}</blockquote>
-            <p className="gcon-result-narrative">{immediate.narrative}</p>
-            <div className="gcon-result-payment">
-              <span>Fee received</span>
-              <strong>{money(immediate.paymentCents)}</strong>
-              <small>{immediate.paymentLabel}</small>
-            </div>
-            <div className="gcon-result-satisfaction">
-              <div><span>Patient satisfaction</span><strong>{satisfaction.toFixed(1)} / 10</strong></div>
-              <div className={`gcon-result-bar is-${satisfactionBand}`} aria-label={`Patient satisfaction ${satisfaction.toFixed(1)} out of 10`}>
-                <i style={{ width: `${satisfaction * 10}%` }} />
+        <div className="gcon-result-body">
+          {view === 'immediate' ? (
+            <div className="gcon-reveal" key="immediate">
+              <blockquote className="gcon-result-departure" style={{ '--step': 0 }}>{immediate.departureLine}</blockquote>
+              <p className="gcon-result-narrative" style={{ '--step': 1 }}>{immediate.narrative}</p>
+              <div className="gcon-result-payment" style={{ '--step': 2 }}>
+                <span>Fee received</span>
+                <strong>{money(fee)}</strong>
+                <small>{immediate.paymentLabel}</small>
+              </div>
+              <div className="gcon-result-satisfaction" style={{ '--step': 3 }}>
+                <div className="gcon-result-verdict">
+                  <span>How the visit was received</span>
+                  <strong>{satisfactionVerdict(satisfaction)}</strong>
+                </div>
+                <div
+                  className={`gcon-result-bar is-${satisfactionBand}`}
+                  role="img"
+                  aria-label={`Patient satisfaction ${satisfaction.toFixed(1)} out of 10`}
+                >
+                  <i style={{ width: `${satisfaction * 10}%` }} />
+                </div>
+              </div>
+              <div className="gcon-result-stats" style={{ '--step': 4 }}>
+                <div><strong>{summary.questionsAsked ?? 0}</strong><span>Questions asked</span></div>
+                <div><strong>{summary.examinationsPerformed ?? 0}</strong><span>Examinations</span></div>
+                <div><strong>{summary.minutesUsed ?? 0}</strong><span>Minutes used</span></div>
+              </div>
+              <div className="gcon-result-feedback" style={{ '--step': 5 }}>
+                {result.feedback?.strengths?.[0] && <p><strong>To your credit</strong>{result.feedback.strengths[0]}</p>}
+                {result.feedback?.improvements?.[0] && <p><strong>What was wanting</strong>{result.feedback.improvements[0]}</p>}
               </div>
             </div>
-            <div className="gcon-result-stats">
-              <div><strong>{summary.questionsAsked ?? 0}</strong><span>Questions asked</span></div>
-              <div><strong>{summary.examinationsPerformed ?? 0}</strong><span>Examinations</span></div>
-              <div><strong>{summary.minutesUsed ?? 0}</strong><span>Minutes used</span></div>
+          ) : (
+            <div className="gcon-reveal" key="month">
+              <div className={`gcon-outcome-stamp is-${month.band || 'neutral'}`} style={{ '--step': 0 }}>{outcomeLabel}</div>
+              <p className="gcon-result-narrative" style={{ '--step': 1 }}>{month.narrative}</p>
+              <div className="gcon-result-stats" style={{ '--step': 2 }}>
+                <div className={metricClass(month.healthChange || 0)}><strong>{signed(month.healthChange || 0)}</strong><span>Health</span></div>
+                <div className={metricClass(month.functionChange || 0)}><strong>{signed(month.functionChange || 0)}</strong><span>Daily function</span></div>
+                <div className="is-reasoning"><strong>{result.scores?.diagnosis ?? 5}<small>/10</small></strong><span>Reasoning</span></div>
+              </div>
+              <div className="gcon-result-reading" style={{ '--step': 3 }}>
+                <details className="gcon-debrief"><summary>Modern debrief</summary><p>{result.modernDebrief}</p></details>
+                <details className="gcon-debrief"><summary>Letter from William James</summary><p>{result.james?.letter}</p><small>{result.james?.disclaimer}</small></details>
+              </div>
             </div>
-            <div className="gcon-result-feedback">
-              {result.feedback?.strengths?.[0] && <p><strong>Well done</strong>{result.feedback.strengths[0]}</p>}
-              {result.feedback?.improvements?.[0] && <p><strong>Consider next time</strong>{result.feedback.improvements[0]}</p>}
-            </div>
-          </>
-        ) : (
-          <>
-            <div className={`gcon-outcome-stamp is-${month.band || 'neutral'}`}>{outcomeLabel}</div>
-            <p className="gcon-result-narrative">{month.narrative}</p>
-            <div className="gcon-result-stats">
-              <div className={metricClass(month.healthChange || 0)}><strong>{signed(month.healthChange || 0)}</strong><span>Health</span></div>
-              <div className={metricClass(month.functionChange || 0)}><strong>{signed(month.functionChange || 0)}</strong><span>Daily function</span></div>
-              <div className="is-reasoning"><strong>{result.scores?.diagnosis ?? 5}<small>/10</small></strong><span>Reasoning</span></div>
-            </div>
-            <div className="gcon-result-reading">
-              <details className="gcon-debrief"><summary>Modern debrief</summary><p>{result.modernDebrief}</p></details>
-              <details className="gcon-debrief"><summary>Letter from William James</summary><p>{result.james?.letter}</p><small>{result.james?.disclaimer}</small></details>
-            </div>
-          </>
-        )}
+          )}
+        </div>
         <footer className="gcon-result-footer">
           <p>Where will you go now?</p>
           <div className="gcon-result-actions">
-            <button type="button" className="is-primary" onClick={onNextPatient}>
-              <strong>Receive next patient</strong><span>Remain in the consulting room</span>
+            <button type="button" className="is-primary" ref={primaryRef} onClick={onNextPatient}>
+              <kbd>1</kbd><strong>Receive next patient</strong><span>Remain in the consulting room</span>
             </button>
             <button type="button" onClick={onWaitingRoom}>
-              <strong>Go to waiting room</strong><span>Leave consultation mode</span>
+              <kbd>2</kbd><strong>Go to waiting room</strong><span>Leave consultation mode</span>
             </button>
             <button type="button" onClick={onStreet}>
-              <strong>Go out to the street</strong><span>Leave the practice</span>
+              <kbd>3</kbd><strong>Go out to the street</strong><span>Leave the practice</span>
             </button>
           </div>
         </footer>

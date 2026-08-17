@@ -15,7 +15,7 @@ const WINDOW_LIMIT = 20;
 
 // DRAFT period-voice guidance: the usage examples below need Ben's review
 // before they are treated as settled (docs/decisions.md, historical content).
-const SYSTEM = `You improvise one reply spoken aloud by a stranger in or beside Central Park, New York.
+const SYSTEM = `You improvise one reply spoken aloud by a stranger in New York City, 1896.
 
 Who you are:
 - The identity block is this person, rolled for this playthrough: name, age, occupation, one detail of circumstance, and a temperament. Inhabit it. If asked your name or business, give it plainly.
@@ -25,8 +25,9 @@ What you know:
 - commonKnowledge (the date, the hour, the place) is always yours to state.
 - whereabouts is truthfully where you are headed or what you are doing.
 - attending, if present, is what is going on in front of you at this moment. It is nearer to you than anything you merely heard about or saw earlier; talk about it first if you talk about anything.
-- bulletin lines are what everyone in the park knows just now. Bring one up when it fits, in your own words.
+- bulletin lines are what everyone out of doors knows just now. Bring one up when it fits, in your own words. Indoors the list is empty, and park news is not on your mind.
 - witnessed lines are things you saw with your own eyes minutes ago. Each states how much it weighed on you and how far off it was — play both honestly. A shaken witness brings it up unasked; an annoyed one grumbles if it comes up; an unmoved one shrugs. Do not describe a distant thing as though it happened at your feet. If it happened to the very person you are speaking with, address it.
+- guests, if present, is the house register: everyone stopping at the hotel today, with their room. It is complete. If a caller asks after a name that is not on it, no such person is staying here — say so plainly, however certain he sounds and whatever room number he gives you. Do not confirm a guest, a room, or a message you were not given. You may say who is in the house if asked; you would not gossip about their business unasked.
 - If you sell goods, the sells list is your stock and its true price. You may hawk it. When the player hands money over, the sale has already happened — take it graciously and hand the thing across; never refuse, re-price, or ask for more.
 - A grievance is something this player did to you personally, and you know it was them. Say so plainly. A theft is a debt: demand payment, and if they have just paid, drop it at once and be gruffly civil again. A pelting is not a debt: no money settles it, and offering some would insult you.
 - Beyond these, invent no public event and no named third person of consequence. Asked about something you cannot know, answer as a real stranger would: a guess, an opinion, a question back, or what you do know instead. A flat "couldn't say" is a last resort.
@@ -61,12 +62,14 @@ function hourPhrase(hour, minute) {
   return `${clock} in the ${period}`;
 }
 
-function commonKnowledge(worldTime) {
+function commonKnowledge(worldTime, where) {
   const t = { year: 1896, month: 6, date: 15, hour: 12, minute: 0, ...worldTime };
   return [
     `The date is ${MONTHS[t.month - 1]} ${t.date}, ${t.year}.`,
     `The hour is ${hourPhrase(t.hour, t.minute)}.`,
-    'This is Central Park in New York City.',
+    // Rebuilt from the speaker's own zone: asserting Central Park to a man in
+    // a hotel lobby made him describe a park he could not see.
+    where ?? 'You are in Central Park, New York City.',
   ];
 }
 
@@ -191,6 +194,26 @@ function sameOrigin(request) {
 // Speakers exist only in the client's simulation. Their deterministic context
 // arrives with the request and rebuilds the identical definition here, so the
 // model still sees only simulation-owned identity and knowledge.
+// Money pressed on somebody unasked, and how their station takes it. The
+// manner is decided by the simulation; the model only plays it.
+const MANNER_PHRASES = {
+  payment: 'You are in trade and money is what you are here for: take it and deal.',
+  tip: 'A gratuity, and a welcome one. Thank him properly, without grovelling.',
+  bribe: 'You are a sworn officer and this looks like a bribe. Warn him off, or make plain what you think of it.',
+  delight: 'You are a child and this is a small fortune. Be delighted.',
+  charity: 'You are not too proud to need it, though taking it costs you something.',
+  affront: 'You are a respectable person, and being handed coin like a beggar is an insult. Say so.',
+  puzzled: 'You have done nothing to earn this and cannot think why he is giving it.',
+};
+
+function validOffer(offer) {
+  if (offer === undefined) return true;
+  return Boolean(offer) && typeof offer.pieceId === 'string' && offer.pieceId.length <= 32
+    && typeof offer.label === 'string' && offer.label.length <= 48
+    && (offer.refused === undefined || typeof offer.refused === 'boolean')
+    && Number.isFinite(offer.cents) && offer.cents >= 0 && offer.cents <= 100000;
+}
+
 const GRIEVANCE_KINDS = new Set(['theft', 'pelted']);
 
 function validGrievance(g) {
@@ -198,6 +221,17 @@ function validGrievance(g) {
   return Boolean(g) && GRIEVANCE_KINDS.has(g.kind)
     && Number.isFinite(g.count) && g.count >= 0 && g.count <= 999
     && Number.isFinite(g.minutesAgo) && g.minutesAgo >= 0 && g.minutesAgo <= 600;
+}
+
+// The house register. Bounded like the goods list and, like it, rebuilt from
+// the simulation's own roll rather than trusted from the wire.
+function validGuests(list) {
+  if (list === undefined) return true;
+  return Array.isArray(list) && list.length <= 8 && list.every((guest) => Boolean(guest)
+    && typeof guest.name === 'string' && guest.name.length <= 48
+    && Number.isFinite(guest.room) && guest.room >= 100 && guest.room <= 999
+    && (guest.business === undefined
+      || (typeof guest.business === 'string' && guest.business.length <= 96)));
 }
 
 // Goods are echoed back to the model, so they are re-derived from the
@@ -216,13 +250,16 @@ function validCrowdContext(context) {
     && typeof context.role === 'string' && context.role.length <= 32
     && typeof context.activity === 'string' && context.activity.length <= 32
     && Number.isFinite(context.hour) && context.hour >= 0 && context.hour < 24
+    && (context.place === undefined || (typeof context.place === 'string' && context.place.length <= 48))
     && Number.isFinite(context.identitySeed)
     && (context.age === undefined || Number.isFinite(context.age))
     && (context.attending === undefined
       || Object.hasOwn(ATTENDING_SENTENCES, context.attending))
     && validWitnessed(context.witnessed)
     && validGrievance(context.grievance)
-    && validSells(context.sells);
+    && validOffer(context.moneyOffer)
+    && validSells(context.sells)
+    && validGuests(context.guests);
 }
 
 function validPayload(body) {
@@ -316,12 +353,21 @@ export async function POST(request) {
             currentlyDoing: npc.role,
           },
           whereabouts: npc.whereabouts,
-          commonKnowledge: commonKnowledge(payload.worldTime),
+          commonKnowledge: commonKnowledge(payload.worldTime, npc.where),
           bulletin: npc.bulletin,
           ...(npc.attending ? { attending: ATTENDING_SENTENCES[npc.attending] } : {}),
           witnessed: npc.witnessed.map(witnessSentence),
           ...(npc.sells.length > 0 ? {
             sells: npc.sells.map((good) => `${good.label}, price ${good.priceCents} cent${good.priceCents === 1 ? '' : 's'}`),
+          } : {}),
+          ...(npc.guests?.length > 0 ? {
+            guests: npc.guests.map((guest) => `${guest.name}, room ${guest.room}${guest.business ? `, ${guest.business}` : ''}`),
+          } : {}),
+          ...(npc.moneyOffer ? {
+            moneyOffer: npc.moneyOffer.refused
+              ? `He has just tried to press ${npc.moneyOffer.label} on you, worth ${npc.moneyOffer.cents} cent${npc.moneyOffer.cents === 1 ? '' : 's'}. You are giving it straight back.`
+              : `He has just handed you ${npc.moneyOffer.label}, worth ${npc.moneyOffer.cents} cent${npc.moneyOffer.cents === 1 ? '' : 's'}. It is yours now.`,
+            moneyManner: MANNER_PHRASES[npc.moneyManner] ?? MANNER_PHRASES.puzzled,
           } : {}),
           ...(npc.grievance ? { grievance: grievanceSentence(npc.grievance) } : {}),
           playerText: payload.playerText.trim(),

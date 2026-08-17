@@ -20,8 +20,10 @@ import {
   horseTeamOffsets,
   horseTeamPoses,
   interpolateHorseDrawnState,
+  isNearMiss,
   stepHorseDrawnState,
 } from '../world/horseDrawnTraffic.js';
+import { raiseDriverWarning } from '../world/outcry.js';
 import { removeBoardable, reportBoardable } from '../world/carriageBoarding.js';
 import { crossTrafficObstacles, streetTrafficAdvice, trafficAgentDetails } from '../world/streetTraffic.js';
 import {
@@ -36,6 +38,7 @@ import { gameDebug } from '../debug.js';
 import { queueActorImpact } from '../world/actorImpacts.js';
 import { reportMajorStreetEvent } from '../world/majorStreetEvents.js';
 import { getPlayer } from '../world/player.js';
+import { figureHeight } from '../world/figureHeights.js';
 
 const MAX_FRAME_DT = 0.1;
 const MAX_FIXED_STEPS = 6;
@@ -192,7 +195,7 @@ function makeHorse(source, clip, phase, harnessMaterial) {
 function makeDriver(source, animations, phase) {
   const figure = cloneSkeleton(source);
   figure.name = 'horse-drawn-driver';
-  figure.scale.setScalar(1.6);
+  figure.scale.setScalar(figureHeight('carriage-driver'));
   figure.rotation.x = -Math.PI / 2;
   figure.traverse((node) => {
     if (!node.isMesh && !node.isSkinnedMesh) return;
@@ -472,6 +475,22 @@ export default function HorseDrawnTraffic({ runtime }) {
           horse.mixer.update(frameDt);
         });
         unit.driver.mixer.update(frameDt);
+      }
+
+      // Front-on and a yard off: the driver shouts before it becomes an
+      // impact. One shout per vehicle per pass, not per frame.
+      if (isNearMiss(state, gameDebug.player.position)) {
+        const clock = getPlayer().clock;
+        if (clock >= (unit.nextShoutAt ?? 0)) {
+          unit.nextShoutAt = clock + 12;
+          raiseDriverWarning({
+            x: state.coachX,
+            y: ROAD_Y + 2.4,
+            z: state.coachZ,
+            unitId: unit.id,
+            seed: Math.round(clock),
+          });
+        }
       }
 
       const collider = horseDrawnCollider(unit.type);

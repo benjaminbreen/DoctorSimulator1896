@@ -20,6 +20,8 @@ import StarField from './StarField.jsx';
 import CloudDome from './CloudDome.jsx';
 import Terrain from './Terrain.jsx';
 import PlayerStateStep from './PlayerStateStep.jsx';
+import AnnouncementAnchor from './AnnouncementAnchor.jsx';
+import NpcInspect from './NpcInspect.jsx';
 import PlayerMeterEffects from './PlayerMeterEffects.jsx';
 import WorldClockStep from './WorldClockStep.jsx';
 import { zones, getZone } from '../world/zones.js';
@@ -204,7 +206,25 @@ function FrameSettings({ runtime, look, exposureBase, exterior, pixelRatioCap })
     return () => look.detach();
   }, [gl, look]);
 
+  // three clears info.render at the start of every render() call, and a frame
+  // is many of those: the shadow maps, the scene, then one per post pass. Left
+  // on, whatever samples it last reads the final full-screen quad — which is
+  // why the readout said "1 draws". Take the reset over and do it once a frame
+  // so the counters cover the whole frame, shadows and post included.
+  useEffect(() => {
+    gl.info.autoReset = false;
+    return () => { gl.info.autoReset = true; };
+  }, [gl]);
+
   useFrame((_, delta) => {
+    // Read before the reset: these are the previous frame's completed totals.
+    gameDebug.stats.draws = gl.info.render.calls;
+    gameDebug.stats.triangles = gl.info.render.triangles;
+    gameDebug.stats.programs = gl.info.programs?.length ?? 0;
+    gameDebug.stats.textures = gl.info.memory.textures;
+    gameDebug.stats.geometries = gl.info.memory.geometries;
+    gl.info.reset();
+
     const values = runtime.values;
     // Outdoors the stop follows the sun, so noon and dusk are not graded the
     // same. Interiors are gaslit and keep whatever the zone asked for.
@@ -490,6 +510,8 @@ function SceneContents({
       />
       <PlayerStateStep />
       <PlayerMeterEffects />
+      <AnnouncementAnchor exterior={room.exterior} />
+      <NpcInspect />
       {room.exterior ? (
         <>
           <Suspense fallback={null}>

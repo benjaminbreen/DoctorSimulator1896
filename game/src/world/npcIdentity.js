@@ -232,6 +232,43 @@ const ARCHETYPES = {
       'is meant to be home by supper and knows it',
     ],
   },
+  // Hotel and club service staff. In 1896 these posts on Fifth Avenue were
+  // very largely filled by Black New Yorkers, many living in the Tenderloin
+  // or around West 53rd Street. DRAFT: names and details need Ben's review.
+  hm: {
+    sex: 'female',
+    ages: [19, 48],
+    composure: [0.5, 0.85],
+    quirks: [null, null, 'flower-fancier'],
+    firstNames: ['Hattie', 'Lucinda', 'Ida', 'Pearl', 'Cora', 'Bessie', 'Etta',
+      'Mattie', 'Clara', 'Viola', 'Josephine', 'Estelle'],
+    surnames: ['Freeman', 'Carter', 'Johnson', 'Wells', 'Bailey', 'Dorsey',
+      'Ruggles', 'Lawson', 'Payne', 'Grimes', 'Vance', 'Whitfield'],
+    professions: ['chambermaid at the hotel', 'parlour maid', 'laundress for the house'],
+    details: [
+      'has the public rooms to keep and would rather not be watched doing it',
+      'works from before the guests are up until after they are down',
+      'sends most of her wages to a household further downtown',
+      'is civil to everybody and confides in nobody on duty',
+    ],
+  },
+  bh: {
+    sex: 'male',
+    ages: [17, 34],
+    composure: [0.6, 0.9],
+    quirks: [null, null, 'gallant'],
+    firstNames: ['Willie', 'Sam', 'Nathaniel', 'Clarence', 'Ernest', 'Robert',
+      'Alonzo', 'Percy', 'Otis', 'Leroy', 'Wesley', 'Julius'],
+    surnames: ['Freeman', 'Carter', 'Johnson', 'Wells', 'Bailey', 'Dorsey',
+      'Ruggles', 'Lawson', 'Payne', 'Grimes', 'Vance', 'Whitfield'],
+    professions: ['bellhop at the hotel', 'hall boy', 'porter at the front desk'],
+    details: [
+      'carries bags all day and knows every guest by their luggage',
+      'is saving toward something he does not discuss with guests',
+      'hears a great deal in the lobby and repeats almost none of it',
+      'is quick on his feet and quicker at reading what a man wants',
+    ],
+  },
   // A pushcart vendor working the streets by the park. The name pools follow
   // the trade as it actually was in 1896 New York.
   v: {

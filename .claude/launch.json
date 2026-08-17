@@ -8,7 +8,9 @@
         "--prefix",
         "game",
         "exec",
-        "vite"
+        "vite",
+        "--",
+        "game"
       ],
       "port": 5175,
       "autoPort": true

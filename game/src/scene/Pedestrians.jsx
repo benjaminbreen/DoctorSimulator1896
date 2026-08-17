@@ -65,6 +65,7 @@ import {
 } from '../world/crowdScheduler.js';
 import { createCrowdAgentState, samplePolyline, stepCrowdAgent } from '../world/crowdAgent.js';
 import { buildPeriodStroller } from './strollerModel.js';
+import { figureHeight } from '../world/figureHeights.js';
 import { normalizeNonmetallicCharacterMaterial } from './characterMaterials.js';
 import { fadeInAction, restoreLoopingIdle } from './characterGestures.js';
 import {
@@ -93,8 +94,8 @@ const WALK_SPEED = 1.35;
 // hold pose until approached again.
 const ANIM_NEAR = 25;
 const ANIM_FREEZE = 60;
-// The Mixamo rigs stand about 1.08 m; scale to street height.
-const NPC_SCALE = 1.62;
+// Bind-pose spheres are computed before a clip moves the limbs, so they are
+// padded to cover the reach of any pose.
 const POSE_PADDING = 1.7;
 
 // Bumping into a figure: kinematic capsules make them solid, and standers
@@ -352,6 +353,8 @@ export default function Pedestrians({ runtime }) {
   const nursemaidGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.n.modelPath, withMeshopt);
   const lilacGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.l.modelPath, withMeshopt);
   const rationalGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.r.modelPath, withMeshopt);
+  const maidGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.hm.modelPath, withMeshopt);
+  const bellhopGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.bh.modelPath, withMeshopt);
   const strawhatMotionGltf = useLoader(GLTFLoader, PEDESTRIAN_STRAWHAT_MOTION_FILE, withMeshopt);
   const standupGltf = useLoader(GLTFLoader, PEDESTRIAN_STANDUP_FILE, withMeshopt);
   const manClipGltfs = useLoader(GLTFLoader, MAN_CLIP_FILES, withMeshopt);
@@ -424,6 +427,22 @@ export default function Pedestrians({ runtime }) {
           ...strawhatMotionGltf.animations,
         ]),
       },
+      // Hotel service staff, off duty or on an errand through the park. Both
+      // carry only an idle; the shared pack supplies the walk and gestures.
+      hm: {
+        source: maidGltf.scene,
+        clips: compatibleClips(maidGltf.scene, [
+          ...maidGltf.animations,
+          ...strawhatMotionGltf.animations,
+        ]),
+      },
+      bh: {
+        source: bellhopGltf.scene,
+        clips: compatibleClips(bellhopGltf.scene, [
+          ...bellhopGltf.animations,
+          ...strawhatMotionGltf.animations,
+        ]),
+      },
       // Her own rig carries only an idle; everything she does comes from the
       // shared strawhat pack, including the perambulator clips.
       n: {
@@ -455,7 +474,10 @@ export default function Pedestrians({ runtime }) {
     const spawn = (index, spec, clipName = spec.clip) => {
       const { who } = spec;
       const figure = cloneSkeleton(cast[who].source);
-      figure.scale.setScalar(NPC_SCALE * (0.95 + hash01(index * 3.7) * 0.1));
+      // Height varies by ±5% within an archetype so a crowd is not one man
+      // repeated at one size.
+      const height = figureHeight(PEDESTRIAN_ARCHETYPES[who].id);
+      figure.scale.setScalar(height * (0.95 + hash01(index * 3.7) * 0.1));
       const meshes = [];
       figure.traverse((node) => {
         if (!node.isMesh && !node.isSkinnedMesh) return;
@@ -715,7 +737,7 @@ export default function Pedestrians({ runtime }) {
     });
 
     return { group: root, walkers: walking, figures: all, crowdGraph: graph };
-  }, [manGltf, womanGltf, dressGltf, somberGltf, fortiesGltf, strawhatGltf, nursemaidGltf, lilacGltf, rationalGltf, strawhatMotionGltf, standupGltf, manClipGltfs, womanClipGltfs, reactGltf]);
+  }, [manGltf, womanGltf, dressGltf, somberGltf, fortiesGltf, strawhatGltf, nursemaidGltf, lilacGltf, rationalGltf, maidGltf, bellhopGltf, strawhatMotionGltf, standupGltf, manClipGltfs, womanClipGltfs, reactGltf]);
 
   // Crowd scheduling state survives re-renders but resets on a new game day.
   const crowdRef = useRef(null);
@@ -845,6 +867,7 @@ export default function Pedestrians({ runtime }) {
         entry.agentContext ??= { ...profile.dialogueContext };
         const context = entry.agentContext;
         context.hour = values.timeOfDay;
+        context.place = values.zone;
         context.activity = entry.crowdActivity ?? profile.dialogueContext.activity;
         context.role = entry.crowdRole ?? profile.dialogueContext.role;
         context.seed = entry.crowdDialogueSeed ?? profile.dialogueContext.seed;

@@ -97,7 +97,7 @@ export const zones = {
     blueprint: foyerBlueprint,
     lighting: foyerLighting,
     extraItems: lobbyItems(foyerBlueprint),
-    features: ['dandies'],
+    features: ['dandies', 'lobby-staff'],
   },
   // The Metropolitan Club's main hall: marble double stair, balcony landing,
   // stained glass, coffered ceiling. Blocked out from photographs of the
@@ -106,7 +106,7 @@ export const zones = {
     blueprint: metClubBlueprint,
     lighting: metClubLighting,
     extraItems: metClubLobbyItems(metClubBlueprint),
-    features: ['dandies', 'street-speaker'],
+    features: ['dandies', 'street-speaker', 'lobby-staff'],
   },
   // The New Netherland Hotel's lobby: a Romanesque palm court with Dutch
   // blue tile, Numidian red marble, and electric light. Composed from the
@@ -115,7 +115,7 @@ export const zones = {
     blueprint: newNetherlandBlueprint,
     lighting: newNetherlandLighting,
     extraItems: newNetherlandLobbyItems(newNetherlandBlueprint),
-    features: ['hotel-doormen', 'dandies'],
+    features: ['hotel-doormen', 'dandies', 'lobby-staff'],
   },
   // Cattell's laboratory. A working room, so the windows take plain shades
   // and nothing else, and the walls are distempered plaster rather than

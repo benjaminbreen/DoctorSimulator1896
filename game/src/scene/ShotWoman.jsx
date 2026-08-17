@@ -6,9 +6,9 @@ import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { gameDebug } from '../debug.js';
 import { PEDESTRIAN_ARCHETYPES } from '../world/pedestrianCatalog.js';
+import { figureHeight } from '../world/figureHeights.js';
 import { normalizeNonmetallicCharacterMaterial } from './characterMaterials.js';
 
-const SCALE = 1.62;
 const STANDING_ARCHETYPES = Object.freeze(['w', 'd', 'f', 'h']);
 const MODEL_PATHS = STANDING_ARCHETYPES.map((id) => PEDESTRIAN_ARCHETYPES[id].modelPath);
 
@@ -25,7 +25,7 @@ export default function ShotWoman() {
   );
   const subjects = useMemo(() => gltfs.map((gltf, index) => {
     const figure = cloneSkeleton(gltf.scene);
-    figure.scale.setScalar(SCALE);
+    figure.scale.setScalar(figureHeight(PEDESTRIAN_ARCHETYPES[STANDING_ARCHETYPES[index]].id));
     figure.visible = false;
     figure.traverse((node) => {
       if (!node.isMesh && !node.isSkinnedMesh) return;

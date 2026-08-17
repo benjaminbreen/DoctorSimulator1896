@@ -8,15 +8,17 @@ import { CapsuleCollider, RigidBody, useRapier } from '@react-three/rapier';
 import { damp, dampAngle } from '../movement/mathUtils.js';
 import { handlesAlive } from '../physics/useCharacterController.js';
 import { gameDebug } from '../debug.js';
-import { listAgents, removeAgent, reportAgent } from '../world/agents.js';
+import { getAgent, listAgents, removeAgent, reportAgent } from '../world/agents.js';
 import { clearActorImpacts, takeActorImpacts } from '../world/actorImpacts.js';
 import {
+  CONFRONT_PHASE,
   confrontationFor,
   provokeConfrontation,
   releaseConfrontation,
   stepConfrontation,
 } from '../world/confrontation.js';
 import { hashString } from '../world/npcIdentity.js';
+import { raiseNightWatch, raisePoliceWhistle } from '../world/outcry.js';
 import {
   latestMajorStreetEventId,
   majorStreetEventsSince,
@@ -42,8 +44,9 @@ import {
 } from '../world/streetPolice.js';
 import { normalizeNonmetallicCharacterMaterial } from './characterMaterials.js';
 import { restoreLoopingIdle } from './characterGestures.js';
+import { figureHeight } from '../world/figureHeights.js';
 
-const NPC_SCALE = 1.62;
+const NPC_SCALE = figureHeight('street-policeman');
 const TRAFFIC_GREETING_COOLDOWN = 15;
 const PEDESTRIAN_GREETING_COOLDOWN = 22;
 const GLOBAL_GESTURE_COOLDOWN = 2.6;
@@ -51,6 +54,14 @@ const PLAYER_BUMP_DISTANCE = 0.86;
 const PLAYER_BUMP_RELEASE = 1.18;
 const PLAYER_BUMP_COOLDOWN = 4.5;
 const TURN_RADIANS = 2.135;
+// He reacts to the hit before he starts walking. About the MildlyAnnoyed clip.
+const FLINCH_SECONDS = 1.2;
+// Long enough for a bystander's cry to have been read before he takes over.
+const WHISTLE_DELAY = 2.6;
+const NIGHT_WATCH_HOUR = 22;
+const DAWN_HOUR = 5;
+const WATCH_RANGE = 11;
+const WATCH_GAP = 90;
 
 function withMeshopt(loader) {
   loader.setMeshoptDecoder(MeshoptDecoder);
@@ -221,6 +232,9 @@ export default function StreetPolice({ runtime }) {
       bumpCooldownUntil: 0,
       lastMajorEventId: latestMajorStreetEventId(),
       majorEventCooldownUntil: 0,
+      whistleEvent: null,
+      whistleAt: 0,
+      nextWatchAt: 0,
     };
     });
   }, [kissGltf, modelGltf, standingGltf]);
@@ -254,18 +268,18 @@ export default function StreetPolice({ runtime }) {
         actor.targetYaw = speechAudience.yaw;
       }
       actor.sidestep = damp(actor.sidestep, sidestepTarget, 3.8, delta);
-      actor.worldX = x;
-      actor.worldZ = z + actor.sidestep;
 
-      // Being pelted takes an officer off his post. He walks over, says his
-      // piece, and afterwards drifts back to the post placement above.
+      // Being pelted takes an officer off his post. He starts, walks over,
+      // says his piece, and afterwards drifts back to the post placement.
       for (const impact of takeActorImpacts(actor.post.id)) {
         if (impact.cause !== 'projectile') continue;
+        playGesture(actor, 'MildlyAnnoyed', now, 4);
         provokeConfrontation(actor.post.id, {
           itemLabel: impact.itemLabel,
           kind: 'policeman',
           name: 'A policeman',
           dialogueId: actor.post.id,
+          startDelay: FLINCH_SECONDS,
           now,
         });
       }
@@ -280,11 +294,19 @@ export default function StreetPolice({ runtime }) {
         })
         : null;
       if (march) {
+        // He keeps last frame's position while marching: resetting to the post
+        // every frame is what left him walking on the spot.
         actor.worldX = march.x;
         actor.worldZ = march.z;
         actor.targetYaw = march.yaw;
-        playConfrontLoop(actor, march.walking ? 'Walk' : 'StandingArguing');
-      } else if (actor.confrontPose) {
+        if (march.phase !== CONFRONT_PHASE.ROUSING) {
+          playConfrontLoop(actor, march.walking ? 'Walk' : 'StandingArguing');
+        }
+      } else {
+        actor.worldX = x;
+        actor.worldZ = z + actor.sidestep;
+      }
+      if (!march && actor.confrontPose) {
         actor.confrontPose = null;
         actor.gestureUntil = 0;
         releaseConfrontation(actor.post.id);
@@ -305,6 +327,7 @@ export default function StreetPolice({ runtime }) {
           role: 'police',
           activity: 'standing',
           hour: runtime.values.timeOfDay,
+          place: runtime.values.zone,
           seed: hashString(actor.post.id),
         },
       });
@@ -344,7 +367,24 @@ export default function StreetPolice({ runtime }) {
         if (event && now >= actor.majorEventCooldownUntil) {
           actor.targetYaw = policeFacingForEvent(event, [actor.worldX, y, actor.worldZ]);
           if (startBumpSequence(actor, now)) actor.majorEventCooldownUntil = now + 8;
+          // He looks first and takes charge after: shouting over the witness
+          // who is still calling for a doctor makes both lines noise.
+          actor.whistleEvent = event;
+          actor.whistleAt = now + WHISTLE_DELAY;
         }
+      }
+      // After hours he moves a lingerer along. Posted officers only: the
+      // speech detail is not there at midnight.
+      const hour = ((runtime.values.timeOfDay % 24) + 24) % 24;
+      if (!isSpeechAudience && (hour >= NIGHT_WATCH_HOUR || hour < DAWN_HOUR)
+        && now >= actor.nextWatchAt
+        && Math.hypot(player[0] - actor.worldX, player[2] - actor.worldZ) <= WATCH_RANGE) {
+        actor.nextWatchAt = now + WATCH_GAP;
+        raiseNightWatch({ anchorId: actor.post.id, seed: Math.round(now) });
+      }
+      if (actor.whistleEvent && now >= actor.whistleAt) {
+        raisePoliceWhistle(actor.whistleEvent, getAgent(actor.post.id));
+        actor.whistleEvent = null;
       }
 
       if (now >= actor.nextGestureAt) {

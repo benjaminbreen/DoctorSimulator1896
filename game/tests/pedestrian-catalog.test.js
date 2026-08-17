@@ -29,7 +29,7 @@ test('the review catalog describes every current game-world pedestrian', () => {
   const cast = currentPedestrianCast();
   assert.equal(cast.length, 23 + CROWD_SLOT_ARCHETYPES.length);
   assert.equal(new Set(cast.map((entry) => entry.id)).size, cast.length);
-  assert.deepEqual(new Set(cast.map((entry) => entry.archetype)), new Set(['m', 'w', 'd', 's', 'f', 'h', 'n', 'l', 'r', 'o', 'p', 'y']));
+  assert.deepEqual(new Set(cast.map((entry) => entry.archetype)), new Set(['m', 'w', 'd', 's', 'f', 'h', 'n', 'l', 'r', 'o', 'p', 'y', 'hm', 'bh']));
   assert.equal(cast.filter((entry) => entry.role === 'Ambient crowd').length, CROWD_SLOT_ARCHETYPES.length);
   assert.equal(cast.find((entry) => entry.id === 'green-bench-strawhat-sitter')?.animation, 'SittingIdle');
   assert.equal(cast.filter((entry) => entry.role === 'Pushing a stroller').length, 2);

@@ -13,6 +13,7 @@ import { gameDebug } from '../debug.js';
 import { getPlayer, harm, pushcartImpactEffect } from '../world/player.js';
 import { removeThrowableSource, reportThrowableSource } from '../world/throwablePlay.js';
 import { recordGrievance } from '../world/grievances.js';
+import { raiseTheftOutcry } from '../world/outcry.js';
 import { ownerOfCart } from '../world/postedNpcs.js';
 import { removeAgent, reportAgent } from '../world/agents.js';
 import ThrowableProjectiles from './ThrowableProjectiles.jsx';
@@ -143,6 +144,9 @@ function Pushcart({ spec }) {
     // An unmanned cart has nobody to mind.
     const owner = ownerOfCart(spec.id);
     if (owner) recordGrievance(owner.id, 'theft');
+    // An officer who can see the cart challenges the taking, owner or no.
+    const position = body.current?.translation?.();
+    if (position) raiseTheftOutcry({ x: position.x, z: position.z, seed: index });
     removeThrowableSource(throwableId(index));
     setTaken((previous) => {
       if (previous.has(index)) return previous;

@@ -1,10 +1,11 @@
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
-import { useLoader } from '@react-three/fiber';
+import { useLoader, useThree } from '@react-three/fiber';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'meshoptimizer';
 import { TREE_MODEL_URLS, TREE_SOURCE_VARIANTS } from '../world/treeModels.js';
 import { applyWind } from './foliageWind.js';
+import { getKTX2Loader } from './ktx2.js';
 import { sharePackTextures } from './packTextures.js';
 
 // How far a canopy top travels, as a fraction of the tree's height. A big elm
@@ -59,7 +60,12 @@ const scratchColor = new THREE.Color();
 const UP = new THREE.Vector3(0, 1, 0);
 
 export default function TreeField({ items }) {
-  const gltfs = useLoader(GLTFLoader, TREE_MODEL_URLS, (loader) => loader.setMeshoptDecoder(MeshoptDecoder));
+  const gl = useThree((state) => state.gl);
+  const configure = useCallback((loader) => {
+    loader.setMeshoptDecoder(MeshoptDecoder);
+    loader.setKTX2Loader(getKTX2Loader(gl));
+  }, [gl]);
+  const gltfs = useLoader(GLTFLoader, TREE_MODEL_URLS, configure);
 
   const meshes = useMemo(() => {
     const models = gltfs.map((gltf) => extractParts(sharePackTextures(gltf)));

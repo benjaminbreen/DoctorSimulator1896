@@ -27,9 +27,10 @@ import {
 } from '../world/sailorBoy.js';
 import { normalizeNonmetallicCharacterMaterial } from './characterMaterials.js';
 import { fadeInAction } from './characterGestures.js';
+import { figureHeight } from '../world/figureHeights.js';
 
 const ACTOR_ID = 'gapstow-sailor-boy';
-const BOY_SCALE = 1.22;
+const BOY_SCALE = figureHeight('sailor-boy');
 const ACTION_BLEND = 0.2;
 const LOOPING_ACTIONS = new Set(['SailorBoyIdle', 'Running']);
 
@@ -195,6 +196,8 @@ export default function SailorBoy() {
         archetype: 'b',
         role: 'play',
         activity: 'walking',
+        // The boy only ever plays by the bridge.
+        place: 'central-park',
         seed: hashString(ACTOR_ID),
       },
     });

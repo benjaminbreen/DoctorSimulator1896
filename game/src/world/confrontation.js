@@ -5,7 +5,7 @@
 // figure. The component supplies the current position and takes back a
 // position to move to; this module owns the timing, the walk, and the words.
 
-import { notice } from './notices.js';
+import { announce, CARRY } from './announcements.js';
 import { recordGrievance } from './grievances.js';
 
 // Close enough to be spoken to, and no closer: they stop an arm's length off.
@@ -14,6 +14,9 @@ const APPROACH_SPEED = 1.5;
 // Getting off a bench takes about as long as the stand-up clip.
 const ROUSE_SECONDS = 1.35;
 const SPEAK_SECONDS = 5;
+// The accusation, then a beat, then how they leave it.
+const PARTING_DELAY = 4;
+const PARTING_SECONDS = 5;
 // They give up if the player outruns them or hides behind the terrain.
 const CHASE_SECONDS = 22;
 const ABANDON_DISTANCE = 40;
@@ -65,6 +68,39 @@ const LINES = Object.freeze({
   ]),
 });
 
+// How they leave it, once they have said their piece. Nothing here changes
+// the world: an arrest the game cannot carry out is not threatened.
+const PARTINGS = Object.freeze({
+  police: [
+    'Go on, then. Walk away, and let me not see you throwing anything else today.',
+    'I have your face, sir. That is all the arrest you get from me this morning.',
+  ],
+  doorman: [
+    'Off the pavement, sir. The far side of the street will do.',
+    'I shall be at this door all day, sir. Take the other way round.',
+  ],
+  gentleman: [
+    'No — I shall not stand here arguing with you. Good day.',
+    'You may keep your apology. I have said what I came to say.',
+  ],
+  lady: [
+    'I shall find an officer if it happens again. Good day to you.',
+    'Do not speak to me. Do not come near me again.',
+  ],
+  tradesman: [
+    'Right. Go on with you, before I lose my temper properly.',
+    'That is the end of it, then. Mind yourself round here.',
+  ],
+  keeper: [
+    'Go and walk it off, sir, and keep to the paths.',
+    'I have beds to see to. Take yourself elsewhere.',
+  ],
+  boy: [
+    'I am going home. And I am telling, mister, see if I don’t.',
+    'You are not a nice man at all. I am going.',
+  ],
+});
+
 // Rig letters and agent kinds both land here, so a caller can pass whichever
 // it has to hand.
 const GROUPS = Object.freeze({
@@ -96,12 +132,18 @@ export function confrontationLine(group, itemLabel, seed = '') {
   return line.replace('{item}', String(itemLabel || 'thing').toLowerCase());
 }
 
+export function partingLine(group, seed = '') {
+  const lines = PARTINGS[group] ?? PARTINGS.gentleman;
+  return lines[hash(`parting:${group}:${seed}`) % lines.length];
+}
+
 const active = new Map();
 
 /**
  * Something hit this actor. Start them toward the player.
  *
- * `seated` delays the walk by the length of the stand-up clip. Re-provoking
+ * `seated` delays the walk by the length of the stand-up clip; `startDelay`
+ * does the same for any other reaction that has to play first. Re-provoking
  * someone already on their way only refreshes the deadline — being hit twice
  * does not restart the approach.
  */
@@ -112,6 +154,7 @@ export function provokeConfrontation(actorId, {
   name = null,
   dialogueId = null,
   seated = false,
+  startDelay = 0,
   now = 0,
 } = {}) {
   if (!actorId) return null;
@@ -121,16 +164,20 @@ export function provokeConfrontation(actorId, {
     return existing;
   }
   const group = confrontationGroup(archetype, kind);
+  const wait = Math.max(seated ? ROUSE_SECONDS : 0, startDelay);
   const state = {
     actorId,
     group,
     name: name || 'Someone',
     itemLabel,
-    phase: seated ? CONFRONT_PHASE.ROUSING : CONFRONT_PHASE.APPROACHING,
-    phaseUntil: seated ? now + ROUSE_SECONDS : Infinity,
-    giveUpAt: now + CHASE_SECONDS,
+    phase: wait > 0 ? CONFRONT_PHASE.ROUSING : CONFRONT_PHASE.APPROACHING,
+    phaseUntil: wait > 0 ? now + wait : Infinity,
+    giveUpAt: now + CHASE_SECONDS + wait,
     line: confrontationLine(group, itemLabel, `${actorId}:${itemLabel}`),
+    parting: partingLine(group, `${actorId}:${itemLabel}`),
     spoken: false,
+    parted: false,
+    partingAt: Infinity,
   };
   active.set(actorId, state);
   if (dialogueId) recordGrievance(dialogueId, 'pelted', Date.now());
@@ -191,10 +238,29 @@ export function stepConfrontation(actorId, {
 
   if (!state.spoken) {
     state.spoken = true;
-    notice(`${state.name}: “${state.line}”`, {
-      tone: 'warn',
-      seconds: SPEAK_SECONDS + 3,
+    state.partingAt = now + PARTING_DELAY;
+    announce({
+      line: state.line,
+      speaker: state.name,
+      station: 'Wants a word with you',
+      carry: CARRY.alarm,
       key: `confront:${actorId}`,
+      seconds: PARTING_DELAY,
+      anchorId: actorId,
+      position: [x, null, z],
+    });
+  } else if (!state.parted && now >= state.partingAt) {
+    state.parted = true;
+    state.phaseUntil = now + PARTING_SECONDS;
+    announce({
+      line: state.parting,
+      speaker: state.name,
+      station: null,
+      carry: CARRY.alarm,
+      key: `parting:${actorId}`,
+      seconds: PARTING_SECONDS,
+      anchorId: actorId,
+      position: [x, null, z],
     });
   }
   if (now >= state.phaseUntil) state.phase = CONFRONT_PHASE.DONE;

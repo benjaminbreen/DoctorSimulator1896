@@ -1,25 +1,43 @@
 import { useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Uniform, Vector3 } from 'three';
-import { BloomEffect, Effect, ToneMappingMode } from 'postprocessing';
+import { Color, Uniform, Vector3 } from 'three';
+import { BloomEffect, Effect, ToneMappingMode, VignetteEffect } from 'postprocessing';
 import { EffectComposer, Bloom, N8AO, ToneMapping, Vignette, wrapEffect } from '@react-three/postprocessing';
 
-// Gentle warm multiply after the tone map: period-photograph warmth without
-// disturbing the HDR balance that bloom reads from. Outdoors only — the
-// gaslit interiors are already warm.
+// The authored warm cast: period-photograph warmth without disturbing the HDR
+// balance that bloom reads from. Outdoors only — the gaslit interiors are
+// already warm. Saturation and contrast ride along in the same pass because a
+// second full-screen pass would cost as much as this one does and buy nothing.
+const WARM_TINT = new Vector3(1.045, 1.0, 0.945);
+
 class WarmGradeEffect extends Effect {
   constructor() {
     super(
       'WarmGradeEffect',
-      'uniform vec3 tint;' +
-        'void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {' +
-        '  outputColor = vec4(inputColor.rgb * tint, inputColor.a);' +
-        '}',
-      { uniforms: new Map([['tint', new Uniform(new Vector3(1.045, 1.0, 0.945))]]) },
+      'uniform vec3 tint;'
+        + 'uniform float saturation;'
+        + 'uniform float contrast;'
+        + 'void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {'
+        + '  vec3 c = inputColor.rgb * tint;'
+        // Rec. 709 luma: desaturating toward plain average green would go muddy.
+        + '  float luma = dot(c, vec3(0.2126, 0.7152, 0.0722));'
+        + '  c = mix(vec3(luma), c, saturation);'
+        + '  c = (c - 0.5) * contrast + 0.5;'
+        + '  outputColor = vec4(max(c, 0.0), inputColor.a);'
+        + '}',
+      {
+        uniforms: new Map([
+          ['tint', new Uniform(WARM_TINT.clone())],
+          ['saturation', new Uniform(1)],
+          ['contrast', new Uniform(1)],
+        ]),
+      },
     );
   }
 }
 const WarmGrade = wrapEffect(WarmGradeEffect);
+
+const scratchColor = new Color();
 
 // The composer forces the renderer to NoToneMapping and expects a pass of its
 // own to do the job, so the panel's selection has to be restated here. Without
@@ -57,14 +75,21 @@ export default function Effects({ runtime, indoors }) {
   // quality regression in playtesting. Fix shimmering facade geometry at the
   // asset/LOD level, or evaluate targeted MSAA/SMAA separately.
   const multisampling = dpr >= 1.5 ? 0 : 2;
+  const vignetteBase = indoors ? 0.55 : 0.32;
 
   useFrame(() => {
     const composer = composerRef.current;
     if (!composer) return;
     let bloom = null;
     let ao = null;
+    let grade = null;
+    let vignette = null;
     for (const pass of composer.passes) {
-      for (const effect of pass.effects ?? []) if (effect instanceof BloomEffect) bloom = effect;
+      for (const effect of pass.effects ?? []) {
+        if (effect instanceof BloomEffect) bloom = effect;
+        else if (effect instanceof VignetteEffect) vignette = effect;
+        else if (effect instanceof WarmGradeEffect) grade = effect;
+      }
       // n8ao keeps its settings on a config object rather than on uniforms.
       if (pass.configuration?.aoRadius !== undefined) ao = pass;
     }
@@ -82,24 +107,47 @@ export default function Effects({ runtime, indoors }) {
       if (ao.configuration.intensity !== intensity) ao.configuration.intensity = intensity;
       if (ao.configuration.aoRadius !== radius) ao.configuration.aoRadius = radius;
     }
+    if (grade) {
+      // Warmth scales the authored cast; the tint colour multiplies on top, so
+      // leaving it white keeps the look exactly as authored.
+      const warmth = values.gradeWarmth;
+      scratchColor.set(values.gradeTint);
+      grade.uniforms.get('tint').value.set(
+        (1 + (WARM_TINT.x - 1) * warmth) * scratchColor.r,
+        (1 + (WARM_TINT.y - 1) * warmth) * scratchColor.g,
+        (1 + (WARM_TINT.z - 1) * warmth) * scratchColor.b,
+      );
+      grade.uniforms.get('saturation').value = values.saturation;
+      grade.uniforms.get('contrast').value = values.contrast;
+    }
+    // Indoors and outdoors carry different authored vignettes, so the slider
+    // scales whichever one this composer mounted rather than replacing it.
+    if (vignette) vignette.darkness = vignetteBase * values.vignetteAmount;
   });
 
   return (
     <EffectComposer ref={composerRef} multisampling={multisampling}>
-      {indoors && runtime.values.aoEnabled ? (
+      {/* Each effect is switched in and out of the chain rather than turned
+          down to zero: a pass that still runs still costs its full-screen
+          work, which is the whole point when measuring where frames go. */}
+      {(indoors || runtime.values.aoOutdoors) && runtime.values.aoEnabled ? (
         <N8AO distanceFalloff={1} halfRes color="#120d08" />
       ) : (
         <></>
       )}
-      <Bloom mipmapBlur luminanceSmoothing={0.24} />
+      {runtime.values.bloomEnabled ? <Bloom mipmapBlur luminanceSmoothing={0.24} /> : <></>}
       {/* Order matters: bloom works on the HDR scene, the tone map compresses
           it, and the vignette darkens the finished image. Exposure rides in on
           the renderer, which FrameSettings keeps current. */}
       <ToneMapping mode={TONE_MAPPING_MODES[runtime.values.toneMapping] ?? ToneMappingMode.AGX} />
-      {indoors ? <></> : <WarmGrade />}
+      {!indoors && runtime.values.gradeEnabled ? <WarmGrade /> : <></>}
       {/* The exterior already has strong edge contrast from sky, buildings,
           and the HUD. A lighter vignette keeps facade detail out of black. */}
-      <Vignette eskil={false} offset={0.28} darkness={indoors ? 0.55 : 0.32} />
+      {runtime.values.vignetteEnabled ? (
+        <Vignette eskil={false} offset={0.28} darkness={vignetteBase} />
+      ) : (
+        <></>
+      )}
     </EffectComposer>
   );
 }

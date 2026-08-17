@@ -6,7 +6,7 @@ export const STARTING_ZONE = 'central-park';
 export const STARTING_TIME = 9.5;
 
 export const settingsSchema = {
-  version: 2,
+  version: 4,
   groups: [
     {
       id: 'world',
@@ -56,7 +56,7 @@ export const settingsSchema = {
       label: 'Movement',
       parameters: [
         { id: 'walkSpeed', label: 'Walk speed', type: 'range', min: 0.5, max: 14, step: 0.05, default: 4.1 },
-        { id: 'runSpeed', label: 'Run speed', type: 'range', min: 1, max: 20, step: 0.05, default: 12.9 },
+        { id: 'runSpeed', label: 'Run speed', type: 'range', min: 1, max: 20, step: 0.05, default: 8 },
         { id: 'gravity', label: 'Gravity', type: 'range', min: 4, max: 30, step: 0.1, default: 11.9 },
         { id: 'groundAcceleration', label: 'Acceleration', type: 'range', min: 4, max: 60, step: 0.5, default: 47 },
         { id: 'groundDeceleration', label: 'Deceleration', type: 'range', min: 4, max: 60, step: 0.5, default: 46.5 },
@@ -252,16 +252,37 @@ export const settingsSchema = {
       label: 'Renderer',
       parameters: [
         { id: 'exposure', label: 'Exposure', type: 'range', min: 0.2, max: 2.5, step: 0.05, default: 1.05 },
-        { id: 'postEnabled', label: 'Post-processing', type: 'toggle', default: true, mode: 'rebuild' },
+        { id: 'postEnabled', label: 'Post-processing (all)', type: 'toggle', default: true, mode: 'rebuild' },
+        // Per-effect switches, so a frame cost can be attributed to one pass
+        // instead of to the whole chain. Each removes its pass from the
+        // composer; turning an effect down to zero still pays for it.
+        { id: 'bloomEnabled', label: '· Bloom', type: 'toggle', default: true, mode: 'rebuild' },
         { id: 'bloomIntensity', label: 'Bloom intensity', type: 'range', min: 0, max: 2, step: 0.05, default: 0.9 },
         { id: 'bloomThreshold', label: 'Bloom threshold', type: 'range', min: 0.2, max: 1, step: 0.02, default: 0.98 },
+        { id: 'vignetteEnabled', label: '· Vignette', type: 'toggle', default: true, mode: 'rebuild' },
+        { id: 'vignetteAmount', label: 'Vignette ×', type: 'range', min: 0, max: 2, step: 0.05, default: 1 },
+        { id: 'aoOutdoors', label: '· Ambient shading outdoors', type: 'toggle', default: false, mode: 'rebuild' },
         { id: 'toneMapping', label: 'Tone mapping', type: 'select', options: ['ACESFilmic', 'AgX', 'Neutral', 'Linear'], default: 'ACESFilmic', mode: 'rebuild' },
         // The one shadow-casting window portal doubles this; see LightingRig.
-        { id: 'shadowMapSize', label: 'Shadow map size', type: 'select', options: ['512', '1024', '2048'], default: '2048', mode: 'rebuild' },
+        { id: 'shadowMapSize', label: 'Shadow map size', type: 'select', options: ['512', '1024', '2048'], default: '1024', mode: 'rebuild' },
         { id: 'pixelRatioCap', label: 'Pixel ratio cap', type: 'range', min: 0.5, max: 2, step: 0.25, default: 2 },
         { id: 'antialias', label: 'Antialias', type: 'toggle', default: true, mode: 'rebuild' },
         { id: 'showColliders', label: 'Show colliders', type: 'toggle', default: false },
         { id: 'showAvatarGlb', label: 'Rigged player figure', type: 'toggle', default: true, mode: 'rebuild' },
+      ],
+    },
+    {
+      id: 'grade',
+      label: 'Colour grade',
+      parameters: [
+        // Outdoors only, matching where the warm cast is authored. All four
+        // ride in one shader pass, so moving them costs nothing extra.
+        { id: 'gradeEnabled', label: 'Colour grade', type: 'toggle', default: true, mode: 'rebuild' },
+        { id: 'gradeWarmth', label: 'Warmth ×', type: 'range', min: 0, max: 3, step: 0.05, default: 1.2 },
+        { id: 'saturation', label: 'Saturation', type: 'range', min: 0, max: 2, step: 0.02, default: 1.08 },
+        { id: 'contrast', label: 'Contrast', type: 'range', min: 0.5, max: 1.8, step: 0.02, default: 1 },
+        // White is a no-op multiplier; anything else tints the finished image.
+        { id: 'gradeTint', label: 'Tint', type: 'color', default: '#ffffff' },
       ],
     },
   ],

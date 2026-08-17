@@ -34,6 +34,7 @@ import {
 } from '../world/trafficContacts.js';
 import { gameDebug } from '../debug.js';
 import { reportMajorStreetEvent } from '../world/majorStreetEvents.js';
+import { figureHeight } from '../world/figureHeights.js';
 
 // Looks only for the 1895 electric road wagons (after the Morris & Salom
 // Electrobat). Each spawn draws its own livery, pace, and driver model.
@@ -232,10 +233,7 @@ const STRAWHAT_DRIVER_MOODS = [
 const MOOD_FADE = 0.35;
 const MOOD_HOLD = 1.4;
 
-// The Mixamo rig sizes the figure at about 1.08 m; scale to a real man.
-// Box3 cannot measure a skinned mesh (it sees raw bind geometry), so the
-// scale is a constant, tuned against the bench.
-const DRIVER_SCALE = 1.6;
+const DRIVER_SCALE = figureHeight('cab-driver');
 
 // A skeleton-safe driver clone with one action per state-driven mood.
 function makeDriver(source, animations, phase, spheres, {

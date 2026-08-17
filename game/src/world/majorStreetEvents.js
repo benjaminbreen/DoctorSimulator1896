@@ -3,6 +3,7 @@
 // the same crash without racing to drain a shared mailbox.
 
 import { recordWitnesses } from './witnessMemory.js';
+import { raiseStreetOutcry } from './outcry.js';
 
 const events = [];
 let serial = 0;
@@ -22,7 +23,8 @@ export function reportMajorStreetEvent(event) {
   events.push(entry);
   if (events.length > MAX_EVENTS) events.splice(0, events.length - MAX_EVENTS);
   // Bystanders in eyeshot remember what they saw; dialogue reads this back.
-  recordWitnesses(entry);
+  // One of them, or the nearest officer, says something out loud about it.
+  raiseStreetOutcry(entry, recordWitnesses(entry));
   return entry;
 }
 

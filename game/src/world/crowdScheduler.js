@@ -15,7 +15,7 @@ import { DEFAULT_CLOCK_RATE } from './clock.js';
 // distinctive figure read as clones. The forties woman (f) is excluded too:
 // her walk cycle is broken, so she only stands.
 export const CROWD_SLOT_ARCHETYPES = Object.freeze([
-  'm', 'w', 'l', 'h', 'm', 'w', 'l', 'm', 'h', 'r', 'm', 'l', 'm', 'w',
+  'm', 'w', 'l', 'h', 'm', 'w', 'hm', 'bh', 'h', 'r', 'm', 'l', 'm', 'w',
 ]);
 
 // Fraction of the pool on the street by hour (1896: dawn deliveries, a long

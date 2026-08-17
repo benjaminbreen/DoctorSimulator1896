@@ -85,7 +85,7 @@ test('every crowd rig letter rolls a person of the matching sex', async () => {
   // The model catalog and the dialogue tables share single-letter keys. When
   // they drifted apart, a bench-sitting woman rolled as a male doorman.
   const { PEDESTRIAN_ARCHETYPES } = await import('../src/world/pedestrianCatalog.js');
-  const women = new Set(['w', 'd', 's', 'f', 'h', 'n', 'l', 'r']);
+  const women = new Set(['w', 'd', 's', 'f', 'h', 'n', 'l', 'r', 'hm']);
   for (const letter of Object.keys(PEDESTRIAN_ARCHETYPES)) {
     const identity = rollIdentity(letter, 99);
     assert.ok(identity, `rig letter '${letter}' has a dialogue identity table`);

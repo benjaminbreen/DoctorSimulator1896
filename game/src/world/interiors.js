@@ -623,6 +623,9 @@ export function generateInterior(building, values = {}) {
   return {
     blueprint,
     lighting,
+    // A hall boy stands in a house grand enough to keep one; lobbyStaff.js
+    // decides from the room's own size, so a humble flat gets nobody.
+    features: grand ? ['lobby-staff'] : [],
     interior: {
       wealth,
       size,

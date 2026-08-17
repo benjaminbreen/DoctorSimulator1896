@@ -102,7 +102,7 @@ test('spawn nodes are world edges and gates; archetypes are walk-capable', () =>
     assert.ok(graph.nodes[index], 'spawn indexes are valid');
   }
   for (const archetype of CROWD_SLOT_ARCHETYPES) {
-    assert.ok(['m', 'w', 'h', 'l', 'r'].includes(archetype), 'walk-capable; never the summer-dress visitor or the forties woman');
+    assert.ok(['m', 'w', 'h', 'l', 'r', 'hm', 'bh'].includes(archetype), 'walk-capable; never the summer-dress visitor or the forties woman');
   }
 });
 

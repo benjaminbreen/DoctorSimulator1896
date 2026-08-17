@@ -20,6 +20,13 @@ export const gameDebug = {
   setLook: null,
   stats: {
     fps: 0,
+    // Whole-frame GPU counters, filled by FrameSettings. Shadow passes and
+    // post passes are included, so these are what the frame actually costs.
+    draws: 0,
+    triangles: 0,
+    programs: 0,
+    textures: 0,
+    geometries: 0,
     cameraDistance: 0,
     cameraYaw: null,
     boot: { zone: null, stage: null, elapsedMs: null, complete: false },
@@ -49,8 +56,17 @@ export const gameDebug = {
     let landmarkBatches = 0;
     let landmarkInstances = 0;
     let estimatedTriangles = 0;
+    // Skinned figures are the one thing here that cannot be instanced away:
+    // each is its own draw call, drawn again per shadow-casting light, and its
+    // bone matrices are rebuilt on the CPU every frame.
+    let skinnedVisible = 0;
+    let skinnedBones = 0;
     scene.traverse((object) => {
       if (object.isMesh) meshes += 1;
+      if (object.isSkinnedMesh && object.visible) {
+        skinnedVisible += 1;
+        skinnedBones += object.skeleton?.bones?.length ?? 0;
+      }
       if (object.isInstancedMesh) {
         instancedMeshes += 1;
         if (object.name?.startsWith('landmark-')) {
@@ -70,6 +86,8 @@ export const gameDebug = {
       instancedMeshes,
       landmarkBatches,
       landmarkInstances,
+      skinnedVisible,
+      skinnedBones,
       estimatedTriangles: Math.round(estimatedTriangles),
     };
   },

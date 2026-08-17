@@ -298,3 +298,85 @@
 
 .money-fallback-coin { border-radius: 50%; }
 .money-fallback-note { border-radius: 3px; }
+
+/* While a piece is in the air the billfold gets out of the way, since the
+   ground it might land on is behind it. */
+.wallet-drawer.is-dragging {
+  opacity: .28;
+  transition: opacity .14s ease;
+}
+
+.wallet-note,
+.wallet-coin {
+  cursor: grab;
+  touch-action: none;
+}
+
+.wallet-note:active,
+.wallet-coin:active { cursor: grabbing; }
+
+/* The piece follows the cursor, lifted off the panel. */
+.money-in-hand {
+  position: fixed;
+  z-index: 70;
+  transform: translate(-50%, -50%) rotate(-6deg);
+  pointer-events: none;
+  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, .6));
+  transition: transform .12s ease;
+}
+
+.money-in-hand.is-over {
+  transform: translate(-50%, -50%) rotate(0deg) scale(1.08);
+  filter: drop-shadow(0 0 12px rgba(232, 200, 135, .85)) drop-shadow(0 10px 14px rgba(0, 0, 0, .6));
+}
+
+.money-drop-hint {
+  position: fixed;
+  z-index: 71;
+  transform: translate(-50%, 34px);
+  pointer-events: none;
+  padding: 3px 10px;
+  border: 1px solid rgba(204, 164, 82, .7);
+  border-radius: 5px;
+  background: rgba(8, 18, 13, .92);
+  color: #e8d5a8;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* A ring over everyone close enough to be handed something, shown only
+   while a piece is in the air. */
+.money-target {
+  position: fixed;
+  z-index: 69;
+  width: 118px;
+  height: 188px;
+  margin: -94px 0 0 -59px;
+  border: 1px dashed rgba(232, 200, 135, .45);
+  border-radius: 60px;
+  pointer-events: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  transition: border-color .12s ease, background-color .12s ease;
+}
+
+.money-target.is-over {
+  border-style: solid;
+  border-color: rgba(240, 214, 150, .95);
+  background: rgba(232, 200, 135, .1);
+}
+
+.money-target span {
+  transform: translateY(20px);
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(8, 18, 13, .82);
+  color: #cbb98d;
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity .12s ease;
+}
+
+.money-target.is-over span { opacity: 1; color: #f3e6c4; }

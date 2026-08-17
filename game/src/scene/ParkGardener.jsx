@@ -6,6 +6,8 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { gameDebug } from '../debug.js';
+import { inPlantedBed } from '../world/groundCover.js';
+import { raiseBedReprimand } from '../world/outcry.js';
 import { removeAgent, reportAgent } from '../world/agents.js';
 import { clearActorImpacts, takeActorImpacts } from '../world/actorImpacts.js';
 import {
@@ -23,13 +25,17 @@ import { normalizeNonmetallicCharacterMaterial } from './characterMaterials.js';
 import { fadeInAction } from './characterGestures.js';
 import { findMixamoBone } from './walkingStick.js';
 import { buildWateringCan } from './wateringCan.js';
+import { figureHeight } from '../world/figureHeights.js';
 
-const NPC_SCALE = 1.62;
+const NPC_SCALE = figureHeight('park-gardener');
 const ACTOR_ID = 'scheduled-central-park-gardener';
 const LOOPING_ACTIONS = new Set([
   'GardenerIdle', 'Walking', 'WalkingCarry', 'Watering', 'DigAndPlantSeeds', 'BenchRest',
 ]);
 const ACTION_BLEND_SECONDS = 0.28;
+// Close enough that he can see whose feet are in the bed.
+const BED_EARSHOT = 16;
+const BED_GAP = 45;
 
 function withMeshopt(loader) {
   loader.setMeshoptDecoder(MeshoptDecoder);
@@ -109,6 +115,7 @@ export default function ParkGardener({ runtime }) {
       body: null,
       marchX: null,
       marchZ: null,
+      nextBedWordAt: 0,
     };
   }, [modelGltf, motionGltf]);
 
@@ -163,6 +170,18 @@ export default function ParkGardener({ runtime }) {
       y: state.position[1],
       z: march ? march.z : state.position[2],
     });
+    // Standing in his planting where he can see you is the one rule he keeps.
+    if (state.active && !march) {
+      const clock = performance.now() / 1000;
+      const x = state.position[0];
+      const z = state.position[2];
+      if (clock >= actor.nextBedWordAt
+        && Math.hypot(player[0] - x, player[2] - z) <= BED_EARSHOT
+        && inPlantedBed(player[0], player[2])) {
+        actor.nextBedWordAt = clock + BED_GAP;
+        raiseBedReprimand({ anchorId: ACTOR_ID, seed: Math.round(clock) });
+      }
+    }
     if (state.active) {
       const moving = state.moving === true;
       reportAgent(ACTOR_ID, march ? march.x : state.position[0], march ? march.z : state.position[2], 0.44, {
@@ -176,6 +195,7 @@ export default function ParkGardener({ runtime }) {
           role: 'keeper',
           activity: state.animation === 'BenchRest' ? 'resting' : 'working',
           hour: runtime.values.timeOfDay,
+          place: runtime.values.zone,
           seed: 7,
         },
         velocity: moving

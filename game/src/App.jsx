@@ -6,6 +6,7 @@ import InstrumentPanel from './hud/InstrumentPanel.jsx';
 import DebugHud from './hud/DebugHud.jsx';
 import GameHud from './hud/GameHud.jsx';
 import NpcDialogueRibbon from './hud/NpcDialogueRibbon.jsx';
+import EventDialogue from './hud/EventDialogue.jsx';
 import ParkIntro from './hud/ParkIntro.jsx';
 import ControlHelper from './hud/ControlHelper.jsx';
 import MobileControls from './hud/MobileControls.jsx';
@@ -31,6 +32,7 @@ import { nextSeed } from '../../shared/patients/index.js';
 import { createWorldClock } from './world/clock.js';
 import { installCrowdDialogue } from './world/crowdDialogue.js';
 import { notice } from './world/notices.js';
+import { clearAnnouncements } from './world/announcements.js';
 import { attachSoundUnlock } from './audio/sound.js';
 import { syncConsultationRecord } from './hud/casebookState.js';
 
@@ -122,7 +124,11 @@ export default function App() {
   useEffect(() => actorRuntime.subscribe(setActors), [actorRuntime]);
   useEffect(() => actorRuntime.setSingle(consultationPatients[0].actor), [actorRuntime, consultationPatients]);
   useEffect(() => runtime.onChange((id, value) => {
-    if (id === 'zone') setZone(value);
+    // A cry raised in the park has nothing to do with the room you walk into.
+    if (id === 'zone') {
+      clearAnnouncements();
+      setZone(value);
+    }
     if (id === 'timeOfDay') worldClock.setTimeOfDay(value);
   }), [runtime, worldClock]);
 
@@ -323,6 +329,9 @@ export default function App() {
             {!usingInstrument && <DebugHud showStats={tuningOpen} />}
             <InstrumentPanel />
             <NpcDialogueRibbon conversation={conversation} worldClock={worldClock} />
+            {!usingInstrument && !consultActive && (
+              <EventDialogue raised={Boolean(conversation)} />
+            )}
             {/* Above everything, instrument mode included: the thing most
                 worth saying is that the machine has just hurt you. */}
             <Toasts />

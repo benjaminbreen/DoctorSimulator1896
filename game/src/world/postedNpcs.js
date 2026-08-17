@@ -3,6 +3,7 @@
 // dialogue system; their archetypes live in npcIdentity.js.
 
 import { WALK_TOP } from './streetGrid.js';
+import { figureHeight } from './figureHeights.js';
 
 // Everyone here stands on pavement, never in a roadbed. Fifth Avenue's road
 // is x 99-107, so its park-side walk is the 95.8-99 band; Central Park South
@@ -24,7 +25,7 @@ export const POSTED_NPCS = Object.freeze([
     ambientClips: Object.freeze(['StandingAcknowledging', 'AnnoyedHeadShake']),
     position: Object.freeze([97.2, SIDEWALK, 76]),
     yaw: Math.PI / 2,
-    scale: 1.62,
+    height: figureHeight('pushcart-vendor'),
     archetype: 'v',
     role: 'vendor',
     activity: 'standing',
@@ -45,7 +46,7 @@ export const POSTED_NPCS = Object.freeze([
     ambientClips: Object.freeze(['StandingAcknowledging', 'StandingArguing']),
     position: Object.freeze([-20, SIDEWALK, 84.3]),
     yaw: 0,
-    scale: 1.62,
+    height: figureHeight('pushcart-vendor'),
     archetype: 'v',
     role: 'vendor',
     activity: 'standing',
@@ -66,7 +67,7 @@ export const POSTED_NPCS = Object.freeze([
     ambientClips: Object.freeze(['StandingAcknowledging', 'QuickFormalBow']),
     position: Object.freeze([80, SIDEWALK, CPS_SOUTH_SIDEWALK_Z]),
     yaw: Math.PI,
-    scale: 1.62,
+    height: figureHeight('cab-driver'),
     archetype: 'c',
     role: 'cabman',
     activity: 'standing',
@@ -84,7 +85,7 @@ export const POSTED_NPCS = Object.freeze([
     ambientClips: Object.freeze([]),
     position: Object.freeze([60, SIDEWALK, CPS_SOUTH_SIDEWALK_Z]),
     yaw: Math.PI,
-    scale: 1.24,
+    height: figureHeight('news-boy'),
     archetype: 'x',
     role: 'newsboy',
     activity: 'standing',

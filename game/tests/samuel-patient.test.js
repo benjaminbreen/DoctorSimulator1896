@@ -94,7 +94,7 @@ test('the foreman question forces a consequential response before clue collectio
   assert.match(rejected.errors.at(-1), /respond to the patient/);
   state = ask(state, 'samuel-response-test');
   assert.equal(state.pendingResponseId, null);
-  assert.match(state.history.at(-1).dialogue, /Test the matter/);
+  assert.match(state.history.at(-1).dialogue, /Find out what it is/);
   assert.deepEqual(actorCueForConsultation(state), {
     body: 'sitting-talking', expression: 'smiling', gaze: 'doctor', speaking: true,
   });

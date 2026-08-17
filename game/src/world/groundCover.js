@@ -71,6 +71,12 @@ function clumping(x, z) {
   return hash01(cx * 17.3 + cz * 41.7);
 }
 
+// Where the keeper's planting is: the same test speciesAt uses to put shrubs
+// down, so what he objects to is what is actually growing there.
+export function inPlantedBed(x, z) {
+  return clumping(x, z) > 0.72 && pathsDistance(x, z) > 9 && pondDepth(x, z) > 0;
+}
+
 function pick(palette, roll) {
   return palette[Math.floor(roll * palette.length) % palette.length];
 }

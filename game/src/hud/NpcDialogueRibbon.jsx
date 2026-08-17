@@ -5,6 +5,8 @@ import { renderNpcDialogue } from '../world/npcDialogueClient.js';
 import { receiveGood } from '../world/pocket.js';
 import { formatPrice, getPurseCents, spendCents, subscribePurse } from '../world/purse.js';
 import { settleGrievance } from '../world/grievances.js';
+import { noteNameSpoken } from '../world/acquaintance.js';
+import { clearOffer } from '../world/moneyOffer.js';
 import { useDismissableOverlay } from './useDismissableOverlay.js';
 import './npc-dialogue.css';
 
@@ -39,9 +41,13 @@ export default function NpcDialogueRibbon({ conversation, worldClock }) {
     setQuestion('');
     setBusy(false);
     setRecentTurns([]);
+    const speaker = npc.id;
     return () => {
       requestRef.current?.abort();
       requestRef.current = null;
+      // The offer belongs to this conversation only; it must not greet the
+      // player again next time they walk up.
+      clearOffer(speaker);
     };
   }, [open, npc]);
 
@@ -82,6 +88,9 @@ export default function NpcDialogueRibbon({ conversation, worldClock }) {
       });
       setDialogue(result.dialogue);
       setBehavior(result.behavior);
+      // Giving his name is how the player learns it; the plate over his head
+      // uses it from then on.
+      noteNameSpoken(npc.id, npc.identity?.name, result.dialogue);
       setRecentTurns((turns) => [...turns, { player: playerText, npc: result.dialogue }].slice(-6));
       setQuestion('');
     } catch (error) {

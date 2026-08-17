@@ -168,7 +168,7 @@ const prompts = Object.freeze([
     id: 'carmela-response-dismiss', text: '“It is only nerves. Compose yourself and it will pass.”', stance: 'challenge',
     role: 'response', priority: 34, minutes: 2, countsAsQuestion: false,
     requiresPendingResponseId: 'carmela-attack-question', resolvesPendingResponseId: 'carmela-attack-question',
-    dialogue: '“Only nerves?” Her breath remains high. “A thing may be in the nerves and still be a thing. I did not pay three dollars to be scolded for having a body.”',
+    dialogue: '“Nerves.” Her breath is still high. “Well. Is there something you give for it? I’ve a shop to open in the morning either way.”',
     effects: { trust: -9, satisfaction: -14 }, appraisal: { register: 'prying', decorumBreach: 1, intent: 'dismissal' },
     reactionExpression: 'frowning',
     bodyCue: 'sitting-disapproval',
@@ -281,7 +281,7 @@ export const CARMELA_RUSSO = Object.freeze({
     Object.freeze({ id: 'cardiac', label: 'Organic cardiac disease', matchTerms: ['heart disease', 'cardiac', 'arrhythmia', 'valve'], alignment: 1 }),
     Object.freeze({ id: 'omen', label: 'Prophetic presentiment', matchTerms: ['omen', 'prophecy', 'presentiment', 'warning of danger'], alignment: -2 }),
   ]),
-  dialogueStyle: 'Carmela came to New York at eleven and speaks fluent, idiomatic English. She is concise, commercially minded, Catholic without being credulous, and intolerant of condescension. Do not use broken-English eye dialect or generic Italian exclamations. Let her use concrete shopkeeping comparisons and an occasional long sentence when frightened. Do not add facts.',
+  dialogueStyle: 'Carmela came to New York at eleven and speaks fluent, idiomatic English. She is concise, commercially minded, Catholic without being credulous, and intolerant of condescension. Do not use broken-English eye dialect or generic Italian exclamations. Let her run to a longer sentence when frightened and a short flat one when annoyed. No epigrams, no metaphors, and no line that would work as the end of a scene. Do not add facts.',
   examinations: Object.freeze([
     Object.freeze({
       id: 'carmela-exam-cardiorespiratory', label: 'Examine heart, pulse, and breathing', minutes: 5,

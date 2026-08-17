@@ -60,6 +60,7 @@ import { goodOfThrowable, handVerb } from '../world/goods.js';
 import { runHeldVerb } from '../world/pocket.js';
 import { findReachableDialogueAgent } from '../world/agents.js';
 import { npcDialogueDefinition } from '../world/npcDialogue.js';
+import { isOutdoorZone } from '../tuning/zoneCategory.js';
 
 const MAX_DT = 1 / 30;
 const stillInput = { x: 0, z: 0, run: false, jump: false };
@@ -362,7 +363,12 @@ export default function PlayerRig({
       state.yaw = gameDebug.stats.cameraYaw;
     }
 
-    const movementInput = pickingUp || throwing ? stillInput : keyboard.moveInput();
+    // Running is an outdoor gait. Clearing it here rather than in movementStep
+    // keeps the run animation and the camera's speed boost in step with it.
+    const rawInput = pickingUp || throwing ? stillInput : keyboard.moveInput();
+    const movementInput = rawInput.run && !isOutdoorZone(runtime.values.zone)
+      ? { ...rawInput, run: false }
+      : rawInput;
     const result = movementStep({
       input: movementInput,
       // Movement is relative to the active camera's yaw (hero mode follows

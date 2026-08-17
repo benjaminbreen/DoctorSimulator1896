@@ -256,6 +256,23 @@ function mixAngle(a, b, t) {
 
 // The scene renders between fixed simulation states. This makes an uneven
 // browser frame cadence look smooth without changing deterministic motion.
+// A near miss: the team is moving, the player is close, and he is in front of
+// the horses rather than beside or behind them. Contact is somebody else's
+// business — this is only the shout that comes before it.
+const NEAR_MISS_RADIUS = 3.4;
+const NEAR_MISS_SPEED = 2;
+const NEAR_MISS_AHEAD = Math.cos(0.9);
+
+export function isNearMiss(state, player) {
+  if (!state || !player || (state.speed ?? 0) < NEAR_MISS_SPEED) return false;
+  const dx = player[0] - state.horseX;
+  const dz = player[2] - state.horseZ;
+  const distance = Math.hypot(dx, dz);
+  if (distance > NEAR_MISS_RADIUS || distance < 1e-3) return false;
+  return (dx / distance) * Math.sin(state.horseYaw)
+    + (dz / distance) * Math.cos(state.horseYaw) >= NEAR_MISS_AHEAD;
+}
+
 export function interpolateHorseDrawnState(previous, current, alpha) {
   const t = clamp(alpha, 0, 1);
   const out = { ...current };

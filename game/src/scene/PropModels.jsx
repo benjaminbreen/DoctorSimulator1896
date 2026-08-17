@@ -1,8 +1,9 @@
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
-import { useFrame, useLoader } from '@react-three/fiber';
+import { useFrame, useLoader, useThree } from '@react-three/fiber';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'meshoptimizer';
+import { getKTX2Loader } from './ktx2.js';
 import { sharePackTextures } from './packTextures.js';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import { modelUrl, modelSize } from '../world/modelPacks.js';
@@ -107,7 +108,12 @@ export default function PropModels({ items }) {
     return [...set].sort();
   }, [items]);
 
-  const gltfs = useLoader(GLTFLoader, urls, (loader) => loader.setMeshoptDecoder(MeshoptDecoder));
+  const gl = useThree((state) => state.gl);
+  const configure = useCallback((loader) => {
+    loader.setMeshoptDecoder(MeshoptDecoder);
+    loader.setKTX2Loader(getKTX2Loader(gl));
+  }, [gl]);
+  const gltfs = useLoader(GLTFLoader, urls, configure);
   const byUrl = useMemo(
     () => new Map(urls.map((url, index) => [url, sharePackTextures(gltfs[index])])),
     [urls, gltfs],

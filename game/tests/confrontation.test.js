@@ -10,14 +10,14 @@ import {
   resetConfrontationsForTests,
   stepConfrontation,
 } from '../src/world/confrontation.js';
-import { clearNotices, getNotices } from '../src/world/notices.js';
+import { getAnnouncement, resetAnnouncementsForTests } from '../src/world/announcements.js';
 import { resetGrievancesForTests, grievanceAgainst } from '../src/world/grievances.js';
 import { PEDESTRIAN_ARCHETYPES } from '../src/world/pedestrianCatalog.js';
 
 test.beforeEach(() => {
   resetConfrontationsForTests();
   resetGrievancesForTests();
-  clearNotices();
+  resetAnnouncementsForTests();
 });
 
 test('every crowd rig letter has a confrontation voice', () => {
@@ -45,14 +45,24 @@ test('a seated figure stands before walking, then arrives and speaks', () => {
 
   // Once up, she closes the gap and stops an arm's length short.
   let state = null;
-  for (let now = 2; now < 12; now += 0.1) {
-    state = stepConfrontation('bench-sitter', { x: 0, z: state?.z ?? 0, playerX: 0, playerZ: 6, delta: 0.1, now });
+  let clock = 2;
+  for (; clock < 12; clock += 0.1) {
+    state = stepConfrontation('bench-sitter', { x: 0, z: state?.z ?? 0, playerX: 0, playerZ: 6, delta: 0.1, now: clock });
     if (state.phase === CONFRONT_PHASE.SPEAKING) break;
   }
   assert.equal(state.phase, CONFRONT_PHASE.SPEAKING);
   assert.ok(Math.abs(6 - state.z) <= 1.8, `stopped at ${state.z}`);
-  assert.equal(getNotices().length, 1, 'she says it once');
-  assert.match(getNotices()[0].text, /apple/);
+  assert.ok(getAnnouncement(), 'she says it once');
+  assert.match(getAnnouncement().line, /apple/);
+
+  // Then a beat, then how she leaves it, and only then is she done.
+  const words = confrontationFor('bench-sitter');
+  for (; clock < 30; clock += 0.1) {
+    if (!stepConfrontation('bench-sitter', { x: 0, z: state.z, playerX: 0, playerZ: 6, delta: 0.1, now: clock })) break;
+  }
+  assert.equal(words.parted, true, 'she has a parting word');
+  assert.match(words.parting, /\w/);
+  assert.equal(confrontationFor('bench-sitter'), null, 'and then she is finished');
 });
 
 test('she gives up if the player runs off, and the state is dropped', () => {
@@ -60,7 +70,7 @@ test('she gives up if the player runs off, and the state is dropped', () => {
   const gone = stepConfrontation('runner', { x: 0, z: 0, playerX: 0, playerZ: 300, delta: 0.1, now: 1 });
   assert.equal(gone, null);
   assert.equal(confrontationFor('runner'), null);
-  assert.equal(getNotices().length, 0, 'nobody shouts across the whole park');
+  assert.equal(getAnnouncement(), null, 'nobody shouts across the whole park');
 });
 
 test('a second hit refreshes the chase rather than restarting it', () => {

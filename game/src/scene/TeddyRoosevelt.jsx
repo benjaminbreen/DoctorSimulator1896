@@ -6,6 +6,8 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { removeAgent, reportAgent } from '../world/agents.js';
+import { raiseOration } from '../world/outcry.js';
+import { gameDebug } from '../debug.js';
 import {
   TEDDY_ROOSEVELT_MODEL_FILE,
   TEDDY_ROOSEVELT_MOTION_FILE,
@@ -15,9 +17,12 @@ import {
 } from '../world/teddyRoosevelt.js';
 import { normalizeNonmetallicCharacterMaterial } from './characterMaterials.js';
 import { restoreLoopingIdle } from './characterGestures.js';
+import { figureHeight } from '../world/figureHeights.js';
 
-const NPC_SCALE = 1.62;
+const NPC_SCALE = figureHeight('teddy-roosevelt');
 const SOAPBOX_HEIGHT = 0.26;
+// Matches the audience radius parkBulletin uses for the same gathering.
+const ORATION_EARSHOT = 24;
 const ACTOR_ID = 'scheduled-theodore-roosevelt';
 
 function withMeshopt(loader) {
@@ -68,10 +73,16 @@ function setBaseAnimation(actor, name) {
   actor.mixer.update(0);
 }
 
-function beginSpeech(actor, phase, now) {
+function beginSpeech(actor, phase, now, position) {
   const name = rooseveltSpeechMotion(actor.speechIndex);
   const action = actor.actions[name];
   if (!action) return false;
+  // Only the gathering hears him. The gesture plays either way.
+  const player = gameDebug.player.position;
+  if (phase === 'cop-cot-speech' && player
+    && Math.hypot(player[0] - position[0], player[2] - position[2]) <= ORATION_EARSHOT) {
+    raiseOration(actor.speechIndex, [position[0], position[1] + SOAPBOX_HEIGHT + 1.9, position[2]]);
+  }
   actor.base.fadeOut(0.16);
   action.reset().setLoop(THREE.LoopOnce, 1).fadeIn(0.12).play();
   action.clampWhenFinished = true;
@@ -170,7 +181,7 @@ export default function TeddyRoosevelt({ runtime }) {
       && !actor.active
       && now >= actor.nextSpeechAt
       && (state.phase === 'cop-cot-speech' || conversational)
-    ) beginSpeech(actor, state.phase, now);
+    ) beginSpeech(actor, state.phase, now, state.position);
 
     actor.wrapper.rotation.y = state.yaw;
     actor.body?.setNextKinematicTranslation({

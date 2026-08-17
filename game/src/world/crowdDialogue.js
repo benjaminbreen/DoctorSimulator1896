@@ -6,8 +6,11 @@ import { getAgent, listAgents } from './agents.js';
 import { registerNpcDialogueProvider } from './npcDialogue.js';
 import { hashSeed, knownArchetype, pickSeeded, rollIdentity } from './npcIdentity.js';
 import { attendingNow, parkBulletin } from './parkBulletin.js';
+import { bulletinApplies, suggestedQuestions, whereSentence } from './npcQuestions.js';
 import { CONCERN_LEVELS, witnessedBy } from './witnessMemory.js';
 import { grievanceAgainst } from './grievances.js';
+import { offerTo } from './moneyOffer.js';
+import { registerFor } from './hotelRegister.js';
 import { getRunSeed } from './runSeed.js';
 
 // What the ribbon shows for a stranger. The player never learns a name
@@ -22,6 +25,8 @@ const DESCRIPTORS = Object.freeze({
   p: { descriptor: 'A policeman', pronoun: 'He' },
   d: { descriptor: 'A woman in a summer dress', pronoun: 'She' },
   dm: { descriptor: 'A hotel doorman', pronoun: 'He' },
+  hm: { descriptor: 'A maid in cap and apron', pronoun: 'She' },
+  bh: { descriptor: 'A bellhop', pronoun: 'He' },
   y: { descriptor: 'A well-dressed young man', pronoun: 'He' },
   b: { descriptor: 'A boy in a sailor suit', pronoun: 'He' },
   // Built ahead of their models; wire a scene actor with the archetype and
@@ -43,6 +48,8 @@ const CONCERN_WEIGHT = Object.freeze({
   unmoved: 0, annoyed: 12, concerned: 30, shaken: 55, outraged: 80,
 });
 const GRIEVANCE_WEIGHT = 100;
+// Money held out in front of someone outranks every other preoccupation.
+const OFFER_WEIGHT = 140;
 const ATTENDING_WEIGHT = 40;
 
 const GRIEVANCE_OPENINGS = Object.freeze({
@@ -53,6 +60,37 @@ const GRIEVANCE_OPENINGS = Object.freeze({
   pelted: [
     'You are the man who threw that at me. I have not forgotten it, sir.',
     'Come back for another go, have you? You threw a thing at me and said nothing for it.',
+  ],
+});
+
+const OFFER_OPENINGS = Object.freeze({
+  payment: [
+    'Obliged to you, sir. What’ll you have for it?',
+    'That’ll do nicely. Now then — what can I give you?',
+  ],
+  tip: [
+    'That’s kind of you, sir. Very kind.',
+    'Well — thank you, sir. Not many think of it.',
+  ],
+  bribe: [
+    'Put that away, sir. Put it away before somebody sees you.',
+    'And what is that meant to buy, exactly? Careful now.',
+  ],
+  delight: [
+    'For me? Honest, mister?',
+    'Golly — thanks, mister!',
+  ],
+  charity: [
+    'I — thank you, sir. I had not looked for that.',
+    'That is good of you, sir. I’ll not pretend it isn’t wanted.',
+  ],
+  affront: [
+    'I beg your pardon. I am not in want of your money, sir.',
+    'Sir. Kindly put that away — what do you take me for?',
+  ],
+  puzzled: [
+    'What is this for? I have not done anything for you.',
+    'You’re handing me money, sir? Whatever for?',
   ],
 });
 
@@ -104,6 +142,8 @@ function witnessOpening(entry) {
 const ARCHETYPE_OPENINGS = Object.freeze({
   p: ['Something the matter, sir?', 'Keep to the walk, sir — the teams come through quick. What is it?'],
   dm: ['Good day, sir. Guest of the house?', 'Sir. The door is this way, if you’re stopping here.'],
+  hm: ['Sir. I’ll be out of your way directly.', 'Beg pardon, sir — did you want the desk?'],
+  bh: ['Bags, sir? Or shall I fetch the desk?', 'Yes, sir. Anything you want, sir.'],
   y: ['Ah — good day. Do I know you?', 'Yes? Well, good day to you, sir.'],
   b: ['Sir?', 'I wasn’t doing anything, sir.'],
   v: ['Fine goods, sir, best price on the avenue. What’ll you have?', 'Buy or don’t buy, sir, but the cart must earn its corner.'],
@@ -126,6 +166,8 @@ const BOUND = Object.freeze({
   keeper: 'at work keeping the park',
   police: 'on duty at this post, and not free to leave it',
   doorman: 'at his post by the hotel door, and not free to leave it',
+  housekeeping: 'at work on the public rooms, and not free to stop long',
+  bellhop: 'on call in the lobby, and not free to leave it',
   idler: 'idling where he can be seen, in no hurry at all',
   play: 'at play, and meant to be home by supper',
   vendor: 'working his cart, and not about to leave it unwatched',
@@ -150,6 +192,8 @@ const ACTIVITY_LABELS = Object.freeze({
 const ROLE_LABELS = Object.freeze({
   police: 'On his post',
   doorman: 'At the hotel door',
+  housekeeping: 'At work in the lobby',
+  bellhop: 'On call',
   idler: 'Idling',
   play: 'At play',
   keeper: 'At work in the park',
@@ -160,6 +204,26 @@ const ROLE_LABELS = Object.freeze({
   wheeling: 'Awheel',
   bench: 'On his bench',
 });
+
+// How a given station receives money pressed on them unasked. This is the
+// deterministic part; the model plays the attitude, it does not choose it.
+const MONEY_MANNER = Object.freeze({
+  v: 'payment', c: 'payment', x: 'payment', g: 'tip', dm: 'tip',
+  p: 'bribe',
+  hm: 'tip', bh: 'tip',
+  b: 'delight', 
+  s: 'charity',
+  f: 'affront', d: 'affront', h: 'affront', n: 'affront', r: 'affront',
+  m: 'puzzled', w: 'charity', y: 'affront', o: 'charity',
+});
+
+export const MONEY_MANNERS = Object.freeze([
+  'payment', 'tip', 'bribe', 'delight', 'charity', 'affront', 'puzzled',
+]);
+
+export function moneyMannerFor(archetype) {
+  return MONEY_MANNER[archetype] ?? 'puzzled';
+}
 
 export function crowdSpeakerDetails({
   archetype, role, activity, hour, seed, age,
@@ -196,7 +260,9 @@ export function crowdDialogueDefinition(id) {
     attending: attendingNow(context.hour, agent.x, agent.z),
     witnessed: witnessedBy(id),
     grievance: grievanceAgainst(id),
+    moneyOffer: offerTo(id),
     sells: agent.sells ?? null,
+    guests: registerFor(context.archetype, context.place),
   });
 }
 
@@ -215,8 +281,12 @@ export function buildCrowdDefinition(id, context) {
   );
 
   const grievance = context.grievance ?? null;
+  const offer = context.moneyOffer ?? null;
   const sells = Array.isArray(context.sells) ? context.sells : [];
+  // Hotel staff answer for their own house; everyone else has no register.
+  const guests = Array.isArray(context.guests) ? context.guests.slice(0, 8) : [];
   const attending = ATTENDING_OPENINGS[context.attending] ? context.attending : null;
+  const manner = moneyMannerFor(context.archetype);
 
   const idle = ARCHETYPE_OPENINGS[context.archetype]
     ?? (context.activity === 'resting' || context.activity === 'sitting'
@@ -231,6 +301,7 @@ export function buildCrowdDefinition(id, context) {
 
   const loudest = [
     { weight: 0, lines: idle },
+    ...(offer ? [{ weight: OFFER_WEIGHT, lines: OFFER_OPENINGS[manner] }] : []),
     ...(grievance
       ? [{
         weight: GRIEVANCE_WEIGHT,
@@ -249,13 +320,18 @@ export function buildCrowdDefinition(id, context) {
 
   const opening = pickSeeded(loudest.lines, seed, loudest.lines === idle ? 2 : 7);
 
-  const suggestedQuestions = [
-    ...(attending ? [ATTENDING_QUESTIONS[attending]] : []),
-    ...(worstConcern >= 1 ? ['What did you just see happen?'] : []),
-    'Where are you bound?',
-    'What is the news of the street?',
-    'What is there to see in the park?',
-  ].slice(0, 3);
+  // Situational prompts expire; trade, place and hour fill what is left.
+  const questions = suggestedQuestions({
+    archetype: context.archetype,
+    role: context.role,
+    place: context.place,
+    hour: context.hour,
+    seed,
+    situational: [
+      ...(attending ? [ATTENDING_QUESTIONS[attending]] : []),
+      ...(worstConcern >= 1 ? ['What did you just see happen?'] : []),
+    ],
+  });
 
   return {
     id,
@@ -264,13 +340,17 @@ export function buildCrowdDefinition(id, context) {
     historicalStatus: 'fictional',
     identity,
     whereabouts: BOUND[context.role] ?? BOUND.stroller,
-    bulletin: parkBulletin(context.hour ?? 12),
+    bulletin: bulletinApplies(context.place) ? parkBulletin(context.hour ?? 12) : [],
+    where: whereSentence(context.place),
     attending,
     witnessed,
     grievance,
     sells,
+    guests,
+    moneyOffer: offer,
+    moneyManner: manner,
     opening,
-    suggestedQuestions,
+    suggestedQuestions: questions,
     greetingDialogue: pickSeeded([
       'Good day to you, sir.',
       'And a good day to you.',
@@ -289,10 +369,13 @@ export function buildCrowdDefinition(id, context) {
       seed,
       identitySeed: seed,
       age: context.age,
+      place: context.place,
       witnessed,
       ...(attending ? { attending } : {}),
       ...(grievance ? { grievance } : {}),
+      ...(offer ? { moneyOffer: offer } : {}),
       ...(sells.length > 0 ? { sells } : {}),
+      ...(guests.length > 0 ? { guests } : {}),
     },
   };
 }

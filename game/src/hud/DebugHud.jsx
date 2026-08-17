@@ -31,8 +31,10 @@ export default function DebugHud({ showStats = false }) {
         z: position[2].toFixed(2),
         grounded,
         camera: gameDebug.stats.cameraDistance.toFixed(2),
-        draws: render?.calls ?? 0,
-        triangles: render?.triangles ?? 0,
+        draws: gameDebug.stats.draws,
+        triangles: gameDebug.stats.triangles,
+        skinned: scene?.skinnedVisible ?? 0,
+        skinnedBones: scene?.skinnedBones ?? 0,
         landmarkBatches: scene?.landmarkBatches ?? 0,
         landmarkInstances: scene?.landmarkInstances ?? 0,
         sceneTriangles: scene?.estimatedTriangles ?? 0,
@@ -58,6 +60,7 @@ export default function DebugHud({ showStats = false }) {
           <div className="text-amber-200">{snapshot.zone}</div>
           <div>{snapshot.fps} fps</div>
           <div>{snapshot.draws} draws · {Math.round(snapshot.triangles / 1000)}k tris</div>
+          <div>{snapshot.skinned} figures · {snapshot.skinnedBones} bones</div>
           <div>{snapshot.landmarkBatches} landmark batches · {snapshot.landmarkInstances} instances</div>
           <div>{Math.round(snapshot.sceneTriangles / 1000)}k scene tris (geometry estimate)</div>
           <div>

@@ -68,6 +68,8 @@ const STRAWHAT_MODEL = backgroundModelPath('strawhat-pedestrian');
 const NURSEMAID_MODEL = '/models/nursemaid.glb';
 const LILAC_WOMAN_MODEL = '/models/lilac-dress-woman.glb';
 const RATIONAL_WOMAN_MODEL = '/models/rational-dress-woman.glb';
+const HOTEL_MAID_MODEL = '/models/hotel-maid.glb';
+const HOTEL_BELLHOP_MODEL = '/models/hotel-bellhop.glb';
 
 export const PEDESTRIAN_SHARED_CLIPS = Object.freeze(['Sit Ground', 'Lie Down', 'Sit']);
 
@@ -228,6 +230,32 @@ export const PEDESTRIAN_ARCHETYPES = Object.freeze({
       'StandingIdle', 'Walk', 'Collision Reaction', 'StandUp',
       ...PEDESTRIAN_FULL_MIXAMO_CLIPS,
       'Driving', 'HonkingHorn',
+    ]),
+  }),
+  hm: Object.freeze({
+    id: 'hotel-maid',
+    label: 'Hotel maid',
+    modelPath: HOTEL_MAID_MODEL,
+    animationSources: Object.freeze([
+      HOTEL_MAID_MODEL,
+      PEDESTRIAN_STRAWHAT_MOTION_FILE,
+      PEDESTRIAN_STANDUP_FILE,
+    ]),
+    animations: Object.freeze([
+      'StandingIdle', 'Walk', ...PEDESTRIAN_FULL_MIXAMO_CLIPS, 'Collision Reaction', 'StandUp',
+    ]),
+  }),
+  bh: Object.freeze({
+    id: 'hotel-bellhop',
+    label: 'Hotel bellhop',
+    modelPath: HOTEL_BELLHOP_MODEL,
+    animationSources: Object.freeze([
+      HOTEL_BELLHOP_MODEL,
+      PEDESTRIAN_STRAWHAT_MOTION_FILE,
+      PEDESTRIAN_STANDUP_FILE,
+    ]),
+    animations: Object.freeze([
+      'StandingIdle', 'Walk', ...PEDESTRIAN_FULL_MIXAMO_CLIPS, 'Collision Reaction', 'StandUp',
     ]),
   }),
   o: Object.freeze({

@@ -168,11 +168,30 @@ test('version-one fauna defaults migrate without overwriting custom tuning', () 
       beeSpeed: 1.75,
     },
   }, settingsSchema);
-  assert.equal(migrated.schemaVersion, 2);
+  // Every step runs in order, so a version-one profile lands on the current one.
+  assert.equal(migrated.schemaVersion, settingsSchema.version);
   assert.equal(migrated.values.pigeonSize, 1.3);
   assert.equal(migrated.values.beeSize, 0.4);
   assert.equal(migrated.values.beeSpread, 1.5);
   assert.equal(migrated.values.beeSpeed, 1.75);
+});
+
+test('version-three migration replaces stale defaults but keeps moved sliders', () => {
+  const migrated = migrateStoredTuning({
+    schemaVersion: 2,
+    values: { shadowMapSize: '2048', saturation: 1, contrast: 1, gradeWarmth: 1.6 },
+  }, settingsSchema);
+  assert.equal(migrated.schemaVersion, settingsSchema.version);
+  assert.equal(migrated.values.shadowMapSize, '1024');
+  assert.equal(migrated.values.saturation, 1.08);
+  assert.equal(migrated.values.contrast, 1, 'contrast is deliberately unchanged');
+  // Already moved off the old default, so it is a decision and must survive.
+  assert.equal(migrated.values.gradeWarmth, 1.6);
+});
+
+test('an up-to-date profile is returned untouched', () => {
+  const stored = { schemaVersion: settingsSchema.version, values: { shadowMapSize: '2048' } };
+  assert.equal(migrateStoredTuning(stored, settingsSchema).values.shadowMapSize, '2048');
 });
 
 test('runtime clamps out-of-range writes and ignores unknown ids', () => {

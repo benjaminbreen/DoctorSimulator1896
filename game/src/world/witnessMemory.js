@@ -49,7 +49,10 @@ export function concernLevel(input) {
   return concernFromScore(concernScore(input));
 }
 
+// Returns what each witness made of it, so a caller can pick somebody to
+// shout (outcry.js). The memory itself is the point; the list is a byproduct.
 export function recordWitnesses(event, agents = listAgents(), now = Date.now()) {
+  const graded = [];
   for (const agent of agents) {
     if (!agent?.dialogueId) continue;
     const distance = Math.hypot(agent.x - event.x, agent.z - event.z);
@@ -74,6 +77,15 @@ export function recordWitnesses(event, agents = listAgents(), now = Date.now()) 
       seen = [];
       memories.set(agent.dialogueId, seen);
     }
+    const score = concernScore({
+      severity: severity(event),
+      distance,
+      composure: identity?.composure ?? 0.6,
+      involvedSelf,
+    });
+    graded.push({
+      agent, concern: concernFromScore(score), distance, involvedSelf,
+    });
     seen.push({
       eventId: event.id,
       kind: event.kind ?? 'vehicle-impact',
@@ -83,17 +95,13 @@ export function recordWitnesses(event, agents = listAgents(), now = Date.now()) 
       // The peak reaction, kept as a number so time can wear it down on the
       // way out. Where it happened is kept too: dialogue says "a few steps
       // off" or "over the way", not "near here" for everything in eyeshot.
-      score: concernScore({
-        severity: severity(event),
-        distance,
-        composure: identity?.composure ?? 0.6,
-        involvedSelf,
-      }),
+      score,
       nearness: distance <= NEAR ? 'here' : distance <= NEARBY ? 'nearby' : 'off',
       at: now,
     });
     if (seen.length > MAX_PER_AGENT) seen.splice(0, seen.length - MAX_PER_AGENT);
   }
+  return graded;
 }
 
 // What this agent still remembers, freshest last, with age in game minutes.

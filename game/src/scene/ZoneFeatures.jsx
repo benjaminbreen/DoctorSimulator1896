@@ -17,6 +17,7 @@ const FEATURES = {
   'hotel-doormen': lazy(() => import('./HotelDoormen.jsx')),
   'street-police': lazy(() => import('./StreetPolice.jsx')),
   'posted-npcs': lazy(() => import('./PostedNpcs.jsx')),
+  'lobby-staff': lazy(() => import('./LobbyStaff.jsx')),
   'gapstow-bridge': lazy(() => import('./GapstowBridge.jsx')),
   'schist-outcrops': lazy(() => import('./SchistOutcrops.jsx')),
   'rustic-shelters': lazy(() => import('./RusticShelters.jsx')),
@@ -35,7 +36,7 @@ const FEATURES = {
 export default function ZoneFeatures({ zone, runtime, ids = zone.features ?? [], suspendTogether = false }) {
   const nodes = ids.map((id) => {
     const Feature = FEATURES[id];
-    return Feature ? <Feature key={id} runtime={runtime} /> : null;
+    return Feature ? <Feature key={id} runtime={runtime} zone={zone} /> : null;
   });
   if (suspendTogether) return nodes;
   return nodes.map((node, index) => (

@@ -15,6 +15,7 @@ import {
   stepConfrontation,
 } from '../world/confrontation.js';
 import { grievanceAgainst } from '../world/grievances.js';
+import { raiseHawk, raiseNewsboyCry } from '../world/outcry.js';
 import { getInteraction } from '../world/interaction.js';
 import { dampAngle } from '../movement/mathUtils.js';
 import { hashString } from '../world/npcIdentity.js';
@@ -28,6 +29,9 @@ import { normalizeNonmetallicCharacterMaterial } from './characterMaterials.js';
 import { restoreLoopingIdle } from './characterGestures.js';
 
 const AMBIENT_GAP = 11;
+// Inside this and he calls to you; after a cry, this long before another.
+const PITCH_RANGE = 8;
+const PITCH_GAP = 75;
 
 function withMeshopt(loader) {
   loader.setMeshoptDecoder(MeshoptDecoder);
@@ -37,7 +41,7 @@ function buildActor(spec, modelGltf, motionGltf) {
   const wrapper = new THREE.Group();
   const figure = cloneSkeleton(modelGltf.scene);
   figure.name = spec.id;
-  figure.scale.setScalar(spec.scale);
+  figure.scale.setScalar(spec.height);
   figure.traverse((node) => {
     if (!node.isMesh && !node.isSkinnedMesh) return;
     node.castShadow = true;
@@ -77,6 +81,8 @@ function buildActor(spec, modelGltf, motionGltf) {
     active: null,
     gestureUntil: 0,
     nextAmbientAt: AMBIENT_GAP + (hashString(spec.id) % 900) / 100,
+    // Staggered, so walking down the block is not two men shouting at once.
+    nextPitchAt: 6 + (hashString(spec.id) % 1700) / 100,
     ambientIndex: 0,
     scoldedCount: 0,
     body: null,
@@ -151,6 +157,34 @@ export default function PostedNpcs({ runtime }) {
           actor.nextAmbientAt = now + AMBIENT_GAP;
         }
       }
+      // A trade is called, not waited on: come inside the pitch and he says
+      // his piece. The gap is long — a man shouting at you every ten seconds
+      // is scenery, and worse than silence.
+      if (!confrontationFor(actor.spec.id) && !actor.confrontPose
+        && speakingId !== actor.spec.id && now >= actor.nextPitchAt) {
+        const player = gameDebug.player.position;
+        const range = Math.hypot(player[0] - actor.worldX, player[2] - actor.worldZ);
+        if (range <= PITCH_RANGE) {
+          const cried = actor.spec.role === 'newsboy'
+            ? raiseNewsboyCry({
+              hour: runtime.values.timeOfDay,
+              speaker: actor.spec.dialogueName,
+              anchorId: actor.spec.id,
+              seed: Math.round(now),
+            })
+            : raiseHawk({
+              archetype: actor.spec.archetype,
+              speaker: actor.spec.dialogueName,
+              sells: actor.spec.sells ?? [],
+              anchorId: actor.spec.id,
+              seed: Math.round(now),
+            });
+          // Only a cry that was actually heard resets the gap; one dropped by
+          // a louder event should be tried again shortly.
+          actor.nextPitchAt = now + (cried ? PITCH_GAP : 4);
+        }
+      }
+
       // Hit by a thrown object, he leaves the cart to have it out. The cart
       // stays where it is; he goes back to it when he has finished.
       for (const impact of takeActorImpacts(actor.spec.id)) {
@@ -236,6 +270,7 @@ export default function PostedNpcs({ runtime }) {
             role: actor.spec.role,
             activity: actor.spec.activity,
             hour: runtime.values.timeOfDay,
+            place: runtime.values.zone,
             seed: hashString(actor.spec.id),
           },
         },

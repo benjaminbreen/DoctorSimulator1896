@@ -35,8 +35,9 @@ import {
 import { normalizeNonmetallicCharacterMaterial } from './characterMaterials.js';
 import { restoreLoopingIdle } from './characterGestures.js';
 import { buildWalkingStick, findMixamoBone } from './walkingStick.js';
+import { figureHeight } from '../world/figureHeights.js';
 
-const NPC_SCALE = 1.62;
+const NPC_SCALE = figureHeight('tophat-dandy');
 const BUMP_DISTANCE = 0.86;
 const BUMP_RELEASE_DISTANCE = 1.18;
 const BUMP_COOLDOWN = 4;
@@ -294,6 +295,7 @@ export default function Dandies({ runtime }) {
           role: 'idler',
           activity: 'standing',
           hour: runtime.values.timeOfDay,
+          place: actor.placement.zone,
           seed: hashString(actor.placement.id),
         },
       });

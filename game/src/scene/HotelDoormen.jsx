@@ -24,8 +24,9 @@ import {
 } from '../world/hotelDoormen.js';
 import { normalizeNonmetallicCharacterMaterial } from './characterMaterials.js';
 import { restoreLoopingIdle } from './characterGestures.js';
+import { figureHeight } from '../world/figureHeights.js';
 
-const NPC_SCALE = 1.62;
+const NPC_SCALE = figureHeight('hotel-doorman');
 const PLAYER_GREETING_DISTANCE = 2.8;
 const PLAYER_GREETING_RELEASE = 3.7;
 const BUMP_DISTANCE = 0.86;
@@ -200,6 +201,7 @@ export default function HotelDoormen({ runtime }) {
           role: 'doorman',
           activity: 'standing',
           hour: runtime.values.timeOfDay,
+          place: actor.placement.zone,
           seed: hashString(actor.placement.id),
         },
       });
