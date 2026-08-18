@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  HORSECAR_STOPS,
   HORSE_DRAWN_MAX_ACTIVE,
   HORSE_DRAWN_ROSTER,
   HORSE_RIG_CONFIG,
@@ -27,6 +28,27 @@ test('street roster is deterministic, bounded, and uses distinct routes', () => 
   // both used the street in fact, and the car keeps to its own rails.
   assert.ok(new Set(first.map((unit) => unit.route)).size >= first.length - 1);
   assert.equal(new Set(first.map((unit) => unit.start)).size, first.length);
+});
+
+test('the Belt Line car dwells at its stop and moves off again', () => {
+  let state = createHorseDrawnState(4, HORSECAR_STOPS[0].s - 12, 0, 'horsecar');
+  const params = {
+    type: 'horsecar', cruise: 2.2, lane: 0, railBound: true,
+    stops: HORSECAR_STOPS, stopDwell: 9,
+  };
+  let dwelled = 0;
+  let resumed = false;
+  for (let i = 0; i < 60 * 90; i += 1) {
+    state = stepHorseDrawnState(state, 1 / 60, [], params);
+    if (state.stopWait > 0 && state.speed < 0.05) dwelled += 1 / 60;
+    if (dwelled > 5 && state.stopWait === 0 && state.speed > 1.5) {
+      resumed = true;
+      break;
+    }
+  }
+  assert.ok(dwelled >= 5, 'held at the stop');
+  assert.ok(resumed, 'moved off after the dwell');
+  assert.equal(state.lastStop, HORSECAR_STOPS[0].id);
 });
 
 test('street roster reuses coachworks presets within its render budget', () => {

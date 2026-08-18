@@ -14,6 +14,17 @@ function routeStartNear(routeIndex, targetX, targetZ, headingX = null) {
   return best.s;
 }
 
+// The Belt Line car calls at the two park gates in both directions:
+// Scholars' Gate by the waiting shelter, and the Artists' Gate crossing at
+// Sixth Avenue. Positions are route distances on route 4's two traces.
+export const HORSECAR_STOPS = Object.freeze([
+  { id: 'artists-gate-east', s: routeStartNear(4, -38, 93.25, 1) },
+  { id: 'scholars-gate-east', s: routeStartNear(4, 66, 93.25, 1) },
+  { id: 'scholars-gate-west', s: routeStartNear(4, 66, 88.75, -1) },
+  { id: 'artists-gate-west', s: routeStartNear(4, -38, 88.75, -1) },
+]);
+export const HORSECAR_STOP_DWELL = 9;
+
 // Five active rigs keep the original three-route spread and add working
 // wagons to the two underused road stretches marked in the overhead review.
 export const HORSE_DRAWN_ROSTER = Object.freeze([
@@ -40,6 +51,7 @@ export const HORSE_DRAWN_ROSTER = Object.freeze([
   {
     id: 'belt-line-horsecar', type: 'horsecar', route: 4,
     start: ROUTES[4].total * 0.35, lane: 0, cruise: 2.2, railBound: true,
+    stops: HORSECAR_STOPS, stopDwell: HORSECAR_STOP_DWELL,
   },
 ]);
 
@@ -158,8 +170,31 @@ export function stepHorseDrawnState(state, dt, obstacles, params, advice) {
   const collider = horseDrawnCollider(params.type);
   const totalArticulation = rig.maxHorseAngle + rig.maxSteer;
   const large = params.type === 'omnibus' || params.type === 'horsecar';
+  // Scheduled stops: ease down approaching the mark, hold for the dwell,
+  // then move off. lastStop keeps a standing car from re-arming its own stop.
+  let cruise = Math.min(params.cruise, advice?.cruise ?? params.cruise);
+  let stopWait = state.stopWait ?? 0;
+  let lastStop = state.lastStop ?? null;
+  if (params.stops?.length) {
+    if (stopWait > 0) {
+      stopWait = Math.max(0, stopWait - dt);
+      cruise = 0;
+    } else {
+      const total = ROUTES[state.route].total;
+      for (const stop of params.stops) {
+        const ahead = (((stop.s - state.s) % total) + total) % total;
+        if (ahead < 5 && lastStop !== stop.id) {
+          cruise = Math.min(cruise, Math.max(0.3, ahead * 0.55));
+          if (ahead < 0.35) {
+            stopWait = params.stopDwell ?? 8;
+            lastStop = stop.id;
+          }
+        }
+      }
+    }
+  }
   const guide = stepCarriage(state, dt, obstacles, {
-    cruise: Math.min(params.cruise, advice?.cruise ?? params.cruise),
+    cruise,
     // A railcar cannot take a lane suggestion or swerve: it slows instead.
     lane: params.railBound ? params.lane : (advice?.lane ?? params.lane),
     swerveLambda: advice?.laneLambda ?? 0.9,
@@ -262,6 +297,8 @@ export function stepHorseDrawnState(state, dt, obstacles, params, advice) {
     horseArticulation: shortestArc(drawYaw, horseYaw),
     traffic: advice?.traffic ?? state.traffic,
     intersection: advice?.intersection ?? null,
+    stopWait,
+    lastStop,
   };
 }
 

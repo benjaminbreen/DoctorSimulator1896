@@ -580,10 +580,8 @@ function omnibusBody(parts, values, gear) {
       shape: 'roundedBox', bevelRadius: 0.02, ...IRON,
     });
   }
-  add(parts, 'omnibus-route-board', [cabinX, y + H * 0.94, W / 2 + 0.056], [cabinL * 0.72, 0.19, 0.018], {
-    castShadow: false,
-    label: { text: 'FIFTH AVENUE', font: 'caslon', paper: '#d3ad55', ink: '#382311', paperAge: 0.42, surface: 'agedPaper' },
-  });
+  // The route name is painted by the traffic renderer's coach-lettering
+  // pass, directly on the letterboard bands — no paper label.
   addDriverBox(parts, values, y, L * 0.45, 0.62);
   if (values.coachLamps) {
     for (const side of [-1, 1]) addCoachLamp(parts, `omnibus-lamp-${side}`, L * 0.4, y + H * 0.6, side * (W / 2 + 0.11));

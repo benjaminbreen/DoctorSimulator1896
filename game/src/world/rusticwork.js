@@ -11,6 +11,10 @@ export const SHELTERS = [
   { id: 'kinderberg', x: 44, z: -56, yaw: 2.75, sides: 8, radius: 6.2, postH: 3.1, postR: 0.24, roofRise: 3.4, overhang: 1.1, entries: [0, 4], inner: true, lantern: true },
   { id: 'cop-cot', x: -34, z: 73, yaw: -1.85, sides: 6, radius: 3.1, postH: 2.75, postR: 0.16, roofRise: 2.1, overhang: 0.85, entries: [0] },
   { id: 'hallett-arbor', x: 2, z: 39, yaw: -2.5, sides: 4, radius: 2.3, postH: 2.2, postR: 0.13, roofRise: 1.3, overhang: 0.9, entries: [0, 2] },
+  // Belt Line waiting shelter at the Scholars' Gate stop, after the pavilion
+  // in the 1886 Magnus print of this corner. yaw π/4 puts the entry bay flat
+  // toward the street; the plank deck keeps waiting feet off the lawn.
+  { id: 'belt-line-stop', x: 66, z: 81.2, yaw: Math.PI / 4, sides: 4, radius: 2.0, postH: 2.5, postR: 0.13, roofRise: 1.35, overhang: 0.85, entries: [0], platform: 3.55 },
 ];
 
 function hash01(seed) {
@@ -97,6 +101,20 @@ function buildShelter(shelter, index) {
       poles.push(pole([x, ground - 0.8, z], [x, innerTop, z], postR * 0.9, cedarTint(seed())));
       colliders.push({ type: 'cylinder', p: [x, ground + postH / 2, z], radius: postR, height: postH });
     }
+  }
+
+  // A plank deck under the whole footprint, aligned with the bays. Only the
+  // Belt Line stop carries one; the lawn shelters stand on their ground.
+  if (shelter.platform) {
+    const deck = shelter.platform;
+    const deckYaw = -(yaw - Math.PI / 4);
+    seats.push({
+      p: [shelter.x, ground + 0.05, shelter.z],
+      r: [0, deckYaw, 0],
+      s: [deck, 0.1, deck],
+      tint: cedarTint(seed()),
+    });
+    colliders.push({ type: 'box', p: [shelter.x, ground + 0.05, shelter.z], size: [deck, 0.1, deck], yaw: deckYaw });
   }
 
   // Roof frame. A plain shelter gets a cone to a peak; the Kinderberg's

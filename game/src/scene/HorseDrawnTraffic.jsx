@@ -159,9 +159,14 @@ function Coachwork({ batches, refs }) {
   });
 }
 
-// One-time canvas lettering. Redrawn when the web fonts finish loading, so
-// the boards get the period face rather than the fallback serif.
-function letteringTexture(text, { width = 1024, height = 128, color = '#d9b96a' } = {}) {
+// One-time canvas lettering for coach boards: spaced capitals in the period
+// face, shrunk to fit, filled with a vertical shade so gold reads as leaf
+// rather than flat paint, over a fine dark edge. Redrawn when the web fonts
+// finish loading, so the boards get Old Standard rather than the fallback.
+function letteringTexture(text, {
+  width = 1024, height = 128,
+  top = '#f2dc95', bottom = '#b08d3c', edge = 'rgba(28,16,6,0.9)',
+} = {}) {
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
@@ -171,19 +176,32 @@ function letteringTexture(text, { width = 1024, height = 128, color = '#d9b96a' 
   texture.anisotropy = 8;
   const draw = () => {
     context.clearRect(0, 0, width, height);
-    context.fillStyle = color;
     context.textAlign = 'center';
     context.textBaseline = 'middle';
-    // Shrink to fit: the company's full name is longer than the board.
-    let size = Math.floor(height * 0.52);
+    // Wide tracking is what makes coach lettering read as sign work.
+    try {
+      context.letterSpacing = `${Math.round(height * 0.1)}px`;
+    } catch {
+      // Older engines: plain tracking. The face still carries the look.
+    }
+    let size = Math.floor(height * 0.58);
     const font = (px) => `600 ${px}px "Old Standard TT", "Times New Roman", serif`;
     context.font = font(size);
     const measured = context.measureText(text).width;
-    if (measured > width * 0.94) {
-      size = Math.floor((size * width * 0.94) / measured);
+    if (measured > width * 0.92) {
+      size = Math.floor((size * width * 0.92) / measured);
       context.font = font(size);
     }
-    context.fillText(text, width / 2, height / 2 + height * 0.02);
+    const middle = height / 2 + height * 0.02;
+    context.lineJoin = 'round';
+    context.strokeStyle = edge;
+    context.lineWidth = Math.max(2, size * 0.07);
+    context.strokeText(text, width / 2, middle);
+    const gradient = context.createLinearGradient(0, middle - size * 0.5, 0, middle + size * 0.5);
+    gradient.addColorStop(0, top);
+    gradient.addColorStop(1, bottom);
+    context.fillStyle = gradient;
+    context.fillText(text, width / 2, middle);
     texture.needsUpdate = true;
   };
   draw();
@@ -191,56 +209,97 @@ function letteringTexture(text, { width = 1024, height = 128, color = '#d9b96a' 
   return texture;
 }
 
-// Company letterboards and destination boards for the Belt Line car. The
-// gold-on-red company name on the letterboard was the street railways'
-// standard practice; the boards are two shared materials on six small planes.
-function HorsecarLettering() {
-  const values = COACHWORKS_PRESETS.horsecar;
-  const assets = useMemo(() => {
-    const company = letteringTexture('CENTRAL PARK, NORTH & EAST RIVER R.R.');
-    const destination = letteringTexture('59TH ST.', { width: 256, height: 80, color: '#2c2318' });
-    return {
-      company,
-      destination,
-      companyMaterial: new THREE.MeshStandardMaterial({
-        map: company, transparent: true, roughness: 0.5, metalness: 0.3,
-      }),
-      destinationMaterial: new THREE.MeshStandardMaterial({
-        map: destination, transparent: true, roughness: 0.7,
-      }),
-      boardMaterial: new THREE.MeshStandardMaterial({ color: '#e4d6aa', roughness: 0.6 }),
-    };
-  }, []);
-  useEffect(() => () => {
-    for (const asset of Object.values(assets)) asset.dispose();
-  }, [assets]);
+function letteringMaterial(texture, options = {}) {
+  return new THREE.MeshStandardMaterial({
+    map: texture, transparent: true, roughness: 0.42, metalness: 0.35,
+    polygonOffset: true, polygonOffsetFactor: -1, ...options,
+  });
+}
+
+// Board layouts per vehicle type: plane [x, y, z], facing, and plane size.
+// Positions must match the body builders' letterboard parts in coachworks.
+function coachBoards(type) {
+  const values = COACHWORKS_PRESETS[type];
   const y = values.rideHeight;
   const H = values.bodyHeight;
   const L = values.bodyLength;
   const W = values.bodyWidth;
+  if (type === 'horsecar') {
+    return {
+      sides: {
+        text: 'CENTRAL PARK, NORTH & EAST RIVER R.R.',
+        y: y + H * 0.865, z: W / 2 + 0.029, size: [L * 0.92, H * 0.16],
+      },
+      ends: {
+        text: '59TH ST.',
+        x: L / 2 + 0.79, y: y + 1.18, size: [0.84, 0.17], backing: [0.92, 0.2],
+      },
+    };
+  }
+  if (type === 'omnibus') {
+    const cabinL = L * 0.86;
+    const cabinX = -L * 0.06;
+    return {
+      sides: {
+        // Dark ink on the yellow letterboard, the Fifth Avenue stage's own
+        // scheme; the band itself is painted by the coachwork.
+        text: 'FIFTH AVENUE',
+        top: '#42311a', bottom: '#281c0e', edge: 'rgba(240,220,160,0.35)',
+        dark: true,
+        x: cabinX, y: y + H * 0.94, z: W / 2 + 0.055, size: [cabinL * 0.8, 0.17],
+      },
+    };
+  }
+  return null;
+}
+
+// Painted lettering for the omnibus and the Belt Line car: canvas textures on
+// planes over the coachwork's own boards, two shared materials per vehicle.
+function CoachLettering({ type }) {
+  const boards = useMemo(() => coachBoards(type), [type]);
+  const assets = useMemo(() => {
+    if (!boards) return null;
+    const out = {};
+    if (boards.sides) {
+      out.sideTexture = letteringTexture(boards.sides.text, boards.sides);
+      out.sideMaterial = letteringMaterial(out.sideTexture, boards.sides.dark ? { metalness: 0.1 } : {});
+    }
+    if (boards.ends) {
+      out.endTexture = letteringTexture(boards.ends.text, {
+        width: 256, height: 80, top: '#3a2c18', bottom: '#241a0e', edge: 'rgba(240,224,180,0.3)',
+      });
+      out.endMaterial = letteringMaterial(out.endTexture, { metalness: 0.05 });
+      out.endBacking = new THREE.MeshStandardMaterial({ color: '#e4d6aa', roughness: 0.6 });
+    }
+    return out;
+  }, [boards]);
+  useEffect(() => () => {
+    if (assets) for (const asset of Object.values(assets)) asset.dispose();
+  }, [assets]);
+  if (!boards || !assets) return null;
   return (
     <>
-      {[-1, 1].map((side) => (
+      {boards.sides && [-1, 1].map((side) => (
         <mesh
           key={`board-${side}`}
-          position={[0, y + H * 0.865, side * (W / 2 + 0.029)]}
+          position={[boards.sides.x ?? 0, boards.sides.y, side * boards.sides.z]}
           rotation={[0, side === 1 ? 0 : Math.PI, 0]}
-          material={assets.companyMaterial}
+          material={assets.sideMaterial}
         >
-          <planeGeometry args={[L * 0.92, H * 0.16]} />
+          <planeGeometry args={boards.sides.size} />
         </mesh>
       ))}
-      {[-1, 1].map((end) => (
+      {boards.ends && [-1, 1].map((end) => (
         <group
           key={`destination-${end}`}
-          position={[end * (L / 2 + 0.79), y + 1.18, 0]}
+          position={[end * boards.ends.x, boards.ends.y, 0]}
           rotation={[0, end === 1 ? Math.PI / 2 : -Math.PI / 2, 0]}
         >
-          <mesh material={assets.boardMaterial} position={[0, 0, -0.006]}>
-            <planeGeometry args={[0.92, 0.2]} />
+          <mesh material={assets.endBacking} position={[0, 0, -0.006]}>
+            <planeGeometry args={boards.ends.backing} />
           </mesh>
-          <mesh material={assets.destinationMaterial}>
-            <planeGeometry args={[0.84, 0.17]} />
+          <mesh material={assets.endMaterial}>
+            <planeGeometry args={boards.ends.size} />
           </mesh>
         </group>
       ))}
@@ -506,6 +565,8 @@ export default function HorseDrawnTraffic({ runtime }) {
           cruise: unit.cruise,
           lane: unit.lane,
           railBound: unit.railBound,
+          stops: unit.stops,
+          stopDwell: unit.stopDwell,
         }, advice);
         unit.accumulator -= HORSE_DRAWN_FIXED_DT;
         steps += 1;
@@ -671,7 +732,7 @@ export default function HorseDrawnTraffic({ runtime }) {
       <group key={unit.id} ref={(node) => (unit.refs.root = node)}>
         <group ref={(node) => (unit.refs.coach = node)}>
           <Coachwork batches={unit.coachBatches} refs={unit.refs} />
-          {unit.type === 'horsecar' && <HorsecarLettering />}
+          <CoachLettering type={unit.type} />
           <group
             position={[unit.driverSeat.x, unit.driverSeat.y - 0.42, 0]}
             rotation={[0, Math.PI / 2, 0]}

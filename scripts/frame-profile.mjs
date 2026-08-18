@@ -127,7 +127,7 @@ try {
   // Evaluate an expression after boot and print it: --probe="expression"
   const probe = flag('probe', null);
   if (probe) {
-    const value = await page.evaluate((code) => JSON.stringify(new Function(`return (${code})`)(), null, 1), probe);
+    const value = await page.evaluate(async (code) => JSON.stringify(await new Function(`return (${code})`)(), null, 1), probe);
     console.log(`probe: ${value}`);
   }
 

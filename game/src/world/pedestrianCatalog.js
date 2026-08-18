@@ -55,7 +55,7 @@ export const PEDESTRIAN_STANDUP_FILE = '/models/ped-anim-standup.glb';
 // decoded texture memory and per-frame skinning cost.
 const USE_MOBILE_BACKGROUND_MODELS = shouldRecycleWebGLContextOnTravel();
 function backgroundModelPath(name) {
-  return `/models/${name}${USE_MOBILE_BACKGROUND_MODELS ? '-mobile' : ''}.glb?v=crowd-opt-1`;
+  return `/models/${name}${USE_MOBILE_BACKGROUND_MODELS ? '-mobile' : ''}.glb?v=crowd-opt-2`;
 }
 
 const BOWLER_MODEL = backgroundModelPath('pedestrian-b');
@@ -291,6 +291,10 @@ export const PEDESTRIAN_ARCHETYPES = Object.freeze({
 
 // Authored loiterers keep hours: they are somewhere else the rest of the day.
 export const PEDESTRIAN_STANDERS = Object.freeze([
+  // Waiting for the Belt Line car, on the walk in front of the Scholars'
+  // Gate shelter, facing the tracks.
+  Object.freeze({ id: 'belt-line-wait-a', x: 64.9, z: 83.6, yaw: 0.12, onTerrain: true, clip: 'Idle', who: 'w', age: 41, label: 'Belt Line stop', schedule: Object.freeze({ startHour: 8, endHour: 11.5 }) }),
+  Object.freeze({ id: 'belt-line-wait-b', x: 67.6, z: 83.3, yaw: -0.15, onTerrain: true, clip: 'Briefcase Idle', who: 'm', age: 29, label: 'Belt Line stop', schedule: Object.freeze({ startHour: 9, endHour: 13 }) }),
   Object.freeze({ id: 'fifth-avenue-clerk', x: 108.4, z: 20, yaw: -1.6, onTerrain: false, clip: 'Briefcase Idle', who: 'm', age: 34, label: 'Fifth Avenue', schedule: Object.freeze({ startHour: 8.25, endHour: 9.75 }) }),
   Object.freeze({ id: 'west-boundary-worker', x: -8, z: 88.4, yaw: 3.0, onTerrain: false, clip: 'Idle', who: 'w', age: 61, label: 'West park boundary', schedule: Object.freeze({ startHour: 6.5, endHour: 9.5 }) }),
   Object.freeze({ id: 'metropolitan-club-wall-leaner', wallId: 'metropolitan-club', x: 109, z: 47, yaw: -Math.PI / 2, onTerrain: false, clip: 'StandingLeaningWall', who: 'w', age: 38, label: 'Metropolitan Club wall', schedule: Object.freeze({ startHour: 8.5, endHour: 12 }) }),
