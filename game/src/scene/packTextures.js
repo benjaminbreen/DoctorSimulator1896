@@ -40,7 +40,11 @@ export function sharePackTextures(gltf) {
       if (!material) continue;
       for (const slot of SLOTS) {
         const texture = material[slot];
-        if (!texture?.name || !HASHED_NAME.test(texture.name)) continue;
+        if (!texture) continue;
+        // GLTF textures arrive at anisotropy 1, which blurs bark, benches,
+        // and bridge stone at grazing angles. Sampler state, so no re-upload.
+        if (texture.anisotropy < 8) texture.anisotropy = 8;
+        if (!texture.name || !HASHED_NAME.test(texture.name)) continue;
         const shared = sources.get(texture.name);
         if (shared === undefined) {
           sources.set(texture.name, texture.source);

@@ -128,8 +128,14 @@ export default function Terrain() {
             float verge = vSplat.w * vSplat.w * (0.4 + 0.5 * turfNoise(wuv / 4.3));
             blended = mix(blended, blended * vec3(1.05, 0.96, 0.7), verge * 0.6);
             blended = mix(blended, texture2D(rockMap, uvT * 0.71).rgb, clamp(vSplat.y, 0.0, 1.0));
-            blended = mix(blended, texture2D(pathMap, uvT * 1.37).rgb, clamp(vSplat.x, 0.0, 1.0));
-            blended = mix(blended, texture2D(pathMap, uvT * 1.37).rgb * vec3(1.02, 0.94, 0.78), clamp(vSplat.z, 0.0, 1.0));
+            // The same two-scale trick as the grass: a long straight walk
+            // otherwise shows the gravel tile repeating down its length.
+            vec3 pathTex = mix(
+              texture2D(pathMap, uvT * 1.37).rgb,
+              texture2D(pathMap, uvT * 0.31).rgb,
+              smoothstep(0.25, 0.75, turfNoise(wuv / 13.0)));
+            blended = mix(blended, pathTex, clamp(vSplat.x, 0.0, 1.0));
+            blended = mix(blended, pathTex * vec3(1.02, 0.94, 0.78), clamp(vSplat.z, 0.0, 1.0));
             blended = mix(blended, texture2D(streetMap, uvT * 1.2).rgb, smoothstep(0.12, 0.88, vUrban));
             diffuseColor.rgb *= blended;
           }`,

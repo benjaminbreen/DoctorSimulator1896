@@ -412,6 +412,7 @@ export default function Furniture({ items, runtime }) {
     for (const texture of [barkCol, brickCol, pavingCol, barkNrm]) {
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
+      texture.anisotropy = 8;
     }
     barkCol.colorSpace = THREE.SRGBColorSpace;
     brickCol.colorSpace = THREE.SRGBColorSpace;
@@ -444,6 +445,22 @@ export default function Furniture({ items, runtime }) {
         pavingClones.set(item.id, paving);
       }
       return <meshStandardMaterial map={paving} color={item.color ?? '#ffffff'} roughness={0.9} />;
+    }
+    if (item.texture === 'blockstone') {
+      // A wall, not a slab: box side faces map u along the box's long axis
+      // and v up, so the repeat is length x height. Small tile, so the paving
+      // image reads as coursed cut stone.
+      const tile = 1.1;
+      let stone = pavingClones.get(item.id);
+      if (!stone) {
+        stone = maps.paving.clone();
+        stone.repeat.set(
+          Math.max(1, Math.max(item.size[0], item.size[2]) / tile),
+          Math.max(0.5, item.size[1] / tile),
+        );
+        pavingClones.set(item.id, stone);
+      }
+      return <meshStandardMaterial map={stone} color={item.color ?? '#8a8578'} roughness={0.94} />;
     }
     if (item.glass) {
       return <PropMaterial item={item} />;
