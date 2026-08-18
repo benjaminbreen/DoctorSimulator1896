@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Sky } from 'three/addons/objects/Sky.js';
@@ -107,7 +107,8 @@ void main() {`,
   }, [grade]);
   const sunTarget = useMemo(() => new THREE.Object3D(), []);
 
-  useEffect(() => {
+  // Layout effect: fog is a shader define, so the boot compile must see it.
+  useLayoutEffect(() => {
     const fog = new THREE.FogExp2(config.fog?.color ?? '#cdd6e4', runtime.values.fogDensity);
     scene.fog = fog;
     return () => {

@@ -78,12 +78,8 @@ async function warm(url, signal) {
   }
 }
 
-// Returns an abort function. Call it when the zone unmounts: a park left
-// behind should not keep pulling its crowd down over the consulting room's.
-export function warmParkAssets(groups) {
-  const controller = new AbortController();
-  const { signal } = controller;
-  parkWarmUrls(groups).then((urls) => {
+function runWarmPool(urlsPromise, signal) {
+  urlsPromise.then((urls) => {
     if (signal.aborted) return;
     let next = 0;
     const worker = async () => {
@@ -91,5 +87,42 @@ export function warmParkAssets(groups) {
     };
     for (let i = 0; i < Math.min(CONCURRENCY, urls.length); i += 1) worker();
   });
+}
+
+// Returns an abort function. Call it when the zone unmounts: a park left
+// behind should not keep pulling its crowd down over the consulting room's.
+export function warmParkAssets(groups) {
+  const controller = new AbortController();
+  runWarmPool(parkWarmUrls(groups), controller.signal);
+  return () => controller.abort();
+}
+
+// The working day leads from the park to the waiting room and the consulting
+// office, whose pack pieces and patient cohort models otherwise download at
+// the moment of travel — the first visit cost ~8s on a 20Mbps line.
+async function interiorWarmUrls() {
+  const [{ zones }, { deriveRoom }, { phase1Cast }] = await Promise.all([
+    import('../world/zones.js'),
+    import('../world/blueprint.js'),
+    import('../content/clinic1896/phase1Cast.js'),
+  ]);
+  const urls = new Set();
+  for (const id of ['consulting-office', 'waiting-room']) {
+    const zone = zones[id];
+    if (!zone) continue;
+    const items = [...deriveRoom(zone.blueprint).furnitureBoxes, ...(zone.extraItems ?? [])];
+    for (const url of packUrls(items)) urls.add(url);
+  }
+  for (const actor of phase1Cast) {
+    const path = actor.recipe?.asset?.path;
+    if (path) urls.add(path);
+  }
+  return [...urls];
+}
+
+// Called once the park is fully up and the pipe is idle.
+export function warmInteriorAssets() {
+  const controller = new AbortController();
+  runWarmPool(interiorWarmUrls(), controller.signal);
   return () => controller.abort();
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useLayoutEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import { solarRamps } from '../world/solar.js';
@@ -64,7 +64,8 @@ export default function InteriorEnvironment({ lighting, runtime }) {
     [lighting],
   );
 
-  useEffect(() => {
+  // Layout effect so the stage compile sees the envMap (see SkyEnvironment).
+  useLayoutEffect(() => {
     scene.environment = texture;
     return () => {
       scene.environment = null;

@@ -40,7 +40,7 @@ import {
   shouldRecycleWebGLContextOnTravel,
   webGLContextKey,
 } from './mobileGraphics.js';
-import { warmParkAssets } from './parkPreload.js';
+import { warmInteriorAssets, warmParkAssets } from './parkPreload.js';
 
 const Room = lazy(() => import('./Room.jsx'));
 const Furniture = lazy(() => import('./Furniture.jsx'));
@@ -448,6 +448,52 @@ function SceneContents({
     return warmParkAssets(parkModelGroups);
   }, [coreReady, parkModelGroups, room.exterior]);
 
+  // Once the park's own stages are all mounted, spend the idle pipe on where
+  // the day goes next: the interiors and the patient cohort models.
+  useEffect(() => {
+    if (!room.exterior || stage < PARK_STAGE_LABELS.length - 1) return undefined;
+    return warmInteriorAssets();
+  }, [room.exterior, stage]);
+
+  // Upload every texture at idle once the stages are in. Left to first sight,
+  // each upload lands mid-play as a hitch when the player walks somewhere new.
+  const gl = useThree((state) => state.gl);
+  const scene = useThree((state) => state.scene);
+  useEffect(() => {
+    if (stage < stageLabels.length - 1) return undefined;
+    const textures = new Set();
+    scene.traverse((object) => {
+      const materials = Array.isArray(object.material)
+        ? object.material
+        : object.material ? [object.material] : [];
+      for (const material of materials) {
+        for (const value of Object.values(material)) {
+          if (value?.isTexture) textures.add(value);
+        }
+        for (const uniform of Object.values(material.uniforms ?? {})) {
+          if (uniform?.value?.isTexture) textures.add(uniform.value);
+        }
+      }
+    });
+    const queue = [...textures].filter((texture) => texture.image);
+    let cancelled = false;
+    const schedule = globalThis.requestIdleCallback ?? ((fn) => setTimeout(() => fn({ timeRemaining: () => 6 }), 50));
+    const cancel = globalThis.cancelIdleCallback ?? clearTimeout;
+    let handle = null;
+    const step = () => {
+      // One per callback: a single large upload can eat a whole frame, so
+      // batching more into one idle slice would recreate the hitch this
+      // warm-up exists to remove.
+      if (queue.length > 0) gl.initTexture(queue.pop());
+      if (queue.length > 0 && !cancelled) handle = schedule(step);
+    };
+    handle = schedule(step);
+    return () => {
+      cancelled = true;
+      if (handle !== null) cancel(handle);
+    };
+  }, [stage, stageLabels.length, gl, scene]);
+
   useEffect(() => {
     bootStartedAt.current = globalThis.performance?.now?.() ?? Date.now();
     gameDebug.stats.boot = {
@@ -527,6 +573,10 @@ function SceneContents({
                 maxShadowMapSize={graphics.maxShadowMapSize}
                 maxShadowDistance={graphics.maxOutdoorShadowDistance}
               />
+              {/* In stage 0 so every later stage's shader compile sees
+                  scene.environment; compiled without it, each material
+                  recompiles at first sight, which hitches mid-walk. */}
+              <SkyEnvironment runtime={runtime} />
               <StarField runtime={runtime} />
               <SunDisc runtime={runtime} />
               <MoonDisc runtime={runtime} />
@@ -556,7 +606,6 @@ function SceneContents({
               <Stage active={stage >= 1} stage={1} onRendered={onStageRendered}>
                 <Room room={room} lighting={lighting} />
                 <Furniture items={room.furnitureBoxes} runtime={runtime} />
-                <SkyEnvironment runtime={runtime} />
               </Stage>
 
               <Stage active={stage >= 2} stage={2} onRendered={onStageRendered}>

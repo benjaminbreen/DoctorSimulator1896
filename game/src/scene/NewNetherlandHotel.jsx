@@ -124,13 +124,15 @@ function HotelLampLights({ fixtures, runtime }) {
       dusk = Math.max(1 - smoothstep(2, 10, altitude), night);
     }
     const intensity = THREE.MathUtils.lerp(HOTEL_LAMP_DAY_INTENSITY, HOTEL_LAMP_DUSK_INTENSITY, dusk);
-    const visible = nearestDistanceSq <= HOTEL_LAMP_LIGHT_CULL_DISTANCE ** 2;
+    // Culled by intensity, never by visibility: hiding a light changes the
+    // scene's light count, and every material then recompiles its program on
+    // the walk toward the hotel — a multi-hundred-ms hitch mid-street.
+    const near = nearestDistanceSq <= HOTEL_LAMP_LIGHT_CULL_DISTANCE ** 2;
     fixturePoints.forEach((point, index) => {
       const light = lightRefs.current[index];
       if (!light) return;
       light.position.copy(point);
-      light.intensity = intensity;
-      light.visible = visible;
+      light.intensity = near ? intensity : 0;
     });
   });
 
@@ -143,11 +145,10 @@ function HotelLampLights({ fixtures, runtime }) {
             lightRefs.current[index] = light;
           }}
           color={HOTEL_LAMP_LIGHT_COLOR}
-          intensity={HOTEL_LAMP_DAY_INTENSITY}
+          intensity={0}
           distance={HOTEL_LAMP_LIGHT_DISTANCE}
           decay={2}
           castShadow={false}
-          visible={false}
         />
       ))}
     </group>

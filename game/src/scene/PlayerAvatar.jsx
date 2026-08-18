@@ -92,6 +92,10 @@ export default function PlayerAvatar({ runtime, onReady }) {
     // the original bones, so the copy renders in bind pose while the clip
     // plays on bones nothing is skinned to. There is only ever one player.
     const root = gltf.scene;
+    // On zone travel this runs while the shared scene is still attached to
+    // the outgoing mount's fit-scaled group, and measuring through that
+    // parent bakes the old fit into the new one — the 3-foot-doctor bug.
+    root.parent?.remove(root);
     root.rotation.x = MODEL_UP;
     root.updateMatrixWorld(true);
     root.traverse((object) => {

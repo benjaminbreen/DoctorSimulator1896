@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import { environmentPalette, paletteDistance } from '../world/skyPalette.js';
@@ -55,7 +55,10 @@ export default function SkyEnvironment({ runtime }) {
     return { source, uniforms };
   }, []);
 
-  useEffect(() => {
+  // Layout effect: the stage's shader compile (also a layout effect, in a
+  // parent mounted earlier) must see scene.environment, or every material
+  // boot-compiles without an envMap and recompiles when first seen in play.
+  useLayoutEffect(() => {
     const generator = new THREE.PMREMGenerator(gl);
     let target = null;
     const render = (palette) => {
