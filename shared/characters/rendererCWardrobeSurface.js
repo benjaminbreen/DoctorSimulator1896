@@ -146,6 +146,58 @@ function baseTexture(fabric, channel) {
   return texture;
 }
 
+// Garment-scale folds, layered under the weave normals in the shader. One
+// generated tiling texture (scripts/textures/generate-wrinkle-normal.mjs)
+// sampled at a much lower repeat than the weave.
+let wrinkleTexture = null;
+
+function baseWrinkleTexture() {
+  if (typeof document === 'undefined') return null;
+  if (wrinkleTexture) return wrinkleTexture;
+  wrinkleTexture = new THREE.TextureLoader().load(`${FABRIC_ROOT}/wrinkles-normal.png`);
+  wrinkleTexture.name = 'RendererC_wrinkles_normal';
+  wrinkleTexture.wrapS = THREE.RepeatWrapping;
+  wrinkleTexture.wrapT = THREE.RepeatWrapping;
+  wrinkleTexture.colorSpace = THREE.NoColorSpace;
+  wrinkleTexture.anisotropy = 8;
+  return wrinkleTexture;
+}
+
+// Blends the fold normals into whatever the weave map produced. UDN-style
+// blend in tangent space via the frame three already built for the weave.
+function applyWrinkleLayer(material, strength, weaveRepeat) {
+  const texture = baseWrinkleTexture();
+  if (!(strength > 0) || !texture) return;
+  // The wrinkle texture should span roughly the whole garment while the
+  // weave tiles many times: divide the weave repeat back out.
+  const uvScale = 1.35 / Math.max(weaveRepeat, 0.001);
+  const settings = material.userData.rendererCWrinkles ||= {};
+  settings.strength = strength;
+  settings.uvScale = uvScale;
+  if (settings.patched) return;
+  settings.patched = true;
+  const previousCompile = material.onBeforeCompile;
+  const previousCacheKey = material.customProgramCacheKey?.bind(material) || (() => '');
+  material.onBeforeCompile = (shader, renderer) => {
+    previousCompile?.(shader, renderer);
+    shader.uniforms.rcWrinkleMap = { value: texture };
+    shader.uniforms.rcWrinkleStrength = { value: settings.strength };
+    shader.uniforms.rcWrinkleUvScale = { value: settings.uvScale };
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <normal_pars_fragment>', `#include <normal_pars_fragment>
+uniform sampler2D rcWrinkleMap;
+uniform float rcWrinkleStrength;
+uniform float rcWrinkleUvScale;`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+#if defined( USE_NORMALMAP_TANGENTSPACE )
+vec3 rcWrinkleSample = texture2D( rcWrinkleMap, vNormalMapUv * rcWrinkleUvScale ).xyz * 2.0 - 1.0;
+normal = normalize( normal + tbn * vec3( rcWrinkleSample.xy * rcWrinkleStrength, 0.0 ) );
+#endif`);
+  };
+  material.customProgramCacheKey = () => `${previousCacheKey()}|renderer-c-wrinkles-v1`;
+  material.needsUpdate = true;
+}
+
 function assignedTexture(material, fabric, channel) {
   const store = material.userData.rendererCFabricTextures ||= {};
   const current = store[channel];
@@ -236,6 +288,7 @@ function configureFabric(material, values, { color, fabricType } = {}) {
     texture?.repeat?.set(repeat, repeat);
   }
   if (material.normalScale) material.normalScale.setScalar(settings.normalScale);
+  applyWrinkleLayer(material, Number(values.clothingWrinkles) || 0, repeat);
   material.side = THREE.DoubleSide;
   material.transparent = false;
   material.opacity = 1;
@@ -589,9 +642,11 @@ function ensureBodyBoundDetails(root) {
   if (!cuffs && carrier?.isSkinnedMesh) {
     carrier.geometry.computeBoundingBox();
     const centerX = (carrier.geometry.boundingBox.min.x + carrier.geometry.boundingBox.max.x) * 0.5;
+    // A shallow offset: the cuff should read as a band of the sleeve, not a
+    // ring floating around it.
     cuffs = skinnedPatch(carrier, 'RendererC_WardrobeCuffs', (point) => (
       Math.abs(point.x - centerX) > 0.34 && point.y < 0.53
-    ), 0.003);
+    ), 0.0012);
     if (cuffs) carrier.parent.add(cuffs);
   }
   return { neckline, cuffs, carrier };

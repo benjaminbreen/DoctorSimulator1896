@@ -26,12 +26,25 @@ function KeyGroup({ keys, label }) {
   );
 }
 
-export default function ControlHelper({ hidden = false }) {
+const SETTLE_MS = 60000;
+
+export default function ControlHelper({ hidden = false, zone }) {
   const [walked, setWalked] = useState(false);
   const [fastTravelUsed, setFastTravelUsed] = useState(hasUsedFastTravel);
-  const [dismissed, setDismissed] = useState(false);
+  const [open, setOpen] = useState(true);
 
   useEffect(() => subscribeOnboardingProgress(setFastTravelUsed), []);
+
+  // A new room is worth a second look, so the card comes back on arrival.
+  useEffect(() => { setOpen(true); }, [zone]);
+
+  // zone is a dependency so arriving somewhere restarts the clock even when
+  // the card was already open.
+  useEffect(() => {
+    if (!open) return undefined;
+    const timer = setTimeout(() => setOpen(false), SETTLE_MS);
+    return () => clearTimeout(timer);
+  }, [open, zone]);
 
   useEffect(() => {
     if (walked) return undefined;
@@ -44,7 +57,19 @@ export default function ControlHelper({ hidden = false }) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [walked]);
 
-  if (hidden || dismissed) return null;
+  if (hidden) return null;
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className="control-helper__tab"
+        onClick={() => setOpen(true)}
+        aria-label="Show controls"
+      >
+        ?
+      </button>
+    );
+  }
   return (
     <aside
       className={`control-helper control-helper--${walked ? 'settled' : 'new'}`}
@@ -54,8 +79,8 @@ export default function ControlHelper({ hidden = false }) {
       <button
         type="button"
         className="control-helper__close"
-        onClick={() => setDismissed(true)}
-        aria-label="Close controls"
+        onClick={() => setOpen(false)}
+        aria-label="Hide controls"
       >
         ×
       </button>

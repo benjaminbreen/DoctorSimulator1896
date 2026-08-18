@@ -83,6 +83,12 @@ const recipe = patientToRendererCRecipe(profile, {
   placement: { position: [0.45, 0.22, -1.7], rotation: [0, Math.PI, 0], scale: 1.82 },
 });
 
+// Enter by the waiting-room door (south wall, consulting-office blueprint).
+// The renderer skips the walk until this asset carries Walk and SitDown clips.
+recipe.presentation.entrance = { from: [2.4, 0, 4.55] };
+// Her recorded sign: a fine tremor in both hands, displayed at rest.
+recipe.presentation.tremor = 0.6;
+
 const actor = createActorInstance({ id, recipe });
 
 const facts = Object.freeze([
@@ -392,7 +398,7 @@ export const NORA_BYRNE = Object.freeze({
       factIds: ['nora-observed-tremor', 'nora-sensory-pattern', 'nora-normal-neurology'],
       reply: 'The tremor diminishes during a counting task. Sensation is dull in a glove-like boundary, while strength and reflexes remain normal.',
       uncertainty: 'The combined pattern argues against a single damaged nerve but does not by itself establish a cause.',
-      effects: { satisfaction: -1 }, bodyCue: 'sitting-self-soothing',
+      effects: { satisfaction: -1 }, bodyCue: 'sitting-self-soothing', gesture: 'extend-both-arms',
     }),
     Object.freeze({
       id: 'nora-exam-general', label: 'General physical examination', minutes: 5,

@@ -2279,3 +2279,248 @@
   .gcon-stage--paper .gcon-shelf-tile:hover { transform: none; }
   .gcon-stage--paper .gcon-shelf-tile:hover .gcon-shelf-art img { transform: none; }
 }
+
+/* ---------------- examination reading ---------------- */
+
+/* The Examine verb dims the scene to a reading: vignette on the room,
+   findings annotated around the figure, chrome down to one band. */
+
+.gcon--exam::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    90% 82% at 50% 39%,
+    transparent 28%,
+    rgba(3, 5, 9, 0.26) 61%,
+    rgba(1, 2, 4, 0.72) 100%
+  );
+}
+
+.gcon-rail { transition: opacity 0.45s ease; }
+.gcon--exam .gcon-rail { opacity: 0; pointer-events: none; }
+.gcon--exam .gcon-close { display: none; }
+
+/* the stage collapses to a slim band at the foot of the reading */
+.gcon.gcon--exam .gcon-stage {
+  width: min(980px, calc(100cqw - 44px));
+  bottom: 12px;
+  padding: 7px 12px;
+  max-height: none;
+  overflow: visible;
+}
+
+.gcon-exam-band {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.gcon-exam-choices {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.gcon-exam-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: 1px solid var(--gc-line);
+  border-radius: 6px;
+  background: rgba(10, 16, 25, 0.55);
+  color: var(--gc-cream);
+  font-family: var(--gc-sc);
+  font-size: 14.5px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.gcon-exam-chip:hover,
+.gcon-exam-chip.is-hot {
+  border-color: var(--gc-line-strong);
+  color: var(--gc-cream-hi);
+  background: rgba(24, 30, 40, 0.72);
+}
+
+.gcon-exam-chip-icon { display: inline-flex; color: var(--gc-gold-soft); }
+
+.gcon-exam-chip-cost {
+  color: var(--gc-cream-faint);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+}
+
+.gcon-exam-keys {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
+  color: var(--gc-cream-dim);
+  font-size: 13px;
+}
+
+.gcon-exam-keys .gcon-exam-return {
+  padding: 5px 9px;
+  border: 1px solid rgba(227, 170, 78, 0.48);
+  border-radius: 5px;
+  background: linear-gradient(180deg, rgba(92, 65, 21, 0.34), rgba(22, 18, 12, 0.64));
+  color: var(--gc-cream);
+  text-decoration: none;
+}
+
+.gcon-exam-keys .gcon-exam-return:hover {
+  border-color: var(--gc-line-strong);
+  color: var(--gc-cream-hi);
+}
+
+.gcon--exam .gcon-empty-state {
+  margin: 5px 10px;
+  line-height: 1.2;
+}
+
+.gcon-exam-keys b,
+.gcon-exam-keys .gcon-hint-link b {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 7px;
+  border: 1px solid var(--gc-line);
+  border-radius: 4px;
+  font-family: var(--gc-sc);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--gc-cream-dim);
+}
+
+/* findings arrayed around the figure */
+
+.gcon-exam-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.gcon-exam-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Leader lines draw themselves from card to body; the dot arrives after.
+   Endpoints are set per frame from projected bone positions. */
+.gcon-exam-lines path {
+  fill: none;
+  stroke: rgba(216, 180, 104, 0.36);
+  stroke-width: 1px;
+  opacity: 0;
+  animation: gcon-exam-line-in 0.55s ease forwards;
+}
+
+.gcon-exam-lines circle {
+  fill: rgba(240, 199, 116, 0.68);
+  opacity: 0;
+  animation: gcon-exam-dot-in 0.5s ease 0.55s forwards;
+}
+
+.gcon-exam-lines .is-latest path {
+  stroke: rgba(240, 199, 116, 0.7);
+}
+
+.gcon-exam-lines .is-latest circle {
+  fill: #f0c774;
+  filter: drop-shadow(0 0 4px rgba(240, 199, 116, 0.75));
+}
+
+@keyframes gcon-exam-line-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes gcon-exam-dot-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gcon-exam-lines path { animation: none; opacity: 1; }
+
+  .gcon-exam-lines circle { animation: none; opacity: 1; }
+}
+
+.gcon-exam-card {
+  position: absolute;
+  width: min(300px, 22cqw);
+  padding: 13px 17px 12px;
+  border: 1px solid var(--gc-line);
+  border-radius: 8px;
+  background:
+    radial-gradient(140% 90% at 50% 0%, rgba(40, 56, 76, 0.2), transparent 58%),
+    linear-gradient(180deg, rgba(13, 20, 31, 0.94) 0%, rgba(6, 10, 17, 0.94) 80%);
+  box-shadow: 0 10px 30px rgba(1, 3, 7, 0.55);
+  animation: gcon-exam-card-in 0.5s ease both;
+}
+
+.gcon-exam-card::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  pointer-events: none;
+  border: 1px solid rgba(203, 168, 92, 0.1);
+  border-radius: 5px;
+}
+
+.gcon-exam-card--left { left: 5%; }
+.gcon-exam-card--right { right: 5%; }
+
+.gcon-exam-card.is-latest {
+  border-color: rgba(227, 170, 78, 0.58);
+  box-shadow: 0 12px 34px rgba(1, 3, 7, 0.62), 0 0 18px rgba(227, 170, 78, 0.06);
+}
+
+.gcon-exam-card h3 {
+  margin: 0 0 6px;
+  font-family: var(--gc-sc);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gc-gold);
+}
+
+.gcon-exam-card p {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.48;
+  color: var(--gc-cream);
+}
+
+.gcon-exam-card p strong {
+  color: #f0c774;
+  font-weight: 700;
+}
+
+@keyframes gcon-exam-card-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gcon-exam-card { animation: none; }
+}
+
+/* on a narrow screen the cards would sit on the figure; the band and the
+   notebook still carry the findings */
+@container (max-width: 900px) {
+  .gcon-exam-card,
+  .gcon-exam-lines { display: none; }
+
+  .gcon-exam-keys { display: none; }
+}

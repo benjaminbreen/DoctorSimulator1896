@@ -132,6 +132,35 @@ Four presentation modes over one world state:
    pose stored on the apparatus, and hands input to the instrument. Entered
    with E from exploration mode, left with Escape. Used for the laboratory
    apparatus, where operating the thing *is* the mechanic.
+5. **Close examination** — the same camera takeover pointed at an object
+   rather than an apparatus: a long lens, drag to orbit, wheel to draw
+   closer, depth of field throwing the room away behind it. A notebook rail
+   holds the direct observation, the procedures on offer, and the findings
+   recorded so far. Left with Escape.
+
+   Two ways in. **E** on an object with an examine affordance opens its
+   authored record in `examine/examinables.js` — the opium pipe, the waiting
+   room flowers, the glove on the Pond walk. **Enter** arms the eye instead,
+   and the next click picks whatever is under it: the click resolves against
+   the world's own item list, and `examine/subjects.js` builds a record from
+   what the simulation already knows about the thing — its class, its
+   measured size, where it stands — rolled on its own id so the same boulder
+   reads the same way every time. Not everything answers; a surface with no
+   item behind it gets no examination rather than a wrong one.
+
+   The only model-written text either way is the answer to a custom question,
+   and it may state nothing outside the record's facts.
+
+   Running a procedure lowers neurasthenia a little, once per subject. A few
+   minutes of attention on one thing is the cheapest rest in the game, and it
+   is the counterweight to the laboratory: the same act of close looking, put
+   to a use that is not measurement.
+
+   Close examination is for objects, not for patients. The consulting room
+   keeps mode 2 above, where a person is read at a distance and annotated
+   rather than turned under a lens. The one place a person may be examined
+   this way is the anthropometric laboratory, where measuring somebody as an
+   object is the mechanic and the reuse of the interface is the argument.
 
 Exploration interactions use shared action and instrument affordances.
 Instrument views display real simulation state rather than scripted outcomes.

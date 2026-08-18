@@ -67,6 +67,8 @@ earlier consultation proposals.
   play.
 - Dialogue advances time by five game minutes.
 - Examination advances time by three game minutes.
+- A close examination of an object advances time by the minutes its procedures
+  cost, and lowers neurasthenia once per subject, capped at five points.
 - Thought choices do not advance time.
 - Immediate patient satisfaction and later health are separate variables.
 - Reputation affects referrals and fees. Serious harm may also trigger legal or

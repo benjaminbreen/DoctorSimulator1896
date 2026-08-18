@@ -1,8 +1,9 @@
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { degToRad } from '../movement/mathUtils.js';
+import { damp, degToRad } from '../movement/mathUtils.js';
 import { portalDimming } from '../world/windowDressing.js';
+import { examinationFocus, examinationPresentation } from '../consultation/examPresentation.js';
 
 // Sun offset outside a window: the hole normal rotated by azimuth, tilted up
 // by elevation.
@@ -53,6 +54,12 @@ export default function LightingRig({
   const hemisphereRef = useRef();
   const portalRefs = useRef([]);
   const gaslightRefs = useRef([]);
+  // Eases toward 1 while the examination reading is up: the room falls to
+  // near-black and a key/rim pair picks the patient out of it.
+  const examBlend = useRef(0);
+  const examKeyRef = useRef();
+  const examRimRef = useRef();
+  const examTarget = useMemo(() => new THREE.Object3D(), []);
   const shadowMapSize = Math.min(Number(runtime.values.shadowMapSize), maxShadowMapSize);
 
   const portals = useMemo(() => {
@@ -86,16 +93,42 @@ export default function LightingRig({
   // Spot lights aim at a target object, so each needs its own.
   const spotTargets = useMemo(() => gaslights.map(() => new THREE.Object3D()), [gaslights]);
 
-  useFrame((state) => {
+  useFrame((state, delta) => {
     const values = runtime.values;
     const time = state.clock.elapsedTime;
+    const exam = examBlend.current = damp(
+      examBlend.current,
+      examinationPresentation() ? 1 : 0,
+      3.5,
+      Math.min(delta, 1 / 30),
+    );
     // `scale` lets a zone dim the panel's global fill without the panel
     // losing meaning. Gas-lit interiors use very little.
     if (ambientRef.current) {
-      ambientRef.current.intensity = values.ambientIntensity * (config.ambient.scale ?? 1);
+      ambientRef.current.intensity = values.ambientIntensity * (config.ambient.scale ?? 1)
+        * (1 - exam * 0.86);
     }
     if (hemisphereRef.current) {
-      hemisphereRef.current.intensity = values.hemisphereIntensity * (config.hemisphere.scale ?? 1);
+      hemisphereRef.current.intensity = values.hemisphereIntensity * (config.hemisphere.scale ?? 1)
+        * (1 - exam * 0.88);
+    }
+
+    // The exam pair only spends light when the reading is up; the rest of the
+    // time both spots idle at zero and cost nothing.
+    const focusPoint = examinationFocus();
+    if (focusPoint && exam > 0.001) {
+      examTarget.position.set(...focusPoint);
+      if (examKeyRef.current) {
+        examKeyRef.current.position.set(focusPoint[0] - 1.4, focusPoint[1] + 0.82, focusPoint[2] - 1.35);
+        examKeyRef.current.intensity = 11 * exam;
+      }
+      if (examRimRef.current) {
+        examRimRef.current.position.set(focusPoint[0] + 1.1, focusPoint[1] + 1.0, focusPoint[2] + 1.2);
+        examRimRef.current.intensity = 6 * exam;
+      }
+    } else {
+      if (examKeyRef.current) examKeyRef.current.intensity = 0;
+      if (examRimRef.current) examRimRef.current.intensity = 0;
     }
 
     portals.forEach((portal, index) => {
@@ -107,7 +140,8 @@ export default function LightingRig({
         portal.hole.position[1] + offset[1] * 4,
         portal.hole.position[2] + offset[2] * 4,
       );
-      light.intensity = portal.intensity * values.windowIntensity * portal.dimming;
+      light.intensity = portal.intensity * values.windowIntensity * portal.dimming
+        * (1 - exam * 0.95);
       light.color.set(values.windowColor);
       light.castShadow = values.shadowsEnabled && portal.casts;
       light.shadow.radius = values.shadowRadius;
@@ -118,7 +152,10 @@ export default function LightingRig({
       if (!light) return;
       // Per-light flicker amplitude from the JSON, scaled by the panel.
       const flicker = 1 + flickerNoise(time, index * 17.3) * (gaslight.flicker ?? 0.1) * values.gaslightFlicker;
-      light.intensity = gaslight.intensity * values.gaslightIntensity * flicker;
+      // In the reading the lamps recede to embers rather than going out:
+      // bloom keeps their glow, the room around them goes dark.
+      light.intensity = gaslight.intensity * values.gaslightIntensity * flicker
+        * (1 - exam * 0.85);
       light.color.set(values.gaslightColor);
       light.castShadow = values.shadowsEnabled && gaslight.castShadow;
       light.shadow.radius = values.shadowRadius;
@@ -127,6 +164,29 @@ export default function LightingRig({
 
   return (
     <group>
+      {/* The examination pair: warm key from the doctor's side, cool rim from
+          behind, both unshadowed. Zero intensity outside the reading. */}
+      <primitive object={examTarget} />
+      <spotLight
+        ref={examKeyRef}
+        target={examTarget}
+        color="#ffc57a"
+        intensity={0}
+        angle={0.5}
+        penumbra={0.8}
+        distance={6}
+        decay={2}
+      />
+      <spotLight
+        ref={examRimRef}
+        target={examTarget}
+        color="#9fb4d8"
+        intensity={0}
+        angle={0.5}
+        penumbra={0.9}
+        distance={6}
+        decay={2}
+      />
       <ambientLight ref={ambientRef} color={config.ambient.color} intensity={config.ambient.intensity} />
       <hemisphereLight
         ref={hemisphereRef}

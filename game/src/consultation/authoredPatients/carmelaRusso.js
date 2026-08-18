@@ -40,6 +40,13 @@ const recipe = patientToRendererCRecipe(profile, {
   placement: { position: [0.45, 0.22, -1.7], rotation: [0, Math.PI, 0], scale: 1 },
 });
 
+// Enter by the waiting-room door (south wall, consulting-office blueprint).
+recipe.presentation.entrance = { from: [2.4, 0, 4.55] };
+// A shopkeeper calls in her street hat and keeps it on, 1896 manners.
+recipe.presentation.hat = { style: 'toque', color: '#26191f', band: '#57303c' };
+// Worn workaday wool: the wrinkle layer at moderate strength.
+recipe.presentation.clothingWrinkles = 0.7;
+
 const actor = createActorInstance({ id, recipe });
 
 const facts = Object.freeze([
@@ -288,6 +295,7 @@ export const CARMELA_RUSSO = Object.freeze({
       factIds: ['carmela-cardiac-exam', 'carmela-respiratory-exam'],
       reply: 'Pulse is 96 and regular during her account, then falls to 80 with quiet breathing. Heart sounds and lungs are normal; respiration settles from 20 to 15.',
       uncertainty: 'A normal office examination cannot exclude every intermittent rhythm disturbance.', effects: { satisfaction: 2 },
+      gesture: 'present-wrist',
     }),
     Object.freeze({
       id: 'carmela-exam-general', label: 'Check thyroid, colour, weight, and temperature', minutes: 5,

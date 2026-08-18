@@ -210,6 +210,28 @@ export function BrainIcon({ size = 15 }) {
   );
 }
 
+// An academic laurel around the single serpent of Asclepius. At HUD size the
+// open centre and separate leaves read more cleanly than a filled trophy mark.
+export function LaurelIcon({ size = 20 }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+      <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M7.6 20.2 C 3.8 17.5 2.6 11.9 5.2 6.8" strokeWidth="1.35" />
+        <path d="M16.4 20.2 C 20.2 17.5 21.4 11.9 18.8 6.8" strokeWidth="1.35" />
+        <path d="M5.3 16.7 C 3.2 16.5 2.2 15.5 1.9 13.8 C 3.8 13.8 5 14.7 5.3 16.7 Z" fill="currentColor" stroke="none" />
+        <path d="M4.4 12.7 C 2.8 11.8 2.4 10.5 2.9 8.9 C 4.5 9.6 5.2 10.9 4.4 12.7 Z" fill="currentColor" stroke="none" />
+        <path d="M5.7 8.8 C 4.6 7.4 4.8 6 5.9 4.8 C 7.1 6 7 7.5 5.7 8.8 Z" fill="currentColor" stroke="none" />
+        <path d="M18.7 16.7 C 20.8 16.5 21.8 15.5 22.1 13.8 C 20.2 13.8 19 14.7 18.7 16.7 Z" fill="currentColor" stroke="none" />
+        <path d="M19.6 12.7 C 21.2 11.8 21.6 10.5 21.1 8.9 C 19.5 9.6 18.8 10.9 19.6 12.7 Z" fill="currentColor" stroke="none" />
+        <path d="M18.3 8.8 C 19.4 7.4 19.2 6 18.1 4.8 C 16.9 6 17 7.5 18.3 8.8 Z" fill="currentColor" stroke="none" />
+        <path d="M12 5.3 V 20" strokeWidth="1.55" />
+        <path d="M9.5 8.1 C 9.5 6.2 14.5 6.2 14.5 8.5 C 14.5 10.6 9.7 10.6 9.7 12.8 C 9.7 15 14.1 14.9 14.1 17 C 14.1 18.2 13.2 18.8 12 19.1" strokeWidth="1.25" />
+        <circle cx="12" cy="3.6" r="1.45" fill="currentColor" stroke="none" />
+      </g>
+    </svg>
+  );
+}
+
 // Tiny bust outline for patient entries in the casebook index.
 export function PersonIcon({ size = 15 }) {
   return (
@@ -337,6 +359,18 @@ export function QuatrefoilIcon({ size = 11 }) {
         fill={GOLD}
       />
       <circle cx="6" cy="6" r="1" fill={GOLD_DEEP} />
+    </svg>
+  );
+}
+
+// A valve wheel, for the settings button: eight spokes on a hub.
+export function GearIcon({ size = 20 }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true" {...iconProps}>
+      <circle cx="12" cy="12" r="6.4" />
+      <circle cx="12" cy="12" r="2.1" />
+      <path d="M12 2.6 L12 5.6 M12 18.4 L12 21.4 M2.6 12 L5.6 12 M18.4 12 L21.4 12" />
+      <path d="M5.4 5.4 L7.5 7.5 M16.5 16.5 L18.6 18.6 M18.6 5.4 L16.5 7.5 M7.5 16.5 L5.4 18.6" />
     </svg>
   );
 }

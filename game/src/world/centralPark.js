@@ -10,6 +10,7 @@
 // and lobe. Drives and walks are eyeballed from the same map.
 
 import { parkProp, gasLamp } from './parkCatalog.js';
+import { ladysGlove } from './furnishings.js';
 import { modelSize } from './modelPacks.js';
 import { GAPSTOW, localToWorld, walkY, RUN_W } from './gapstow.js';
 import { PARK_LANDMARKS } from './parkLandmarks.js';
@@ -294,6 +295,28 @@ function buildItems() {
     parkProp('plaza-bench-a', 'small_park_bench', 82, 66, Math.PI),
     parkProp('plaza-bench-b', 'small_park_bench', 89, 66, Math.PI),
   );
+
+  // A glove left on the first bench inside Scholars' Gate — the one a walker
+  // from the Plaza reaches first. It rides the bench that was just built
+  // rather than a copied coordinate, so moving the walk moves the glove.
+  const bench = items.find((item) => item.id === 'pond-walk-bench-0');
+  if (bench) {
+    const [bx, , bz] = bench.position;
+    const seat = 0.45;
+    const along = 0.32;
+    items.push(...ladysGlove('pond-glove', bx + Math.cos(bench.yaw) * along, seat, bz - Math.sin(bench.yaw) * along, {
+      yaw: bench.yaw + 0.4,
+    }).map((item) => ({
+      ...item,
+      affordance: {
+        kind: 'examine',
+        verb: 'Examine',
+        name: "the glove",
+        subject: 'ladys-glove',
+        span: 0.16,
+      },
+    })));
+  }
   // Gas lamps along the Center Drive. The model carries the post and lantern;
   // the emissive globe stays a separate prop, because it is what reads at dusk
   // and it has to sit exactly in the lantern.

@@ -1,8 +1,12 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Color, Uniform, Vector3 } from 'three';
 import { BloomEffect, Effect, ToneMappingMode, VignetteEffect } from 'postprocessing';
-import { EffectComposer, Bloom, N8AO, ToneMapping, Vignette, wrapEffect } from '@react-three/postprocessing';
+import {
+  EffectComposer, Bloom, DepthOfField, N8AO, ToneMapping, Vignette, wrapEffect,
+} from '@react-three/postprocessing';
+import { getInteraction, subscribe } from '../world/interaction.js';
+import { examinationFocus, subscribeExamination } from '../consultation/examPresentation.js';
 
 // The authored warm cast: period-photograph warmth without disturbing the HDR
 // balance that bloom reads from. Outdoors only — the gaslit interiors are
@@ -66,8 +70,33 @@ const TONE_MAPPING_MODES = {
 // mount. That is why the AO sliders moved and the image did not.
 //
 // The composer ref is safe, so both are reached through its passes instead.
+// The focus of a close examination or of the consultation's examination
+// reading, or null. Depth of field is the one pass that runs only for these
+// modes, so it is switched in on this rather than left in the chain at zero
+// strength. Re-rendering on it is cheap: the value changes twice per
+// examination. A prop under the glass wants a razor focus band; the patient
+// reading keeps the whole figure sharp and melts the room behind her.
+function examineFocusNow() {
+  const using = getInteraction().using;
+  if (using?.kind === 'examine' && using.framing?.target) {
+    return { target: using.framing.target, range: 0.16, bokeh: 5 };
+  }
+  const reading = examinationFocus();
+  // The focus target sits inside the chest, while the face, sleeves, and
+  // presented hands may be half a metre nearer. Keep that whole volume clean.
+  return reading ? { target: reading, range: 1.8, bokeh: 5.5 } : null;
+}
+
+function useExamineFocus() {
+  const [focus, setFocus] = useState(examineFocusNow);
+  useEffect(() => subscribe(() => setFocus(examineFocusNow())), []);
+  useEffect(() => subscribeExamination(() => setFocus(examineFocusNow())), []);
+  return focus;
+}
+
 export default function Effects({ runtime, indoors }) {
   const composerRef = useRef();
+  const examineFocus = useExamineFocus();
   const dpr = useThree((state) => state.viewport.dpr);
   // Retina rendering already supersamples the image. Extra MSAA there adds
   // substantial bandwidth and resolve work without a visible edge benefit.
@@ -109,20 +138,27 @@ export default function Effects({ runtime, indoors }) {
     }
     if (grade) {
       // Warmth scales the authored cast; the tint colour multiplies on top, so
-      // leaving it white keeps the look exactly as authored.
-      const warmth = values.gradeWarmth;
+      // leaving it white keeps the look exactly as authored. Indoors the pass
+      // carries only the player's contrast setting: warmth and saturation stay
+      // neutral so the authored gaslit look does not shift.
+      const warmth = indoors ? 0 : values.gradeWarmth;
       scratchColor.set(values.gradeTint);
       grade.uniforms.get('tint').value.set(
         (1 + (WARM_TINT.x - 1) * warmth) * scratchColor.r,
         (1 + (WARM_TINT.y - 1) * warmth) * scratchColor.g,
         (1 + (WARM_TINT.z - 1) * warmth) * scratchColor.b,
       );
-      grade.uniforms.get('saturation').value = values.saturation;
+      grade.uniforms.get('saturation').value = indoors ? 1 : values.saturation;
       grade.uniforms.get('contrast').value = values.contrast;
     }
     // Indoors and outdoors carry different authored vignettes, so the slider
     // scales whichever one this composer mounted rather than replacing it.
-    if (vignette) vignette.darkness = vignetteBase * values.vignetteAmount;
+    if (vignette) {
+      // Examination adds its own shaped room falloff in the consultation UI.
+      // Doubling the full-screen vignette buried the patient and the set.
+      const examScale = examineFocus ? 0.62 : 1;
+      vignette.darkness = vignetteBase * values.vignetteAmount * examScale;
+    }
   });
 
   return (
@@ -136,11 +172,27 @@ export default function Effects({ runtime, indoors }) {
         <></>
       )}
       {runtime.values.bloomEnabled ? <Bloom mipmapBlur luminanceSmoothing={0.24} /> : <></>}
+      {/* Close examination throws the room away behind the object. The target
+          is the same point the camera orbits, so focus follows the framing and
+          never has to be chased. Before the tone map, or the bokeh discs come
+          out grey. */}
+      {examineFocus ? (
+        <DepthOfField
+          target={examineFocus.target}
+          worldFocusRange={examineFocus.range}
+          bokehScale={examineFocus.bokeh}
+          resolutionScale={examineFocus.scale}
+        />
+      ) : (
+        <></>
+      )}
       {/* Order matters: bloom works on the HDR scene, the tone map compresses
           it, and the vignette darkens the finished image. Exposure rides in on
           the renderer, which FrameSettings keeps current. */}
       <ToneMapping mode={TONE_MAPPING_MODES[runtime.values.toneMapping] ?? ToneMappingMode.AGX} />
-      {!indoors && runtime.values.gradeEnabled ? <WarmGrade /> : <></>}
+      {/* Mounted indoors too so the settings menu's contrast slider works
+          everywhere; at default contrast the indoor pass is a no-op. */}
+      {runtime.values.gradeEnabled ? <WarmGrade /> : <></>}
       {/* The exterior already has strong edge contrast from sky, buildings,
           and the HUD. A lighter vignette keeps facade detail out of black. */}
       {runtime.values.vignetteEnabled ? (

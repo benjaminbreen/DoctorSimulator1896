@@ -21,6 +21,18 @@ export default function ActorLayer({ actors = [] }) {
   return actors.filter((actor) => actor.visible !== false).map((actor) => {
     if (actor.recipe.renderer !== 'renderer-c') return null;
     const cohort = manifest.cohorts?.[actor.recipe.cohort];
-    return cohort ? <RendererCActor key={actor.id} recipe={actor.recipe} manifest={cohort} onReady={onReady} /> : null;
+    if (!cohort) return null;
+    // A fresh entrance token remounts the actor, so a summoned patient walks
+    // in instead of already sitting there.
+    const key = actor.entranceToken ? `${actor.id}:${actor.entranceToken}` : actor.id;
+    return (
+      <RendererCActor
+        key={key}
+        recipe={actor.recipe}
+        manifest={cohort}
+        onReady={onReady}
+        walkIn={Boolean(actor.entranceToken)}
+      />
+    );
   });
 }

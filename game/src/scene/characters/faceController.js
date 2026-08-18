@@ -32,10 +32,29 @@ function add(weights, recipe, scale = 1, excluded = null) {
 export function createFaceController(root, recipe) {
   const bindings = collectBindings(root);
   const written = new Set();
+  // Expression morphs ease between cues so a face changes like a face, not a
+  // mask. Blinks and the speech jaw stay immediate.
+  const smoothed = new Map();
   let elapsed = 0;
   const blinkPeriod = 4.2 + (Math.abs(Number(recipe.appearanceSeed) || 1) % 23) / 10;
 
-  function write(weights) {
+  const immediate = (name) => name.startsWith('eyeBlink') || name.startsWith('jaw');
+
+  function write(weights, delta) {
+    const blend = 1 - Math.exp(-6 * Math.max(0, Math.min(0.1, delta)));
+    for (const name of new Set([...smoothed.keys(), ...weights.keys()])) {
+      if (immediate(name)) continue;
+      const target = weights.get(name) || 0;
+      const current = smoothed.get(name) || 0;
+      const next = current + (target - current) * blend;
+      if (next < 0.002 && target === 0) {
+        smoothed.delete(name);
+        weights.delete(name);
+      } else {
+        smoothed.set(name, next);
+        weights.set(name, next);
+      }
+    }
     for (const name of written) {
       if (weights.has(name)) continue;
       for (const binding of bindings.get(name) || []) binding.object.morphTargetInfluences[binding.index] = 0;
@@ -64,7 +83,7 @@ export function createFaceController(root, recipe) {
     if (animation.speaking) {
       add(weights, { jawOpen: speechJawWeight(elapsed, recipe.appearanceSeed) });
     }
-    write(weights);
+    write(weights, Number(delta) || 0);
   }
 
   return { bindings, update };

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { getInteraction, useInstrument, stopUsing } from '../world/interaction.js';
+import { subscribe as subscribeExamination } from '../examine/session.js';
 import { applyPlayerEvent } from '../world/player.js';
 import { gameDebug } from '../debug.js';
 
@@ -346,7 +347,12 @@ export default function OpiumRitual() {
       state.since = performance.now();
       state.wispTimer = 0;
       state.exhaleTimer = 0;
-      useInstrument({ id: 'smoke-pipe', item: reach.item, framing: state.framing });
+      useInstrument({
+        id: 'smoke-pipe',
+        item: reach.item,
+        framing: state.framing,
+        hideGroup: 'study-pipe',
+      });
     };
 
     const onKey = (event) => {
@@ -354,22 +360,24 @@ export default function OpiumRitual() {
         end();
         return;
       }
-      if (event.code !== 'KeyE') return;
-      const now = performance.now();
-      if (state.active) {
-        // The same key lights and lays it down; the delay swallows the press
-        // that started the ritual.
-        if (now - state.since > 600) end();
-        return;
-      }
-      const reach = getInteraction().reach;
-      if (!reach?.id?.startsWith('study-pipe')) return;
-      begin(reach);
+      if (event.code !== 'KeyE' || !state.active) return;
+      // The same key lights and lays it down; the delay swallows the press
+      // that started the ritual.
+      if (performance.now() - state.since > 600) end();
     };
+
+    // E on the pipe opens the examination now. "Smoke it" is the one action
+    // that panel offers, and it arrives here.
+    const offExamination = subscribeExamination((session) => {
+      if (session?.requestedAction !== 'smoke' || state.active) return;
+      const item = getInteraction().using?.item;
+      if (item) begin({ item });
+    });
 
     window.addEventListener('keydown', onKey);
     return () => {
       window.removeEventListener('keydown', onKey);
+      offExamination();
       end();
       if (state.detachTimer) clearTimeout(state.detachTimer);
       detachPipe();

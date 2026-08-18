@@ -66,7 +66,7 @@ const VASE_SCHEMA = {
       id: 'arrangement',
       label: 'Arrangement',
       parameters: [
-        { id: 'count', label: 'Flower count', type: 'range', min: 3, max: 16, step: 1, default: 8 },
+        { id: 'count', label: 'Stems in the bunch', type: 'range', min: 1, max: 8, step: 1, default: 8 },
         { id: 'height', label: 'Vase height (m)', type: 'range', min: 0.18, max: 0.4, step: 0.01, default: 0.28 },
         { id: 'radius', label: 'Vase radius (m)', type: 'range', min: 0.055, max: 0.13, step: 0.005, default: 0.085 },
       ],
@@ -75,7 +75,7 @@ const VASE_SCHEMA = {
       id: 'finish',
       label: 'Finish',
       parameters: [
-        { id: 'glass', label: 'Glass colour', type: 'color', default: '#cddfd8', vary: false },
+        { id: 'glass', label: 'Glass colour', type: 'color', default: '#d3e2dc', vary: false },
       ],
     },
   ],
@@ -256,13 +256,13 @@ const BUILT_FURNITURE = {
     schema: VASE_SCHEMA,
     defaultSeed: 11,
     historicalStatus: 'draft',
-    performanceBudget: { maxParts: 36, maxMaterials: 10 },
+    // Glass, water and its tidemark cost three materials before a single stem.
+    performanceBudget: { maxParts: 36, maxMaterials: 12 },
     build: (id, o, recipe) => vaseOfFlowers(id, o[0], o[1], o[2], {
       count: recipe?.values?.count ?? 8,
-      seed: recipe?.seed ?? 11,
       height: recipe?.values?.height ?? 0.28,
       radius: recipe?.values?.radius ?? 0.085,
-      glass: recipe?.values?.glass ?? '#cddfd8',
+      glass: recipe?.values?.glass ?? '#d3e2dc',
     }),
   },
   'labeled-bottle-proof': {

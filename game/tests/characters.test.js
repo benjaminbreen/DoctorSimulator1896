@@ -28,7 +28,7 @@ test('actor cues update immutably through the shared vocabulary', () => {
   assert.notEqual(updated, original);
   assert.equal(original.recipe.animation.body, 'clinic-idle');
   assert.deepEqual(updated.recipe.animation, {
-    body: 'sitting-distressed', expression: 'distressed', gaze: 'away', speaking: false,
+    body: 'sitting-distressed', expression: 'distressed', gaze: 'away', gesture: 'none', speaking: false,
   });
   assert.equal(updated.recipe.values, original.recipe.values);
   assert.equal(updated.recipe.presentation, original.recipe.presentation);

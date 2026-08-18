@@ -1,9 +1,11 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import GameCanvas from './scene/GameCanvas.jsx';
 import Toasts from './hud/Toasts.jsx';
 import NewspaperReader from './hud/NewspaperReader.jsx';
 import InstrumentPanel from './hud/InstrumentPanel.jsx';
+import ExaminePanel from './hud/ExaminePanel.jsx';
+import ExamineReticle from './hud/ExamineReticle.jsx';
 import DebugHud from './hud/DebugHud.jsx';
 import GameHud from './hud/GameHud.jsx';
 import NpcDialogueRibbon from './hud/NpcDialogueRibbon.jsx';
@@ -24,6 +26,7 @@ import { phase1Cast } from './content/clinic1896/phase1Cast.js';
 import { actorCueForConsultation, createConsultationRuntime } from './consultation/engine.js';
 import { renderLunaDialogue } from './consultation/lunaRenderer.js';
 import { setConsultationMode, setGamePaused } from './input/uiMode.js';
+import { setExaminationPresentation } from './consultation/examPresentation.js';
 import { seatFramingForPatient, setConsultationSeat } from './consultation/seatFraming.js';
 import {
   createConsultationPatients,
@@ -31,6 +34,12 @@ import {
 } from './consultation/patients.js';
 import { nextSeed } from '../../shared/patients/index.js';
 import { createWorldClock } from './world/clock.js';
+import { createDaySchedule } from './world/daySchedule.js';
+import { createCallerDay } from './world/callers.js';
+import { adjustStanding } from './world/standing.js';
+import { beginErrand } from './world/errand.js';
+import { getRunSeed } from './world/runSeed.js';
+import DayFlow from './hud/DayFlow.jsx';
 import { installCrowdDialogue } from './world/crowdDialogue.js';
 import { notice } from './world/notices.js';
 import { clearAnnouncements } from './world/announcements.js';
@@ -87,7 +96,8 @@ export default function App() {
   const look = useMemo(() => createLook(runtime), [runtime]);
   const [patientSeeds, setPatientSeeds] = useState(() => [...DEFAULT_TECHNICAL_PATIENT_SEEDS]);
   const consultationPatients = useMemo(() => createConsultationPatients(patientSeeds), [patientSeeds]);
-  const actorRuntime = useMemo(() => createActorRuntime([consultationPatients[0].actor]), []);
+  // The office opens empty: patients arrive by appointment and walk in.
+  const actorRuntime = useMemo(() => createActorRuntime([]), []);
   const consultationRuntime = useMemo(
     () => createConsultationRuntime(consultationPatients, renderLunaDialogue, {
       onAdvanceMinutes: (minutes) => worldClock.advanceMinutes(minutes, {
@@ -117,13 +127,16 @@ export default function App() {
   // instruments so the touch Use control remains available to stand again.
   const [focusedInteraction, setFocusedInteraction] = useState(null);
   const conversation = focusedInteraction?.kind === 'conversation' ? focusedInteraction : null;
+  // A close look at an object: the notebook rail replaces the ordinary chrome.
+  const objectExamination = focusedInteraction?.kind === 'examine' ? focusedInteraction : null;
   const usingInstrument = isFocusedInteraction(focusedInteraction) && !conversation;
   // A live consultation owns the foot of the screen; the HUD verbs yield it.
   const [consultActive, setConsultActive] = useState(false);
+  // The Examine verb dims the room and strips the chrome to a bare reading.
+  const [examining, setExamining] = useState(false);
   const [paused, setPaused] = useState(false);
   useEffect(() => subscribe((state) => setFocusedInteraction(state.using)), []);
   useEffect(() => actorRuntime.subscribe(setActors), [actorRuntime]);
-  useEffect(() => actorRuntime.setSingle(consultationPatients[0].actor), [actorRuntime, consultationPatients]);
   useEffect(() => runtime.onChange((id, value) => {
     // A cry raised in the park has nothing to do with the room you walk into.
     if (id === 'zone') {
@@ -142,16 +155,68 @@ export default function App() {
       return next;
     });
   }, [worldClock]);
+  // The working day: seeded appointment order and walk-in callers. Both are
+  // deterministic per run seed; DayFlow presents them.
+  const daySchedule = useMemo(
+    () => createDaySchedule({ seed: getRunSeed(), patientIds: consultationPatients.map((patient) => patient.id) }),
+    [consultationPatients],
+  );
+  const callerDay = useMemo(() => createCallerDay({ seed: (getRunSeed() ^ 0x9e3779b9) >>> 0 }), []);
+
+  // Tracks which patient's consultation is live; bumping the token remounts
+  // the actor so the walk-in entrance plays when they are summoned.
+  const consultEntranceRef = useRef({ patientId: null, token: 0 });
+  // Standing settles once per consultation, when its result first appears.
+  const settledResultsRef = useRef(new Set());
   useEffect(() => consultationRuntime.subscribe((state) => {
     setConsultActive(Boolean(state));
-    if (!state) return;
+    setExamining(Boolean(state && state.stage === 'inquiry' && state.mode === 'examination'));
+    if (!state) {
+      consultEntranceRef.current.patientId = null;
+      return;
+    }
     const patient = consultationPatients.find((candidate) => candidate.id === state.patientId);
     if (!patient) return;
     const time = worldClock.getSnapshot().logical;
     syncConsultationRecord(patient, state, { date: time.date, hours: time.hours });
-    if (actorRuntime.get()[0]?.id !== patient.actor.id) actorRuntime.setSingle(patient.actor);
+    daySchedule.markKept(state.patientId);
+    if (state.stage === 'result' && state.result && !settledResultsRef.current.has(state.patientId)) {
+      settledResultsRef.current.add(state.patientId);
+      const satisfaction = state.result.immediate?.satisfaction ?? 50;
+      const reputation = Number(state.result.immediate?.reputation) || 0;
+      const delta = reputation !== 0 ? reputation : (satisfaction >= 70 ? 4 : satisfaction >= 43 ? 1 : -3);
+      adjustStanding(delta, `the consultation with ${patient.label}`);
+      // The first closed consultation brings the morning's other business.
+      if (settledResultsRef.current.size === 1 && beginErrand()) {
+        notice('A boy leaves a parcel: a volume to be delivered to Professor Cattell at the laboratory.', {
+          key: 'errand', seconds: 9,
+        });
+      }
+    }
+    const entrance = consultEntranceRef.current;
+    if (entrance.patientId !== state.patientId) {
+      entrance.patientId = state.patientId;
+      entrance.token += 1;
+      actorRuntime.setSingle({ ...patient.actor, entranceToken: entrance.token });
+    }
     actorRuntime.cue(patient.actor.id, actorCueForConsultation(state));
-  }), [actorRuntime, consultationRuntime, consultationPatients, worldClock]);
+  }), [actorRuntime, consultationRuntime, consultationPatients, worldClock, daySchedule]);
+
+  // The examination reading only exists seated in the office; anywhere else
+  // the flag must not dim the room.
+  const examPresenting = examining && consultActive && zone === 'consulting-office';
+  useEffect(() => {
+    if (!examPresenting) {
+      setExaminationPresentation(false);
+      return undefined;
+    }
+    const state = consultationRuntime.get();
+    const patient = consultationPatients.find((candidate) => candidate.id === state?.patientId);
+    const [x, , z] = patient?.actor.recipe.placement?.position ?? [0.45, 0, -1.7];
+    // Keep lights and depth of field on the same chest point as the camera.
+    setExaminationPresentation(true, [x, 1.01, z]);
+    return () => setExaminationPresentation(false);
+  }, [examPresenting, consultationRuntime, consultationPatients]);
 
   // Receiving a patient seats the doctor: the camera eases to the chair and
   // gameplay keys rest until the consultation lets go (or the zone changes).
@@ -300,13 +365,14 @@ export default function App() {
         />
         {!shotMode && (
           <>
-            {!usingInstrument && (
+            {!usingInstrument && !examPresenting && (
               <GameHud
                 runtime={runtime}
                 worldClock={worldClock}
                 patients={consultationPatients}
                 onSeePatient={seePatient}
                 quiet={Boolean(conversation) || (!devConsult && zone === 'consulting-office' && consultActive)}
+                hintsReady={zone !== 'central-park' || parkReady}
               />
             )}
             {!usingInstrument && zone === 'consulting-office' && (
@@ -327,8 +393,20 @@ export default function App() {
                 )}
               </Suspense>
             )}
+            <DayFlow
+              worldClock={worldClock}
+              schedule={daySchedule}
+              callerDay={callerDay}
+              patients={consultationPatients}
+              zone={zone}
+              consultActive={consultActive}
+              suspended={usingInstrument || examPresenting || paused}
+              onSeePatient={seePatient}
+            />
             {!usingInstrument && <DebugHud showStats={tuningOpen} />}
             <InstrumentPanel />
+            <ExaminePanel examining={objectExamination} worldClock={worldClock} />
+            <ExamineReticle />
             <NpcDialogueRibbon conversation={conversation} worldClock={worldClock} />
             {!usingInstrument && !consultActive && (
               <EventDialogue raised={Boolean(conversation)} />
@@ -344,7 +422,10 @@ export default function App() {
                 <ShotBar runtime={runtime} />
               </Suspense>
             )}
-            <ControlHelper hidden={usingInstrument || consultActive || Boolean(conversation)} />
+            <ControlHelper
+              hidden={usingInstrument || consultActive || Boolean(conversation)}
+              zone={zone}
+            />
             <MobileControls keyboard={keyboard} hidden={usingInstrument || consultActive || Boolean(conversation)} />
             {paused && (
               <div className="pointer-events-none absolute inset-0 z-50 grid place-items-center bg-black/20">

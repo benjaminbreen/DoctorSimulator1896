@@ -185,54 +185,178 @@ export function screen(id, x, z, yaw, options = {}) {
 // bouquet behaves as one object anyway: it tips, rolls and lands together.
 // Splitting it into loose stems is worth doing at the moment the vase
 // breaks, and wants a fracture pass that does not exist yet.
-const BLOOMS = ['#c9556a', '#d8bcd0', '#e0d3a4', '#b8445c', '#e6e0d2'];
+//
+// A bloom is one lathe rather than a head of modelled petals: revolved on five
+// to seven segments, a cupped profile already gives a faceted edge and a
+// dished centre, which is what a flower reads as at arm's length. Thirty
+// petals per head would be thirty times the meshes for the same silhouette.
+
+// The bouquet is authored rather than rolled, because the examination record
+// states what is in it: two roses gone over, sweet peas, one stem of
+// mignonette. See examine/examinables.js. Roses come first, so a bunch cut
+// short in the workbench is still a bunch and not a handful of sweet peas.
+//
+// Five tints across eight stems, not eight: cut from one garden on one
+// morning, a bunch is not a paint chart, and every extra colour is another
+// material on a prop that already carries glass and water.
+const BOUQUET = [
+  { kind: 'rose', angle: 0.35, lean: 0.30, stem: 0.30, head: 0.050, colour: '#bf4f68' },
+  { kind: 'rose', angle: 2.45, lean: 0.20, stem: 0.35, head: 0.046, colour: '#ddc0c2' },
+  { kind: 'pea', angle: 1.35, lean: 0.44, stem: 0.26, head: 0.025, colour: '#c5aed4' },
+  { kind: 'pea', angle: 3.05, lean: 0.48, stem: 0.22, head: 0.022, colour: '#e7e0e6' },
+  { kind: 'pea', angle: 4.15, lean: 0.38, stem: 0.29, head: 0.024, colour: '#c5aed4' },
+  { kind: 'pea', angle: 5.25, lean: 0.52, stem: 0.21, head: 0.021, colour: '#e7e0e6' },
+  { kind: 'pea', angle: 5.95, lean: 0.28, stem: 0.31, head: 0.023, colour: '#c5aed4' },
+  { kind: 'spike', angle: 4.75, lean: 0.16, stem: 0.37, head: 0.019, colour: '#c3c69b' },
+];
+
+const STEM_GREEN = '#5a7340';
+const LEAF_GREEN = '#4c6a37';
+
+// Blown open: the outer petals have dropped away from the vertical, so the
+// head is wide and shallow with the centre showing.
+function bloomProfile(kind, r) {
+  const h = kind === 'rose' ? r * 0.78 : r * 1.15;
+  if (kind === 'spike') {
+    // Mignonette is a spike of tiny florets, not a cup. Waisted, so the
+    // revolve keeps a knobbly edge instead of a smooth cone.
+    return [
+      [0, 0], [r * 0.8, r * 0.5], [r * 0.5, r * 1.1], [r * 0.95, r * 1.7],
+      [r * 0.55, r * 2.3], [r * 0.8, r * 2.9], [r * 0.35, r * 3.4], [0, r * 3.8],
+    ];
+  }
+  const rim = kind === 'rose' ? 0.94 : 0.88;
+  return [
+    [0, 0],
+    [r * 0.40, h * 0.18],
+    [r * 0.78, h * 0.50],
+    [r, h * 0.86],
+    [r * rim, h],
+    [r * 0.58, h * 0.80],
+    [r * 0.26, h * 0.73],
+    [r * 0.09, h * 0.79],
+    [0, h * 0.74],
+  ];
+}
 
 export function vaseOfFlowers(id, x, y, z, options = {}) {
-  const count = options.count ?? 7;
-  const seed = options.seed ?? 3;
+  // The workbench can cut the bunch short; it cannot add stems that were not
+  // authored, because the record says what is in the vase.
+  const count = Math.min(BOUQUET.length, Math.max(1, Math.round(options.count ?? BOUQUET.length)));
   const vaseH = options.height ?? 0.28;
   const vaseR = options.radius ?? 0.085;
+  const half = vaseH / 2;
   const parts = [];
 
-  // Glass, then the water inside it stopping short of the rim.
+  // Pressed glass on a foot: a turned profile, so the light has a belly and a
+  // lip to break on instead of one straight cylinder wall. Heights are local
+  // to the body centre, which sits at mid-glass.
+  const wall = [
+    [0, -half], [vaseR * 0.62, -half], [vaseR * 0.66, -half + 0.008],
+    [vaseR * 0.35, -half + 0.022], [vaseR * 0.33, -half + 0.04],
+    [vaseR * 0.56, -half + 0.068], [vaseR * 0.82, -half + 0.11],
+    [vaseR * 0.92, half - 0.126], [vaseR * 0.82, half - 0.082],
+    [vaseR * 0.66, half - 0.042], [vaseR * 0.73, half - 0.01],
+    [vaseR * 0.78, half],
+    // Back down the inside, so the glass has a thickness at the lip.
+    [vaseR * 0.70, half], [vaseR * 0.60, half - 0.012],
+    [vaseR * 0.58, half - 0.044], [vaseR * 0.75, half - 0.09],
+    [vaseR * 0.84, half - 0.15], [vaseR * 0.74, -half + 0.096],
+    [vaseR * 0.49, -half + 0.062], [vaseR * 0.27, -half + 0.03],
+    [vaseR * 0.25, -half + 0.02], [0, -half + 0.02],
+  ];
   parts.push({
-    shape: 'cylinder',
+    shape: 'lathe',
+    profile: wall.map(([r, h]) => [round(r), round(h)]),
+    radialSegments: 40,
     size: [vaseR * 2, vaseH, vaseR * 2],
     position: [0, 0, 0],
-    color: options.glass ?? '#cddfd8',
-    glass: true,
-    opacity: 0.3,
-  });
-  parts.push({
-    shape: 'cylinder',
-    size: [vaseR * 1.8, vaseH * 0.6, vaseR * 1.8],
-    position: [0, round(-vaseH * 0.18), 0],
-    color: '#9fb49a',
-    glass: true,
-    opacity: 0.55,
+    finish: 'bottleGlass',
+    color: options.glass ?? '#d3e2dc',
+    wallThickness: 0.003,
+    attenuationDistance: 0.5,
   });
 
-  for (let i = 0; i < count; i += 1) {
-    const angle = (i / count) * Math.PI * 2 + hash01(seed + i) * 0.7;
-    const lean = 0.14 + hash01(seed + i * 3.1) * 0.24;
-    const stem = 0.3 + hash01(seed + i * 5.7) * 0.16;
-    const head = 0.035 + hash01(seed + i * 7.3) * 0.02;
-    // Stems rise from the water and lean out; the head rides the top of each.
+  // Three days in the same water: clouded, an inch under the tidemark it dried
+  // onto the glass. The examination reads both, so both are modelled.
+  const waterTop = half - 0.086;
+  parts.push({
+    shape: 'cylinder',
+    size: [vaseR * 1.56, vaseH * 0.52, vaseR * 1.56],
+    position: [0, round(waterTop - vaseH * 0.26), 0],
+    finish: 'bottleLiquid',
+    color: '#5d6b41',
+    surfaceColor: '#c8cdae',
+    transmission: 0.62,
+    attenuationDistance: 0.06,
+  });
+  parts.push({
+    shape: 'torus',
+    size: [vaseR * 1.66, 0.004, vaseR * 1.66],
+    position: [0, round(waterTop + 0.024), 0],
+    rotation: [round(Math.PI / 2), 0, 0],
+    color: '#7d8a53',
+    roughness: 0.9,
+  });
+
+  for (const flower of BOUQUET.slice(0, count)) {
+    const { angle, lean, stem, head } = flower;
     const reach = Math.sin(lean) * stem;
+    const rise = Math.cos(lean) * stem;
+    const base = waterTop - 0.02;
+    const tip = [round(Math.cos(angle) * reach), round(base + rise), round(Math.sin(angle) * reach)];
+    const tilt = [round(Math.sin(angle) * lean), 0, round(-Math.cos(angle) * lean)];
     parts.push({
       shape: 'cylinder',
-      size: [0.008, stem, 0.008],
-      position: [round(Math.cos(angle) * reach * 0.5), round(vaseH * 0.1 + stem / 2), round(Math.sin(angle) * reach * 0.5)],
-      rotation: [round(Math.sin(angle) * lean), 0, round(-Math.cos(angle) * lean)],
-      color: '#4d6b3a',
-      roughness: 0.85,
+      size: [0.0055, stem, 0.0055],
+      position: [round(Math.cos(angle) * reach * 0.5), round(base + rise / 2), round(Math.sin(angle) * reach * 0.5)],
+      rotation: tilt,
+      color: STEM_GREEN,
+      roughness: 0.88,
+    });
+    // Calyx: without it the head sits on the stem like a bead on a wire.
+    parts.push({
+      shape: 'cone',
+      size: [head * 1.05, head * 0.7, head * 1.05],
+      position: [tip[0], round(tip[1] - head * 0.16), tip[2]],
+      rotation: tilt,
+      color: LEAF_GREEN,
+      roughness: 0.86,
     });
     parts.push({
-      shape: 'sphere',
+      shape: 'lathe',
+      profile: bloomProfile(flower.kind, head).map(([r, h]) => [round(r), round(h)]),
+      radialSegments: flower.kind === 'rose' ? 7 : flower.kind === 'pea' ? 5 : 9,
       size: [head * 2, head * 2, head * 2],
-      position: [round(Math.cos(angle) * reach), round(vaseH * 0.1 + stem), round(Math.sin(angle) * reach)],
-      color: BLOOMS[i % BLOOMS.length],
-      roughness: 0.7,
+      position: tip,
+      // Sweet peas nod; a blown rose faces up and out.
+      rotation: flower.kind === 'pea' ? [round(tilt[0] * 2.1), 0, round(tilt[2] * 2.1)] : tilt,
+      color: flower.colour,
+      roughness: 0.74,
+    });
+    if (flower.kind === 'rose') {
+      parts.push({
+        shape: 'sphere',
+        size: [head * 0.4, head * 0.4, head * 0.4],
+        position: [tip[0], round(tip[1] + head * 0.56), tip[2]],
+        color: '#d8bb62',
+        roughness: 0.6,
+      });
+    }
+  }
+
+  // A few leaves low in the bunch, where the foliage of a hand-cut bouquet is.
+  for (let i = 0; i < 4; i += 1) {
+    const angle = 0.9 + i * 1.6;
+    const out = vaseR * 0.9 + i * 0.006;
+    parts.push({
+      shape: 'roundedBox',
+      size: [0.052, 0.0025, 0.026],
+      bevelRadius: 0.008,
+      position: [round(Math.cos(angle) * out), round(half + 0.026 + i * 0.008), round(Math.sin(angle) * out)],
+      rotation: [round(0.35 + hash01(i * 3.3) * 0.3), round(-angle), round(0.4 + hash01(i * 7.1) * 0.4)],
+      color: LEAF_GREEN,
+      roughness: 0.86,
     });
   }
 
@@ -240,14 +364,173 @@ export function vaseOfFlowers(id, x, y, z, options = {}) {
     id: `${id}-vase`,
     kind: 'furniture',
     shape: 'cylinder',
-    // The body sits at the middle of the glass; the collider is the vase
-    // alone, because a bunch of flowers stops nothing.
+    // The body sits at the middle of the glass.
     position: [round(x), round(y + vaseH / 2), round(z)],
     size: [vaseR * 2, vaseH, vaseR * 2],
     yaw: 0,
-    dynamic: true,
-    // Light enough to go over, heavy enough not to skitter when brushed.
-    mass: 1.4,
+    // Fixed, not loose. Its table is a catalog model that mounts a stage
+    // later than this does, and an interior floor carries no collider for a
+    // dynamic body — so a loose vase spends that gap falling and never stops.
+    // It can go back to `dynamic: true, mass: 1.4` once interiors have a
+    // floor collider and the props stage no longer arrives after the dressing.
+    collider: false,
+    parts,
+  }];
+}
+
+// Petals dropped from the vase onto the table cloth. Not part of the vase
+// body: they stay where they fell when somebody knocks the flowers over.
+export function fallenPetals(id, x, y, z, options = {}) {
+  const seed = options.seed ?? 5;
+  const spread = options.spread ?? 0.11;
+  const parts = [];
+  for (let i = 0; i < 5; i += 1) {
+    const angle = hash01(seed + i * 2.7) * Math.PI * 2;
+    const out = spread * (0.35 + hash01(seed + i * 5.3) * 0.65);
+    parts.push({
+      shape: 'cylinder',
+      // A shed petal lies cupped, not flat, so it catches a highlight.
+      size: [0.026 + hash01(seed + i) * 0.008, 0.0015, 0.026],
+      radialSegments: 7,
+      position: [round(Math.cos(angle) * out), 0, round(Math.sin(angle) * out)],
+      rotation: [round(hash01(seed + i * 9.1) * 0.5 - 0.25), round(angle), round(hash01(seed + i * 11.7) * 0.4 - 0.2)],
+      color: i % 2 === 0 ? '#c25a70' : '#dcbfc1',
+      roughness: 0.72,
+    });
+  }
+  return [{
+    id: `${id}-petals`,
+    kind: 'furniture',
+    position: [round(x), round(y + 0.002), round(z)],
+    size: [spread * 2, 0.004, spread * 2],
+    yaw: 0,
+    collider: false,
+    cameraOccluder: false,
+    render: true,
+    parts,
+  }];
+}
+
+// A woman's four-button kid glove, left hand, lying palm down where it was
+// set down. Length and the 6¼ wrist stamp come from the examination record;
+// the geometry only has to agree with it.
+export function ladysGlove(id, x, y, z, options = {}) {
+  const yaw = options.yaw ?? 0;
+  const thickness = 0.018;
+  const palmLength = 0.105;
+  const palmWidth = 0.078;
+  const cuffLength = 0.062;
+  const leather = { finish: 'coachLeather', color: options.leather ?? '#cbbca2' };
+  const parts = [];
+
+  // Palm, then the cuff flaring back from the wrist. +x runs from cuff to
+  // fingertips.
+  parts.push({
+    shape: 'roundedBox',
+    size: [palmLength, thickness, palmWidth],
+    bevelRadius: 0.008,
+    bevelSegments: 3,
+    position: [0, 0, 0],
+    ...leather,
+  });
+  parts.push({
+    shape: 'roundedBox',
+    size: [cuffLength, thickness * 0.85, palmWidth * 0.92],
+    bevelRadius: 0.007,
+    bevelSegments: 3,
+    position: [round(-(palmLength + cuffLength) / 2 + 0.006), round(-thickness * 0.06), 0],
+    rotation: [0, 0.06, 0],
+    ...leather,
+  });
+
+  // Four fingers off the knuckle line, splayed a little, and the second one
+  // curled under — a glove keeps the shape of the last hand in it.
+  //
+  // A cylinder stands on +y. Laying it down with z=-PI/2 puts it on +x; the y
+  // rotation then splays it in plan, and the tip follows (cos, 0, sin) of the
+  // same angle. Every digit below is placed with that pair.
+  const knuckle = palmLength / 2 - 0.004;
+  const digit = (from, length, spread, radius, extra = {}) => {
+    const dx = Math.cos(spread);
+    const dz = Math.sin(spread);
+    parts.push({
+      shape: 'cylinder',
+      size: [radius * 2, length, radius * 2],
+      radialSegments: 10,
+      position: [
+        round(from[0] + dx * length * 0.5),
+        round(from[1]),
+        round(from[2] + dz * length * 0.5),
+      ],
+      rotation: [0, round(-spread), round(-Math.PI / 2)],
+      ...leather,
+      ...extra,
+    });
+    const tip = [round(from[0] + dx * length), round(from[1]), round(from[2] + dz * length)];
+    parts.push({ shape: 'sphere', size: [radius * 2, radius * 2, radius * 2], position: tip, ...leather, ...extra });
+    return { tip, spread };
+  };
+
+  const fingers = [
+    { z: -0.027, length: 0.050, spread: -0.13 },
+    { z: -0.009, length: 0.057, spread: -0.03 },
+    { z: 0.009, length: 0.053, spread: 0.07 },
+    { z: 0.026, length: 0.041, spread: 0.18 },
+  ];
+  fingers.forEach((finger, index) => {
+    const from = [knuckle, -thickness * 0.08, finger.z];
+    digit(from, finger.length, finger.spread, 0.0078);
+    if (index === 1) {
+      // The darn on the forefinger, in silk a shade too light for the kid.
+      const along = finger.length - 0.012;
+      parts.push({
+        shape: 'cylinder',
+        size: [0.0168, 0.011, 0.0168],
+        radialSegments: 10,
+        position: [
+          round(from[0] + Math.cos(finger.spread) * along),
+          round(from[1]),
+          round(from[2] + Math.sin(finger.spread) * along),
+        ],
+        rotation: [0, round(-finger.spread), round(-Math.PI / 2)],
+        color: '#e2d8c3',
+        roughness: 0.52,
+      });
+    }
+  });
+
+  // Thumb, turned out from the side of the palm.
+  digit([palmLength * 0.10, -thickness * 0.06, -palmWidth * 0.40], 0.044, -1.0, 0.0086);
+
+  // Three mother-of-pearl buttons at the wrist; the fourth is the thread loop.
+  for (let i = 0; i < 3; i += 1) {
+    parts.push({
+      shape: 'cylinder',
+      size: [0.0075, 0.002, 0.0075],
+      position: [round(-palmLength / 2 - 0.012 - i * 0.016), round(thickness * 0.5), round(palmWidth * 0.34)],
+      color: '#f0ebe0',
+      roughness: 0.16,
+      metalness: 0.08,
+    });
+  }
+  parts.push({
+    shape: 'torus',
+    size: [0.011, 0.0022, 0.011],
+    position: [round(-palmLength / 2 - 0.06), round(thickness * 0.45), round(palmWidth * 0.34)],
+    rotation: [round(Math.PI / 2), 0, 0],
+    color: '#241f1b',
+    roughness: 0.85,
+  });
+
+  return [{
+    id: `${id}-glove`,
+    kind: 'furniture',
+    position: [round(x), round(y + thickness / 2), round(z)],
+    size: [palmLength + cuffLength + 0.06, thickness, palmWidth + 0.03],
+    yaw,
+    // Static: it is where somebody left it, and a glove stops nothing.
+    collider: false,
+    cameraOccluder: false,
     parts,
   }];
 }

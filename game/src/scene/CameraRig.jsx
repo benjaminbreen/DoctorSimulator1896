@@ -12,8 +12,9 @@ import {
 import { damp, clamp } from '../movement/mathUtils.js';
 import { gameDebug } from '../debug.js';
 import { getInteraction } from '../world/interaction.js';
-import { consultationSeatFraming, seatFov } from '../consultation/seatFraming.js';
+import { consultationSeatFraming, examReach, seatFov } from '../consultation/seatFraming.js';
 import { instrumentFov, resetInstrumentZoom } from '../instruments/viewFraming.js';
+import { examineDistance, resetExamineDistance } from '../examine/framing.js';
 
 const ANCHOR_HEIGHT = 1.45;
 const EYE_HEIGHT = 1.62;
@@ -80,8 +81,10 @@ export default function CameraRig({ room, runtime, look, keyboard, heightAt = nu
     const framing = using?.framing ?? seat;
     if (framing) {
       const focus = focusRef.current;
-      const kind = seat || using?.kind === 'seat' ? 'seat' : 'instrument';
-      const focusKey = kind === 'instrument' ? using?.id : kind;
+      const kind = seat || using?.kind === 'seat'
+        ? 'seat'
+        : (using?.kind === 'examine' ? 'examine' : 'instrument');
+      const focusKey = framing.key ?? (kind === 'seat' ? kind : using?.id);
       if (!focus.armed || focus.key !== focusKey) {
         // Start the ease from wherever the camera already is.
         focus.armed = true;
@@ -91,12 +94,50 @@ export default function CameraRig({ room, runtime, look, keyboard, heightAt = nu
         focus.position.copy(camera.position);
         focus.target.set(...framing.target);
         if (kind === 'instrument') resetInstrumentZoom();
+        if (kind === 'examine') resetExamineDistance();
       }
       const blend = 1 - Math.exp(-dt * 6);
       focus.position.lerp(scratchPosition.set(...framing.position), blend);
       camera.position.copy(focus.position);
 
-      if (focus.settled) {
+      if (focus.settled && kind === 'examine') {
+        // An examination orbits the thing instead of turning in place: drag
+        // swings the eye around it, the wheel walks in and out. The angles are
+        // the same yaw/pitch the other views use, so the drag feels identical.
+        look.look.pitch = clamp(look.look.pitch, -0.35, 1.25);
+        const pitch = -look.look.pitch;
+        const yaw = look.look.yaw;
+        const cos = Math.cos(pitch);
+        const reach = (framing.radius ?? 0.6) * examineDistance();
+        const [tx, ty, tz] = framing.target;
+        camera.position.set(
+          tx + Math.sin(yaw) * cos * reach,
+          ty - Math.sin(pitch) * reach,
+          tz + Math.cos(yaw) * cos * reach,
+        );
+        camera.lookAt(tx, ty, tz);
+      } else if (focus.settled && framing.orbit) {
+        // The examination reading orbits the patient: drag swings the eye
+        // within clamped bounds, the wheel walks in and out. Yaw is held
+        // near the frontal approach so the orbit never leaves the room.
+        look.look.pitch = clamp(look.look.pitch, -0.12, 0.42);
+        let yawOffset = look.look.yaw - (focus.baseYaw ?? look.look.yaw);
+        while (yawOffset > Math.PI) yawOffset -= Math.PI * 2;
+        while (yawOffset < -Math.PI) yawOffset += Math.PI * 2;
+        yawOffset = clamp(yawOffset, -0.65, 0.65);
+        look.look.yaw = (focus.baseYaw ?? look.look.yaw) + yawOffset;
+        const pitch = -look.look.pitch;
+        const yaw = look.look.yaw;
+        const cos = Math.cos(pitch);
+        const reach = examReach();
+        const [tx, ty, tz] = framing.target;
+        camera.position.set(
+          tx + Math.sin(yaw) * cos * reach,
+          ty - Math.sin(pitch) * reach,
+          tz + Math.cos(yaw) * cos * reach,
+        );
+        camera.lookAt(tx, ty, tz);
+      } else if (focus.settled && !framing.staticAim) {
         // Seated and instrument views share a fixed eye: drag changes aim and
         // the wheel changes field of view, without moving the player.
         const pitchLimit = kind === 'seat' ? [-0.55, 0.8] : [-0.95, 0.95];
@@ -112,20 +153,29 @@ export default function CameraRig({ room, runtime, look, keyboard, heightAt = nu
       } else {
         focus.target.lerp(scratchTarget.set(...framing.target), blend);
         camera.lookAt(focus.target);
-        if (focus.position.distanceTo(scratchPosition) < 0.06) {
+        // A static framing (the examination reading) never hands aim over;
+        // it keeps easing toward its fixed target instead.
+        if (!framing.staticAim && focus.position.distanceTo(scratchPosition) < 0.06) {
           // Arrived: hand the aim to the player exactly where the ease left
           // it, so control begins without a jump.
           const dx = focus.target.x - focus.position.x;
           const dy = focus.target.y - focus.position.y;
           const dz = focus.target.z - focus.position.z;
           look.set(Math.atan2(-dx, -dz), -Math.atan2(dy, Math.hypot(dx, dz)));
+          // An orbiting framing swings around this approach: with the look
+          // yaw convention, the same angle also spells the eye's offset side.
+          focus.baseYaw = Math.atan2(-dx, -dz);
           focus.settled = true;
         }
       }
 
+      // An examination holds its long lens: the wheel dollies instead, so the
+      // object's perspective does not change as you draw closer.
       const fovTarget = kind === 'seat'
         ? (using?.kind === 'seat' ? framing.fov ?? values.fov : seatFov())
-        : instrumentFov(framing.fov ?? values.fov);
+        : kind === 'examine'
+          ? framing.fov ?? values.fov
+          : instrumentFov(framing.fov ?? values.fov);
       const nextFov = damp(camera.fov, fovTarget, 9, dt);
       if (camera.fov !== nextFov) {
         camera.fov = nextFov;

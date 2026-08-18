@@ -11,11 +11,11 @@ const STYLES = Object.freeze({
     colors: Object.freeze(['#b74a3a', '#d47a5b', '#7b2828']),
   }),
   'neurasthenia-gain': Object.freeze({
-    kind: 'neurasthenia-gain', metric: 'neurasthenia', label: 'Strain', aura: '#7650a0',
+    kind: 'neurasthenia-gain', metric: 'neurasthenia', label: 'Neurasthenia', aura: '#7650a0',
     colors: Object.freeze(['#8855b5', '#b276d0', '#d0a5df']),
   }),
   'neurasthenia-loss': Object.freeze({
-    kind: 'neurasthenia-loss', metric: 'neurasthenia', label: 'Strain', aura: '#a891c7',
+    kind: 'neurasthenia-loss', metric: 'neurasthenia', label: 'Neurasthenia', aura: '#a891c7',
     colors: Object.freeze(['#b9a6d5', '#e2d5e9', '#d6c481']),
   }),
 });

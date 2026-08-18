@@ -331,6 +331,7 @@ export function applyRendererCAppearance(root, recipe) {
       ...values,
       dressColor,
       trimColor,
+      clothingWrinkles: Number(presentation.clothingWrinkles) || 0,
     });
     const outfit = presentation.outfitId;
     const productionDress = outfit ? outfit === 'fitted-dress' : (values.womenGarmentMode || 'production-dress') === 'production-dress';

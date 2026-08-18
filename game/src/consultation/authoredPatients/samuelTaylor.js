@@ -42,6 +42,9 @@ const recipe = {
   values: { ...generatedRecipe.values, skinTone: '#afa59b' },
 };
 
+// Enter by the waiting-room door (south wall, consulting-office blueprint).
+recipe.presentation.entrance = { from: [2.4, 0, 4.55] };
+
 const actor = createActorInstance({ id, recipe });
 
 const facts = Object.freeze([
@@ -277,14 +280,14 @@ export const SAMUEL_TAYLOR = Object.freeze({
       factIds: ['samuel-gum-line', 'samuel-wrist-weakness'],
       reply: 'A narrow blue-grey line marks parts of the gum margin. Grip is preserved, but repeated wrist and middle-finger extension is subtly weak on both sides; there is no complete wrist-drop.',
       uncertainty: 'The gum line is not unique to lead, and effort may affect subtle weakness; the cluster must be weighed with exposure and symptoms.',
-      effects: { trust: 2, satisfaction: 3 },
+      effects: { trust: 2, satisfaction: 3 }, gesture: 'present-wrist',
     }),
     Object.freeze({
       id: 'samuel-exam-abdomen', label: 'Examine the abdomen and count the pulse', minutes: 3,
       factIds: ['samuel-abdominal-exam'],
       reply: facts.find((fact) => fact.id === 'samuel-abdominal-exam').value,
       uncertainty: 'These findings support but do not prove lead colic, and do not exclude another abdominal disorder.',
-      effects: { satisfaction: 1 },
+      effects: { satisfaction: 1 }, gesture: 'present-wrist',
     }),
   ]),
   diagnoses: Object.freeze([

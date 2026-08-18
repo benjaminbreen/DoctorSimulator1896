@@ -15,12 +15,16 @@ import {
   prepareFacadeTextures,
 } from './facadeMaterials.js';
 
-// While an instrument is in use, InstrumentStage draws a working copy of it
-// over the top. Take the room's copy down for the duration or the two models
-// fight for the same space.
+// An interaction that draws its own working copy of a prop — the instrument
+// stage, the pipe in the player's hand — names the group it replaces, and the
+// room's copy comes down for the duration or the two fight for the same space.
+//
+// It rides the interaction and not the prop's affordance: examining the pipe
+// is also an interaction with it, and hiding the thing you asked to look at
+// leaves the camera framing an empty table.
 function useHiddenGroup() {
-  const [group, setGroup] = useState(() => getInteraction().using?.item?.affordance?.group ?? null);
-  useEffect(() => subscribe((state) => setGroup(state.using?.item?.affordance?.group ?? null)), []);
+  const [group, setGroup] = useState(() => getInteraction().using?.hideGroup ?? null);
+  useEffect(() => subscribe((state) => setGroup(state.using?.hideGroup ?? null)), []);
   return group;
 }
 
@@ -292,6 +296,25 @@ function ItemGeometry({ item }) {
   return <PropShape item={item} />;
 }
 
+// The shapes that make up one built piece, each at its own local offset. Both
+// the loose bodies and the fixed props draw them: a glove left on a bench is
+// the same list of parts as a vase, minus the falling over.
+function ItemParts({ parts }) {
+  return parts.map((part, index) => (
+    <mesh
+      key={index}
+      position={part.position}
+      rotation={part.rotation ?? [0, 0, 0]}
+      renderOrder={part.renderOrder ?? 0}
+      castShadow={part.castShadow ?? true}
+      receiveShadow={part.receiveShadow ?? true}
+    >
+      <ItemGeometry item={part} />
+      <PropMaterial item={part} />
+    </mesh>
+  ));
+}
+
 function ItemCollider({ item }) {
   if (item.shape === 'cylinder' || item.shape === 'tree') {
     return <CylinderCollider args={[item.size[1] / 2, item.size[0] / 2]} position={item.position} />;
@@ -356,19 +379,7 @@ function DynamicItem({ item, material }) {
         ))
       )}
       {parts ? (
-        parts.map((part, index) => (
-          <mesh
-            key={index}
-            position={part.position}
-            rotation={part.rotation ?? [0, 0, 0]}
-            renderOrder={part.renderOrder ?? 0}
-            castShadow={part.castShadow ?? true}
-            receiveShadow={part.receiveShadow ?? true}
-          >
-            <ItemGeometry item={part} />
-            <PropMaterial item={part} />
-          </mesh>
-        ))
+        <ItemParts parts={parts} />
       ) : (
         <mesh castShadow receiveShadow>
           <ItemGeometry item={item} />
@@ -494,6 +505,15 @@ export default function Furniture({ items, runtime }) {
           || item.dynamic
           || item.render === false
         ) return null;
+        // A fixed piece may be built of parts too — a dropped glove, the
+        // petals under a vase. Without this it draws as its bounding box.
+        if (item.parts?.length) {
+          return (
+            <group key={item.id} position={item.position} rotation={[0, item.yaw ?? 0, 0]}>
+              <ItemParts parts={item.parts} />
+            </group>
+          );
+        }
         return (
           <mesh
             key={item.id}

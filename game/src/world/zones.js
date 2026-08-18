@@ -24,7 +24,9 @@ import {
 import { groundCoverItems, buildGroundCover } from './groundCover.js';
 import { streetItems, INTERIOR_BUILDINGS } from './streetGrid.js';
 import { generateInterior, interiorEntryTransitions, interiorZoneId } from './interiors.js';
-import { bookcase, vaseOfFlowers, labeledBottle, reagentBottleRack, opiumPipe } from './furnishings.js';
+import {
+  bookcase, vaseOfFlowers, fallenPetals, labeledBottle, reagentBottleRack, opiumPipe,
+} from './furnishings.js';
 import { labBench } from './instruments.js';
 import { cattellLabItems } from './cattellLab.js';
 import { lobbyItems } from './lobby.js';
@@ -55,9 +57,16 @@ export const zones = {
       ...labeledBottle('study-bottle-b', -1.55, 0.9, 8.75, { labelText: 'TINCTURE', liquid: '#7a6b3a', height: 0.13 }).map((item) => ({ ...item, yaw: Math.PI })),
       ...opiumPipe('study-pipe', -0.55, 1.059, 6.2, { yaw: -1.0 }).map((item) => ({
         ...item,
-        // `group` lets the room copy hide while the ritual's working copy is
-        // in the player's hand (the same trick the instruments use).
-        affordance: { kind: 'act', verb: 'Smoke', name: 'the opium pipe', group: 'study-pipe' },
+        // E opens the examination; smoking is the one action it offers, so the
+        // pipe is looked at before it is used. The ritual hides this copy while
+        // its own is in the player's hand — see OpiumRitual's `hideGroup`.
+        affordance: {
+          kind: 'examine',
+          verb: 'Examine',
+          name: 'the opium pipe',
+          subject: 'opium-pipe',
+          span: 0.34,
+        },
       })),
       ...blueprintMouldings(consultingBlueprint, {
         trim: consultingLighting.materials.trim,
@@ -78,7 +87,20 @@ export const zones = {
     // A room for show gets the dado as well. The vase stands on the centre
     // table: `Table_02` is 1.0588m to its top.
     extraItems: [
-      ...vaseOfFlowers('vase', -0.22, 1.0588, 0.76, { count: 8, seed: 11 }),
+      ...vaseOfFlowers('vase', -0.22, 1.0588, 0.76).map((item) => ({
+        ...item,
+        // The bouquet stands well above the vase body, so the examination
+        // frames the flowers rather than the glass they are in.
+        affordance: {
+          kind: 'examine',
+          verb: 'Examine',
+          name: 'the flowers',
+          subject: 'waiting-room-flowers',
+          focus: [0, 0.2, 0],
+          span: 0.3,
+        },
+      })),
+      ...fallenPetals('vase-petals', -0.14, 1.0588, 0.68, { seed: 11 }),
       ...blueprintMouldings(waitingBlueprint, {
         trim: waitingLighting.materials.trim,
         ceiling: waitingLighting.materials.ceiling,

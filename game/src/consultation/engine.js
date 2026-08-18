@@ -234,6 +234,7 @@ export function consultationTransition(state, patient, action) {
         kind: 'examination', id: examination.id, label: examination.label,
         reply: examination.reply, fact, facts,
         bodyCue: examination.bodyCue || null,
+        gesture: examination.gesture || null,
         reactionExpression: examination.reactionExpression || null,
         trustDelta: effects.trust || 0,
         satisfactionDelta: effects.satisfaction || 0,
@@ -517,7 +518,13 @@ export function actorCueForConsultation(state) {
   if (last?.kind === 'examination') {
     const expression = last.reactionExpression
       || ((last.trustDelta || 0) + (last.satisfactionDelta || 0) >= 5 ? 'smiling' : 'guarded');
-    return { body: last.bodyCue || 'clinic-idle', expression, gaze: 'doctor', speaking: false };
+    return {
+      body: last.bodyCue || 'clinic-idle',
+      expression,
+      gaze: 'doctor',
+      gesture: last.gesture || 'none',
+      speaking: false,
+    };
   }
   return { body: 'clinic-idle', expression: 'neutral', gaze: 'doctor', speaking: false };
 }

@@ -2,12 +2,30 @@
 // do not create AudioContexts or own volume state. Music and ambient buses can
 // be added later without changing those callers.
 
+const STORAGE_KEY = 'ghosts-game.sound.v1';
+const storage = typeof localStorage === 'undefined' ? null : localStorage;
+
 const listeners = new Set();
 const state = {
   muted: false,
   masterVolume: 0.8,
   sfxVolume: 0.85,
 };
+
+try {
+  const stored = storage && JSON.parse(storage.getItem(STORAGE_KEY));
+  if (stored) {
+    state.muted = Boolean(stored.muted);
+    if (Number.isFinite(stored.masterVolume)) state.masterVolume = Math.min(1, Math.max(0, stored.masterVolume));
+    if (Number.isFinite(stored.sfxVolume)) state.sfxVolume = Math.min(1, Math.max(0, stored.sfxVolume));
+  }
+} catch {
+  storage?.removeItem(STORAGE_KEY);
+}
+
+function persist() {
+  storage?.setItem(STORAGE_KEY, JSON.stringify(state));
+}
 
 let context = null;
 let masterGain = null;
@@ -140,18 +158,21 @@ export function subscribeSound(listener) {
 export function setSoundMuted(value) {
   state.muted = Boolean(value);
   applyLevels();
+  persist();
   notify();
 }
 
 export function setMasterVolume(value) {
   state.masterVolume = clamp01(value);
   applyLevels();
+  persist();
   notify();
 }
 
 export function setSfxVolume(value) {
   state.sfxVolume = clamp01(value);
   applyLevels();
+  persist();
   notify();
 }
 

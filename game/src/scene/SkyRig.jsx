@@ -212,10 +212,10 @@ void main() {`,
     }
     // Golden hour trades fill for key: ambient and hemisphere drop as the
     // sun warms, which is what makes a low sun read as contrast. The flat
-    // ambient runs at 0.15 of the slider: the hemisphere and env probe carry
-    // the fill instead, so shade varies with surface direction.
+    // Ambient stays a small fraction of the slider: just enough to preserve
+    // cloth and foliage detail while the hemisphere keeps shade directional.
     if (ambientRef.current) {
-      ambientRef.current.intensity = values.ambientIntensity * 0.15
+      ambientRef.current.intensity = values.ambientIntensity * 0.17
         * (0.72 + 0.28 * daylight + moonLight * 0.18)
         * (daylight + (1 - daylight) * values.nightSkyBrightness)
         * (1 - golden * 0.35)

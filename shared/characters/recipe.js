@@ -11,6 +11,9 @@ export const CHARACTER_EXPRESSIONS = Object.freeze([
   'smiling', 'frowning', 'discouraged',
 ]);
 export const CHARACTER_GAZES = Object.freeze(['doctor', 'away', 'down', 'neutral']);
+// Procedural overlays, not clips: applied by the renderer on top of the
+// current body cue.
+export const CHARACTER_GESTURES = Object.freeze(['none', 'present-wrist', 'extend-both-arms']);
 
 export const BODY_CUE_CLIPS = Object.freeze({
   'clinic-idle': 'ClinicIdle',
@@ -50,6 +53,7 @@ export function createCharacterRecipe(input = {}) {
       body: CHARACTER_BODY_CUES.includes(animation.body) ? animation.body : 'clinic-idle',
       expression: CHARACTER_EXPRESSIONS.includes(animation.expression) ? animation.expression : 'neutral',
       gaze: CHARACTER_GAZES.includes(animation.gaze) ? animation.gaze : 'doctor',
+      gesture: CHARACTER_GESTURES.includes(animation.gesture) ? animation.gesture : 'none',
       speaking: Boolean(animation.speaking),
     },
     lod: CHARACTER_LODS.includes(input.lod) ? input.lod : 'consultation',

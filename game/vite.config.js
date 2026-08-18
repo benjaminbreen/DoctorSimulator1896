@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { loadEnv } from 'vite';
 import { POST as consultPost } from '../api/consult.mjs';
 import { POST as npcDialoguePost } from '../api/npc-dialogue.mjs';
+import { POST as examinePost } from '../api/examine.mjs';
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
 
@@ -15,6 +16,7 @@ function serverlessRoutes() {
   const routes = [
     ['/api/consult', consultPost],
     ['/api/npc-dialogue', npcDialoguePost],
+    ['/api/examine', examinePost],
   ];
   return {
     name: 'serverless-routes',

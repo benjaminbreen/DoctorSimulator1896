@@ -36,6 +36,7 @@ import {
 import { ledgeCandidate } from '../world/motionAffordances.js';
 import { feetAreInWater } from '../world/waterContact.js';
 import { seatFraming } from '../world/seating.js';
+import { examineFraming } from '../examine/framing.js';
 import {
   advanceCarriageClimb,
   beginCarriageClimb,
@@ -582,6 +583,16 @@ export default function PlayerRig({
       else if (throwable) pickUpThrowable(throwable.id);
       else if (item.affordance.kind === 'instrument') {
         useInstrument({ id: item.id, item, instrument: item.affordance.instrument });
+      } else if (item.affordance.kind === 'examine') {
+        useInstrument({
+          id: item.id,
+          kind: 'examine',
+          item,
+          subject: item.affordance.subject,
+          framing: examineFraming(item, gameDebug.player.position),
+        });
+        setReach(null);
+        gameDebug.prompt = null;
       } else if (item.affordance.kind === 'seat') {
         useInstrument({
           id: item.id,

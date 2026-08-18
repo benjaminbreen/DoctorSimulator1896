@@ -179,3 +179,41 @@
     transition: none;
   }
 }
+
+/* Folded state: a brass stud in the corner the card came from. */
+.control-helper__tab {
+  position: absolute;
+  right: 0.8rem;
+  bottom: 0.8rem;
+  z-index: 35;
+  display: grid;
+  width: 2.1rem;
+  height: 2.1rem;
+  place-items: center;
+  padding: 0;
+  color: #d9bb79;
+  background: linear-gradient(150deg, rgba(27, 38, 31, 0.72), rgba(7, 12, 10, 0.64));
+  border: 1px solid rgba(196, 159, 84, 0.4);
+  border-radius: 50%;
+  box-shadow: 0 0.4rem 1.2rem rgba(0, 0, 0, 0.36);
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  font-family: 'Cormorant', Georgia, serif;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.control-helper__tab:hover,
+.control-helper__tab:focus-visible {
+  color: #fff1cf;
+  border-color: rgba(228, 196, 127, 0.7);
+  outline: none;
+}
+
+@media (max-width: 1450px) {
+  .control-helper__tab { bottom: 6rem; }
+}
+
+@media (max-width: 900px) {
+  .control-helper__tab { display: none; }
+}

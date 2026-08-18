@@ -67,6 +67,7 @@ const SootStains = lazy(() => import('./SootStains.jsx'));
 const CeilingRose = lazy(() => import('./CeilingRose.jsx'));
 const WallArt = lazy(() => import('./WallArt.jsx'));
 const InstrumentStage = lazy(() => import('./InstrumentStage.jsx'));
+const ExaminePicker = lazy(() => import('./ExaminePicker.jsx'));
 const LightShafts = lazy(() => import('./LightShafts.jsx'));
 const ActorLayer = lazy(() => import('./characters/ActorLayer.jsx'));
 const ShotWoman = lazy(() => import('./ShotWoman.jsx'));
@@ -560,6 +561,7 @@ function SceneContents({
 
               <Stage active={stage >= 2} stage={2} onRendered={onStageRendered}>
                 <PropModels items={parkModelGroups.structural} />
+                <ExaminePicker room={room} zone={zone} />
               </Stage>
 
               <Stage active={stage >= 3} stage={3} onRendered={onStageRendered}>
@@ -667,6 +669,7 @@ function SceneContents({
             <Stage active={stage >= 2} stage={2} onRendered={onStageRendered}>
               <PropModels items={room.furnitureBoxes.filter((item) => item.model)} />
               <InstrumentStage />
+              <ExaminePicker room={room} zone={zone} />
               <ZoneFeatures zone={zone} runtime={runtime} />
               <ColliderDebug room={room} runtime={runtime} />
               {blueprint.id === 'CONSULTING_OFFICE' && <OpiumRitual />}

@@ -1,11 +1,13 @@
+// Legible at the consultation camera's distance: these read as expressions,
+// not twitches. The QA grid renders the same recipes, so judge them there.
 export const FACIAL_EXPRESSION_RECIPES = Object.freeze({
-  guarded: Object.freeze({ browDownLeft: 0.12, browDownRight: 0.11, mouthPressLeft: 0.10, mouthPressRight: 0.09 }),
-  distressed: Object.freeze({ browInnerUp: 0.19, mouthFrownLeft: 0.15, mouthFrownRight: 0.15, eyeSquintLeft: 0.05, eyeSquintRight: 0.05 }),
-  fatigued: Object.freeze({ eyeBlinkLeft: 0.09, eyeBlinkRight: 0.09, browInnerUp: 0.06, mouthFrownLeft: 0.05, mouthFrownRight: 0.05 }),
-  relieved: Object.freeze({ mouthSmileLeft: 0.16, mouthSmileRight: 0.16, cheekSquintLeft: 0.06, cheekSquintRight: 0.06 }),
-  smiling: Object.freeze({ mouthSmileLeft: 0.19, mouthSmileRight: 0.19, cheekSquintLeft: 0.07, cheekSquintRight: 0.07, browInnerUp: 0.025 }),
-  frowning: Object.freeze({ browDownLeft: 0.15, browDownRight: 0.15, mouthFrownLeft: 0.12, mouthFrownRight: 0.12, mouthPressLeft: 0.05, mouthPressRight: 0.05 }),
-  discouraged: Object.freeze({ browInnerUp: 0.17, mouthFrownLeft: 0.10, mouthFrownRight: 0.10, eyeBlinkLeft: 0.055, eyeBlinkRight: 0.055 }),
+  guarded: Object.freeze({ browDownLeft: 0.26, browDownRight: 0.24, mouthPressLeft: 0.24, mouthPressRight: 0.22 }),
+  distressed: Object.freeze({ browInnerUp: 0.5, mouthFrownLeft: 0.36, mouthFrownRight: 0.36, eyeSquintLeft: 0.14, eyeSquintRight: 0.14 }),
+  fatigued: Object.freeze({ eyeBlinkLeft: 0.22, eyeBlinkRight: 0.22, browInnerUp: 0.18, mouthFrownLeft: 0.14, mouthFrownRight: 0.14 }),
+  relieved: Object.freeze({ mouthSmileLeft: 0.38, mouthSmileRight: 0.38, cheekSquintLeft: 0.16, cheekSquintRight: 0.16 }),
+  smiling: Object.freeze({ mouthSmileLeft: 0.46, mouthSmileRight: 0.46, cheekSquintLeft: 0.2, cheekSquintRight: 0.2, browInnerUp: 0.06 }),
+  frowning: Object.freeze({ browDownLeft: 0.36, browDownRight: 0.36, mouthFrownLeft: 0.3, mouthFrownRight: 0.3, mouthPressLeft: 0.12, mouthPressRight: 0.12 }),
+  discouraged: Object.freeze({ browInnerUp: 0.44, mouthFrownLeft: 0.26, mouthFrownRight: 0.26, eyeBlinkLeft: 0.13, eyeBlinkRight: 0.13 }),
 });
 
 export const FACIAL_GAZE_RECIPES = Object.freeze({
@@ -21,12 +23,12 @@ export const FACE_WEIGHT_LIMITS = Object.freeze({
   jawOpen: 0.04,
   mouthFunnel: 0.08,
   mouthPucker: 0.08,
-  mouthPressLeft: 0.18,
-  mouthPressRight: 0.18,
-  mouthFrownLeft: 0.20,
-  mouthFrownRight: 0.20,
-  mouthSmileLeft: 0.22,
-  mouthSmileRight: 0.22,
+  mouthPressLeft: 0.32,
+  mouthPressRight: 0.32,
+  mouthFrownLeft: 0.42,
+  mouthFrownRight: 0.42,
+  mouthSmileLeft: 0.52,
+  mouthSmileRight: 0.52,
   eyeBlinkLeft: 1,
   eyeBlinkRight: 1,
 });

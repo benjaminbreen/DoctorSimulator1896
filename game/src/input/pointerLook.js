@@ -5,6 +5,7 @@
 
 import { adjustSeatZoom, consultationSeatFraming } from '../consultation/seatFraming.js';
 import { adjustInstrumentZoom } from '../instruments/viewFraming.js';
+import { adjustExamineDistance } from '../examine/framing.js';
 import { getInteraction } from '../world/interaction.js';
 
 // Per wheel pixel. Trackpad pinch arrives as a ctrl-held wheel with much
@@ -59,6 +60,13 @@ export function createLook(runtime) {
     // the boom, so the player's walking zoom is left as they set it.
     if (consultationSeatFraming()) {
       adjustSeatZoom(event.deltaY * (event.ctrlKey ? SEAT_PINCH_RATE : SEAT_WHEEL_RATE));
+      return;
+    }
+    // An examination walks the eye in and out along its orbit rather than
+    // changing the lens, so the object keeps its perspective as it fills more
+    // of the frame.
+    if (getInteraction().using?.kind === 'examine') {
+      adjustExamineDistance(event.deltaY * (event.ctrlKey ? PINCH_RATE : WHEEL_RATE));
       return;
     }
     // A focused instrument uses the same fixed-eye convention as a seated

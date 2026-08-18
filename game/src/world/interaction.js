@@ -12,6 +12,10 @@ const store = {
   reach: null,
   // The instrument in use, or null. Set on entering, cleared on leaving.
   using: null,
+  // Armed with Enter: the next click on the world picks something to examine.
+  // It lives here because it is a mode of interacting with the world, and
+  // because PlayerRig has to know not to spend the same click on anything else.
+  picking: false,
 };
 
 function notify() {
@@ -19,7 +23,7 @@ function notify() {
 }
 
 function snapshot() {
-  return { reach: store.reach, using: store.using };
+  return { reach: store.reach, using: store.using, picking: store.picking };
 }
 
 export function subscribe(listener) {
@@ -66,6 +70,18 @@ export function useInstrument(entry) {
 export function stopUsing() {
   if (!store.using) return;
   store.using = null;
+  notify();
+}
+
+export function armPicking() {
+  if (store.picking || store.using) return;
+  store.picking = true;
+  notify();
+}
+
+export function cancelPicking() {
+  if (!store.picking) return;
+  store.picking = false;
   notify();
 }
 

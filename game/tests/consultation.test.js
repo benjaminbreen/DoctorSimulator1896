@@ -212,7 +212,7 @@ test('examination advances time and records a deterministic observation', () => 
   assert.ok(next.observedFactIds.includes(fact.id));
   assert.equal(next.history.at(-1).fact.value, fact.value);
   assert.deepEqual(actorCueForConsultation(next), {
-    body: 'clinic-idle', expression: 'guarded', gaze: 'doctor', speaking: false,
+    body: 'clinic-idle', expression: 'guarded', gaze: 'doctor', gesture: 'none', speaking: false,
   });
 });
 

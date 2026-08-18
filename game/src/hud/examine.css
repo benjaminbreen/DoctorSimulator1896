@@ -1,0 +1,74 @@
+/* Close examination. The rail is the physician's own notebook laid beside the
+   thing: paper-coloured type on the same japanned dark as the rest of the
+   chrome, and no ornament that a notebook would not have. */
+
+.examine-rail {
+  position: absolute;
+  z-index: 30;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  width: min(30rem, 38vw);
+  border-left: 1px solid rgb(168 134 63 / 0.28);
+  background: linear-gradient(180deg, rgb(20 18 16 / 0.94), rgb(13 12 11 / 0.96));
+  backdrop-filter: blur(10px);
+  box-shadow: -1.6rem 0 4rem rgb(0 0 0 / 0.5);
+  pointer-events: auto;
+}
+
+.examine-notes {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(168 134 63 / 0.4) transparent;
+}
+
+.examine-notes::-webkit-scrollbar {
+  width: 8px;
+}
+
+.examine-notes::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background: rgb(168 134 63 / 0.32);
+}
+
+/* Body copy in the rail and the title over the scene share one face: this is
+   written matter, not interface labelling. */
+.examine-prose {
+  font-family: 'Libre Caslon Text', Georgia, serif;
+  font-size: 0.9rem;
+  line-height: 1.62;
+  color: #ddd7c6;
+}
+
+.examine-title {
+  font-family: 'Bodoni Moda', Didot, 'Times New Roman', serif;
+  font-size: clamp(1.9rem, 3.4vw, 3rem);
+  line-height: 1.05;
+  color: #efe9d8;
+  text-shadow: 0 2px 18px rgb(0 0 0 / 0.75);
+}
+
+/* A recorded finding: brass rule down the left, as a ledger entry is ruled. */
+.examine-finding {
+  border-left: 2px solid rgb(199 154 68 / 0.85);
+  background: rgb(199 154 68 / 0.07);
+}
+
+/* Narrow screens: the rail becomes a bottom sheet so the object keeps the
+   top half of the picture. */
+@media (max-width: 860px) {
+  .examine-rail {
+    top: auto;
+    left: 0;
+    width: auto;
+    height: 56dvh;
+    border-top: 1px solid rgb(168 134 63 / 0.28);
+    border-left: none;
+    box-shadow: 0 -1.2rem 3rem rgb(0 0 0 / 0.5);
+  }
+}

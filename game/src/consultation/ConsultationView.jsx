@@ -21,6 +21,9 @@ import {
   savePatientNotes,
 } from './patientNotes.js';
 import { notice } from '../world/notices.js';
+import { Vector3 } from 'three';
+import { gameDebug } from '../debug.js';
+import { getExamAnchors } from './examAnchors.js';
 import notebookBackgroundUrl from './assets/case-notebook-background.webp';
 import './consultation.css';
 
@@ -119,6 +122,126 @@ function Ornament() {
   return (
     <div className="gcon-ornament" aria-hidden="true">
       <Knot />
+    </div>
+  );
+}
+
+/* ---------------- examination reading ---------------- */
+
+// Card rows per side, in viewport percent from the top.
+const EXAM_SLOT_TOPS = { left: [14, 46], right: [18, 50] };
+
+// Which published bone anchor a finding points at. Handedness is read from
+// the fact itself, so a left-hand sign points at her actual left hand.
+function examRegion(fact) {
+  const text = `${fact.id} ${fact.label}`.toLowerCase();
+  if (/thyroid|neck/.test(text)) return 'neck';
+  if (/pupil|eye|head|face|tongue|throat|gaze|gum|mouth|gingiv/.test(text)) return 'head';
+  if (/abdomen|abdominal|navel|stomach/.test(text)) return 'abdomen';
+  if (/left/.test(text) && /hand|sensation|touch|grip|wrist/.test(text)) return 'leftHand';
+  if (/tremor|hand|grip|writ|sensation|touch|reflex|strength|nail|wrist/.test(text)) return 'rightHand';
+  return 'chest';
+}
+
+// From the doctor's chair her left hand reads on screen right.
+const REGION_SIDE = {
+  leftHand: 'right', rightHand: 'left', head: 'left', neck: 'left', chest: 'right', abdomen: 'right',
+};
+
+function markedMeasurement(text) {
+  return String(text).split(/(\b\d+(?:[–-]\d+)?\b)/g).map((part, index) => (
+    /^\d/.test(part) ? <strong key={`${part}-${index}`}>{part}</strong> : part
+  ));
+}
+
+// Observed findings arrayed around the patient. The anchors are real bone
+// positions published by the actor, projected each frame, so the lines stay
+// on the body while the camera orbits and zooms.
+function ExamAnnotations({ facts }) {
+  const pathRefs = useRef([]);
+  const dotRefs = useRef([]);
+  const scratch = useRef(new Vector3());
+
+  const cards = useMemo(() => {
+    const used = { left: 0, right: 0 };
+    return facts.map((fact) => {
+      const region = examRegion(fact);
+      let side = REGION_SIDE[region];
+      if (used[side] >= EXAM_SLOT_TOPS[side].length) {
+        side = side === 'left' ? 'right' : 'left';
+      }
+      const slotIndex = Math.min(used[side], EXAM_SLOT_TOPS[side].length - 1);
+      used[side] += 1;
+      return { fact, region, side, top: EXAM_SLOT_TOPS[side][slotIndex] };
+    });
+  }, [facts]);
+
+  useEffect(() => {
+    let frame = 0;
+    const update = () => {
+      frame = requestAnimationFrame(update);
+      const camera = gameDebug.camera;
+      const anchors = getExamAnchors();
+      cards.forEach((card, index) => {
+        const path = pathRefs.current[index];
+        const dot = dotRefs.current[index];
+        if (!path || !dot) return;
+        const world = anchors?.[card.region];
+        if (!camera || !world) {
+          path.style.visibility = 'hidden';
+          dot.style.visibility = 'hidden';
+          return;
+        }
+        const point = scratch.current.set(world[0], world[1], world[2]).project(camera);
+        const hidden = point.z > 1 || point.z < -1;
+        path.style.visibility = hidden ? 'hidden' : '';
+        dot.style.visibility = hidden ? 'hidden' : '';
+        if (hidden) return;
+        const x = (point.x * 0.5 + 0.5) * 100;
+        const y = (-point.y * 0.5 + 0.5) * 100;
+        const startX = card.side === 'left' ? 27 : 73;
+        const startY = card.top + 7;
+        const bendX = startX + (x - startX) * 0.56;
+        path.setAttribute('d', `M ${startX} ${startY} C ${bendX} ${startY}, ${bendX} ${y}, ${x} ${y}`);
+        dot.setAttribute('cx', x);
+        dot.setAttribute('cy', y);
+      });
+    };
+    update();
+    return () => cancelAnimationFrame(frame);
+  }, [cards]);
+
+  return (
+    <div className="gcon-exam-layer" aria-label="Observed findings">
+      <svg className="gcon-exam-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        {cards.map((card, index) => {
+          const latest = index === cards.length - 1;
+          return (
+          <g key={card.fact.id} className={latest ? 'is-latest' : ''}>
+            <path
+              ref={(node) => { pathRefs.current[index] = node; }}
+              vectorEffect="non-scaling-stroke"
+              style={{ animationDelay: `${0.25 + index * 0.2}s` }}
+            />
+            <circle
+              ref={(node) => { dotRefs.current[index] = node; }}
+              r="0.45"
+              style={{ animationDelay: `${0.75 + index * 0.2}s` }}
+            />
+          </g>
+          );
+        })}
+      </svg>
+      {cards.map((card, index) => (
+        <article
+          key={card.fact.id}
+          className={`gcon-exam-card gcon-exam-card--${card.side}${index === cards.length - 1 ? ' is-latest' : ''}`}
+          style={{ top: `${card.top}%`, animationDelay: `${index * 0.2}s` }}
+        >
+          <h3>{card.fact.label}</h3>
+          <p>{markedMeasurement(card.fact.value)}</p>
+        </article>
+      ))}
     </div>
   );
 }
@@ -422,6 +545,20 @@ export default function ConsultationView({
     [history],
   );
 
+  // The Examine verb presents as a reading: room dimmed, chrome away,
+  // findings annotated around the figure. Same engine state underneath.
+  const examPresenting = stage === 'inquiry' && phase === 'exam';
+  const examFacts = useMemo(() => {
+    if (!examPresenting) return [];
+    const byId = new Map();
+    for (const event of history) {
+      if (event.kind !== 'examination') continue;
+      const list = event.facts?.length ? event.facts : (event.fact ? [event.fact] : []);
+      for (const fact of list) byId.set(fact.id, fact);
+    }
+    return [...byId.values()].slice(-4);
+  }, [history, examPresenting]);
+
   useEffect(() => {
     setPhase('thought');
     setBookOpen(false);
@@ -655,7 +792,10 @@ export default function ConsultationView({
   }
 
   const navRef = useRef(nav);
-  navRef.current = { ...nav, cursor, bookOpen, canEnd, endEarly, queueVisible, dismissQueue };
+  navRef.current = {
+    ...nav, cursor, bookOpen, canEnd, endEarly, queueVisible, dismissQueue,
+    examPresenting, exitExam: toInterview,
+  };
 
   useEffect(() => {
     const onKey = (event) => {
@@ -673,6 +813,14 @@ export default function ConsultationView({
         if (current.bookOpen) {
           event.preventDefault();
           setBookOpen(false);
+          return;
+        }
+        if (current.examPresenting) {
+          // In the reading, Escape steps back to the interview rather than
+          // ending the consultation.
+          event.preventDefault();
+          event.stopPropagation();
+          current.exitExam();
           return;
         }
         if (current.canEnd) {
@@ -945,37 +1093,38 @@ export default function ConsultationView({
     }
 
     if (stage === 'inquiry' && phase === 'exam') {
+      // The reading's chrome is one slim band: the examinations still to
+      // perform, and the way back. Findings live in the annotation layer.
       return (
-        <>
-          {utterance && (
-            <blockquote className={`gcon-quote${utterance.observation ? ' gcon-quote--observation' : ''}`}>
-              {markedQuote(utterance.text, clueTokens)}
-            </blockquote>
-          )}
-          <Ornament />
-          <div className="gcon-options gcon-options--exams">
+        <div className="gcon-exam-band">
+          <div className="gcon-exam-choices">
             {examinations.map((exam, index) => (
               <button
                 key={exam.id}
                 type="button"
-                className={`gcon-card gcon-card--speech${cursor === index ? ' is-hot' : ''}`}
+                className={`gcon-exam-chip${cursor === index ? ' is-hot' : ''}`}
                 onMouseEnter={() => { setCursor(index); setPreviewMinutes(exam.minutes ?? 3); }}
                 onMouseLeave={() => setPreviewMinutes(0)}
                 onFocus={() => setPreviewMinutes(exam.minutes ?? 3)}
                 onBlur={() => setPreviewMinutes(0)}
                 onClick={() => runExam(exam)}
               >
-                <span className="gcon-roundel" aria-hidden="true"><StethoscopeIcon size={24} /></span>
+                <span className="gcon-exam-chip-icon" aria-hidden="true"><StethoscopeIcon size={18} /></span>
                 {exam.label}
-                <span className="gcon-action-cost">{exam.minutes ?? 3} min</span>
+                <span className="gcon-exam-chip-cost">{exam.minutes ?? 3} min</span>
               </button>
             ))}
-            {!examinations.length && <p className="gcon-empty-state">The focused examinations are complete.</p>}
+            {!examinations.length && (
+              <p className="gcon-empty-state">The focused examinations are complete.</p>
+            )}
           </div>
-          <footer className="gcon-hint">
-            <button type="button" className="gcon-hint-link" onClick={toInterview}>Return to the interview</button>
-          </footer>
-        </>
+          <div className="gcon-exam-keys">
+            <span><b>TAB</b> Case Notebook</span>
+            <button type="button" className="gcon-hint-link gcon-exam-return" onClick={toInterview}>
+              <b>ESC</b> Return to Consultation
+            </button>
+          </div>
+        </div>
       );
     }
 
@@ -1094,9 +1243,10 @@ export default function ConsultationView({
 
   return (
     <div
-      className={`gcon${bookOpen ? ' gcon--book' : ''}${patient && state ? ' gcon--active' : ''}`}
+      className={`gcon${bookOpen ? ' gcon--book' : ''}${patient && state ? ' gcon--active' : ''}${examPresenting ? ' gcon--exam' : ''}`}
       aria-label="Consultation"
     >
+      {examPresenting && <ExamAnnotations facts={examFacts} />}
       {patient && state && (
         <aside
           className={`gcon-rail gcon-frame${stage === 'decision' || stage === 'case-note' ? ' is-receded' : ''}`}
