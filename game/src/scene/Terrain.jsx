@@ -128,14 +128,24 @@ export default function Terrain() {
             float verge = vSplat.w * vSplat.w * (0.4 + 0.5 * turfNoise(wuv / 4.3));
             blended = mix(blended, blended * vec3(1.05, 0.96, 0.7), verge * 0.6);
             blended = mix(blended, texture2D(rockMap, uvT * 0.71).rgb, clamp(vSplat.y, 0.0, 1.0));
-            // The same two-scale trick as the grass: a long straight walk
-            // otherwise shows the gravel tile repeating down its length.
+            // The same two-scale trick as the grass, with the far sample
+            // rotated so the two lattices never line up, and a slow domain
+            // warp so the tile grid itself wanders instead of repeating in
+            // step down a straight walk.
+            vec2 pathWarp = (vec2(turfNoise(wuv / 5.0), turfNoise(wuv / 5.0 + 31.7)) - 0.5) * 0.05;
             vec3 pathTex = mix(
-              texture2D(pathMap, uvT * 1.37).rgb,
-              texture2D(pathMap, uvT * 0.31).rgb,
+              texture2D(pathMap, (uvT + pathWarp) * 1.37).rgb,
+              texture2D(pathMap, (uvT.yx + pathWarp) * 0.31).rgb,
               smoothstep(0.25, 0.75, turfNoise(wuv / 13.0)));
+            // At range every tile-scale feature reads as a repeat; ease the
+            // surface toward a very coarse sample the eye cannot count.
+            float pathFar = smoothstep(18.0, 55.0, length(vViewPosition));
+            pathTex = mix(pathTex, texture2D(pathMap, uvT * 0.09).rgb, pathFar * 0.65);
+            // Crushed limestone, not brown gravel: the period surface of the
+            // drives and walks was pale.
+            pathTex *= vec3(1.07, 1.04, 0.94);
             blended = mix(blended, pathTex, clamp(vSplat.x, 0.0, 1.0));
-            blended = mix(blended, pathTex * vec3(1.02, 0.94, 0.78), clamp(vSplat.z, 0.0, 1.0));
+            blended = mix(blended, pathTex * vec3(1.0, 0.93, 0.79), clamp(vSplat.z, 0.0, 1.0));
             blended = mix(blended, texture2D(streetMap, uvT * 1.2).rgb, smoothstep(0.12, 0.88, vUrban));
             diffuseColor.rgb *= blended;
           }`,
