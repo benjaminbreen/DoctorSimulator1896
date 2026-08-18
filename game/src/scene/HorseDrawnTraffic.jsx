@@ -40,6 +40,7 @@ import { reportMajorStreetEvent } from '../world/majorStreetEvents.js';
 import { getPlayer } from '../world/player.js';
 import { figureHeight } from '../world/figureHeights.js';
 import { COACHWORKS_PRESETS } from '../world/coachworks.js';
+import { PEDESTRIAN_ARCHETYPES } from '../world/pedestrianCatalog.js';
 
 const MAX_FRAME_DT = 0.1;
 const MAX_FIXED_STEPS = 6;
@@ -308,6 +309,117 @@ function CoachLettering({ type }) {
       ))}
     </>
   );
+}
+
+// Passengers make the stops real: at each dwell near the player, a figure or
+// two crosses between the walk and the rear platform — boarders vanish into
+// the car, alighters walk away toward the park. Purely visual: no agents, no
+// colliders, and the two pooled figures animate only during a dwell.
+const PASSENGER_WALK_SPEED = 1.2;
+const PASSENGER_NEAR_DISTANCE = 70;
+const PLATFORM_LIFT = 0.69;
+
+function makePassenger(gltf, walkGltf, heightId, phase) {
+  const figure = cloneSkeleton(gltf.scene);
+  figure.scale.setScalar(figureHeight(heightId));
+  figure.visible = false;
+  figure.traverse((node) => {
+    if (!node.isMesh && !node.isSkinnedMesh) return;
+    node.castShadow = true;
+    node.receiveShadow = true;
+    // Skinned bounds are the bind pose, which the walk leaves.
+    node.frustumCulled = false;
+    if (node.material) node.material = node.material.clone();
+  });
+  const mixer = new THREE.AnimationMixer(figure);
+  const clip = walkGltf.animations.find((entry) => entry.name === 'Walk') ?? walkGltf.animations[0];
+  mixer.clipAction(clip).play();
+  mixer.setTime(phase);
+  return { figure, mixer };
+}
+
+function HorsecarPassengers({ unit }) {
+  const configure = (loader) => loader.setMeshoptDecoder(MeshoptDecoder);
+  const manGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.m.modelPath, configure);
+  const manWalk = useLoader(GLTFLoader, '/models/ped-anim-walk.glb', configure);
+  const womanGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.w.modelPath, configure);
+  const womanWalk = useLoader(GLTFLoader, '/models/pedc-anim-walk.glb', configure);
+  const pool = useMemo(() => [
+    makePassenger(manGltf, manWalk, 'bowler-man', 0.24),
+    makePassenger(womanGltf, womanWalk, 'working-woman', 0.71),
+  ], [manGltf, manWalk, womanGltf, womanWalk]);
+  const active = useRef([]);
+  const previousWait = useRef(0);
+  const visit = useRef(0);
+
+  useEffect(() => () => {
+    for (const passenger of pool) {
+      passenger.mixer.stopAllAction();
+      passenger.figure.traverse((node) => node.material?.dispose?.());
+    }
+  }, [pool]);
+
+  useFrame((_, delta) => {
+    const state = unit.state;
+    const wait = state.stopWait ?? 0;
+    const dwellStarted = wait > 0 && previousWait.current <= 0;
+    previousWait.current = wait;
+
+    if (dwellStarted) {
+      const player = gameDebug.player.position;
+      const near = (state.coachX - player[0]) ** 2 + (state.coachZ - player[2]) ** 2
+        < PASSENGER_NEAR_DISTANCE ** 2;
+      if (near) {
+        visit.current += 1;
+        // Rear platform of the standing car, and the near sidewalk. The car
+        // does not move during the dwell, so these are computed once.
+        const rearX = state.coachX - Math.sin(state.coachYaw) * 3.05;
+        const rearZ = state.coachZ - Math.cos(state.coachYaw) * 3.05;
+        const sideSign = state.coachZ < 91 ? -1 : 1;
+        const walkPoint = [rearX + (visit.current % 2 ? 0.6 : -0.5), 91 + sideSign * 6.2];
+        const idle = pool.filter(
+          (passenger) => !active.current.some((entry) => entry.passenger === passenger),
+        );
+        const plans = [];
+        if (idle[0]) plans.push({ passenger: idle[0], mode: visit.current % 2 ? 'alight' : 'board' });
+        if (idle[1] && visit.current % 3 === 0) plans.push({ passenger: idle[1], mode: 'board' });
+        for (const plan of plans) {
+          const platform = [rearX, rearZ];
+          const from = plan.mode === 'board' ? walkPoint : platform;
+          const to = plan.mode === 'board' ? platform : walkPoint;
+          const total = Math.hypot(to[0] - from[0], to[1] - from[1]) / PASSENGER_WALK_SPEED;
+          plan.passenger.figure.visible = true;
+          active.current.push({ ...plan, from, to, platform, elapsed: 0, total });
+        }
+      }
+    }
+
+    for (let index = active.current.length - 1; index >= 0; index -= 1) {
+      const entry = active.current[index];
+      entry.elapsed += delta;
+      const t = Math.min(1, entry.elapsed / entry.total);
+      const x = entry.from[0] + (entry.to[0] - entry.from[0]) * t;
+      const z = entry.from[1] + (entry.to[1] - entry.from[1]) * t;
+      // Ground height, with a ramp onto the platform over the last stretch
+      // beside the car (or the first stretch, leaving it).
+      const platformDistance = Math.hypot(x - entry.platform[0], z - entry.platform[1]);
+      const lift = Math.max(0, 1 - platformDistance / 1.3) * PLATFORM_LIFT;
+      entry.passenger.figure.position.set(x, ROAD_Y + lift, z);
+      entry.passenger.figure.rotation.y = Math.atan2(
+        entry.to[0] - entry.from[0],
+        entry.to[1] - entry.from[1],
+      );
+      entry.passenger.mixer.update(delta);
+      if (t >= 1) {
+        entry.passenger.figure.visible = false;
+        active.current.splice(index, 1);
+      }
+    }
+  });
+
+  return pool.map((passenger, index) => (
+    <primitive key={index} object={passenger.figure} />
+  ));
 }
 
 function addHarness(horse, dark) {
@@ -733,6 +845,7 @@ export default function HorseDrawnTraffic({ runtime }) {
     };
     return (
       <group key={unit.id} ref={(node) => (unit.refs.root = node)}>
+        {unit.railBound && unit.stops && <HorsecarPassengers unit={unit} />}
         <group ref={(node) => (unit.refs.coach = node)}>
           <Coachwork batches={unit.coachBatches} refs={unit.refs} />
           <CoachLettering type={unit.type} />
