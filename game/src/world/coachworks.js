@@ -115,7 +115,7 @@ const PRESETS = {
     bodyLength: 4.5, bodyWidth: 1.98, bodyHeight: 1.95, rideHeight: 0.72,
     axleSpread: 1.9, trackWidth: 1.5, frontWheelRadius: 0.36, rearWheelRadius: 0.36,
     hoodRaised: 0, coachLamps: true, passengerSteps: false,
-    bodyColor: '#7e2a20', trimColor: '#e4d6aa', wheelColor: '#463c34', upholsteryColor: '#5a4534',
+    bodyColor: '#7e2a20', trimColor: '#e4d6aa', wheelColor: '#6e3a30', upholsteryColor: '#5a4534',
   },
 };
 
@@ -249,10 +249,15 @@ function addTramGear(parts, values) {
     for (const side of [-1, 1]) {
       add(parts, `${name}-tram-wheel-${side}`, [x, radius, side * track / 2], [radius * 2, 0.06, radius * 2], {
         shape: 'cylinder', radialSegments: 18, rotation: [Math.PI / 2, 0, 0],
-        color: values.wheelColor, roughness: 0.55, metalness: 0.6,
+        color: values.wheelColor, roughness: 0.55, metalness: 0.35,
       });
       add(parts, `${name}-tram-hub-${side}`, [x, radius, side * track / 2], [0.16, 0.09, 0.16], {
         shape: 'cylinder', radialSegments: 10, rotation: [Math.PI / 2, 0, 0], ...IRON,
+      });
+      // Axlebox and pedestal over each bearing: what the eye expects to
+      // carry the body, so the underframe does not read as a hovering void.
+      add(parts, `${name}-tram-axlebox-${side}`, [x, radius + 0.12, side * (track / 2 - 0.02)], [0.22, 0.26, 0.14], {
+        shape: 'roundedBox', bevelRadius: 0.02, ...IRON,
       });
     }
   }
@@ -261,6 +266,10 @@ function addTramGear(parts, values) {
       shape: 'roundedBox', bevelRadius: 0.02, ...IRON,
     });
   }
+  // Belly pan between the axles: closes the shadow cavity under the car.
+  add(parts, 'tram-belly-pan', [0, floorY - 0.3, 0], [spread - 0.7, 0.34, values.bodyWidth * 0.6], {
+    shape: 'roundedBox', bevelRadius: 0.03, ...IRON,
+  });
   const poleEnd = addPoleOrShafts(parts, values, values.bodyLength / 2 + 0.85, floorY);
   return { floorY, frontX, rearX, track, poleEnd };
 }
@@ -612,11 +621,18 @@ function horsecarBody(parts, values, gear) {
       shape: 'roundedBox', bevelRadius: 0.02, ...paint(values.bodyColor),
     });
     addTrimBand(parts, values, `horsecar-belt-${side}`, 0, y + H * 0.485, side * (W / 2 + 0.008), [L * 0.98, 0.05, 0.035]);
-    // Window band: seven lights with posts between.
+    // Gold beading on the waist and skirt edges: the striping that keeps a
+    // painted panel from reading as one flat slab.
+    addTrimBand(parts, values, `horsecar-bead-waist-${side}`, 0, y + H * 0.1, side * (W / 2 + 0.006), [L * 0.94, 0.022, 0.03]);
+    addTrimBand(parts, values, `horsecar-bead-skirt-${side}`, 0, y - 0.3, side * (W / 2 - 0.012), [L * 0.92, 0.022, 0.03]);
+    // Window band: seven lights with posts between, glazed deep enough that
+    // the far wall does not show through as a pale stripe.
     const windows = 7;
     for (let window = 0; window < windows; window += 1) {
       const x = -L * 0.42 + (window * L * 0.84) / (windows - 1);
-      add(parts, `horsecar-window-${side}-${window}`, [x, y + H * 0.63, side * (W / 2 + 0.006)], [L * 0.09, H * 0.26, 0.024], WINDOW);
+      add(parts, `horsecar-window-${side}-${window}`, [x, y + H * 0.63, side * (W / 2 + 0.006)], [L * 0.09, H * 0.26, 0.024], {
+        glass: true, color: '#17232a', opacity: 0.82,
+      });
       add(parts, `horsecar-post-${side}-${window}`, [x - L * 0.06, y + H * 0.63, side * (W / 2 + 0.012)], [0.05, H * 0.3, 0.03], {
         ...paint(values.bodyColor),
       });
@@ -634,12 +650,20 @@ function horsecarBody(parts, values, gear) {
     });
     add(parts, `horsecar-door-light-${end}`, [end * (L / 2 + 0.005), y + H * 0.62, 0], [0.02, H * 0.26, W * 0.26], WINDOW);
   }
-  // Interior benches run the car's length, visible through the lights.
+  // Interior benches run the car's length, with backs tall enough to read
+  // through the lights, under a cream ceiling that keeps a look through the
+  // windows from opening onto sky.
   for (const side of [-1, 1]) {
     add(parts, `horsecar-bench-${side}`, [0, y + 0.42, side * (W / 2 - 0.26)], [L * 0.88, 0.09, 0.4], {
       shape: 'roundedBox', bevelRadius: 0.03, ...leather(values.upholsteryColor),
     });
+    add(parts, `horsecar-bench-back-${side}`, [0, y + 0.72, side * (W / 2 - 0.1)], [L * 0.88, 0.5, 0.07], {
+      shape: 'roundedBox', bevelRadius: 0.03, ...leather(values.upholsteryColor),
+    });
   }
+  add(parts, 'horsecar-ceiling', [0, y + H - 0.06, 0], [L * 0.96, 0.03, W * 0.9], {
+    castShadow: false, ...paint(values.trimColor),
+  });
   // Platforms, dashes, steps, and corner posts at both ends.
   for (const end of [-1, 1]) {
     const dashX = end * (L / 2 + platform - 0.04);
@@ -652,9 +676,18 @@ function horsecarBody(parts, values, gear) {
     add(parts, `horsecar-step-${end}`, [end * (L / 2 + platform * 0.55), y - 0.32, 0], [0.7, 0.06, W * 0.5], {
       shape: 'roundedBox', bevelRadius: 0.02, ...IRON,
     });
+    for (const bracket of [-1, 1]) {
+      add(parts, `horsecar-step-bracket-${end}-${bracket}`, [end * (L / 2 + platform * 0.55), y - 0.17, bracket * W * 0.2], [0.045, 0.26, 0.045], {
+        ...IRON,
+      });
+    }
     for (const side of [-1, 1]) {
       add(parts, `horsecar-corner-post-${end}-${side}`, [end * (L / 2 + platform - 0.1), y + H * 0.5, side * (W / 2 - 0.07)], [0.045, H, 0.045], {
         shape: 'cylinder', radialSegments: 8, ...paint(values.bodyColor),
+      });
+      // Brass grab stanchion inside each entry corner.
+      add(parts, `horsecar-stanchion-${end}-${side}`, [end * (L / 2 + 0.16), y + 0.85, side * (W / 2 - 0.12)], [0.03, 1.6, 0.03], {
+        shape: 'cylinder', radialSegments: 8, ...BRASS,
       });
     }
     // Brake staff on the right-hand platform corner, as mounted in practice.
@@ -662,10 +695,16 @@ function horsecarBody(parts, values, gear) {
       shape: 'cylinder', radialSegments: 8, ...BRASS,
     });
   }
-  // Roof over the whole car, then the clerestory deck raised above it.
+  // Roof over the whole car, then the clerestory deck raised above it. The
+  // fascia boards give the eaves the built-up edge of the period cars.
   add(parts, 'horsecar-roof', [0, roofY + 0.05, 0], [L + platform * 2 + 0.1, 0.12, W + 0.1], {
     shape: 'roundedBox', bevelRadius: 0.05, ...leather('#232624'),
   });
+  for (const side of [-1, 1]) {
+    add(parts, `horsecar-fascia-${side}`, [0, roofY + 0.02, side * (W / 2 + 0.06)], [L + platform * 2 + 0.06, 0.09, 0.03], {
+      castShadow: false, ...paint(values.trimColor),
+    });
+  }
   add(parts, 'horsecar-clerestory', [0, roofY + 0.19, 0], [L * 0.82, 0.17, W * 0.44], {
     shape: 'roundedBox', bevelRadius: 0.05, ...paint(values.trimColor),
   });

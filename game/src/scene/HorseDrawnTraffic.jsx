@@ -227,12 +227,15 @@ function coachBoards(type) {
   if (type === 'horsecar') {
     return {
       sides: {
+        // Between the corner posts, not the full cabin: the board's ends sit
+        // behind the roof line at a three-quarter view otherwise.
         text: 'CENTRAL PARK, NORTH & EAST RIVER R.R.',
-        y: y + H * 0.865, z: W / 2 + 0.029, size: [L * 0.92, H * 0.16],
+        y: y + H * 0.865, z: W / 2 + 0.029, size: [L * 0.78, H * 0.15],
       },
       ends: {
+        // Hung from the roof edge over the dash, where the real boards went.
         text: '59TH ST.',
-        x: L / 2 + 0.79, y: y + 1.18, size: [0.84, 0.17], backing: [0.92, 0.2],
+        x: L / 2 + 0.76, y: y + H - 0.1, size: [0.84, 0.17], backing: [0.92, 0.2],
       },
     };
   }
