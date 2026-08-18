@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { useLoader } from '@react-three/fiber';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import { lobbyMosaicTexture, netherlandMosaicTexture, woodTexture, plasterTexture, marbleSurface } from './textures.js';
+import { freezeStaticTransforms } from './lib/staticScene.js';
 import { propTexture } from './propMaterials.js';
 import { surfaceUrl } from '../world/victorianCatalog.js';
 
@@ -290,7 +291,7 @@ export default function Room({ room, lighting }) {
   ];
 
   return (
-    <group>
+    <group ref={(node) => freezeStaticTransforms(node)}>
       <RigidBody type="fixed" colliders={false}>
         {colliderBoxes.map((box) => (
           <CuboidCollider

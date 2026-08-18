@@ -54,8 +54,30 @@ export function directionAtAzimuth(direction, azimuthDeg) {
   return [Math.sin(azimuth) * horizontal, up, -Math.cos(azimuth) * horizontal];
 }
 
+// Several components ask for the same ramps within one frame; the clock only
+// moves between frames, so a one-entry cache serves them all one allocation.
+let rampsKeyTime = NaN;
+let rampsKeyDay = NaN;
+let rampsKeyAzimuth = null;
+let rampsCached = null;
+
 // Golden hour trades fill for key light; these ramps drive that everywhere.
 export function solarRamps(timeOfDay, dayOfYear = START_DAY_OF_YEAR, azimuthDeg = null) {
+  if (
+    rampsCached
+    && timeOfDay === rampsKeyTime
+    && dayOfYear === rampsKeyDay
+    && azimuthDeg === rampsKeyAzimuth
+  ) {
+    return rampsCached;
+  }
+  rampsKeyTime = timeOfDay;
+  rampsKeyDay = dayOfYear;
+  rampsKeyAzimuth = azimuthDeg;
+  return (rampsCached = computeSolarRamps(timeOfDay, dayOfYear, azimuthDeg));
+}
+
+function computeSolarRamps(timeOfDay, dayOfYear, azimuthDeg) {
   const direction = directionAtAzimuth(sunDirection(timeOfDay, dayOfYear), azimuthDeg);
   const altitude = (Math.asin(clamp(direction[1], -1, 1)) * 180) / Math.PI;
   // Light ages through the afternoon: brightness eases to 82% as the sun

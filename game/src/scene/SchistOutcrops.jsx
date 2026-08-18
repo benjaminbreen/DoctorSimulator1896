@@ -5,6 +5,7 @@ import { buildParkRocks } from '../world/parkRocks.js';
 import { makeCraggyRockGeometry, makeHeroCraggyRockGeometry, makeSchistMaterial } from './rockGeometry.js';
 import { instanced } from './lib/instances.js';
 import StaticColliders from './lib/StaticColliders.jsx';
+import { freezeStaticTransforms } from './lib/staticScene.js';
 
 // Park boulders and pebble litter, instanced per geometry variant. Boulders
 // big enough to block a walker carry ball colliders; pebbles are decor.
@@ -37,7 +38,7 @@ export default function SchistOutcrops() {
   }, [rockCol, rockNrm]);
 
   return (
-    <group>
+    <group ref={(node) => freezeStaticTransforms(node)}>
       {meshes.map((mesh, index) => (
         <primitive key={index} object={mesh} />
       ))}

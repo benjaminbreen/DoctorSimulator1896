@@ -12,6 +12,7 @@ import {
 import { solarRamps } from '../world/solar.js';
 import { ALLEY_LINES } from '../world/streetGrid.js';
 import { terrainHeight } from '../world/terrain.js';
+import { freezeStaticTransforms } from './lib/staticScene.js';
 
 // Instanced openings and window dressing over the tiled masonry: dark recesses,
 // reflective glass, sash frames, sills, shutters, doors, and laundry lines. Everything is
@@ -906,7 +907,7 @@ export default function WindowField({ items, runtime }) {
   );
 
   return (
-    <group>
+    <group ref={(node) => freezeStaticTransforms(node)}>
       {meshes.built.map((mesh, index) => (
         <primitive key={index} object={mesh} />
       ))}

@@ -9,6 +9,7 @@ import MetropolitanClub from './MetropolitanClub.jsx';
 import GildedAgeLandmarks, { isGildedAgeLandmark } from './GildedAgeLandmarks.jsx';
 import { getInteraction, subscribe } from '../world/interaction.js';
 import { identifyLandmark } from '../world/landmarkInformation.js';
+import { freezeStaticTransforms } from './lib/staticScene.js';
 import {
   createFacadeMaterial,
   FACADE_TEXTURE_URLS,
@@ -395,6 +396,11 @@ function DynamicItem({ item, material }) {
 // marks a piece loose enough to push around.
 export default function Furniture({ items, runtime }) {
   const hiddenGroup = useHiddenGroup();
+  // No dependency list: any re-render may mount static pieces (the ritual
+  // hides and restores a group), and new mounts need composing before the
+  // freeze prunes them out of the per-frame matrix walk.
+  const staticRef = useRef(null);
+  useEffect(() => freezeStaticTransforms(staticRef.current));
   const [barkCol, barkNrm, brickCol, pavingCol, ...facadeSources] = useLoader(THREE.TextureLoader, [
     '/textures/bark_col.webp',
     '/textures/bark_nrm.webp',
@@ -469,8 +475,6 @@ export default function Furniture({ items, runtime }) {
 
   return (
     <group>
-      <BlockInfill items={items} />
-      <ProceduralFacades items={items} facadeTextures={maps.facades} />
       <GildedAgeLandmarks items={items} facadeTextures={maps.facades} runtime={runtime} />
       <RigidBody type="fixed" colliders={false}>
         {solid.map((item) => (
@@ -483,6 +487,9 @@ export default function Furniture({ items, runtime }) {
         if (hiddenGroup && item.id.startsWith(`${hiddenGroup}-`)) return null;
         return <DynamicItem key={item.id} item={item} material={materialFor(item)} />;
       })}
+      <group ref={staticRef}>
+      <BlockInfill items={items} />
+      <ProceduralFacades items={items} facadeTextures={maps.facades} />
       {items.map((item) => {
         if (hiddenGroup && item.id.startsWith(`${hiddenGroup}-`)) return null;
         if (item.kind === 'backdrop') {
@@ -530,6 +537,7 @@ export default function Furniture({ items, runtime }) {
           </mesh>
         );
       })}
+      </group>
     </group>
   );
 }

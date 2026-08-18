@@ -543,7 +543,11 @@ export default function HorselessCarriage({ runtime }) {
     } else if (fright.near && nearestCarriageSq >= 6 ** 2) {
       fright.near = false;
     }
-    gameDebug.carriages = fleet.map((unit) => unit.state);
+    // Same-length fast path: the states are live references, so once the
+    // array exists there is nothing to rebuild per frame.
+    if (gameDebug.carriages.length !== fleet.length) {
+      gameDebug.carriages = fleet.map((unit) => unit.state);
+    }
     gameDebug.carriage = gameDebug.carriages[0];
     gameDebug.carriageMoods = fleet.map((unit) => unit.driver.mood);
     gameDebug.carriageDriverKinds = fleet.map((unit) => unit.driver.kind);

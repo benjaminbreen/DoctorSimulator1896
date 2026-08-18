@@ -4,6 +4,7 @@ import { useFrame, useLoader, useThree } from '@react-three/fiber';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'meshoptimizer';
 import { getKTX2Loader } from './ktx2.js';
+import { freezeStaticTransforms } from './lib/staticScene.js';
 import { sharePackTextures } from './packTextures.js';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import { modelUrl, modelSize } from '../world/modelPacks.js';
@@ -232,9 +233,12 @@ export default function PropModels({ items }) {
 
   return (
     <group>
-      {meshes.map((mesh, index) => (
-        <primitive key={index} object={mesh} />
-      ))}
+      {/* Chunks in their own frozen group; loose props move on bodies. */}
+      <group ref={(node) => freezeStaticTransforms(node)}>
+        {meshes.map((mesh, index) => (
+          <primitive key={index} object={mesh} />
+        ))}
+      </group>
       {loose.map((item) => {
         const gltf = byUrl.get(urlFor(item));
         return gltf ? <LooseProp key={item.id} item={item} gltf={gltf} /> : null;

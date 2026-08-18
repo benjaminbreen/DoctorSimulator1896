@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useLoader } from '@react-three/fiber';
+import { freezeStaticTransforms, splitMixedInstancedMaterials } from './lib/staticScene.js';
 import { createFacadeMaterial } from './facadeMaterials.js';
 import NewNetherlandHotel from './NewNetherlandHotel.jsx';
 import { identifyLandmark } from '../world/landmarkInformation.js';
@@ -1483,8 +1484,16 @@ export default function GildedAgeLandmarks({ items, facadeTextures, runtime }) {
   );
   const geometry = useSharedGeometry();
   const materials = useSharedMaterials();
+  // The district never moves, and its shared materials must not straddle
+  // instanced and plain meshes (see staticScene.js for both costs).
+  const rootRef = useRef(null);
+  useEffect(() => {
+    const twins = splitMixedInstancedMaterials(rootRef.current);
+    freezeStaticTransforms(rootRef.current);
+    return () => twins.forEach((twin) => twin.dispose());
+  }, [batches, newNetherlandItems]);
   return (
-    <group name="1896 Gilded Age landmark district">
+    <group ref={rootRef} name="1896 Gilded Age landmark district">
       {newNetherlandItems.map((item) => (
         <NewNetherlandHotel key={item.id} item={item} facadeTextures={facadeTextures} runtime={runtime} />
       ))}

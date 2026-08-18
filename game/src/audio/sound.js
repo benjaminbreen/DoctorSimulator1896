@@ -182,11 +182,17 @@ export function attachSoundUnlock() {
   const unlock = () => void unlockSound();
   window.addEventListener('pointerdown', unlock, { passive: true });
   window.addEventListener('keydown', unlock);
+  // Creating the context is the expensive part and needs no gesture (it just
+  // starts suspended); doing it at idle keeps the cost off the first input.
+  const idle = window.requestIdleCallback?.(() => ensureContext(), { timeout: 20000 })
+    ?? setTimeout(() => ensureContext(), 8000);
   return () => {
     if (!attached) return;
     attached = false;
     window.removeEventListener('pointerdown', unlock);
     window.removeEventListener('keydown', unlock);
+    if (window.requestIdleCallback) window.cancelIdleCallback(idle);
+    else clearTimeout(idle);
   };
 }
 

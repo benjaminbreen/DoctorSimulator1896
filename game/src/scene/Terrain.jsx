@@ -5,6 +5,7 @@ import { RigidBody, HeightfieldCollider } from '@react-three/rapier';
 import { terrainHeight, pathsDistance, pondDepth, rockiness } from '../world/terrain.js';
 import { WORLD_BOUNDS } from '../world/streetGrid.js';
 import { constructedSurfaceAt } from '../world/constructedSurfaces.js';
+import { freezeStaticTransforms } from './lib/staticScene.js';
 
 const WIDTH = WORLD_BOUNDS.maxX - WORLD_BOUNDS.minX;
 const DEPTH = WORLD_BOUNDS.maxZ - WORLD_BOUNDS.minZ;
@@ -138,7 +139,7 @@ export default function Terrain() {
   }, [grassCol, grassNrm, pathCol, rockCol, streetCol]);
 
   return (
-    <group>
+    <group ref={(node) => freezeStaticTransforms(node)}>
       <RigidBody type="fixed" colliders={false} position={[CENTER_X, 0, CENTER_Z]}>
         <HeightfieldCollider
           args={[SEGMENTS_Z, SEGMENTS_X, heights, { x: WIDTH, y: 1, z: DEPTH }]}

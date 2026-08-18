@@ -535,9 +535,17 @@ export default function HorseDrawnTraffic({ runtime }) {
         unit.refs.horseBody.setNextKinematicRotation(quat.current);
       }
     }
-    gameDebug.horseDrawnTraffic = fleet.map((unit) => ({
-      id: unit.id, type: unit.type, team: unit.team, ...unit.state,
-    }));
+    // Updated in place: a fresh array of fresh objects per frame is garbage
+    // the collector has to chase.
+    if (gameDebug.horseDrawnTraffic.length !== fleet.length) {
+      gameDebug.horseDrawnTraffic = fleet.map((unit) => ({
+        id: unit.id, type: unit.type, team: unit.team, ...unit.state,
+      }));
+    } else {
+      for (let index = 0; index < fleet.length; index += 1) {
+        Object.assign(gameDebug.horseDrawnTraffic[index], fleet[index].state);
+      }
+    }
   });
 
   return fleet.map((unit) => {

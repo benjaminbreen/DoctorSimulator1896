@@ -113,6 +113,11 @@ const NEAR_MISS_MARGIN = 1.1;
 const NEAR_MISS_SPEED = 2;
 const STANDING_COLLIDER = Object.freeze({ halfHeight: 0.55, radius: 0.28, y: 0.88 });
 const Y_AXIS = new THREE.Vector3(0, 1, 0);
+const scratchViewProjection = new THREE.Matrix4();
+const scratchFrustum = new THREE.Frustum();
+// 3m: figures just past the frame edge keep near-full pose rate, so a shadow
+// cast into view from beside the camera does not visibly step.
+const scratchFigureSphere = new THREE.Sphere(new THREE.Vector3(), 3);
 
 // Reused every frame by the crowd loop. Rapier and the agent registry read
 // these synchronously, so a single instance is enough and a fresh one per
@@ -770,6 +775,13 @@ export default function Pedestrians({ runtime }) {
     const eye = state.camera.position;
     const t = state.clock.elapsedTime;
     frameCount.current += 1;
+    // For throttling figures the camera cannot see. Their shadows can still
+    // reach the view, so the sphere is generous and nothing fully freezes.
+    scratchViewProjection.multiplyMatrices(
+      state.camera.projectionMatrix,
+      state.camera.matrixWorldInverse,
+    );
+    scratchFrustum.setFromProjectionMatrix(scratchViewProjection);
     const values = runtime.values;
     const civilSeconds = (values.dayOfYear ?? 0) * 86400 + (values.timeOfDay ?? 0) * 3600;
     if (!crowdRef.current || crowdRef.current.day !== values.dayOfYear) {
@@ -852,14 +864,24 @@ export default function Pedestrians({ runtime }) {
         finishAmbient(entry, t, ambientGap(entry, gesturing));
       }
       entry.pending = Math.min(entry.pending + delta * (reacting ? 1 : entry.speed), 1);
-      const animate =
-        dist2 < ANIM_NEAR * ANIM_NEAR ||
-        ((reacting || dist2 < ANIM_FREEZE * ANIM_FREEZE)
-          && (frameCount.current + index) % 3 === 0);
+      // Distance sets the base rate; being outside the view slows it further.
+      // Time still accumulates, so a throttled figure moves at true speed.
+      let step;
+      if (dist2 < ANIM_NEAR * ANIM_NEAR) step = 1;
+      else if (reacting || dist2 < ANIM_FREEZE * ANIM_FREEZE) step = 3;
+      else step = 0;
+      if (step > 0 && !speaking) {
+        scratchFigureSphere.center.set(x, entry.wrapper.position.y + 0.9, z);
+        if (!scratchFrustum.intersectsSphere(scratchFigureSphere)) {
+          step = Math.max(step, dist2 > 225 ? 4 : 2);
+        }
+      }
+      const animate = step === 1 || (step > 0 && (frameCount.current + index) % step === 0);
       if (animate) {
         entry.mixer.update(entry.pending);
         entry.pending = 0;
       }
+      entry.animatedThisFrame = animate;
       // The carriages steer around whatever is reported here. A stroller is
       // reported from the combined adult/carriage centre, not the adult's
       // feet, so traffic clears the whole rig.
@@ -1419,6 +1441,27 @@ export default function Pedestrians({ runtime }) {
         walker.wheelSpin += Math.abs(travel) / walker.stroller.wheelRadius;
         for (const wheel of walker.stroller.wheels) wheel.rotation.x = walker.wheelSpin;
       }
+    }
+
+    // Last pass: a figure that neither animated nor moved this frame keeps
+    // last frame's matrices, which skips composing its ~50 bones. Most of the
+    // crowd is standing or seated at any moment, so most figures skip.
+    for (const entry of figures) {
+      const wrapper = entry.wrapper;
+      if (!wrapper.visible) {
+        wrapper.matrixWorldAutoUpdate = false;
+        continue;
+      }
+      const pose = entry.lastPose ?? (entry.lastPose = [NaN, 0, 0, 0]);
+      const { x, y, z } = wrapper.position;
+      const yaw = wrapper.rotation.y;
+      const dirty = entry.animatedThisFrame
+        || pose[0] !== x || pose[1] !== y || pose[2] !== z || pose[3] !== yaw;
+      pose[0] = x;
+      pose[1] = y;
+      pose[2] = z;
+      pose[3] = yaw;
+      wrapper.matrixWorldAutoUpdate = dirty;
     }
   });
 

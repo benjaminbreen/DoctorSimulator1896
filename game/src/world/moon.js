@@ -57,7 +57,20 @@ function equatorialDirection(rightAscension, declination, julian) {
   return [east, up, -north];
 }
 
+// One-entry cache, same reasoning as solarRamps: many per-frame readers, one
+// clock value per frame.
+let moonKeyTime = NaN;
+let moonKeyDay = NaN;
+let moonCached = null;
+
 export function moonState(timeOfDay, dayOfYear = START_DAY_OF_YEAR) {
+  if (moonCached && timeOfDay === moonKeyTime && dayOfYear === moonKeyDay) return moonCached;
+  moonKeyTime = timeOfDay;
+  moonKeyDay = dayOfYear;
+  return (moonCached = computeMoonState(timeOfDay, dayOfYear));
+}
+
+function computeMoonState(timeOfDay, dayOfYear) {
   const julian = julianDayForGameTime(timeOfDay, dayOfYear);
   const centuries = (julian - 2451545) / 36525;
   const meanLongitude = wrapDegrees(218.3164477 + 481267.88123421 * centuries);

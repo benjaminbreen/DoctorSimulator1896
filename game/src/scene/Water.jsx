@@ -377,6 +377,10 @@ const FRAGMENT = /* glsl */ `
 // The mirror keeps architecture, trees, and sky. Skinned figures re-skin on
 // every pass and scatter chunks redraw thousands of instances, while the
 // ripple distortion smears both to nothing — so they are not worth drawing.
+// The same goes for any small loose piece: at the mirror's resolution, under
+// blur and ripple, a bottle or a railing collar never resolves.
+const MIRROR_MIN_CASTER_SIZE = 0.35;
+
 function collectMirrorExclusions(scene) {
   const objects = [];
   scene.traverse((object) => {
@@ -386,7 +390,13 @@ function collectMirrorExclusions(scene) {
       (object.isInstancedMesh && object.userData.distanceCull)
     ) {
       objects.push(object);
+      return;
     }
+    if (!object.isMesh || object.isInstancedMesh) return;
+    const sphere = object.geometry?.boundingSphere;
+    if (!sphere) return;
+    const diameter = sphere.radius * 2 * object.matrixWorld.getMaxScaleOnAxis();
+    if (diameter < MIRROR_MIN_CASTER_SIZE) objects.push(object);
   });
   return objects;
 }
@@ -415,6 +425,13 @@ export default function Water({ runtime, outline, level = -0.5 }) {
       matrix: new THREE.Matrix4(),
       frame: 0,
       live: false,
+      // A planar reflection only changes with the viewpoint (figures and
+      // scatter are excluded from it), so a still camera reuses the last
+      // render. Vehicles and the drifting sun get the slow timer.
+      lastPosition: new THREE.Vector3(Infinity, 0, 0),
+      lastQuaternion: new THREE.Quaternion(),
+      lastFov: 0,
+      lastAt: -Infinity,
     }),
     [],
   );
@@ -604,6 +621,29 @@ export default function Water({ runtime, outline, level = -0.5 }) {
     if (mirror.live && mirror.frame % MIRROR_INTERVAL !== 0) return;
     const mesh = meshRef.current;
     if (!mesh) return;
+
+    if (mirror.live) {
+      const now = performance.now() / 1000;
+      const cameraStill =
+        camera.position.distanceToSquared(mirror.lastPosition) < 0.0004
+        && Math.abs(camera.quaternion.dot(mirror.lastQuaternion)) > 0.9999995
+        && camera.fov === mirror.lastFov;
+      // The timer covers what the camera test cannot see: sun drift, and a
+      // vehicle crossing the reflection.
+      mirrorWorldPos.setFromMatrixPosition(mesh.matrixWorld);
+      const nearPond = (vehicle) => {
+        const dx = vehicle.x - mirrorWorldPos.x;
+        const dz = vehicle.z - mirrorWorldPos.z;
+        return dx * dx + dz * dz < 45 * 45;
+      };
+      const staleAfter = gameDebug.carriages.some(nearPond)
+        || gameDebug.horseDrawnTraffic.some(nearPond) ? 0 : 1.5;
+      if (cameraStill && now - mirror.lastAt < staleAfter) return;
+      mirror.lastPosition.copy(camera.position);
+      mirror.lastQuaternion.copy(camera.quaternion);
+      mirror.lastFov = camera.fov;
+      mirror.lastAt = now;
+    }
 
     mirrorWorldPos.setFromMatrixPosition(mesh.matrixWorld);
     cameraWorldPos.setFromMatrixPosition(camera.matrixWorld);

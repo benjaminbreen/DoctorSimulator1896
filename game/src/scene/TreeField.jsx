@@ -7,6 +7,7 @@ import { TREE_MODEL_URLS, TREE_SOURCE_VARIANTS } from '../world/treeModels.js';
 import { applyWind } from './foliageWind.js';
 import { getKTX2Loader } from './ktx2.js';
 import { sharePackTextures } from './packTextures.js';
+import { freezeStaticTransforms } from './lib/staticScene.js';
 
 // How far a canopy top travels, as a fraction of the tree's height. A big elm
 // moving a quarter of a metre is a breeze; much more and it reads as a storm.
@@ -141,7 +142,7 @@ export default function TreeField({ items }) {
   );
 
   return (
-    <group>
+    <group ref={(node) => freezeStaticTransforms(node)}>
       {meshes.map((mesh, index) => (
         <primitive key={index} object={mesh} />
       ))}

@@ -25,7 +25,19 @@ const CITY_GLOW = [0.028, 0.014, 0.006];
 // faces in shade the way a real lawn does.
 const GROUND = { night: [0.01, 0.015, 0.024], day: [0.30, 0.32, 0.20], golden: [0.22, 0.14, 0.09] };
 
+// One-entry cache: SkyRig, the probe, water, and clouds all ask within one
+// frame with the same clock and options, and each call allocates ~10 arrays.
+let paletteKey = '';
+let paletteCached = null;
+
 export function environmentPalette(timeOfDay, dayOfYear, options = {}) {
+  const key = `${timeOfDay}|${dayOfYear}|${options.nightSkyBrightness ?? 1}|${options.citySkyGlow ?? 1}|${options.moonlightIntensity ?? 1}`;
+  if (paletteCached && key === paletteKey) return paletteCached;
+  paletteKey = key;
+  return (paletteCached = computePalette(timeOfDay, dayOfYear, options));
+}
+
+function computePalette(timeOfDay, dayOfYear, options) {
   const {
     daylight,
     golden,
