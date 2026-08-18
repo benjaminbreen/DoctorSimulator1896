@@ -2,13 +2,14 @@
 // share this builder; horses, harness, drivers, and traffic belong to the
 // moving-team layer added in the next phase.
 
-const TYPES = ['utility', 'hansom', 'brougham', 'landau', 'omnibus'];
+const TYPES = ['utility', 'hansom', 'brougham', 'landau', 'omnibus', 'horsecar'];
 const TYPE_LABELS = {
   utility: 'Coal / delivery wagon',
   hansom: 'Hansom cab',
   brougham: 'Brougham',
   landau: 'Landau',
   omnibus: 'Omnibus',
+  horsecar: 'Street railway horsecar',
 };
 
 export const COACHWORKS_SCHEMA = {
@@ -105,6 +106,16 @@ const PRESETS = {
     axleSpread: 2.95, trackWidth: 2.05, frontWheelRadius: 0.68, rearWheelRadius: 1.02,
     hoodRaised: 0, coachLamps: true, passengerSteps: true,
     bodyColor: '#3d552f', trimColor: '#d0a84f', wheelColor: '#7a3029', upholsteryColor: '#6a332c',
+  },
+  // Belt Line crosstown car (Central Park, North & East River R.R.), still
+  // horse-drawn in 1896: low floor on small equal wheels tucked under the
+  // body at track gauge, platforms and dashes at both ends, clerestory roof.
+  horsecar: {
+    vehicleType: 'horsecar', team: 'pair', load: 'empty',
+    bodyLength: 4.5, bodyWidth: 1.98, bodyHeight: 1.95, rideHeight: 0.72,
+    axleSpread: 1.9, trackWidth: 1.5, frontWheelRadius: 0.36, rearWheelRadius: 0.36,
+    hoodRaised: 0, coachLamps: true, passengerSteps: false,
+    bodyColor: '#7e2a20', trimColor: '#e4d6aa', wheelColor: '#463c34', upholsteryColor: '#5a4534',
   },
 };
 
@@ -217,6 +228,40 @@ function addRunningGear(parts, values, twoWheels = false) {
     }
   }
   const poleEnd = addPoleOrShafts(parts, values, Math.max(frontX, values.bodyLength / 2), floorY);
+  return { floorY, frontX, rearX, track, poleEnd };
+}
+
+// Street-railway running gear: solid disc wheels at track gauge, tucked
+// under the body rather than outside it, no springs worth seeing. The pole
+// and swingletrees keep their authored names so the dynamic harness rig
+// repositions them like any other pair-drawn vehicle.
+function addTramGear(parts, values) {
+  const spread = Math.min(values.axleSpread, values.bodyLength * 0.78);
+  const frontX = spread / 2;
+  const rearX = -spread / 2;
+  const floorY = values.rideHeight;
+  const track = values.trackWidth;
+  const radius = values.frontWheelRadius;
+  for (const [name, x] of [['front', frontX], ['rear', rearX]]) {
+    add(parts, `${name}-tram-axle`, [x, radius, 0], [0.07, track + 0.1, 0.07], {
+      shape: 'cylinder', radialSegments: 8, rotation: [Math.PI / 2, 0, 0], ...IRON,
+    });
+    for (const side of [-1, 1]) {
+      add(parts, `${name}-tram-wheel-${side}`, [x, radius, side * track / 2], [radius * 2, 0.06, radius * 2], {
+        shape: 'cylinder', radialSegments: 18, rotation: [Math.PI / 2, 0, 0],
+        color: values.wheelColor, roughness: 0.55, metalness: 0.6,
+      });
+      add(parts, `${name}-tram-hub-${side}`, [x, radius, side * track / 2], [0.16, 0.09, 0.16], {
+        shape: 'cylinder', radialSegments: 10, rotation: [Math.PI / 2, 0, 0], ...IRON,
+      });
+    }
+  }
+  for (const side of [-1, 1]) {
+    add(parts, `tram-frame-rail-${side}`, [0, floorY - 0.14, side * values.bodyWidth * 0.36], [values.bodyLength * 0.92, 0.1, 0.08], {
+      shape: 'roundedBox', bevelRadius: 0.02, ...IRON,
+    });
+  }
+  const poleEnd = addPoleOrShafts(parts, values, values.bodyLength / 2 + 0.85, floorY);
   return { floorY, frontX, rearX, track, poleEnd };
 }
 
@@ -545,23 +590,123 @@ function omnibusBody(parts, values, gear) {
   }
 }
 
+// An 1890s crosstown horsecar: platforms and dashes at both ends under a
+// roof that runs the car's full length, seven-window sides over deep skirt
+// panels, a lettered board above the windows, and a clerestory deck light.
+function horsecarBody(parts, values, gear) {
+  const L = values.bodyLength;
+  const W = values.bodyWidth;
+  const H = values.bodyHeight;
+  const y = gear.floorY;
+  const platform = 0.85;
+  const roofY = y + H;
+
+  add(parts, 'horsecar-floor', [0, y - 0.03, 0], [L + platform * 2, 0.07, W], {
+    shape: 'roundedBox', bevelRadius: 0.02, ...paint('#3a3230'),
+  });
+  // Skirt panels drop below the floor and hide the wheel tops from the side.
+  for (const side of [-1, 1]) {
+    add(parts, `horsecar-skirt-${side}`, [0, y - 0.18, side * (W / 2 - 0.03)], [L * 0.96, 0.3, 0.045], {
+      shape: 'roundedBox', bevelRadius: 0.015, ...paint(values.bodyColor),
+    });
+    // Solid panel band below the windows.
+    add(parts, `horsecar-waist-${side}`, [0, y + H * 0.24, side * (W / 2 - 0.012)], [L * 0.98, H * 0.48, 0.035], {
+      shape: 'roundedBox', bevelRadius: 0.02, ...paint(values.bodyColor),
+    });
+    addTrimBand(parts, values, `horsecar-belt-${side}`, 0, y + H * 0.485, side * (W / 2 + 0.008), [L * 0.98, 0.05, 0.035]);
+    // Window band: seven lights with posts between.
+    const windows = 7;
+    for (let window = 0; window < windows; window += 1) {
+      const x = -L * 0.42 + (window * L * 0.84) / (windows - 1);
+      add(parts, `horsecar-window-${side}-${window}`, [x, y + H * 0.63, side * (W / 2 + 0.006)], [L * 0.09, H * 0.26, 0.024], WINDOW);
+      add(parts, `horsecar-post-${side}-${window}`, [x - L * 0.06, y + H * 0.63, side * (W / 2 + 0.012)], [0.05, H * 0.3, 0.03], {
+        ...paint(values.bodyColor),
+      });
+    }
+    // Letterboard above the windows; the company lettering is applied by the
+    // traffic renderer as a one-time canvas texture.
+    add(parts, `horsecar-letterboard-${side}`, [0, y + H * 0.865, side * (W / 2 + 0.01)], [L * 0.98, H * 0.19, 0.03], {
+      ...paint(values.bodyColor),
+    });
+  }
+  // Cabin end bulkheads with a door light each.
+  for (const end of [-1, 1]) {
+    add(parts, `horsecar-bulkhead-${end}`, [end * (L / 2 - 0.02), y + H * 0.5, 0], [0.045, H, W * 0.98], {
+      shape: 'roundedBox', bevelRadius: 0.02, ...paint(values.bodyColor),
+    });
+    add(parts, `horsecar-door-light-${end}`, [end * (L / 2 + 0.005), y + H * 0.62, 0], [0.02, H * 0.26, W * 0.26], WINDOW);
+  }
+  // Interior benches run the car's length, visible through the lights.
+  for (const side of [-1, 1]) {
+    add(parts, `horsecar-bench-${side}`, [0, y + 0.42, side * (W / 2 - 0.26)], [L * 0.88, 0.09, 0.4], {
+      shape: 'roundedBox', bevelRadius: 0.03, ...leather(values.upholsteryColor),
+    });
+  }
+  // Platforms, dashes, steps, and corner posts at both ends.
+  for (const end of [-1, 1]) {
+    const dashX = end * (L / 2 + platform - 0.04);
+    add(parts, `horsecar-dash-${end}`, [dashX, y + 0.48, 0], [0.05, 0.95, W * 0.88], {
+      shape: 'roundedBox', bevelRadius: 0.03, rotation: [0, 0, -end * 0.1], ...paint(values.bodyColor),
+    });
+    add(parts, `horsecar-dash-rail-${end}`, [dashX - end * 0.05, y + 0.99, 0], [0.04, 0.04, W * 0.88], {
+      shape: 'cylinder', radialSegments: 8, rotation: [Math.PI / 2, 0, 0], ...BRASS,
+    });
+    add(parts, `horsecar-step-${end}`, [end * (L / 2 + platform * 0.55), y - 0.32, 0], [0.7, 0.06, W * 0.5], {
+      shape: 'roundedBox', bevelRadius: 0.02, ...IRON,
+    });
+    for (const side of [-1, 1]) {
+      add(parts, `horsecar-corner-post-${end}-${side}`, [end * (L / 2 + platform - 0.1), y + H * 0.5, side * (W / 2 - 0.07)], [0.045, H, 0.045], {
+        shape: 'cylinder', radialSegments: 8, ...paint(values.bodyColor),
+      });
+    }
+    // Brake staff on the right-hand platform corner, as mounted in practice.
+    add(parts, `horsecar-brake-staff-${end}`, [end * (L / 2 + platform - 0.22), y + 0.62, -end * (W / 2 - 0.16)], [0.035, 1.15, 0.035], {
+      shape: 'cylinder', radialSegments: 8, ...BRASS,
+    });
+  }
+  // Roof over the whole car, then the clerestory deck raised above it.
+  add(parts, 'horsecar-roof', [0, roofY + 0.05, 0], [L + platform * 2 + 0.1, 0.12, W + 0.1], {
+    shape: 'roundedBox', bevelRadius: 0.05, ...leather('#232624'),
+  });
+  add(parts, 'horsecar-clerestory', [0, roofY + 0.19, 0], [L * 0.82, 0.17, W * 0.44], {
+    shape: 'roundedBox', bevelRadius: 0.05, ...paint(values.trimColor),
+  });
+  add(parts, 'horsecar-clerestory-roof', [0, roofY + 0.3, 0], [L * 0.86, 0.06, W * 0.52], {
+    shape: 'roundedBox', bevelRadius: 0.025, ...leather('#232624'),
+  });
+  if (values.coachLamps) {
+    for (const end of [-1, 1]) {
+      addCoachLamp(parts, `horsecar-lamp-${end}`, end * (L / 2 + platform - 0.16), y + 1.3, 0.62);
+    }
+  }
+  // A low stool on each platform; the rig seats the driver on the leading one.
+  add(parts, 'driver-seat', [L / 2 + platform * 0.5, y + 0.4, 0], [0.36, 0.1, 0.42], {
+    shape: 'roundedBox', bevelRadius: 0.03, ...leather(values.upholsteryColor),
+  });
+}
+
 const BODY_BUILDERS = {
   utility: utilityBody,
   hansom: hansomBody,
   brougham: broughamBody,
   landau: landauBody,
   omnibus: omnibusBody,
+  horsecar: horsecarBody,
 };
 
 export function buildCoachwork(id, origin, recipe) {
   const values = { ...PRESETS.utility, ...(recipe?.values ?? {}) };
   const parts = [];
   const twoWheels = values.vehicleType === 'hansom';
-  const gear = addRunningGear(parts, values, twoWheels);
+  const gear = values.vehicleType === 'horsecar'
+    ? addTramGear(parts, values)
+    : addRunningGear(parts, values, twoWheels);
   BODY_BUILDERS[values.vehicleType](parts, values, gear);
 
   const width = Math.max(gear.track + 0.24, values.bodyWidth + 0.5);
-  const roofExtra = values.vehicleType === 'omnibus' ? 0.72 : values.vehicleType === 'landau' ? values.hoodRaised * 0.65 : 0.28;
+  const roofExtra = values.vehicleType === 'omnibus' ? 0.72
+    : values.vehicleType === 'horsecar' ? 0.38
+    : values.vehicleType === 'landau' ? values.hoodRaised * 0.65 : 0.28;
   const height = Math.max(values.rearWheelRadius * 2, values.rideHeight + values.bodyHeight + roofExtra);
   const rear = -Math.max(values.bodyLength / 2 + 0.45, gear.rearX + values.rearWheelRadius + 0.15);
   const front = gear.poleEnd + 0.08;
@@ -616,6 +761,7 @@ export const COACHWORKS = {
   brougham: entry('brougham', 'Brougham', 'Enclosed private carriage with a raised exterior driver box.', 189603),
   landau: entry('landau', 'Landau', 'Open four-wheel carriage with facing seats and adjustable folding hoods.', 189604),
   omnibus: entry('omnibus', 'Horse omnibus', 'Large paired-horse city coach with roof seating and a rear stair.', 189605),
+  horsecar: entry('horsecar', 'Street railway horsecar', 'Belt Line crosstown car: low floor on tram wheels, end platforms, clerestory roof.', 189606),
 };
 
 export const COACHWORKS_PRESETS = PRESETS;

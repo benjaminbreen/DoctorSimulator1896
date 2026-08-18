@@ -22,8 +22,10 @@ test('street roster is deterministic, bounded, and uses distinct routes', () => 
   const second = createHorseDrawnRoster();
   assert.deepEqual(first, second);
   assert.equal(first.length, HORSE_DRAWN_MAX_ACTIVE);
-  assert.ok(first.length <= 5, 'the expanded street pass keeps at most five active rigs');
-  assert.equal(new Set(first.map((unit) => unit.route)).size, first.length);
+  assert.ok(first.length <= 6, 'the street pass keeps at most six active rigs');
+  // The Belt Line horsecar shares Central Park South with the omnibus:
+  // both used the street in fact, and the car keeps to its own rails.
+  assert.ok(new Set(first.map((unit) => unit.route)).size >= first.length - 1);
   assert.equal(new Set(first.map((unit) => unit.start)).size, first.length);
 });
 
@@ -39,7 +41,8 @@ test('street roster reuses coachworks presets within its render budget', () => {
 test('vehicle colliders cover coach and horse team without unbounded hulls', () => {
   for (const entry of HORSE_DRAWN_ROSTER) {
     const collider = horseDrawnCollider(entry.type);
-    assert.ok(collider.coachHalf[0] >= 1.4 && collider.coachHalf[0] <= 2.3);
+    const longest = entry.type === 'horsecar' ? 3.2 : 2.3;
+    assert.ok(collider.coachHalf[0] >= 1.4 && collider.coachHalf[0] <= longest);
     assert.ok(collider.coachHalf[2] >= 0.9 && collider.coachHalf[2] <= 1.2);
     assert.ok(collider.horseHalf[0] >= 1 && collider.horseHalf[0] <= 1.2);
   }

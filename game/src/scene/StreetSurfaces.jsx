@@ -5,7 +5,7 @@ import { RigidBody, TrimeshCollider } from '@react-three/rapier';
 import { GRAND_ARMY_APRON } from '../world/heroStreetLayout.js';
 import { identifyLandmark } from '../world/landmarkInformation.js';
 import { PARK_LANDMARKS } from '../world/parkLandmarks.js';
-import { ROAD_TOP, STREET_SURFACES, WALK_TOP } from '../world/streetGrid.js';
+import { ROAD_TOP, ROADS, STREET_SURFACES, WALK_TOP } from '../world/streetGrid.js';
 
 const ROAD_TILE = 3.0;
 const WALK_TILE = 3.3;
@@ -309,12 +309,13 @@ export default function StreetSurfaces() {
       gutterVertical: createMaterial(maps, 'gutter', { axis: 'x' }),
       curb: new THREE.MeshStandardMaterial({ color: '#7b7972', roughness: 0.88 }),
       edge: new THREE.MeshStandardMaterial({ color: '#696a66', roughness: 0.9 }),
+      rail: new THREE.MeshStandardMaterial({ color: '#43464a', roughness: 0.42, metalness: 0.8 }),
     };
   }, [maps]);
 
   useEffect(() => () => {
     for (const material of materials.byRoad.values()) material.dispose();
-    for (const key of ['intersection', 'sidewalk', 'promenade', 'apron', 'transition', 'gutterHorizontal', 'gutterVertical', 'curb', 'edge']) {
+    for (const key of ['intersection', 'sidewalk', 'promenade', 'apron', 'transition', 'gutterHorizontal', 'gutterVertical', 'curb', 'edge', 'rail']) {
       materials[key].dispose();
     }
   }, [materials]);
@@ -458,6 +459,35 @@ export default function StreetSurfaces() {
         bottom={PLAZA_TOP - 0.1}
         material={materials.edge}
       />
+      <BeltLineRails material={materials.rail} />
     </RigidBody>
+  );
+}
+
+// The Belt Line's double track along Central Park South. Track centres match
+// route 4's two traces (road centre z=91 ± 2.25 — see horselessCarriage.js);
+// gauge matches the horsecar preset's wheel track. Girder rail reads at game
+// scale as a proud steel head, so each rail is one long box.
+const BELT_LINE_TRACK_CENTRES = [91 - 2.25, 91 + 2.25];
+const BELT_LINE_GAUGE_HALF = 0.75;
+
+function BeltLineRails({ material }) {
+  // From the road definition, not the surface rects: those split at the
+  // avenue crossings, and track runs continuously through an intersection.
+  const road = ROADS.find((entry) => entry.id === 'cps');
+  if (!road) return null;
+  const length = road.to - road.from;
+  const x = (road.from + road.to) / 2;
+  const rails = BELT_LINE_TRACK_CENTRES.flatMap(
+    (centre) => [centre - BELT_LINE_GAUGE_HALF, centre + BELT_LINE_GAUGE_HALF],
+  );
+  return (
+    <group>
+      {rails.map((z) => (
+        <mesh key={z} position={[x, ROAD_TOP + 0.011, z]} material={material} receiveShadow>
+          <boxGeometry args={[length, 0.02, 0.08]} />
+        </mesh>
+      ))}
+    </group>
   );
 }

@@ -39,6 +39,7 @@ import { queueActorImpact } from '../world/actorImpacts.js';
 import { reportMajorStreetEvent } from '../world/majorStreetEvents.js';
 import { getPlayer } from '../world/player.js';
 import { figureHeight } from '../world/figureHeights.js';
+import { COACHWORKS_PRESETS } from '../world/coachworks.js';
 
 const MAX_FRAME_DT = 0.1;
 const MAX_FIXED_STEPS = 6;
@@ -156,6 +157,95 @@ function Coachwork({ batches, refs }) {
       </group>
     );
   });
+}
+
+// One-time canvas lettering. Redrawn when the web fonts finish loading, so
+// the boards get the period face rather than the fallback serif.
+function letteringTexture(text, { width = 1024, height = 128, color = '#d9b96a' } = {}) {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  const draw = () => {
+    context.clearRect(0, 0, width, height);
+    context.fillStyle = color;
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    // Shrink to fit: the company's full name is longer than the board.
+    let size = Math.floor(height * 0.52);
+    const font = (px) => `600 ${px}px "Old Standard TT", "Times New Roman", serif`;
+    context.font = font(size);
+    const measured = context.measureText(text).width;
+    if (measured > width * 0.94) {
+      size = Math.floor((size * width * 0.94) / measured);
+      context.font = font(size);
+    }
+    context.fillText(text, width / 2, height / 2 + height * 0.02);
+    texture.needsUpdate = true;
+  };
+  draw();
+  document.fonts?.ready?.then(draw);
+  return texture;
+}
+
+// Company letterboards and destination boards for the Belt Line car. The
+// gold-on-red company name on the letterboard was the street railways'
+// standard practice; the boards are two shared materials on six small planes.
+function HorsecarLettering() {
+  const values = COACHWORKS_PRESETS.horsecar;
+  const assets = useMemo(() => {
+    const company = letteringTexture('CENTRAL PARK, NORTH & EAST RIVER R.R.');
+    const destination = letteringTexture('59TH ST.', { width: 256, height: 80, color: '#2c2318' });
+    return {
+      company,
+      destination,
+      companyMaterial: new THREE.MeshStandardMaterial({
+        map: company, transparent: true, roughness: 0.5, metalness: 0.3,
+      }),
+      destinationMaterial: new THREE.MeshStandardMaterial({
+        map: destination, transparent: true, roughness: 0.7,
+      }),
+      boardMaterial: new THREE.MeshStandardMaterial({ color: '#e4d6aa', roughness: 0.6 }),
+    };
+  }, []);
+  useEffect(() => () => {
+    for (const asset of Object.values(assets)) asset.dispose();
+  }, [assets]);
+  const y = values.rideHeight;
+  const H = values.bodyHeight;
+  const L = values.bodyLength;
+  const W = values.bodyWidth;
+  return (
+    <>
+      {[-1, 1].map((side) => (
+        <mesh
+          key={`board-${side}`}
+          position={[0, y + H * 0.865, side * (W / 2 + 0.029)]}
+          rotation={[0, side === 1 ? 0 : Math.PI, 0]}
+          material={assets.companyMaterial}
+        >
+          <planeGeometry args={[L * 0.92, H * 0.16]} />
+        </mesh>
+      ))}
+      {[-1, 1].map((end) => (
+        <group
+          key={`destination-${end}`}
+          position={[end * (L / 2 + 0.79), y + 1.18, 0]}
+          rotation={[0, end === 1 ? Math.PI / 2 : -Math.PI / 2, 0]}
+        >
+          <mesh material={assets.boardMaterial} position={[0, 0, -0.006]}>
+            <planeGeometry args={[0.92, 0.2]} />
+          </mesh>
+          <mesh material={assets.destinationMaterial}>
+            <planeGeometry args={[0.84, 0.17]} />
+          </mesh>
+        </group>
+      ))}
+    </>
+  );
 }
 
 function addHarness(horse, dark) {
@@ -415,6 +505,7 @@ export default function HorseDrawnTraffic({ runtime }) {
           type: unit.type,
           cruise: unit.cruise,
           lane: unit.lane,
+          railBound: unit.railBound,
         }, advice);
         unit.accumulator -= HORSE_DRAWN_FIXED_DT;
         steps += 1;
@@ -424,7 +515,7 @@ export default function HorseDrawnTraffic({ runtime }) {
         unit.state,
         unit.accumulator / HORSE_DRAWN_FIXED_DT,
       );
-      const radius = unit.type === 'omnibus' ? 2.5 : 2.0;
+      const radius = unit.type === 'omnibus' || unit.type === 'horsecar' ? 2.5 : 2.0;
       const agentDetails = trafficAgentDetails(unit.state, trafficConfig);
       reportAgent(`horse-drawn-${unit.id}`, unit.state.horseX, unit.state.horseZ, radius, agentDetails);
       if (unit.boarding) {
@@ -580,6 +671,7 @@ export default function HorseDrawnTraffic({ runtime }) {
       <group key={unit.id} ref={(node) => (unit.refs.root = node)}>
         <group ref={(node) => (unit.refs.coach = node)}>
           <Coachwork batches={unit.coachBatches} refs={unit.refs} />
+          {unit.type === 'horsecar' && <HorsecarLettering />}
           <group
             position={[unit.driverSeat.x, unit.driverSeat.y - 0.42, 0]}
             rotation={[0, Math.PI / 2, 0]}

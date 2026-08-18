@@ -29,6 +29,7 @@ test('the workbench exposes editable proof families', () => {
     'coachworks-brougham',
     'coachworks-landau',
     'coachworks-omnibus',
+    'coachworks-horsecar',
     'bookcase',
     'folding-screen',
     'vase-of-flowers',
@@ -44,6 +45,7 @@ test('coachworks presets share one bounded recipe system and remain distinct', (
     'coachworks-brougham': { type: 'brougham', team: 'single' },
     'coachworks-landau': { type: 'landau', team: 'pair' },
     'coachworks-omnibus': { type: 'omnibus', team: 'pair' },
+    'coachworks-horsecar': { type: 'horsecar', team: 'pair' },
   };
   const signatures = [];
 
@@ -63,7 +65,7 @@ test('coachworks presets share one bounded recipe system and remain distinct', (
     assert.ok(stats.materials <= row.performanceBudget.maxMaterials, `${familyId} material budget`);
     signatures.push(coach.parts.map((part) => part.sculptPart).join('|'));
   }
-  assert.equal(new Set(signatures).size, 5);
+  assert.equal(new Set(signatures).size, 6);
 });
 
 test('coachwork sliders alter dimensions and preserve preset defaults on partial recipes', () => {

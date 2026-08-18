@@ -33,6 +33,14 @@ export const HORSE_DRAWN_ROSTER = Object.freeze([
     id: 'west-fifty-eighth-delivery', type: 'utility', route: 6,
     start: routeStartNear(6, -65, 137.25, 1), lane: 0.18, cruise: 2.35,
   },
+  // The Belt Line crosstown car. Route 4's two traces are its two tracks:
+  // east on the south rails, back west on the north pair, with the terminal
+  // turnarounds beyond the world edge. Rail-bound: it brakes for obstacles
+  // but never leaves its rails.
+  {
+    id: 'belt-line-horsecar', type: 'horsecar', route: 4,
+    start: ROUTES[4].total * 0.35, lane: 0, cruise: 2.2, railBound: true,
+  },
 ]);
 
 export const HORSE_DRAWN_MAX_ACTIVE = HORSE_DRAWN_ROSTER.length;
@@ -74,6 +82,11 @@ export const HORSE_RIG_CONFIG = Object.freeze({
     ...axleMeasurements('omnibus'),
     drawbarLength: 2.55, maxSteer: 0.3,
     maxHorseAngle: 0.14, drawTurnRate: 0.88, shaftSpread: 0.66,
+  },
+  horsecar: {
+    ...axleMeasurements('horsecar'),
+    drawbarLength: 2.6, maxSteer: 0.2,
+    maxHorseAngle: 0.14, drawTurnRate: 0.8, shaftSpread: 0.66,
   },
 });
 
@@ -144,14 +157,16 @@ export function stepHorseDrawnState(state, dt, obstacles, params, advice) {
   const rig = HORSE_RIG_CONFIG[params.type];
   const collider = horseDrawnCollider(params.type);
   const totalArticulation = rig.maxHorseAngle + rig.maxSteer;
+  const large = params.type === 'omnibus' || params.type === 'horsecar';
   const guide = stepCarriage(state, dt, obstacles, {
     cruise: Math.min(params.cruise, advice?.cruise ?? params.cruise),
-    lane: advice?.lane ?? params.lane,
+    // A railcar cannot take a lane suggestion or swerve: it slows instead.
+    lane: params.railBound ? params.lane : (advice?.lane ?? params.lane),
     swerveLambda: advice?.laneLambda ?? 0.9,
-    maxLat: 2.15,
-    clearance: params.type === 'omnibus' ? 1.9 : 1.65,
-    minGap: params.type === 'omnibus' ? 4.4 : 3.4,
-    lookahead: params.type === 'omnibus' ? 14 : 12,
+    maxLat: params.railBound ? 0.02 : 2.15,
+    clearance: large ? 1.9 : 1.65,
+    minGap: large ? 4.4 : 3.4,
+    lookahead: large ? 14 : 12,
     rearClearance: rig.drawbarLength + rig.socketForward + collider.coachHalf[0] + 0.35,
   });
 
@@ -314,10 +329,11 @@ export function horseDrawnTrafficConfig(unit) {
     id: `horse-drawn-${unit.id}`,
     lane: unit.lane,
     cruise: unit.cruise,
-    minGap: unit.type === 'omnibus' ? 4.4 : 3.4,
+    minGap: unit.type === 'omnibus' || unit.type === 'horsecar' ? 4.4 : 3.4,
     length: collision.horseHalf[0] + rear,
     trafficSOffset: (collision.horseHalf[0] - rear) / 2,
-    priority: 20 + unit.route * 4,
+    // The car on rails has the right of way over everything on wheels.
+    priority: unit.railBound ? 60 : 20 + unit.route * 4,
   };
 }
 
@@ -372,6 +388,9 @@ export function horseDrawnBoardingProfile(type) {
 }
 
 export function horseDrawnCollider(type) {
+  if (type === 'horsecar') {
+    return { coachHalf: [3.1, 1.5, 1.1], horseHalf: [1.15, 0.95, 0.88], coachY: 1.5, horseY: 0.95 };
+  }
   if (type === 'omnibus') {
     return { coachHalf: [2.22, 1.55, 1.12], horseHalf: [1.15, 0.95, 0.88], coachY: 1.55, horseY: 0.95 };
   }
