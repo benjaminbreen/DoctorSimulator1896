@@ -576,21 +576,21 @@
     {
       "id": "overmantel",
       "kind": "wallArt",
-      "art": "engraving",
+      "art": "painting",
       "position": [
-        -3.57,
+        -3.545,
         2.72,
         0
       ],
       "size": [
-        0.98,
-        0.76,
+        1.35,
+        0.788,
         0.06
       ],
       "yaw": 1.5708,
-      "seed": 5,
       "moulding": "gilt",
-      "collider": false
+      "collider": false,
+      "artTexture": "/art/isle-of-the-dead.jpg"
     },
     {
       "id": "print-east",

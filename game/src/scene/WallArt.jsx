@@ -31,7 +31,9 @@ export default function WallArt({ items }) {
       // print took a wide gilt moulding with a mount inside it.
       const diploma = art === 'diploma';
       const ornateBrass = item.frameStyle === 'victorian-brass';
-      const closeMounted = diploma || art === 'directory';
+      // A canvas painting sits close in its gilt frame; only prints get the
+      // wide paper mount.
+      const closeMounted = diploma || art === 'directory' || art === 'painting';
       const rail = item.frameRail ?? (diploma ? 0.035 : 0.055);
       const mount = item.mount ?? (closeMounted ? 0.02 : 0.06);
       const spec = MOULDINGS[item.moulding ?? (diploma ? 'ebony' : 'gilt')];

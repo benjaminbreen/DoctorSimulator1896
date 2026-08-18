@@ -10,6 +10,7 @@
 import { facadeLayoutForFace, doorWorld } from './facade.js';
 import { pickModel, modelSize, fixtureBurners, pickSurfaces, looseMass } from './victorianCatalog.js';
 import { friezeBand, ceilingPanel } from './mouldings.js';
+import { pickPainting } from './paintings.js';
 
 // Size classes. `base` is [width, depth] in meters; the per-class tuning
 // slider (interiorScaleS..XL) multiplies it, so "make small 20% bigger" is
@@ -369,13 +370,18 @@ export function generateInterior(building, values = {}) {
     const z = round(frontZ + (i < 2 ? -1 : 1) * D * 0.14);
     if (side === hearthSide && Math.abs(z - hearthZ) < 2.4) continue;
     const w = round((0.62 + hash01(seed + i * 5.1) * 0.42) * caseScale);
+    // The first frame carries a real painting; the rest stay engravings.
+    // 0.15 is rail plus mount on both sides, so the canvas keeps its aspect.
+    const painting = i === 0 ? pickPainting(hash01(seed * 9.7)) : null;
+    const h = painting ? round((w - 0.15) / painting.aspect + 0.15) : round(w * 0.78);
     furniture.push({
       id: `wall-art-${i}`,
       kind: 'wallArt',
-      art: 'engraving',
+      art: painting ? 'painting' : 'engraving',
+      artTexture: painting ? painting.texture : undefined,
       moulding: grand ? 'gilt' : 'walnut',
       position: [round(side * (W / 2 - 0.16)), round(1.75 * caseScale), z],
-      size: [w, round(w * 0.78), 0.06],
+      size: [w, h, 0.06],
       yaw: side > 0 ? -Math.PI / 2 : Math.PI / 2,
       seed: seed + i * 13,
       railY: railY,

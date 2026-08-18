@@ -179,3 +179,10 @@ The animated street horse (`game/public/models/horse.glb`) is **Horse** by
 [CC-BY-NC-SA-4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/), from
 [Sketchfab](https://sketchfab.com/3d-models/horse-86d47bdcd5ab41238ba44547e4d21f9c).
 The original credit and licence metadata remain embedded in the GLB.
+
+The paintings in `game/public/art/` are public-domain works from
+[Wikimedia Commons](https://commons.wikimedia.org/): Arnold Böcklin,
+*Isle of the Dead* (third version, 1883, Alte Nationalgalerie) and
+*Self-Portrait with Death Playing the Fiddle* (1872, Alte Nationalgalerie);
+Fernand Khnopff, *I Lock My Door Upon Myself* (1891, Neue Pinakothek);
+Odilon Redon, *Closed Eyes* (1890, Musée d'Orsay).

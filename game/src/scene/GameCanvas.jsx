@@ -66,6 +66,7 @@ const InteriorEnvironment = lazy(() => import('./InteriorEnvironment.jsx'));
 const SootStains = lazy(() => import('./SootStains.jsx'));
 const CeilingRose = lazy(() => import('./CeilingRose.jsx'));
 const WallArt = lazy(() => import('./WallArt.jsx'));
+const Firebox = lazy(() => import('./Firebox.jsx'));
 const InstrumentStage = lazy(() => import('./InstrumentStage.jsx'));
 const ExaminePicker = lazy(() => import('./ExaminePicker.jsx'));
 const LightShafts = lazy(() => import('./LightShafts.jsx'));
@@ -717,6 +718,7 @@ function SceneContents({
 
             <Stage active={stage >= 2} stage={2} onRendered={onStageRendered}>
               <PropModels items={room.furnitureBoxes.filter((item) => item.model)} />
+              <Firebox items={room.furnitureBoxes} />
               <InstrumentStage />
               <ExaminePicker room={room} zone={zone} />
               <ZoneFeatures zone={zone} runtime={runtime} />
