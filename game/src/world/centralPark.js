@@ -10,6 +10,7 @@
 // and lobe. Drives and walks are eyeballed from the same map.
 
 import { parkProp, gasLamp } from './parkCatalog.js';
+import { WALK_TOP } from './streetGrid.js';
 import { ladysGlove } from './furnishings.js';
 import { modelSize } from './modelPacks.js';
 import { GAPSTOW, localToWorld, walkY, RUN_W } from './gapstow.js';
@@ -338,6 +339,18 @@ function buildItems() {
   railingRun(items, 'rail-east', [96, 56], [96, -84]);
   railingRun(items, 'rail-south-east', [60, 84], [-36, 84]);
   railingRun(items, 'rail-south-west', [-44, 84], [-98, 84]);
+  // The lawn sits below the street; under each railing stretch a cut-stone
+  // retaining curb gives the slab edge a built face instead of a hovering
+  // plane. Tops sit flush with the sidewalk; bases are buried in the grade.
+  const retainingCurb = (id, x, z, sx, sz) => ({
+    id, kind: 'ground', position: [x, WALK_TOP - 0.34, z], size: [sx, 0.68, sz],
+    yaw: 0, color: '#8f8879', texture: 'paving', absoluteY: true, collider: false,
+  });
+  items.push(
+    retainingCurb('perimeter-curb-east', 96, -14, 0.55, 140.6),
+    retainingCurb('perimeter-curb-south-east', 12, 84, 96.6, 0.55),
+    retainingCurb('perimeter-curb-south-west', -71, 84, 54.6, 0.55),
+  );
   items.push(
     // StreetSurfaces owns the shaped apron and its trimesh collider. Keep
     // this catalog marker non-solid so the retired rectangular slab cannot

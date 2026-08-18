@@ -121,10 +121,12 @@ function baseHeight(x, z) {
   let height = base + relief;
 
   // Beyond the park wall the city takes over: level street grade under the
-  // road and sidewalk strips.
+  // road and sidewalk strips. The blend must COMPLETE at the park boundary
+  // (x=96, z=84), or the lawn is still a metre below the slab where the
+  // sidewalk begins and its edge hangs in the air.
   const street = Math.max(
-    smooth(clamp((x - 93) / 5, 0, 1)),
-    smooth(clamp((z - 81) / 5, 0, 1)),
+    smooth(clamp((x - 91) / 5, 0, 1)),
+    smooth(clamp((z - 79) / 5, 0, 1)),
   );
   if (street > 0) height = height * (1 - street) + (STREET_LEVEL - 0.03) * street;
 
