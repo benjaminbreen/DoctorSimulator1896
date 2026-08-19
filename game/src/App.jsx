@@ -190,9 +190,18 @@ export default function App() {
   const consultEntranceRef = useRef({ patientId: null, token: 0 });
   // Standing settles once per consultation, when its result first appears.
   const settledResultsRef = useRef(new Set());
+  // The errand notice waits out the result modal; it shows once the player is
+  // back in the room, not on top of the outcome.
+  const errandNoticeDueRef = useRef(false);
   useEffect(() => consultationRuntime.subscribe((state) => {
     setConsultActive(Boolean(state));
     setExamining(Boolean(state && state.stage === 'inquiry' && state.mode === 'examination'));
+    if (errandNoticeDueRef.current && (!state || state.stage !== 'result')) {
+      errandNoticeDueRef.current = false;
+      notice('A boy leaves a parcel: a volume to be delivered to Professor Cattell at the laboratory.', {
+        key: 'errand', seconds: 9,
+      });
+    }
     if (!state) {
       consultEntranceRef.current.patientId = null;
       return;
@@ -211,9 +220,7 @@ export default function App() {
       adjustStanding(delta, `the consultation with ${patient.label}`);
       // The first closed consultation brings the morning's other business.
       if (settledResultsRef.current.size === 1 && beginErrand()) {
-        notice('A boy leaves a parcel: a volume to be delivered to Professor Cattell at the laboratory.', {
-          key: 'errand', seconds: 9,
-        });
+        errandNoticeDueRef.current = true;
       }
     }
     const entrance = consultEntranceRef.current;

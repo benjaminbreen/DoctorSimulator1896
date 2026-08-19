@@ -30,6 +30,7 @@ export function buildDialogueModelPayload(request, patient) {
     elapsedMinutes: request.elapsedMinutes,
     knownFacts: request.disclosedFacts.map(factForModel),
     allowedNewFacts: request.allowedDisclosureFacts.map(factForModel),
+    awaitingAnswer: Boolean(request.pendingResponseId),
     recentTurns: request.recentTurns.map((turn) => ({
       player: turn.input,
       patient: turn.dialogue,

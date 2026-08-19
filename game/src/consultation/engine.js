@@ -109,7 +109,10 @@ export function buildDialogueRequest(patient, state, input) {
     resolvedRuleId: rule?.id || null,
     minutes: rule?.minutes ?? SPEECH_MINUTES,
     maxDisclosures: rule?.maxDisclosures ?? 1,
-    responseTo: input?.responseTo || null,
+    // Custom speech always counts as the reply to a waiting patient, even a
+    // non sequitur — the renderer reacts in character rather than the engine
+    // rejecting the turn.
+    responseTo: input?.responseTo || (input?.custom ? state.pendingResponseId : null) || null,
     pendingResponseId: state.pendingResponseId || null,
     trust: state.trust,
     elapsedMinutes: state.elapsedMinutes,
