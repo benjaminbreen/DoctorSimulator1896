@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { buildCaseNotebook } from './caseNotebook.js';
 import { consultationTiming } from './engine.js';
+import { renderJamesLetter } from './lunaRenderer.js';
 import TreatmentShelf from './TreatmentShelf.jsx';
 import {
   availableDiagnoses,
@@ -275,23 +276,19 @@ function possessive(profile) {
   return sex === 'female' ? 'her' : sex === 'male' ? 'his' : 'their';
 }
 
-function signed(value) {
-  return `${value > 0 ? '+' : ''}${value}`;
-}
-
 function money(cents) {
   return `$${((Number(cents) || 0) / 100).toFixed(2)}`;
 }
 
 // The patient holds an opinion, not a score. The number stays in the aria
-// label and the dev panel.
-function satisfactionVerdict(value) {
-  if (value >= 8.5) return 'Went away grateful';
-  if (value >= 7) return 'Went away satisfied';
-  if (value >= 5.5) return 'Content enough';
-  if (value >= 4.5) return 'Guarded';
-  if (value >= 3) return 'Unconvinced';
-  return 'Left ill-used';
+// label and the dev panel; the words go in the panel title.
+function leavesPhrase(value) {
+  if (value >= 8.5) return 'leaves grateful';
+  if (value >= 7) return 'leaves satisfied';
+  if (value >= 5.5) return 'leaves fairly content';
+  if (value >= 4.5) return 'leaves with reservations';
+  if (value >= 3) return 'leaves unconvinced';
+  return 'leaves feeling ill-used';
 }
 
 function usePrefersReducedMotion() {
@@ -332,8 +329,17 @@ function useCountUp(target, delayMs, durationMs = 640) {
   return value;
 }
 
+// The letter arrives as one signed text; the signature is set apart so it can
+// be drawn in a hand rather than the body face.
+function splitSignature(text) {
+  const match = String(text || '').match(/^([\s\S]*?)[\s,–—]*((?:Yours[^.]*,\s*)?W(?:m|illiam)\.?\s+James\.?)\s*$/);
+  return match ? { body: match[1].trim(), signature: match[2] } : { body: text, signature: '' };
+}
+
 function ResultModal({
   result,
+  patient,
+  consultState,
   patientLabel,
   view,
   setView,
@@ -353,6 +359,20 @@ function ResultModal({
   const [seal, setSeal] = useState('sealed');
   const primaryRef = useRef(null);
   const breakTimer = useRef(null);
+
+  // James writes while the player reads the immediate view; by the time the
+  // month is unsealed the letter has usually arrived. The templated letter in
+  // the result is the fallback when the route is down.
+  const [james, setJames] = useState({ status: 'writing', text: '' });
+  useEffect(() => {
+    let live = true;
+    renderJamesLetter(patient, consultState, result).then((letter) => {
+      if (!live) return;
+      setJames({ status: 'ready', text: letter || result?.james?.letter || '' });
+    });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result]);
 
   const openMonth = () => {
     if (seal === 'open') return setView('month');
@@ -391,13 +411,12 @@ function ResultModal({
     worse: 'Worsened',
     harmed: 'Harmed',
   }[month.band] || 'Outcome recorded';
-  const metricClass = (value) => (value > 0 ? 'is-positive' : value < 0 ? 'is-negative' : 'is-neutral');
   return (
     <div className="gcon-result-backdrop" role="presentation">
-      <section className="gcon-result-modal gcon-frame" role="dialog" aria-modal="true" aria-labelledby="gcon-result-title">
+      <section className="gcon-result-modal gcon-frame gcon-paper" role="dialog" aria-modal="true" aria-labelledby="gcon-result-title">
         <header className="gcon-result-header">
           <p className="gcon-eyebrow">{view === 'immediate' ? 'Consultation Complete' : 'One Month Later'}</p>
-          <h2 id="gcon-result-title">{view === 'immediate' ? `As ${patientLabel} Leaves` : 'What Followed'}</h2>
+          <h2 id="gcon-result-title">{view === 'immediate' ? `${patientLabel} ${leavesPhrase(satisfaction)}` : 'What Followed'}</h2>
           <div className="gcon-result-tabs" role="tablist" aria-label="Consultation outcome views">
             <button type="button" role="tab" aria-selected={view === 'immediate'} className={view === 'immediate' ? 'is-active' : ''} onClick={() => setView('immediate')}>
               Patient reaction
@@ -429,7 +448,6 @@ function ResultModal({
               <div className="gcon-result-satisfaction" style={{ '--step': 3 }}>
                 <div className="gcon-result-verdict">
                   <span>How the visit was received</span>
-                  <strong>{satisfactionVerdict(satisfaction)}</strong>
                 </div>
                 <div
                   className={`gcon-result-bar is-${satisfactionBand}`}
@@ -445,23 +463,35 @@ function ResultModal({
                 <div><strong>{summary.minutesUsed ?? 0}</strong><span>Minutes used</span></div>
               </div>
               <div className="gcon-result-feedback" style={{ '--step': 5 }}>
-                {result.feedback?.strengths?.[0] && <p><strong>To your credit</strong>{result.feedback.strengths[0]}</p>}
-                {result.feedback?.improvements?.[0] && <p><strong>What was wanting</strong>{result.feedback.improvements[0]}</p>}
+                {result.feedback?.strengths?.[0] && <p><strong>What went well</strong>{result.feedback.strengths[0]}</p>}
+                {result.feedback?.improvements?.[0] && <p><strong>What fell short</strong>{result.feedback.improvements[0]}</p>}
               </div>
             </div>
           ) : (
             <div className="gcon-reveal" key="month">
               <div className={`gcon-outcome-stamp is-${month.band || 'neutral'}`} style={{ '--step': 0 }}>{outcomeLabel}</div>
               <p className="gcon-result-narrative" style={{ '--step': 1 }}>{month.narrative}</p>
-              <div className="gcon-result-stats" style={{ '--step': 2 }}>
-                <div className={metricClass(month.healthChange || 0)}><strong>{signed(month.healthChange || 0)}</strong><span>Health</span></div>
-                <div className={metricClass(month.functionChange || 0)}><strong>{signed(month.functionChange || 0)}</strong><span>Daily function</span></div>
-                <div className="is-reasoning"><strong>{result.scores?.diagnosis ?? 5}<small>/10</small></strong><span>Reasoning</span></div>
-              </div>
-              <div className="gcon-result-reading" style={{ '--step': 3 }}>
-                <details className="gcon-debrief"><summary>Modern debrief</summary><p>{result.modernDebrief}</p></details>
-                <details className="gcon-debrief"><summary>Letter from William James</summary><p>{result.james?.letter}</p><small>{result.james?.disclaimer}</small></details>
-              </div>
+              <article className="gcon-james" style={{ '--step': 2 }}>
+                <header className="gcon-james-head">
+                  <span>By the morning post · Cambridge, Mass.</span>
+                  <h3>A letter from William James</h3>
+                </header>
+                {james.status === 'writing' ? (
+                  <p className="gcon-james-waiting">The envelope is still sealed<i className="gcon-james-dots" aria-hidden="true" /></p>
+                ) : (
+                  <div className="gcon-james-page">
+                    <p className="gcon-james-body">{splitSignature(james.text).body}</p>
+                    {splitSignature(james.text).signature && (
+                      <p className="gcon-james-signature">{splitSignature(james.text).signature}</p>
+                    )}
+                  </div>
+                )}
+                <small className="gcon-james-note">{result.james?.disclaimer}</small>
+              </article>
+              <details className="gcon-debrief" style={{ '--step': 3 }}>
+                <summary>Modern debrief</summary>
+                <p>{result.modernDebrief}</p>
+              </details>
             </div>
           )}
         </div>
@@ -469,7 +499,7 @@ function ResultModal({
           <p>Where will you go now?</p>
           <div className="gcon-result-actions">
             <button type="button" className="is-primary" ref={primaryRef} onClick={onNextPatient}>
-              <kbd>1</kbd><strong>Receive next patient</strong><span>Remain in the consulting room</span>
+              <kbd>⏎</kbd><strong>Receive next patient</strong><span>Remain in the consulting room</span>
             </button>
             <button type="button" onClick={onWaitingRoom}>
               <kbd>2</kbd><strong>Go to waiting room</strong><span>Leave consultation mode</span>
@@ -530,6 +560,8 @@ export default function ConsultationView({
   const [customThought, setCustomThought] = useState('');
   const [customThoughtOpen, setCustomThoughtOpen] = useState(false);
   const [resultView, setResultView] = useState('immediate');
+  // The decision is two pages of one panel: name the diagnosis, then treat it.
+  const [decisionStep, setDecisionStep] = useState('diagnosis');
   const [speechPending, setSpeechPending] = useState(false);
   const [previewMinutes, setPreviewMinutes] = useState(0);
   const [showAllDecisions, setShowAllDecisions] = useState(false);
@@ -568,6 +600,7 @@ export default function ConsultationView({
     setCustomThought('');
     setCustomThoughtOpen(false);
     setResultView('immediate');
+    setDecisionStep('diagnosis');
     setSpeechPending(false);
     setPreviewMinutes(0);
     setShowAllDecisions(false);
@@ -579,7 +612,7 @@ export default function ConsultationView({
     noteInput.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }, [noteEditor]);
 
-  useEffect(() => setCursor(-1), [phase, stage, state?.mode, state?.patientId]);
+  useEffect(() => setCursor(-1), [phase, stage, state?.mode, state?.patientId, decisionStep]);
 
   // Surface an engine rejection briefly, then let it go.
   const seenErrors = useRef(0);
@@ -611,6 +644,12 @@ export default function ConsultationView({
   const examined = new Set(state?.observedFactIds ?? []);
   const examinations = useMemo(() => (patient && state ? availableExaminations(patient, state) : []), [patient, state]);
   const diagnoses = useMemo(() => (patient && state && !showAllDecisions ? availableDiagnoses(patient, state) : patient?.diagnoses || []), [patient, state, showAllDecisions]);
+  const recordFacts = useMemo(
+    () => (patient && state && stage === 'case-note'
+      ? patient.facts.filter((fact) => state.disclosedFactIds.includes(fact.id))
+      : []),
+    [patient, state, stage],
+  );
   const timing = patient && state ? consultationTiming(patient, state, previewMinutes) : null;
   const currentTiming = patient && state ? consultationTiming(patient, state) : null;
   const hasRuminated = noted.size > 0 || (state?.customInterpretations?.length ?? 0) > 0;
@@ -701,6 +740,7 @@ export default function ConsultationView({
   const toDecision = () => {
     if (stage === 'inquiry') {
       runtime.dispatch({ type: 'begin-decision' });
+      setDecisionStep(state.diagnosisId ? 'treatment' : 'diagnosis');
     }
   };
 
@@ -782,12 +822,29 @@ export default function ConsultationView({
     nav.count = examinations.length;
     nav.cols = 2;
     nav.select = (index) => runExam(examinations[index]);
-  } else if (stage === 'decision') {
+  } else if (stage === 'decision' && decisionStep === 'diagnosis') {
     const pool = diagnoses;
     nav.count = pool.length;
     nav.cols = pool.length || 1;
     nav.select = (index) => {
       runtime.dispatch({ type: 'select-diagnosis', id: diagnoses[index].id });
+      setDecisionStep('treatment');
+    };
+    nav.commit = () => { if (state.diagnosisId) setDecisionStep('treatment'); };
+  } else if (stage === 'decision') {
+    nav.commit = () => {
+      if (state.diagnosisId && state.treatmentIds?.length > 0) runtime.dispatch({ type: 'begin-case-note' });
+    };
+  } else if (stage === 'case-note') {
+    nav.count = recordFacts.length;
+    nav.cols = 3;
+    nav.select = (index) => runtime.dispatch({ type: 'select-record-fact', id: recordFacts[index].id });
+    // Enter always signs here — a hovered card must not swallow it. The roved
+    // card toggles with Space instead.
+    nav.enterCommits = true;
+    nav.commit = () => {
+      const minimum = patient.caseNote?.minimumEvidenceSelections ?? 0;
+      if ((state.caseRecordFactIds || []).length >= minimum) runtime.dispatch({ type: 'submit-case-note' });
     };
   }
 
@@ -836,7 +893,20 @@ export default function ConsultationView({
           return;
         }
       }
-      if (current.bookOpen || !current.count) return;
+      if (current.bookOpen) return;
+      // Enter commits the stage (sign, advance) even when nothing is roved;
+      // a focused button keeps its own Enter.
+      const isEnter = event.key === 'Enter' || event.code === 'Enter' || event.code === 'NumpadEnter';
+      if (isEnter && event.target?.tagName !== 'BUTTON') {
+        const commits = current.commit && (current.enterCommits || current.cursor < 0);
+        if (commits) {
+          event.preventDefault();
+          event.stopPropagation();
+          current.commit();
+          return;
+        }
+      }
+      if (!current.count) return;
 
       const step = (delta) => {
         event.preventDefault();
@@ -851,7 +921,11 @@ export default function ConsultationView({
       else if (event.code === 'ArrowLeft') step(-1);
       else if (event.code === 'ArrowDown' && current.count > current.cols) step(current.cols);
       else if (event.code === 'ArrowUp' && current.count > current.cols) step(-current.cols);
-      else if (event.key === 'Enter' && current.cursor >= 0) {
+      else if (isEnter && current.cursor >= 0) {
+        event.preventDefault();
+        event.stopPropagation();
+        current.select(current.cursor);
+      } else if (event.code === 'Space' && current.enterCommits && current.cursor >= 0) {
         event.preventDefault();
         event.stopPropagation();
         current.select(current.cursor);
@@ -1128,10 +1202,11 @@ export default function ConsultationView({
       );
     }
 
-    if (stage === 'decision') {
+    if (stage === 'decision' && decisionStep === 'diagnosis') {
       return (
         <>
           <p className="gcon-eyebrow">Working Diagnosis</p>
+          <p className="gcon-record-instruction">Choose a diagnosis. Treatment comes next.</p>
           <div className="gcon-options gcon-options--row gcon-options--decisions">
             {diagnoses.map((item, index) => (
               <button
@@ -1139,26 +1214,57 @@ export default function ConsultationView({
                 type="button"
                 className={`gcon-card gcon-card--speech${cursor === index ? ' is-hot' : ''}${state.diagnosisId === item.id ? ' is-chosen' : ''}`}
                 {...cardMouse(index)}
-                onClick={() => runtime.dispatch({ type: 'select-diagnosis', id: item.id })}
+                onClick={() => {
+                  runtime.dispatch({ type: 'select-diagnosis', id: item.id });
+                  setDecisionStep('treatment');
+                }}
               >
                 {item.label}
                 {item.description && <span className="gcon-card-sub">{item.description}</span>}
               </button>
             ))}
           </div>
-          <div style={{ height: 14 }} />
-          <TreatmentShelf patient={patient} state={state} runtime={runtime} />
           <footer className="gcon-hint">
             <button type="button" className="gcon-hint-link" onClick={() => setShowAllDecisions((value) => !value)}>
               {showAllDecisions ? 'Show likely diagnoses' : 'Consider other diagnoses'}
             </button>
+            {state.diagnosisId && (
+              <button type="button" className="gcon-hint-link" onClick={() => setDecisionStep('treatment')}>
+                Continue with {patient.diagnoses.find((item) => item.id === state.diagnosisId)?.label}
+              </button>
+            )}
+          </footer>
+        </>
+      );
+    }
+
+    if (stage === 'decision') {
+      const chosenDiagnosis = patient.diagnoses.find((item) => item.id === state.diagnosisId);
+      return (
+        <>
+          <p className="gcon-eyebrow">Prescribe Treatment</p>
+          <div className="gcon-decision-chosen">
+            <span>For</span>
+            <strong>{chosenDiagnosis?.label}</strong>
+            <button type="button" className="gcon-hint-link" onClick={() => setDecisionStep('diagnosis')}>
+              Change diagnosis
+            </button>
+          </div>
+          <TreatmentShelf patient={patient} state={state} runtime={runtime} />
+          <footer className="gcon-record-signoff">
+            <span className="gcon-record-count">
+              {state.treatmentIds?.length > 0
+                ? state.treatmentIds.length === 1 ? 'One remedy prescribed' : `${state.treatmentIds.length} remedies prescribed`
+                : 'Nothing prescribed yet'}
+            </span>
             <button
               type="button"
-              className="gcon-hint-link"
+              className="gcon-sign"
               disabled={!state.diagnosisId || !(state.treatmentIds?.length > 0)}
               onClick={() => runtime.dispatch({ type: 'begin-case-note' })}
             >
-              Write the case note
+              <strong>Write the case note</strong>
+              <kbd aria-hidden="true">⏎</kbd>
             </button>
           </footer>
         </>
@@ -1169,21 +1275,26 @@ export default function ConsultationView({
       const minimumEvidence = patient.caseNote.minimumEvidenceSelections ?? 0;
       const maximumEvidence = patient.caseNote.maximumEvidenceSelections ?? 3;
       const selectedEvidence = state.caseRecordFactIds || [];
-      const knownFacts = patient.facts.filter((fact) => state.disclosedFactIds.includes(fact.id));
+      const canSign = selectedEvidence.length >= minimumEvidence;
+      const cited = selectedEvidence.length === 0
+        ? 'No findings selected'
+        : selectedEvidence.length === 1 ? '1 finding selected' : `${selectedEvidence.length} findings selected`;
       return (
         <>
           <p className="gcon-eyebrow">Sign the Case Record</p>
           <p className="gcon-record-instruction">
             {minimumEvidence > 0
-              ? `Select the ${minimumEvidence}–${maximumEvidence} findings that best support your decision. The written note is optional.`
-              : `You may select up to ${maximumEvidence} supporting findings or add a written note. Both are optional.`}
+              ? `Select up to ${maximumEvidence} findings that support your diagnosis, then sign. A written note is optional.`
+              : `You can select up to ${maximumEvidence} findings and add a note. Both are optional.`}
           </p>
           <div className="gcon-record-facts">
-            {knownFacts.map((fact) => (
+            {recordFacts.map((fact, index) => (
               <button
                 key={fact.id}
                 type="button"
-                className={selectedEvidence.includes(fact.id) ? 'is-selected' : ''}
+                className={`${selectedEvidence.includes(fact.id) ? 'is-selected' : ''}${cursor === index ? ' is-hot' : ''}`}
+                aria-pressed={selectedEvidence.includes(fact.id)}
+                {...cardMouse(index)}
                 onClick={() => runtime.dispatch({ type: 'select-record-fact', id: fact.id })}
               >
                 <strong>{fact.label}</strong><span>{fact.value}</span>
@@ -1192,20 +1303,27 @@ export default function ConsultationView({
           </div>
           <textarea
             className="gcon-notefield"
-            placeholder="Optional note in your own words…"
+            placeholder="Optional note…"
             value={state.caseNote}
             onChange={(event) => runtime.dispatch({ type: 'write-case-note', text: event.target.value })}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && canSign) {
+                event.preventDefault();
+                runtime.dispatch({ type: 'submit-case-note' });
+              }
+            }}
           />
-          <footer className="gcon-hint">
+          <footer className="gcon-record-signoff">
+            <span className="gcon-record-count">{cited}</span>
             <button
               type="button"
-              className="gcon-hint-link"
-              disabled={selectedEvidence.length < minimumEvidence}
+              className="gcon-sign"
+              disabled={!canSign}
               onClick={() => runtime.dispatch({ type: 'submit-case-note' })}
             >
-              Sign and close the case
+              <strong>Sign and close the case</strong>
+              <kbd aria-hidden="true">⏎</kbd>
             </button>
-            <span className="gcon-hint-note">{selectedEvidence.length} findings selected</span>
           </footer>
         </>
       );
@@ -1232,12 +1350,12 @@ export default function ConsultationView({
     return null;
   };
 
-  const stageKey = `${state ? stage : 'queue'}-${phase}-${state?.mode ?? ''}`;
+  const stageKey = `${state ? stage : 'queue'}-${phase}-${state?.mode ?? ''}${stage === 'decision' ? `-${decisionStep}` : ''}`;
 
   // The interview's question grid runs wider than the interpretation row,
   // matching the two mockups' panel widths.
   const wideStage = (stage === 'inquiry' && (phase === 'speech' || phase === 'exam'))
-    || stage === 'decision' || stage === 'result';
+    || stage === 'decision' || stage === 'case-note' || stage === 'result';
 
   if (!patient && queueDismissed) return null;
 
@@ -1303,7 +1421,7 @@ export default function ConsultationView({
       )}
 
       <section
-        className={`gcon-stage gcon-frame${wideStage ? ' gcon-stage--wide' : ''}${stage === 'decision' ? ' gcon-stage--paper' : ''}`}
+        className={`gcon-stage gcon-frame${wideStage ? ' gcon-stage--wide' : ''}${stage === 'decision' || stage === 'case-note' ? ' gcon-stage--paper' : ''}`}
         aria-label="The patient before you"
       >
         {(canEnd || queueVisible) && (
@@ -1459,6 +1577,8 @@ export default function ConsultationView({
       {stage === 'result' && state?.result && (
         <ResultModal
           result={state.result}
+          patient={patient}
+          consultState={state}
           patientLabel={patient.label}
           view={resultView}
           setView={setResultView}

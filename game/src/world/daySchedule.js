@@ -2,10 +2,9 @@
 // or forfeited as the clock runs. Deterministic ground truth for the day
 // loop; the HUD and prompts read it, they never decide it.
 
-export const DAY_END_HOUR = 22;
 export const APPOINTMENT_SLOTS = Object.freeze([9.75, 11.5, 14.25, 16.5]);
-const WARN_MINUTES = 5;
-const LATE_GRACE_MINUTES = 3;
+const WARN_MINUTES = 10;
+const LATE_GRACE_MINUTES = 6;
 
 function seededShuffle(items, seed) {
   let state = (Math.trunc(seed) || 1) >>> 0;

@@ -264,9 +264,9 @@
       "to": {
         "zone": "waiting-room",
         "spawn": [
+          -2.4,
           0,
-          0,
-          4.6
+          3.2
         ],
         "facing": [
           0,
@@ -596,14 +596,15 @@
       "id": "print-east",
       "kind": "wallArt",
       "art": "engraving",
+      "artTexture": "/art/chat-noir.jpg",
       "position": [
         3.82,
-        2.25,
+        2.35,
         3.2
       ],
       "size": [
         0.74,
-        0.58,
+        0.91,
         0.06
       ],
       "yaw": -1.5708,
@@ -733,14 +734,15 @@
       "id": "study-print",
       "kind": "wallArt",
       "art": "engraving",
+      "artTexture": "/art/divan-japonais.jpg",
       "position": [
         -3.8,
-        2.3,
+        2.35,
         6.6
       ],
       "size": [
         0.74,
-        0.58,
+        0.9,
         0.06
       ],
       "yaw": 1.5708,

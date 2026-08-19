@@ -31,6 +31,9 @@ export const settingsSchema = {
           default: STARTING_ZONE,
           mode: 'rebuild',
         },
+        // 0 keeps the normal seeded schedule (a few events a day). Above 0,
+        // an extra street event fires every N game-minutes, for testing.
+        { id: 'eventTestMinutes', label: 'Street event gap (min, 0=normal)', type: 'range', min: 0, max: 30, step: 1, default: 0 },
         // Lawn tuft scatter in the park. Amount multiplies the planting
         // chance, size the clump scale; both rebuild the zone.
         { id: 'tuftAmount', label: 'Grass amount ×', type: 'range', min: 0, max: 2.5, step: 0.1, default: 1, mode: 'rebuild' },

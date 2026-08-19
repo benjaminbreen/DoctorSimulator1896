@@ -39,10 +39,28 @@ function interpretationScore(patient, state) {
   return Number.isFinite(alignment) ? clamp(Math.round(5 + alignment * 1.6), 0, 10) : 5;
 }
 
+// Offline fallback only; the live letter comes from the model with the full
+// transcript. No numbers — James does not grade, he judges.
 function jamesLetter(patient, scores, model) {
   const address = model.james?.address || 'My dear Doctor';
-  const close = model.james?.close || 'Yours faithfully, William James';
-  return `${address}, Your observation in ${patient.profile.identity.displayName}’s case was ${scorePhrase(scores.observation)} (${scores.observation}/10). Your diagnostic reasoning was ${scorePhrase(scores.diagnosis)} (${scores.diagnosis}/10), and your conduct of treatment was ${scorePhrase(scores.treatment)} (${scores.treatment}/10). I find ${scorePhrase(scores.scientificPromise)} scientific promise in the record (${scores.scientificPromise}/10), especially where you distinguished what was observed from what was merely supposed. ${close}`;
+  const name = patient.profile.identity.displayName;
+  const them = patient.profile.identity.sex === 'female' ? 'her' : patient.profile.identity.sex === 'male' ? 'him' : 'them';
+  const looking = {
+    strong: `You looked at ${name} before you theorized about ${them}, which is rarer than it should be.`,
+    mixed: `You saw something of ${name}, though you left more on the table than you carried off.`,
+    poor: `You theorized about ${name} more than you looked at ${them}, which is the common vice.`,
+  }[scorePhrase(scores.observation)];
+  const judging = {
+    strong: 'Your reasoning followed the evidence rather than dragging it along behind.',
+    mixed: 'Your reasoning was sound in parts and hopeful in others; the two should not be neighbors.',
+    poor: 'Your conclusion arrived well before your evidence did, and never waited for it.',
+  }[scorePhrase(scores.diagnosis)];
+  const treating = {
+    strong: 'The treatment was honest work.',
+    mixed: 'The treatment I would call harmless, which is not the same as useful.',
+    poor: 'The treatment I would not have inflicted on a man I liked.',
+  }[scorePhrase(scores.treatment)];
+  return `${address}, ${looking} ${judging} ${treating} Write to me when the case turns. Wm. James`;
 }
 
 function consultationCounts(state) {
@@ -58,15 +76,15 @@ function performanceFeedback(result, state) {
   const counts = consultationCounts(state);
   const strengths = [];
   const improvements = [];
-  if (result.evidenceCoverage >= 65) strengths.push('You gathered a focused body of useful evidence.');
-  else improvements.push('A little more discriminating evidence would have made the assessment firmer.');
-  if (counts.examinationsPerformed > 0) strengths.push('You tested the history against physical findings.');
-  else improvements.push('No physical examination was entered in the record.');
-  if ((result.scores?.diagnosis ?? 0) >= 7) strengths.push('The diagnosis was well supported by the evidence you had.');
-  else improvements.push('The final diagnosis was only partly supported by the discovered evidence.');
-  if ((result.scores?.treatment ?? 0) >= 7) strengths.push('The treatment plan addressed the patient’s likely needs.');
-  else improvements.push('The treatment plan carried important limitations or risks.');
-  if ((state.elapsedMinutes || 0) <= (state.appointmentMinutes || 30)) strengths.push('You concluded within the scheduled appointment.');
+  if (result.evidenceCoverage >= 65) strengths.push('You found most of the evidence that mattered.');
+  else improvements.push('More specific evidence would have made the diagnosis firmer.');
+  if (counts.examinationsPerformed > 0) strengths.push('You checked the story against a physical examination.');
+  else improvements.push('You never examined the patient.');
+  if ((result.scores?.diagnosis ?? 0) >= 7) strengths.push('The diagnosis fit the evidence you had.');
+  else improvements.push('The diagnosis was only partly supported by what you found.');
+  if ((result.scores?.treatment ?? 0) >= 7) strengths.push('The treatment fit the case.');
+  else improvements.push('The treatment carried real limits or risks.');
+  if ((state.elapsedMinutes || 0) <= (state.appointmentMinutes || 30)) strengths.push('You finished within the appointment.');
   else improvements.push('The consultation ran into overtime and delayed the practice.');
   return {
     strengths: strengths.slice(0, 2),
@@ -134,6 +152,11 @@ export function resolveAuthoredOutcome(patient, state, noteCoverage) {
   const outcomeBand = recoveryBand(recovery);
   const immediateLead = model.immediateNarratives[experienceBand];
   const immediateDetail = plan.evaluation.immediateText;
+  // Say plainly what was prescribed; the authored prose never names it.
+  const labels = plan.treatments.map((item) => item.label.toLowerCase());
+  const prescribedLine = `You prescribe ${labels.length > 1
+    ? `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`
+    : labels[0]}.`;
   const monthLead = plan.evaluation.monthText || model.monthNarratives[outcomeBand];
   const scores = {
     observation: observationScore,
@@ -156,7 +179,8 @@ export function resolveAuthoredOutcome(patient, state, noteCoverage) {
     immediate: {
       satisfaction,
       band: experienceBand,
-      narrative: [immediateLead, immediateDetail].filter(Boolean).join(' '),
+      // Chronological: what you prescribed, how it lands, how the patient leaves.
+      narrative: [prescribedLine, immediateDetail, immediateLead].filter(Boolean).join(' '),
       departureLine: departureLine(model, experienceBand),
       paymentCents: payment,
       paymentLabel: payment === model.fee.full ? 'Fee paid in full' : 'Reduced fee paid',
@@ -172,7 +196,7 @@ export function resolveAuthoredOutcome(patient, state, noteCoverage) {
     scores,
     james: {
       letter: jamesLetter(patient, scores, model),
-      disclaimer: 'The assessment explains fixed scores derived from the case record.',
+      disclaimer: 'Written on reading the case record you signed.',
     },
     modernDebrief: `${model.modernDebrief} ${plan.evaluation.modernText}`.trim(),
   };
@@ -222,7 +246,7 @@ export function resolveFollowUpOutcome(patient, state) {
     scores,
     james: {
       letter: jamesLetter(patient, scores, model),
-      disclaimer: 'The assessment explains fixed scores derived from the case record.',
+      disclaimer: 'Written on reading the case record you signed.',
     },
     modernDebrief: `${model.modernDebrief} The player deferred treatment pending further evidence.`,
   };

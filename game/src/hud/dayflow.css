@@ -36,6 +36,341 @@
   transform: translateX(-50%);
   z-index: 55;
   pointer-events: auto;
+  box-sizing: border-box;
+  width: min(620px, calc(100vw - 48px));
+  max-height: calc(100vh - 52px);
+  overflow-y: auto;
+  padding: 13px 15px 20px;
+}
+
+.dayflow-caller-art {
+  overflow: hidden;
+  margin: 0 0 14px;
+  border: 1px solid rgba(203, 168, 92, 0.45);
+  border-radius: 7px 7px 2px 2px;
+  background: #1a2427;
+}
+
+/* ---------------- street-event card ----------------
+   Unlike the navy duty modals, an event reads as printed ephemera: cream
+   stock, green plate, brass rule — the register of the top band and the
+   prescription sheet. */
+
+.dayflow-scrim--event {
+  background: radial-gradient(120% 120% at 50% 42%, rgba(26, 20, 8, 0.18) 0%, rgba(8, 7, 3, 0.52) 100%);
+  animation: dayflow-scrim-in 0.28s ease-out both;
+}
+
+@keyframes dayflow-scrim-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.dayflow-event-card {
+  box-sizing: border-box;
+  width: min(620px, calc(100vw - 48px));
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  font-family: 'Libre Caslon Text', 'Cormorant', Georgia, serif;
+  color: #33271a;
+  background:
+    radial-gradient(130% 70% at 50% 0%, rgba(255, 250, 235, 0.9), transparent 55%),
+    linear-gradient(172deg, #f6efdf 0%, #efe4c6 55%, #e6d6ae 100%);
+  border: 1px solid rgba(90, 70, 35, 0.65);
+  border-radius: 10px;
+  box-shadow:
+    inset 0 0 0 1px rgba(246, 239, 223, 0.9),
+    0 2px 0 rgba(246, 239, 223, 0.25),
+    0 24px 60px rgba(1, 3, 7, 0.6);
+  padding: 13px 15px 20px;
+  animation: dayflow-card-in 0.44s cubic-bezier(0.2, 1.25, 0.35, 1) both;
+}
+
+@keyframes dayflow-card-in {
+  from { opacity: 0; transform: translateY(22px) scale(0.965); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.dayflow-event-art {
+  border-radius: 7px 7px 0 0;
+  overflow: hidden;
+  margin: 0 0 12px;
+  border: 1px solid rgba(90, 70, 35, 0.45);
+  border-bottom-width: 2px;
+  background: #efe4c6;
+}
+
+.dayflow-event-art img,
+.dayflow-caller-art img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1920 / 819;
+  object-fit: cover;
+}
+
+.dayflow-event-eyebrow {
+  margin: 0 0 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 14.5px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: #163027;
+  text-align: center;
+}
+
+.dayflow-event-eyebrow::before,
+.dayflow-event-eyebrow::after {
+  content: '';
+  height: 1px;
+  width: 44px;
+  background: linear-gradient(90deg, transparent, #c39a48);
+}
+
+.dayflow-event-eyebrow::after {
+  background: linear-gradient(90deg, #c39a48, transparent);
+}
+
+.dayflow-event-body {
+  margin: 0 auto 15px;
+  max-width: 520px;
+  font-size: 16.5px;
+  line-height: 1.52;
+  text-align: center;
+}
+
+.dayflow-event-choices {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  margin: 0 22px;
+}
+
+.dayflow-event-choice {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+  padding: 9px 18px;
+  border: 1px solid rgba(90, 70, 35, 0.55);
+  border-radius: 5px;
+  background: rgba(246, 239, 223, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(255, 252, 240, 0.55);
+  color: #2d2213;
+  font-family: inherit;
+  font-size: 15.5px;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+  animation: dayflow-choice-in 0.38s ease-out both;
+  animation-delay: calc(0.16s + var(--i, 0) * 0.08s);
+}
+
+@keyframes dayflow-choice-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dayflow-event-choice:hover {
+  background: #163027;
+  border-color: #163027;
+  color: #f6efdf;
+  transform: translateY(-1px);
+}
+
+.dayflow-event-choice:hover .dayflow-event-price { color: #e3c37c; }
+
+.dayflow-event-price {
+  font-family: 'Cormorant SC', serif;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: #8a6a26;
+  transition: color 0.16s ease;
+}
+
+/* The banner drifts very slowly, so a still image reads as a living scene. */
+.dayflow-event-art img,
+.dayflow-caller-art img {
+  animation: dayflow-art-drift 16s ease-in-out infinite alternate;
+}
+
+@keyframes dayflow-art-drift {
+  from { transform: scale(1); }
+  to { transform: scale(1.045) translateX(-6px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dayflow-event-art img,
+  .dayflow-caller-art img { animation: none; }
+}
+
+/* The morning card's appointment list and press column, ink on cream. */
+.dayflow-morning-list {
+  list-style: none;
+  margin: 0 36px 14px;
+  padding: 0;
+}
+
+.dayflow-morning-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 6px 2px;
+  border-bottom: 1px solid rgba(90, 70, 35, 0.25);
+  font-size: 15px;
+}
+
+.dayflow-morning-list li span { color: #6a5433; font-variant-numeric: tabular-nums; }
+.dayflow-morning-list li strong { font-weight: 600; color: #2d2213; }
+
+.dayflow-morning-press { margin: 0 36px 14px; }
+
+.dayflow-morning-press-head {
+  margin: 0 0 6px;
+  text-align: center;
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #163027;
+}
+
+.dayflow-morning-press-item {
+  margin: 0 0 7px;
+  font-size: 14px;
+  font-style: italic;
+  line-height: 1.45;
+  text-align: center;
+  color: #4a3a22;
+}
+
+/* What a decision cost or earned, set small beneath the outcome text. */
+.dayflow-outcome-effects {
+  margin: -6px auto 15px;
+  text-align: center;
+  font-family: 'Cormorant SC', 'Cormorant', serif;
+  font-size: 12.5px;
+  letter-spacing: 0.14em;
+  color: #6a5433;
+}
+
+/* Plate animations: long, small, and cheap. */
+.ep-rash { animation: ep-rash 4.5s ease-in-out infinite alternate; }
+@keyframes ep-rash { from { opacity: 0.75; } to { opacity: 1; } }
+
+/* The magnifier travels the forearm; the view inside counter-translates by
+   the lens factor (1.7) so the magnified drawing stays registered. */
+.ep-lens { animation: ep-lens 8s ease-in-out infinite alternate; }
+@keyframes ep-lens {
+  from { transform: translate(0, 0); }
+  to { transform: translate(72px, -6px); }
+}
+
+.ep-lens-view { animation: ep-lens-view 8s ease-in-out infinite alternate; }
+@keyframes ep-lens-view {
+  from { transform: translate(-231px, -84px) scale(1.7); }
+  to { transform: translate(-353.4px, -73.8px) scale(1.7); }
+}
+
+.ep-parasol { animation: ep-parasol 3.2s ease-in-out infinite alternate; }
+@keyframes ep-parasol { from { transform: rotate(-3.5deg); } to { transform: rotate(3.5deg); } }
+
+.ep-balloon { animation: ep-balloon 7.5s ease-in-out infinite alternate; }
+@keyframes ep-balloon {
+  from { transform: translate(0, 0) rotate(0deg); }
+  to { transform: translate(11px, -13px) rotate(2.5deg); }
+}
+
+.ep-sunwheel { animation: ep-turn 70s linear infinite; }
+@keyframes ep-turn { to { transform: rotate(360deg); } }
+
+.ep-shimmer { animation: ep-shimmer 4.2s ease-in-out infinite; }
+@keyframes ep-shimmer {
+  0% { transform: translateY(8px); opacity: 0; }
+  35% { opacity: 0.4; }
+  100% { transform: translateY(-10px); opacity: 0; }
+}
+
+.ep-fan { animation: ep-fan 1.7s ease-in-out infinite alternate; }
+@keyframes ep-fan { from { transform: rotate(-14deg); } to { transform: rotate(9deg); } }
+
+.ep-glint { animation: ep-glint 6s ease-in-out infinite; }
+@keyframes ep-glint {
+  0% { transform: skewX(-18deg) translateX(240px); opacity: 0; }
+  8% { opacity: 0.45; }
+  26% { transform: skewX(-18deg) translateX(430px); opacity: 0; }
+  100% { transform: skewX(-18deg) translateX(430px); opacity: 0; }
+}
+
+.ep-twinkle { animation: ep-twinkle 2s ease-in-out infinite alternate; }
+@keyframes ep-twinkle {
+  from { transform: scale(0.45); opacity: 0.25; }
+  to { transform: scale(1.1); opacity: 1; }
+}
+
+.ep-flame { animation: ep-flame 1.1s ease-in-out infinite alternate; }
+@keyframes ep-flame {
+  0% { transform: scale(1, 0.92) rotate(-1.5deg); opacity: 0.85; }
+  55% { transform: scale(1.04, 1.06) rotate(1deg); opacity: 1; }
+  100% { transform: scale(0.97, 1) rotate(0deg); opacity: 0.92; }
+}
+
+.ep-leaf { animation: ep-leaf 9.5s ease-in infinite; }
+@keyframes ep-leaf {
+  0% { transform: translate(200px, 34px) rotate(0deg); opacity: 0; }
+  8% { opacity: 0.9; }
+  55% { transform: translate(238px, 120px) rotate(160deg); opacity: 0.9; }
+  92% { opacity: 0.9; }
+  100% { transform: translate(216px, 182px) rotate(300deg); opacity: 0; }
+}
+
+.ep-scribble {
+  stroke-dasharray: 260;
+  animation: ep-scribble 6.6s linear infinite;
+}
+@keyframes ep-scribble {
+  0% { stroke-dashoffset: 260; opacity: 1; }
+  16% { stroke-dashoffset: 0; opacity: 1; }
+  86% { stroke-dashoffset: 0; opacity: 1; }
+  94% { stroke-dashoffset: 0; opacity: 0; }
+  100% { stroke-dashoffset: 260; opacity: 0; }
+}
+
+.ep-pencil { animation: ep-pencil 1s ease-in-out infinite alternate; }
+@keyframes ep-pencil { from { transform: translate(0, 0); } to { transform: translate(-3px, 2.5px); } }
+
+.ep-paper { animation: ep-paper 2.1s ease-in-out infinite alternate; }
+@keyframes ep-paper { from { transform: rotate(-2.4deg); } to { transform: rotate(2.4deg); } }
+
+.ep-burst { animation: ep-burst 1.5s ease-in-out infinite alternate; }
+@keyframes ep-burst { from { opacity: 0.35; } to { opacity: 0.65; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .dayflow-event-card,
+  .dayflow-event-choice,
+  .dayflow-scrim--event,
+  [class^='ep-'],
+  [class*=' ep-'] {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 680px) {
+  .dayflow-event-card,
+  .dayflow-caller {
+    width: calc(100vw - 24px);
+  }
+
+  .dayflow-caller {
+    bottom: 12px;
+    max-height: calc(100vh - 24px);
+  }
+
+  .dayflow-event-choices { margin-inline: 0; }
 }
 
 .dayflow-eyebrow {

@@ -141,6 +141,12 @@ tested on the other pedestrian meshes before reuse.
 | `william-james-1890s.jpg` | Sarah Choate Sears, 1890s; Houghton Library / [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:William_James_in_1890s.jpg) | Public domain |
 | `cattell-blackboard-1896.png` | OpenAI ImageGen, directed for this project (2026) | Project-generated asset |
 
+## Event banners — `game/public/ui/events/` and `game/public/ui/callers/`
+
+| Images | Creator / source | Licence |
+| --- | --- | --- |
+| Sixty-one cut-paper event, outcome, day-flow, and caller banners (`*.webp`) | OpenAI ImageGen, directed for this project (2026) | Project-generated assets |
+
 ## Renderer C clothing studies
 
 The local copies of `a_set_of_victorian_clothes` and
@@ -185,4 +191,11 @@ The paintings in `game/public/art/` are public-domain works from
 *Isle of the Dead* (third version, 1883, Alte Nationalgalerie) and
 *Self-Portrait with Death Playing the Fiddle* (1872, Alte Nationalgalerie);
 Fernand Khnopff, *I Lock My Door Upon Myself* (1891, Neue Pinakothek);
-Odilon Redon, *Closed Eyes* (1890, Musée d'Orsay).
+Odilon Redon, *Closed Eyes* (1890, Musée d'Orsay); Théophile Steinlen,
+*Tournée du Chat Noir* (1896, public domain, via Wikimedia Commons); Henri de
+Toulouse-Lautrec, *Divan Japonais* (1893, public domain, via Wikimedia
+Commons); Aubrey Beardsley, *The Peacock Skirt* (1893, public domain, via
+Wikimedia Commons); Edward Penfield, *Harper's for June* (1890s, Library of
+Congress); Louis Dalrymple, *Just Wobbling!* (Puck cover, April 8, 1896,
+Library of Congress); Currier & Ives, *The Great East River Suspension
+Bridge* (1883, public domain, via Wikimedia Commons).

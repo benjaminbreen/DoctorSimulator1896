@@ -314,6 +314,17 @@ export const CARMELA_RUSSO = Object.freeze({
   // Only the treatments that matter in this case. Everything else in the
   // library resolves to its default, which for Carmela is a null result.
   treatmentOverrides: Object.freeze({
+    // She already drinks it; prescribing it back to her feeds the cycle.
+    'drug-coca-wine': Object.freeze({
+      label: 'Continue the coca wine',
+      detail: 'Endorse the tonic she already takes before answering the bell.',
+      evaluation: Object.freeze({
+        quality: 0, patientAcceptance: 2, recovery: -6, cost: -5,
+        immediateText: 'She says, puzzled, that she already takes a glass before answering the bell; you have prescribed her own tonic back to her.',
+        monthText: 'A month later the attacks come oftener. She now takes a glass before every ring of the bell, and the pounding heart that follows each one is worse than before.',
+        modernText: 'Her attacks are driven by cocaine; prescribing more of it intensifies the stimulant-withdrawal cycle it was meant to relieve.',
+      }),
+    }),
     'drug-stop-tonic': Object.freeze({
       label: 'Stop coca wine; explain the cycle; resume ordinary activity',
       detail: 'Remove the stimulant, preserve the shop, practise slow breathing, and gradually answer the bell herself with review in one week.',
@@ -376,7 +387,7 @@ export const CARMELA_RUSSO = Object.freeze({
     }),
   }),
   caseNote: Object.freeze({
-    minimumWords: 0, minimumEvidenceSelections: 2, maximumEvidenceSelections: 3,
+    minimumWords: 0, minimumEvidenceSelections: 1, maximumEvidenceSelections: 3,
     requiredFactIds: ['carmela-episode-pattern', 'carmela-coca-wine', 'carmela-dose-link', 'carmela-cardiac-exam', 'carmela-shop-stakes'],
   }),
   outcomeModel: Object.freeze({
@@ -384,13 +395,13 @@ export const CARMELA_RUSSO = Object.freeze({
     criticalFactIds: ['carmela-coca-wine', 'carmela-dose-link', 'carmela-no-cardiac-red-flags', 'carmela-cardiac-exam'],
     fee: Object.freeze({ full: 300, reduced: 150 }),
     immediateNarratives: Object.freeze({
-      high: 'Mrs. Russo puts on her gloves with the briskness of a woman who has been given useful business. She considers the visit worth its price.',
-      middle: 'Mrs. Russo leaves with a measured nod. She is not fully persuaded, but believes you have at least examined the account honestly.',
+      high: 'Mrs. Russo puts on her gloves briskly, glad to have something definite to do. She considers the visit worth its price.',
+      middle: 'Mrs. Russo leaves with a measured nod. She is not fully persuaded, but believes you took her story seriously.',
       low: 'Mrs. Russo rises without offering her hand. She believes you heard the word “nerves” and stopped listening.',
     }),
     departureLines: Object.freeze({
       high: '“Good. A cause, a plan, and a day to return—that is an honest account.”',
-      middle: '“I will do as you say for one week. After that, Doctor, the facts must speak.”',
+      middle: '“I will try it for one week, Doctor. If I am no better, I will come back and tell you so.”',
       low: '“You have given me a name for my fear, but no reason to trust your judgment.”',
     }),
     followUpDepartureLine: '“Another examination is fair. I will keep an account of every attack and bring you the bottle.”',

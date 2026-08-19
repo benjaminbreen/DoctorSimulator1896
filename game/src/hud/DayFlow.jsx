@@ -1,24 +1,33 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { DAY_END_HOUR, formatHour } from '../world/daySchedule.js';
-import { adjustStanding, getStanding, standingDelta, subscribeStanding } from '../world/standing.js';
+import { formatHour } from '../world/daySchedule.js';
+import { playSfx } from '../audio/sound.js';
+import { adjustStanding, getStanding, subscribeStanding } from '../world/standing.js';
 import { getErrand, subscribeErrand, arriveAtLab, noteRead, instrumentTested, CATTELL_NOTE } from '../world/errand.js';
-import { getPurseCents, addPiece, DENOMINATIONS, formatPrice } from '../world/purse.js';
+import { getPurseCents, addCents, spendCents, formatPrice } from '../world/purse.js';
+import { EVENT_DECK, pickEvent } from '../world/streetEvents.js';
+import { REQUESTS as CALLER_REQUESTS } from '../world/callers.js';
+import { rollIdentity } from '../world/npcIdentity.js';
 import { notice } from '../world/notices.js';
+import { recordPressItem } from '../world/press.js';
+import { recordReferral } from '../world/referrals.js';
+import EventArt, { CallerArt, OutcomeArt } from './eventArt.jsx';
 import { subscribe as subscribeInteraction, getInteraction } from '../world/interaction.js';
 import { instrumentBus } from '../instruments/bus.js';
 import { setGamePaused } from '../input/uiMode.js';
 import './dayflow.css';
 
-// Pay a caller's coins into the purse, largest pieces first.
-function addCents(amount) {
-  let remaining = Math.max(0, Math.round(amount));
-  for (const piece of DENOMINATIONS) {
-    while (remaining >= piece.cents) {
-      addPiece(piece.id, 1);
-      remaining -= piece.cents;
-    }
-  }
-}
+const SLEEP_LINES = {
+  19: 'Seven o’clock. The consulting hours are over for most of the profession.',
+  20: 'Eight o’clock. Supper is long past and the streets are quieting.',
+  21: 'Nine o’clock. The lamps are lit and the streets are thinning.',
+  22: 'Ten o’clock. The day has little left in it.',
+  23: 'Eleven. The gas burns low, and so do you.',
+};
+const SLEEP_FROM_HOUR = 19;
+
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'];
 
 // Did an instrument session produce a real measurement? The instruments keep
 // different ledgers; any of these counts as figures worth leaving.
@@ -39,21 +48,39 @@ export default function DayFlow({
   worldClock,
   schedule,
   callerDay,
+  eventDay,
+  runtime,
   patients,
   zone,
   consultActive,
   suspended = false,
   onSeePatient,
+  onGoToOffice,
+  onNextDay,
+  morning = null,
+  onMorningDone,
 }) {
   const [latePrompt, setLatePrompt] = useState(null);
   const [caller, setCaller] = useState(null);
+  const [messenger, setMessenger] = useState(null);
+  const [encounter, setEncounter] = useState(null);
+  const [outcome, setOutcome] = useState(null);
+  const [sleepPrompt, setSleepPrompt] = useState(null);
   const [noteOpen, setNoteOpen] = useState(false);
   const [summary, setSummary] = useState(null);
   const [errand, setErrand] = useState(getErrand);
   const [, setStandingTick] = useState(0);
   const dayStartCents = useRef(getPurseCents());
+  // Standing changes for THIS day only; the run total lives in the HUD seal.
+  const dayStartStanding = useRef(getStanding());
+  const testEvents = useRef({ last: -Infinity, count: -1 });
+  // Which evening hours have already asked about bed, and which calendar day
+  // this DayFlow belongs to (a date change at midnight forces the summary).
+  const sleepAsked = useRef(new Set());
+  const dayOfYear = useRef(null);
   const blocked = useRef(false);
-  blocked.current = consultActive || suspended || Boolean(latePrompt || caller || noteOpen || summary);
+  blocked.current = consultActive || suspended
+    || Boolean(latePrompt || caller || messenger || encounter || outcome || sleepPrompt || noteOpen || summary || morning);
 
   const patientById = useMemo(() => {
     const map = new Map();
@@ -82,9 +109,20 @@ export default function DayFlow({
       adjustStanding(-1, `${lapsed.identity.name} went away unserved`);
       notice(`${lapsed.identity.name} tired of waiting and went elsewhere.`, { key: 'caller' });
     }
+    eventDay.expire(hours);
 
-    if (hours >= DAY_END_HOUR) {
-      setSummary({ reason: 'day-end' });
+    // Midnight is not negotiable: when the date turns, the day is over and
+    // any open card yields to the summary.
+    const today = snapshot.logical.date.dayOfYear;
+    if (dayOfYear.current === null) dayOfYear.current = today;
+    if (today !== dayOfYear.current) {
+      setLatePrompt(null);
+      setCaller(null);
+      setMessenger(null);
+      setEncounter(null);
+      setOutcome(null);
+      setSleepPrompt(null);
+      setSummary({ reason: 'midnight' });
       return;
     }
     if (blocked.current) return;
@@ -95,14 +133,72 @@ export default function DayFlow({
       return;
     }
 
-    if (zone === 'consulting-office') {
+    // From early evening, each hour asks once about bed.
+    if (hours >= SLEEP_FROM_HOUR) {
+      const hour = Math.floor(hours);
+      if (!sleepAsked.current.has(hour)) {
+        sleepAsked.current.add(hour);
+        setSleepPrompt(hour);
+        return;
+      }
+    }
+
+    // Anywhere in the practice, the street bell reaches you directly.
+    // The values duplicate PRACTICE_ZONES in world/travel.js.
+    if (['consulting-office', 'waiting-room', 'foyer'].includes(zone)) {
       const due = callerDay.due(hours);
       if (due) {
         notice('The street bell rings: a caller at the office door.', { key: 'caller', seconds: 6 });
         setCaller(due);
+        return;
+      }
+    } else {
+      // The doctor is out: a boy carries word of the caller instead.
+      const message = callerDay.takeMessage(hours);
+      if (message) {
+        setMessenger(message);
+        return;
+      }
+      if (zone === 'central-park') {
+        const due = eventDay.due(hours);
+        if (due) {
+          setEncounter(due);
+          return;
+        }
       }
     }
-  }), [worldClock, schedule, callerDay, zone, summary]);
+
+    // Test mode (tuning panel): extra events at a fixed gap, drawn with the
+    // same weights as real play. Street events stay in the street: like the
+    // scheduled ones, they only deal outdoors.
+    const gapMinutes = Number(runtime?.values?.eventTestMinutes) || 0;
+    if (gapMinutes > 0 && zone === 'central-park' && hours - testEvents.current.last >= gapMinutes / 60) {
+      testEvents.current.last = hours;
+      const index = (testEvents.current.count += 1);
+      const testSeed = ((index + 1) * 2654435761) >>> 0;
+      const event = pickEvent((testSeed % 10000) / 10000);
+      setEncounter({ event, identity: rollIdentity(event.archetype, testSeed), seed: testSeed, synthetic: true });
+    }
+  }), [worldClock, schedule, callerDay, eventDay, runtime, zone, summary]);
+
+  // Dev panel hook (?devevents=1): trigger any event or caller on demand.
+  // Synthetic entries resolve locally; effects apply for real.
+  useEffect(() => {
+    const onTrigger = (event) => {
+      const { kind, id, seed = 1 } = event.detail || {};
+      if (kind === 'event') {
+        const entry = EVENT_DECK.find((item) => item.id === id);
+        if (entry) setEncounter({ event: entry, identity: rollIdentity(entry.archetype, seed), seed, synthetic: true });
+      }
+      if (kind === 'caller') {
+        const request = CALLER_REQUESTS.find((item) => item.id === id);
+        const archetype = ['m', 'w', 'f'][Math.trunc(seed) % 3];
+        if (request) setCaller({ request, identity: rollIdentity(archetype, seed), synthetic: true });
+      }
+    };
+    window.addEventListener('ghosts:dayflow-trigger', onTrigger);
+    return () => window.removeEventListener('ghosts:dayflow-trigger', onTrigger);
+  }, []);
 
   // Walking into the laboratory with the parcel finds Cattell's note.
   useEffect(() => {
@@ -128,16 +224,19 @@ export default function DayFlow({
     });
   }, []);
 
-  // The summary holds the night: time and input rest while it is up.
+  // Any open card holds the world: at eight game-seconds per real second,
+  // a modal left running would eat the day behind the player's back.
+  const cardOpen = Boolean(latePrompt || caller || messenger || encounter || outcome
+    || sleepPrompt !== null || noteOpen || summary || morning);
   useEffect(() => {
-    if (!summary) return undefined;
+    if (!cardOpen) return undefined;
     worldClock.setPaused(true);
     setGamePaused(true);
     return () => {
       worldClock.setPaused(false);
       setGamePaused(false);
     };
-  }, [summary, worldClock]);
+  }, [cardOpen, worldClock]);
 
   const keepAppointment = () => {
     const patient = patientById.get(latePrompt.patientId);
@@ -154,19 +253,92 @@ export default function DayFlow({
   };
 
   const answerCaller = (choice) => {
-    const outcome = callerDay.resolve(caller, choice);
+    const result = caller.synthetic
+      ? caller.request[choice]
+      : callerDay.resolve(caller, choice);
+    const request = caller.request;
+    const name = caller.identity.name;
     setCaller(null);
-    if (!outcome) return;
-    if (outcome.price > 0) addCents(outcome.price);
-    if (outcome.standing) {
-      adjustStanding(outcome.standing, `${caller.identity.name}, at the door`);
-    }
-    notice(outcome.note, { key: 'caller', seconds: 7 });
+    if (!result) return;
+    if (result.price > 0) addCents(result.price);
+    if (result.standing) adjustStanding(result.standing, `${name}, at the door`);
+    setOutcome({
+      kind: 'caller',
+      heading: 'A Caller at the Door',
+      artId: request.art ?? request.id,
+      variant: choice,
+      note: result.note,
+      effects: { cents: result.price, standing: result.standing },
+    });
+  };
+
+  // The boy's message: go now (the caller is held through the trip), tip him
+  // and go, or let the caller take their chances with the clock.
+  const goToCaller = (tip) => {
+    const held = messenger;
+    setMessenger(null);
+    if (tip) spendCents(5);
+    callerDay.holdForArrival(held);
+    if (onGoToOffice?.() === false) return;
+    setCaller(held);
+  };
+
+  const dismissMessenger = () => {
+    setMessenger(null);
+    notice('The boy shrugs and is off. The caller can wait, or not.', { key: 'caller', seconds: 6 });
+  };
+
+  const answerEncounter = (choiceId) => {
+    const choice = encounter.synthetic
+      ? encounter.event.choices.find((option) => option.id === choiceId)
+      : eventDay.resolve(encounter, choiceId);
+    const { event, identity } = encounter;
+    setEncounter(null);
+    if (!choice) return;
+    const { cents = 0, standing = 0, minutes = 0 } = choice.effects || {};
+    if (minutes) worldClock.advanceMinutes(minutes, { reason: 'street event' });
+    if (cents > 0) addCents(cents);
+    if (cents < 0) spendCents(-cents);
+    if (standing) adjustStanding(standing, `${identity.name}, in the street`);
+    if (choice.press) recordPressItem(choice.press(identity));
+    if (choice.referral) recordReferral(identity);
+    setOutcome({
+      kind: 'event',
+      heading: event.heading,
+      artId: event.art ?? event.id,
+      variant: choiceId,
+      note: choice.note,
+      effects: choice.effects || {},
+    });
+  };
+
+  // What a decision cost or earned, said once beneath the outcome.
+  const effectsLine = (effects = {}) => {
+    const parts = [];
+    if (effects.cents > 0) parts.push(`${formatPrice(effects.cents)} received`);
+    if (effects.cents < 0) parts.push(`${formatPrice(-effects.cents)} paid`);
+    if (effects.standing > 0) parts.push('your standing rises');
+    if (effects.standing < 0) parts.push('your standing suffers');
+    if (effects.minutes) parts.push(`${effects.minutes} minutes given`);
+    return parts.join('  ·  ');
   };
 
   const closeNote = () => {
     setNoteOpen(false);
     noteRead();
+  };
+
+  // A card set down on the table announces itself once, on arrival only.
+  const chimed = useRef(false);
+  useEffect(() => {
+    if (cardOpen && !chimed.current) playSfx('event-card');
+    chimed.current = cardOpen;
+  }, [cardOpen]);
+
+  const morningDate = () => {
+    const date = worldClock.getSnapshot().logical.date;
+    const weekday = WEEKDAYS[new Date(date.year, date.month - 1, date.date).getDay()];
+    return `${weekday}, ${MONTHS[date.month - 1]} ${date.date}`;
   };
 
   const stats = schedule.stats();
@@ -196,8 +368,157 @@ export default function DayFlow({
         </div>
       )}
 
+      {messenger && !latePrompt && (
+        <div className="dayflow-scrim dayflow-scrim--event">
+          <div className="dayflow-event-card" role="dialog" aria-label="A boy with a message">
+            <EventArt eventId="messenger-boy" />
+            <p className="dayflow-event-eyebrow">A Boy Runs Up</p>
+            <p className="dayflow-event-body">
+              “You the doctor? There’s a caller at your door — {messenger.identity.name}, {messenger.request.gist}.
+              Said I’d find you quick.”
+            </p>
+            <div className="dayflow-event-choices">
+              <button type="button" className="dayflow-event-choice" style={{ '--i': 0 }} onClick={() => goToCaller(false)}>
+                Go at once
+              </button>
+              <button type="button" className="dayflow-event-choice" style={{ '--i': 1 }} onClick={() => goToCaller(true)}>
+                Tip the boy a nickel and go
+                <span className="dayflow-event-price">5¢</span>
+              </button>
+              <button type="button" className="dayflow-event-choice" style={{ '--i': 2 }} onClick={dismissMessenger}>
+                Let them wait
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {sleepPrompt !== null && !latePrompt && (
+        <div className="dayflow-scrim dayflow-scrim--event">
+          <div className="dayflow-event-card" role="dialog" aria-label="The evening ends">
+            <EventArt eventId="retiring" />
+            <p className="dayflow-event-eyebrow">The Evening Ends</p>
+            <p className="dayflow-event-body">{SLEEP_LINES[sleepPrompt] ?? 'The night is far gone.'}</p>
+            <div className="dayflow-event-choices">
+              <button
+                type="button"
+                className="dayflow-event-choice"
+                style={{ '--i': 0 }}
+                onClick={() => { setSleepPrompt(null); setSummary({ reason: 'retired' }); }}
+              >
+                Retire for the night
+              </button>
+              <button
+                type="button"
+                className="dayflow-event-choice"
+                style={{ '--i': 1 }}
+                onClick={() => setSleepPrompt(null)}
+              >
+                Not yet
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {morning && (
+        <div className="dayflow-scrim dayflow-scrim--event">
+          <div className="dayflow-event-card" role="dialog" aria-label="The morning's list">
+            <EventArt eventId="morning-schedule" />
+            <p className="dayflow-event-eyebrow">{morningDate()}</p>
+            <p className="dayflow-event-body">
+              You wake at eight, rested. Coffee, the post, and the day’s list:
+            </p>
+            <ul className="dayflow-morning-list">
+              {schedule.list().map((item) => (
+                <li key={item.patientId}>
+                  <span>{formatHour(item.hours)}</span>
+                  <strong>{nameOf(item.patientId)}</strong>
+                </li>
+              ))}
+            </ul>
+            {morning.referralName && (
+              <p className="dayflow-morning-press-item">
+                By her mother’s arrangement, {morning.referralName} heads the list.
+              </p>
+            )}
+            {morning.press?.length > 0 && (
+              <div className="dayflow-morning-press">
+                <p className="dayflow-morning-press-head">In the morning papers</p>
+                {morning.press.map((item) => (
+                  <p key={item.slice(0, 24)} className="dayflow-morning-press-item">{item}</p>
+                ))}
+              </div>
+            )}
+            <div className="dayflow-event-choices">
+              <button type="button" className="dayflow-event-choice" style={{ '--i': 0 }} onClick={onMorningDone}>
+                Begin the day
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {encounter && !latePrompt && (
+        <div className="dayflow-scrim dayflow-scrim--event">
+          <div className="dayflow-event-card" role="dialog" aria-label={encounter.event.heading}>
+            <EventArt
+              eventId={encounter.event.art ?? encounter.event.id}
+              variant={encounter.event.artVariant}
+            />
+            <p className="dayflow-event-eyebrow">{encounter.event.heading}</p>
+            <p className="dayflow-event-body">{encounter.event.text(encounter.identity)}</p>
+            <div className="dayflow-event-choices">
+              {encounter.event.choices.map((option, index) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  className="dayflow-event-choice"
+                  style={{ '--i': index }}
+                  onClick={() => answerEncounter(option.id)}
+                >
+                  {option.label}
+                  {option.effects?.cents ? (
+                    <span className="dayflow-event-price">
+                      {option.effects.cents > 0 ? '+' : '−'}{formatPrice(Math.abs(option.effects.cents))}
+                    </span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {outcome && !latePrompt && (
+        <div className="dayflow-scrim dayflow-scrim--event">
+          <div className="dayflow-event-card" role="dialog" aria-label="What came of it">
+            <OutcomeArt kind={outcome.kind} artId={outcome.artId} variant={outcome.variant} />
+            <p className="dayflow-event-eyebrow">{outcome.heading}</p>
+            <p className="dayflow-event-body">{outcome.note}</p>
+            {effectsLine(outcome.effects) && (
+              <p className="dayflow-outcome-effects">{effectsLine(outcome.effects)}</p>
+            )}
+            <div className="dayflow-event-choices">
+              <button
+                type="button"
+                className="dayflow-event-choice"
+                style={{ '--i': 0 }}
+                onClick={() => setOutcome(null)}
+              >
+                Carry on
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {caller && !latePrompt && (
         <div className="dayflow-caller" role="dialog" aria-label="A caller at the door">
+          <CallerArt
+            requestId={caller.request.art ?? caller.request.id}
+            variant={caller.request.artVariant}
+          />
           <p className="dayflow-eyebrow">A Caller at the Door</p>
           <p className="dayflow-body">{caller.request.text(caller.identity)}</p>
           <div className="dayflow-actions dayflow-actions--column">
@@ -244,7 +565,7 @@ export default function DayFlow({
         <div className="dayflow-scrim dayflow-scrim--night">
           <div className="dayflow-panel dayflow-panel--summary" role="dialog" aria-label="The day's end">
             <p className="dayflow-eyebrow">
-              {summary.reason === 'retired' ? 'You Retire for the Night' : 'Ten O’Clock — the Day Is Done'}
+              {summary.reason === 'midnight' ? 'Midnight — You Can Stand No More' : 'You Retire for the Night'}
             </p>
             <ul className="dayflow-summary-list">
               {schedule.list().map((item) => (
@@ -261,8 +582,8 @@ export default function DayFlow({
               </li>
               <li>
                 <span>Professional standing</span>
-                <strong className={standingDelta() >= 0 ? 'is-helpful' : 'is-harmful'}>
-                  {Math.round(getStanding())} ({standingDelta() >= 0 ? '+' : ''}{Math.round(standingDelta())})
+                <strong className={getStanding() >= dayStartStanding.current ? 'is-helpful' : 'is-harmful'}>
+                  {Math.round(getStanding())} ({getStanding() >= dayStartStanding.current ? '+' : ''}{Math.round(getStanding() - dayStartStanding.current)})
                 </strong>
               </li>
               {errand.status === 'done' && (
@@ -273,8 +594,12 @@ export default function DayFlow({
               )}
             </ul>
             <div className="dayflow-actions">
-              <button type="button" className="dayflow-button is-primary" onClick={() => window.location.reload()}>
-                Begin the next morning
+              <button
+                type="button"
+                className="dayflow-button is-primary"
+                onClick={() => { setSummary(null); onNextDay?.(); }}
+              >
+                Sleep until morning
               </button>
             </div>
           </div>

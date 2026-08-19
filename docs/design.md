@@ -167,7 +167,7 @@ Instrument views display real simulation state rather than scripted outcomes.
 The implementation contract is in
 [engine-architecture.md](engine-architecture.md#interaction-and-instrument-contract).
 
-## LLM roles (all JSON-contract, all on deterministic ground truth)
+## LLM roles (all JSON-contract)
 
 | Role | Carries from Darwin |
 |---|---|
@@ -179,15 +179,16 @@ The implementation contract is in
 
 ## Design principles
 
-1. Deterministic ground truth beneath every model-written surface.
+1. Patient facts, scores, and disclosure stay deterministic. Outside the
+   consultation, the model may decide outcomes where surprise is the point.
 2. Patients, rivals, and assessors may disagree with the player.
 3. Primary sources in-world via the library reader; reading unlocks and
    justifies modalities.
 
 ## Development direction
 
-The current playable focus is the consultation. Nora Byrne, Samuel Taylor, and
-Carmela Russo are the reference authored encounters. More researched patients and stronger
+The current playable focus is the consultation. Nora Byrne, Samuel Taylor,
+Carmela Russo, and Wilhelmina Otten are the reference authored encounters. More researched patients and stronger
 procedural cases can use the same engine. Consultation results can then feed the
 wider practice, social graph, laboratory, and park without imposing a fixed
 milestone scheme.

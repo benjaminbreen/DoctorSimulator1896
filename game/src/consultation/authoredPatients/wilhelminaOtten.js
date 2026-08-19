@@ -284,7 +284,7 @@ export const WILHELMINA_OTTEN = Object.freeze({
     }),
   }),
   caseNote: Object.freeze({
-    minimumWords: 0, minimumEvidenceSelections: 2, maximumEvidenceSelections: 3,
+    minimumWords: 0, minimumEvidenceSelections: 1, maximumEvidenceSelections: 3,
     requiredFactIds: ['otten-joint-exam', 'otten-no-palsy-signs', 'otten-sister-fear', 'otten-work-history'],
   }),
   outcomeModel: Object.freeze({
@@ -293,12 +293,14 @@ export const WILHELMINA_OTTEN = Object.freeze({
     fee: Object.freeze({ full: 250, reduced: 125 }),
     immediateNarratives: Object.freeze({
       high: 'Mrs. Otten draws her gloves back on over the knotted joints with something like ceremony. You have told her what her hands are, and what they are not.',
-      middle: 'Mrs. Otten thanks you with reserve. The examination satisfied her; the explanation has not yet.',
-      low: 'Mrs. Otten rises stiffly and says the visit was dear for the word “rheumatism.” The thing she came to ask about was never named.',
+      // Neutral about what the player did: an examination may never have happened.
+      middle: 'Mrs. Otten thanks you with reserve. She has a name for her trouble now, but the explanation has not yet satisfied her.',
+      low: 'Mrs. Otten rises stiffly and says the visit was dear for so short a word. The thing she came to ask about was never named.',
     }),
     departureLines: Object.freeze({
       high: '“Not my sister’s illness. You will forgive me, Doctor, if I say that was worth the fee alone.”',
-      middle: '“I will try the soaks. If the shape goes on changing, I will be back with harder questions.”',
+      // Treatment-neutral: the player may have prescribed anything by now.
+      middle: '“I will try what you have set down. If the shape goes on changing, I will be back with harder questions.”',
       low: '“Old age I knew about before I climbed your stair, Doctor. Good day.”',
     }),
     followUpDepartureLine: '“Very well. I will keep the count of bad mornings and bring it to you.”',

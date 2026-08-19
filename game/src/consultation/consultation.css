@@ -1652,10 +1652,10 @@
 .gcon-deadline-actions button:hover { border-color: #e4b85f; background: rgba(33, 48, 52, .95); }
 
 .gcon-record-instruction { margin: 4px auto 12px; color: rgba(239, 229, 204, .68); text-align: center; }
-.gcon-record-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; max-height: min(38vh, 290px); overflow: auto; padding: 2px; }
-.gcon-record-facts button { min-height: 78px; padding: 10px; border: 1px solid rgba(184, 148, 77, .35); background: rgba(8, 19, 29, .75); color: #e4d6b4; text-align: left; cursor: pointer; }
-.gcon-record-facts button strong { display: block; margin-bottom: 5px; color: #d4ab5d; font: 600 12px/1.2 Georgia, serif; }
-.gcon-record-facts button span { display: block; color: rgba(238, 228, 201, .66); font: 10px/1.35 Georgia, serif; }
+.gcon-record-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; max-height: min(48vh, 400px); overflow: auto; padding: 2px; }
+.gcon-record-facts button { min-height: 84px; padding: 13px 15px; border: 1px solid rgba(184, 148, 77, .35); background: rgba(8, 19, 29, .75); color: #e4d6b4; text-align: left; cursor: pointer; }
+.gcon-record-facts button strong { display: block; margin-bottom: 6px; color: #d4ab5d; font: 600 15px/1.25 Georgia, serif; }
+.gcon-record-facts button span { display: block; color: rgba(238, 228, 201, .66); font: 12px/1.45 Georgia, serif; }
 .gcon-record-facts button.is-selected { border-color: #7fd79f; box-shadow: inset 0 0 0 1px rgba(110, 215, 147, .45), 0 0 12px rgba(67, 194, 114, .15); background: rgba(18, 54, 42, .78); }
 .gcon-record-facts + .gcon-notefield { min-height: 50px; margin-top: 10px; }
 
@@ -1681,7 +1681,7 @@
 }
 
 .gcon-result-modal {
-  --r-title: clamp(23px, 1.1rem + 2.3vw, 42px);
+  --r-title: clamp(19px, 1rem + 1.3vw, 30px);
   --r-quote: clamp(16px, .92rem + 1.05vw, 24px);
   --r-body: clamp(13px, .76rem + .3vw, 15.5px);
   --r-figure: clamp(27px, 1.1rem + 2.1vw, 46px);
@@ -2166,7 +2166,8 @@
 .gcon-rail.is-receded:hover,
 .gcon-rail.is-receded:focus-within { opacity: 1; }
 
-.gcon-stage--paper {
+.gcon-stage--paper,
+.gcon-paper {
   --gc-ink-0: #ece5d6;
   --gc-ink-1: #f7f2e7;
   --gc-line: rgba(62, 78, 66, 0.26);
@@ -2190,11 +2191,14 @@
 }
 
 .gcon-stage--paper .gcon-frame::after,
-.gcon-stage--paper::after {
+.gcon-stage--paper::after,
+.gcon-paper .gcon-frame::after,
+.gcon-paper::after {
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.36 0 0 0 0 0.32 0 0 0 0 0.24 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E") repeat 0 0 / 140px 140px;
 }
 
-.gcon-stage--paper .gcon-eyebrow { color: #4a7a5f; }
+.gcon-stage--paper .gcon-eyebrow,
+.gcon-paper .gcon-eyebrow { color: #4a7a5f; }
 
 /* diagnosis cards on paper */
 .gcon-stage--paper .gcon-card {
@@ -2260,7 +2264,8 @@
   border-color: rgba(62, 78, 66, 0.3);
   color: var(--gc-cream);
 }
-.gcon-stage--paper .gcon-hint-link { color: #2c6b4d; }
+.gcon-stage--paper .gcon-hint-link,
+.gcon-paper .gcon-hint-link { color: #2c6b4d; }
 .gcon-stage--paper .gcon-close { color: var(--gc-cream-dim); }
 
 /* bigger objects everywhere, with the hover transition they need */
@@ -2523,4 +2528,355 @@
   .gcon-exam-lines { display: none; }
 
   .gcon-exam-keys { display: none; }
+}
+
+/* ---------------- signing the record: same paper as the prescription ---------------- */
+
+.gcon-stage--paper .gcon-record-instruction { color: var(--gc-cream-dim); }
+
+.gcon-stage--paper .gcon-record-facts button {
+  border: 1px solid rgba(62, 78, 66, 0.2);
+  background: linear-gradient(180deg, #fffdf7, #f2ebdc);
+  color: var(--gc-cream);
+  box-shadow: 0 2px 5px rgba(60, 48, 30, 0.08);
+  transition: border-color .16s ease, background .16s ease;
+}
+.gcon-stage--paper .gcon-record-facts button strong { color: #274b38; }
+.gcon-stage--paper .gcon-record-facts button span { color: var(--gc-cream-dim); }
+.gcon-stage--paper .gcon-record-facts button:hover,
+.gcon-stage--paper .gcon-record-facts button.is-hot {
+  border-color: rgba(44, 107, 77, 0.6);
+  background: linear-gradient(180deg, #ffffff, #f6f0e2);
+}
+.gcon-stage--paper .gcon-record-facts button.is-selected {
+  position: relative;
+  border-color: #2c6b4d;
+  background: linear-gradient(180deg, #eaf5ee, #dcecdf);
+  box-shadow: 0 0 0 1px #2c6b4d, 0 3px 12px rgba(44, 107, 77, 0.22);
+}
+.gcon-stage--paper .gcon-record-facts button.is-selected strong { color: #17301f; }
+.gcon-stage--paper .gcon-record-facts button.is-selected::after {
+  content: '✓';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #2c6b4d;
+  color: #f4fbf6;
+  font: 700 10px/16px Georgia, serif;
+  text-align: center;
+}
+
+/* the note writes on ruled paper, not into a dark slab */
+.gcon-stage--paper .gcon-notefield {
+  border: 1px solid rgba(62, 78, 66, 0.3);
+  background:
+    repeating-linear-gradient(180deg, transparent 0 23px, rgba(62, 78, 66, 0.14) 23px 24px),
+    rgba(255, 255, 255, 0.62);
+  color: var(--gc-cream);
+  font: 13.5px/24px Georgia, serif;
+  padding-block: 5px;
+}
+.gcon-stage--paper .gcon-notefield::placeholder { color: var(--gc-cream-faint); }
+.gcon-stage--paper .gcon-notefield:focus-visible { outline: 1px solid #2c6b4d; }
+
+/* the chosen diagnosis rides atop the shelf page as one quiet line */
+.gcon-decision-chosen {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin: 0 0 10px;
+}
+.gcon-decision-chosen span {
+  color: var(--gc-cream-faint);
+  font: 700 10.5px/1.2 var(--gc-sc);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.gcon-decision-chosen strong { color: #17301f; font: 600 16px/1.2 Georgia, serif; }
+.gcon-decision-chosen .gcon-hint-link { margin-left: 8px; font-size: 11px; }
+
+/* the exit is a signature, not a hyperlink */
+.gcon-record-signoff {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 12px;
+}
+.gcon-record-count {
+  color: var(--gc-cream-dim);
+  font: 700 10.5px/1.2 var(--gc-sc);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.gcon-sign {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #1f5138;
+  padding: 11px 18px;
+  background: linear-gradient(180deg, #357a58, #275f44);
+  color: #f2f9f2;
+  font: 600 14px/1.2 Georgia, serif;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(31, 81, 56, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
+}
+.gcon-sign:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: linear-gradient(180deg, #3d8a64, #2c6b4d);
+  box-shadow: 0 8px 18px rgba(31, 81, 56, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+.gcon-sign:focus-visible { outline: 2px solid #2c6b4d; outline-offset: 3px; }
+.gcon-sign:disabled {
+  background: rgba(62, 78, 66, 0.1);
+  border-color: rgba(62, 78, 66, 0.25);
+  color: rgba(51, 45, 37, 0.4);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.gcon-sign kbd {
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 3px;
+  padding: 1px 6px;
+  background: rgba(0, 0, 0, 0.16);
+  font: 10px/1.4 var(--gc-sc);
+}
+.gcon-sign:disabled kbd { border-color: rgba(62, 78, 66, 0.25); background: transparent; }
+@media (hover: none), (pointer: coarse) {
+  .gcon-sign kbd { display: none; }
+}
+
+/* ---------------- the result on parchment ----------------
+   The dark room stays behind the veil; the reckoning happens on the same
+   paper the prescription was written on. */
+
+.gcon-paper.gcon-result-modal {
+  background:
+    radial-gradient(130% 80% at 50% 0%, rgba(255, 255, 255, 0.7), transparent 60%),
+    linear-gradient(172deg, #f8f4ea 0%, #efe8d9 55%, #e6dece 100%);
+  color: var(--gc-cream);
+  box-shadow:
+    0 34px 100px rgba(0, 0, 0, 0.74),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.55),
+    inset 0 0 34px rgba(120, 100, 70, 0.09);
+}
+
+.gcon-paper .gcon-result-header .gcon-eyebrow { color: #4a7a5f; }
+.gcon-paper.gcon-result-modal h2 {
+  color: #2b241a;
+  background: linear-gradient(178deg, #4a4030 4%, #241d12 60%, #100c07 98%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: none;
+}
+
+.gcon-paper .gcon-result-tabs {
+  border-color: rgba(62, 78, 66, 0.3);
+  background: rgba(255, 255, 255, 0.4);
+}
+.gcon-paper .gcon-result-tabs button { color: rgba(51, 45, 37, 0.55); }
+.gcon-paper .gcon-result-tabs button:hover { color: #2c6b4d; }
+.gcon-paper .gcon-result-tabs button.is-active {
+  background: rgba(44, 107, 77, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(44, 107, 77, 0.4);
+  color: #1f5138;
+}
+.gcon-paper .gcon-result-tabs button:focus-visible { outline-color: #2c6b4d; }
+
+.gcon-paper .gcon-result-departure { color: #241d12; text-shadow: none; }
+.gcon-paper .gcon-result-narrative { color: rgba(51, 45, 37, 0.82); }
+
+.gcon-paper .gcon-result-payment {
+  border-color: rgba(62, 78, 66, 0.28);
+  background: linear-gradient(100deg, rgba(255, 255, 255, 0.72), rgba(240, 233, 216, 0.6));
+  box-shadow: 0 2px 6px rgba(60, 48, 30, 0.09);
+}
+.gcon-paper .gcon-result-payment span { color: rgba(51, 45, 37, 0.6); }
+.gcon-paper .gcon-result-payment strong { color: #1f5138; text-shadow: none; }
+.gcon-paper .gcon-result-payment small { color: rgba(51, 45, 37, 0.72); }
+.gcon-paper .gcon-result-payment::after {
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.7) 50%, transparent 62%);
+}
+
+.gcon-paper .gcon-result-verdict span { color: rgba(51, 45, 37, 0.55); }
+.gcon-paper .gcon-result-verdict strong { color: #241d12; }
+.gcon-paper .gcon-result-bar {
+  border-color: rgba(62, 78, 66, 0.3);
+  background: rgba(62, 78, 66, 0.12);
+}
+
+.gcon-paper .gcon-result-stats div {
+  border-color: rgba(62, 78, 66, 0.2);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.66), rgba(240, 233, 216, 0.4));
+}
+.gcon-paper .gcon-result-stats div:hover { border-color: rgba(44, 107, 77, 0.45); background: rgba(255, 255, 255, 0.8); }
+.gcon-paper .gcon-result-stats strong { color: #241d12; text-shadow: none; }
+.gcon-paper .gcon-result-stats span { color: rgba(51, 45, 37, 0.55); }
+.gcon-paper .gcon-result-stats .is-positive strong { color: #1f6b43; }
+.gcon-paper .gcon-result-stats .is-negative strong { color: #9c3a30; }
+
+.gcon-paper .gcon-result-feedback p { border-left-color: rgba(44, 107, 77, 0.4); color: rgba(51, 45, 37, 0.8); }
+.gcon-paper .gcon-result-feedback strong { color: #1f5138; }
+.gcon-paper .gcon-result-feedback strong::after { color: rgba(31, 81, 56, 0.5); }
+
+/* the month verdict is a rubber stamp in the record margin */
+.gcon-paper .gcon-outcome-stamp {
+  border: 2px solid rgba(90, 78, 58, 0.55);
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 1.5px rgba(248, 244, 234, 0.9), inset 0 0 0 3px rgba(90, 78, 58, 0.35);
+  padding: 8px 18px 7px;
+  background: transparent;
+  color: rgba(90, 78, 58, 0.9);
+  font-size: calc(var(--r-label) + 2px);
+  letter-spacing: .22em;
+  transform: rotate(-2deg);
+  mix-blend-mode: multiply;
+}
+.gcon-paper .gcon-outcome-stamp.is-improved {
+  border-color: rgba(31, 107, 67, 0.6);
+  box-shadow: inset 0 0 0 1.5px rgba(248, 244, 234, 0.9), inset 0 0 0 3px rgba(31, 107, 67, 0.4);
+  background: transparent;
+  color: rgba(31, 107, 67, 0.92);
+}
+.gcon-paper .gcon-outcome-stamp.is-worse,
+.gcon-paper .gcon-outcome-stamp.is-harmed {
+  border-color: rgba(156, 44, 36, 0.6);
+  box-shadow: inset 0 0 0 1.5px rgba(248, 244, 234, 0.9), inset 0 0 0 3px rgba(156, 44, 36, 0.4);
+  background: transparent;
+  color: rgba(156, 44, 36, 0.92);
+}
+
+/* the letter: its own sheet, laid slightly askew on the parchment */
+.gcon-james {
+  position: relative;
+  max-width: 44rem;
+  margin: var(--r-gutter) auto;
+  padding: clamp(14px, 2.2vmin, 22px) clamp(16px, 2.8vmin, 30px) clamp(12px, 2vmin, 18px);
+  border: 1px solid rgba(62, 78, 66, 0.22);
+  background:
+    linear-gradient(174deg, #fffdf6 0%, #f7f1e2 70%, #f0e8d5 100%);
+  box-shadow: 0 6px 18px rgba(60, 48, 30, 0.16), 0 1px 3px rgba(60, 48, 30, 0.12);
+  text-align: left;
+  transform: rotate(-0.4deg);
+}
+.gcon-james::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  pointer-events: none;
+  border: 1px solid rgba(62, 78, 66, 0.12);
+}
+.gcon-james-head { margin-bottom: 10px; }
+.gcon-james-head span {
+  display: block;
+  color: rgba(51, 45, 37, 0.5);
+  font: 700 9.5px/1.3 var(--gc-sc);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.gcon-james-head h3 {
+  margin: 3px 0 0;
+  color: #241d12;
+  font: 400 calc(var(--r-body) + 4px)/1.2 Georgia, serif;
+}
+.gcon-james-waiting {
+  margin: 14px 0 10px;
+  color: rgba(51, 45, 37, 0.5);
+  font: italic var(--r-body)/1.5 Georgia, serif;
+}
+.gcon-james-dots::after {
+  content: '…';
+  display: inline-block;
+  animation: gcon-james-dots 1.2s steps(4, end) infinite;
+}
+.gcon-james-page { animation: gcon-james-arrive .6s cubic-bezier(.2, .75, .25, 1) both; }
+.gcon-james-body {
+  margin: 0;
+  color: rgba(36, 29, 18, 0.9);
+  font: calc(var(--r-body) + 1px)/1.7 Georgia, serif;
+  text-wrap: pretty;
+  white-space: pre-line;
+}
+.gcon-james-signature {
+  margin: 10px 0 0;
+  color: #241d12;
+  font: italic calc(var(--r-body) + 7px)/1.2 'Snell Roundhand', 'Segoe Script', 'Brush Script MT', cursive;
+  transform: rotate(-1.6deg);
+  transform-origin: left;
+}
+.gcon-james-note {
+  display: block;
+  margin-top: 10px;
+  color: rgba(51, 45, 37, 0.42);
+  font: italic 10.5px/1.4 Georgia, serif;
+}
+
+.gcon-paper .gcon-debrief {
+  max-width: 44rem;
+  margin-inline: auto;
+  border: 1px solid rgba(62, 78, 66, 0.2);
+  padding: 9px 12px;
+  background: rgba(255, 255, 255, 0.45);
+  text-align: left;
+}
+.gcon-paper .gcon-debrief summary { color: rgba(51, 45, 37, 0.6); }
+.gcon-paper .gcon-debrief summary:hover { color: #2c6b4d; }
+.gcon-paper .gcon-debrief p { color: rgba(51, 45, 37, 0.82); }
+
+.gcon-paper .gcon-result-footer { border-top-color: rgba(62, 78, 66, 0.24); }
+.gcon-paper .gcon-result-footer > p { color: rgba(51, 45, 37, 0.55); }
+.gcon-paper .gcon-result-actions button {
+  border-color: rgba(62, 78, 66, 0.3);
+  background: linear-gradient(180deg, #fffdf7, #f2ebdc);
+  color: var(--gc-cream);
+  box-shadow: 0 2px 5px rgba(60, 48, 30, 0.08);
+}
+.gcon-paper .gcon-result-actions button:hover {
+  border-color: rgba(44, 107, 77, 0.55);
+  background: linear-gradient(180deg, #ffffff, #f6f1e6);
+  box-shadow: 0 8px 18px rgba(60, 48, 30, 0.18);
+}
+.gcon-paper .gcon-result-actions button strong { color: #241d12; }
+.gcon-paper .gcon-result-actions button span { color: rgba(51, 45, 37, 0.55); }
+.gcon-paper .gcon-result-actions button.is-primary {
+  border-color: #1f5138;
+  background: linear-gradient(180deg, #357a58, #275f44);
+  box-shadow: 0 3px 10px rgba(31, 81, 56, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+.gcon-paper .gcon-result-actions button.is-primary:hover {
+  background: linear-gradient(180deg, #3d8a64, #2c6b4d);
+}
+.gcon-paper .gcon-result-actions button.is-primary strong { color: #f2f9f2; }
+.gcon-paper .gcon-result-actions button.is-primary span { color: rgba(242, 249, 242, 0.7); }
+.gcon-paper .gcon-result-actions button.is-primary kbd {
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.16);
+  color: rgba(242, 249, 242, 0.85);
+}
+.gcon-paper .gcon-result-actions button:focus-visible { outline-color: #2c6b4d; }
+.gcon-paper .gcon-result-actions kbd {
+  border-color: rgba(62, 78, 66, 0.3);
+  background: rgba(255, 255, 255, 0.5);
+  color: rgba(51, 45, 37, 0.6);
+}
+
+@keyframes gcon-james-arrive {
+  from { opacity: 0; transform: translateY(10px) rotate(0.4deg); }
+}
+@keyframes gcon-james-dots {
+  0% { clip-path: inset(0 100% 0 0); }
+  100% { clip-path: inset(0 -20% 0 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gcon-james-page { animation: none; }
+  .gcon-james-dots::after { animation: none; }
+  .gcon-sign:hover:not(:disabled) { transform: none; }
 }

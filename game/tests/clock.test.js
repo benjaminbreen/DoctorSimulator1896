@@ -18,11 +18,11 @@ test('the civil clock opens on Monday 15 June 1896 at half past nine', () => {
   assert.equal(GAME_START.dayOfYear, dayOfYear(GAME_START));
 });
 
-test('ambient time advances at four game seconds per real second', () => {
+test('ambient time advances at eight game seconds per real second', () => {
   const clock = createWorldClock();
   clock.tick(15);
-  assert.equal(clock.getSnapshot().logical.totalMinutes, 9.5 * 60 + 1);
-  assert.equal(clock.getSnapshot().visual.totalMinutes, 9.5 * 60 + 1);
+  assert.equal(clock.getSnapshot().logical.totalMinutes, 9.5 * 60 + 2);
+  assert.equal(clock.getSnapshot().visual.totalMinutes, 9.5 * 60 + 2);
 });
 
 test('pause stops ambient time', () => {
@@ -32,7 +32,7 @@ test('pause stops ambient time', () => {
   assert.equal(clock.getSnapshot().logical.hours, 9.5);
   clock.setPaused(false);
   clock.tick(15);
-  assert.equal(clock.getSnapshot().logical.totalMinutes, 9.5 * 60 + 1);
+  assert.equal(clock.getSnapshot().logical.totalMinutes, 9.5 * 60 + 2);
 });
 
 test('action time is logical immediately and catches up visually', () => {

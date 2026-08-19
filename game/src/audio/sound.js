@@ -135,6 +135,12 @@ const EFFECTS = {
     tone({ frequency: 523.25, duration: 0.28, gain: 0.1 });
     tone({ frequency: 659.25, duration: 0.4, gain: 0.12, when: 0.12 });
   },
+  // A card being set down: paper brush, then a low respectful chime.
+  'event-card': () => {
+    noise({ duration: 0.07, gain: 0.05, highpass: 700 });
+    tone({ frequency: 392, duration: 0.22, gain: 0.05, type: 'triangle', when: 0.03 });
+    tone({ frequency: 523.25, duration: 0.3, gain: 0.035, when: 0.1 });
+  },
 };
 
 export function playSfx(name) {

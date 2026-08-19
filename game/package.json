@@ -10,6 +10,7 @@
     "playtest:consult": "node scripts/consultation-playtest.mjs",
     "playtest:samuel": "node scripts/consultation-playtest.mjs --patient=samuel",
     "playtest:carmela": "node scripts/consultation-playtest.mjs --patient=carmela",
+    "events:proof": "node scripts/event-proof.mjs",
     "test": "node --test 'tests/*.test.js'"
   },
   "dependencies": {

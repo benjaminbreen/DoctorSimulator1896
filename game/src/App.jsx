@@ -28,15 +28,15 @@ import { renderLunaDialogue } from './consultation/lunaRenderer.js';
 import { setConsultationMode, setGamePaused } from './input/uiMode.js';
 import { setExaminationPresentation } from './consultation/examPresentation.js';
 import { seatFramingForPatient, setConsultationSeat } from './consultation/seatFraming.js';
-import {
-  createConsultationPatients,
-  DEFAULT_TECHNICAL_PATIENT_SEEDS,
-} from './consultation/patients.js';
-import { nextSeed } from '../../shared/patients/index.js';
+import { createConsultationPatients } from './consultation/patients.js';
 import { createWorldClock } from './world/clock.js';
 import { createDaySchedule } from './world/daySchedule.js';
 import { createCallerDay } from './world/callers.js';
+import { createEventDay } from './world/streetEvents.js';
 import { adjustStanding } from './world/standing.js';
+import { addCents } from './world/purse.js';
+import { takePressItems } from './world/press.js';
+import { takeReferral } from './world/referrals.js';
 import { beginErrand } from './world/errand.js';
 import { getRunSeed } from './world/runSeed.js';
 import DayFlow from './hud/DayFlow.jsx';
@@ -52,6 +52,7 @@ const NpcPanel = lazy(() => import('./panel/NpcPanel.jsx'));
 const PatientPortraitPanel = lazy(() => import('./panel/PatientPortraitPanel.jsx'));
 const ShotBar = lazy(() => import('./shots/ShotBar.jsx'));
 const ConsultationDevPanel = lazy(() => import('./consultation/ConsultationDevPanel.jsx'));
+const EventDevPanel = lazy(() => import('./hud/EventDevPanel.jsx'));
 const ConsultationView = lazy(() => import('./consultation/ConsultationView.jsx'));
 
 const pageParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
@@ -70,6 +71,8 @@ const devConsult = Boolean(pageParams?.has('devconsult'));
 // in Central Park.
 const bootZone = pageParams?.get('zone');
 const patientPortraitReview = Boolean(pageParams?.has('patientPortraits'));
+// ?devevents=1 opens the street-event and caller test panel.
+const devEvents = Boolean(pageParams?.has('devevents'));
 
 export default function App() {
   const worldClock = useMemo(() => createWorldClock(), []);
@@ -94,13 +97,30 @@ export default function App() {
   }, [worldClock]);
   const keyboard = useMemo(() => createKeyboard(), []);
   const look = useMemo(() => createLook(runtime), [runtime]);
-  const [patientSeeds, setPatientSeeds] = useState(() => [...DEFAULT_TECHNICAL_PATIENT_SEEDS]);
-  const consultationPatients = useMemo(() => createConsultationPatients(patientSeeds), [patientSeeds]);
+  // Day one is the authored cast; each later day rolls procedural citizens
+  // from the day seed. Rerolling the morning list bumps the nonce, which
+  // swaps in a fresh procedural cast even on day one.
+  const [dayIndex, setDayIndex] = useState(0);
+  const [morning, setMorning] = useState(null);
+  const [castNonce, setCastNonce] = useState(0);
+  // A street-booked referral takes tomorrow's first slot.
+  const [referral, setReferral] = useState(null);
+  const daySeed = (getRunSeed() ^ Math.imul(dayIndex, 0x85ebca6b) ^ Math.imul(castNonce, 0x27d4eb2f)) >>> 0;
+  const consultationPatients = useMemo(
+    () => createConsultationPatients(dayIndex > 0 || castNonce > 0
+      ? { daySeed, dayIndex: castNonce ? `${dayIndex}r${castNonce}` : dayIndex, count: 4, referral }
+      : null),
+    [daySeed, dayIndex, castNonce, referral],
+  );
+  const regenerateCast = useCallback(() => setCastNonce((nonce) => nonce + 1), []);
   // The office opens empty: patients arrive by appointment and walk in.
   const actorRuntime = useMemo(() => createActorRuntime([]), []);
   const consultationRuntime = useMemo(
     () => createConsultationRuntime(consultationPatients, renderLunaDialogue, {
-      onAdvanceMinutes: (minutes) => worldClock.advanceMinutes(minutes, {
+      // Consultations eat double clock time. The engine's own budget stays at
+      // its authored scale (patients carry their own minutes), so only the
+      // world clock sees the doubling.
+      onAdvanceMinutes: (minutes) => worldClock.advanceMinutes(minutes * 2, {
         reason: 'consultation',
       }),
     }),
@@ -156,12 +176,14 @@ export default function App() {
     });
   }, [worldClock]);
   // The working day: seeded appointment order and walk-in callers. Both are
-  // deterministic per run seed; DayFlow presents them.
+  // deterministic per run seed; DayFlow presents them. Sleeping advances
+  // dayIndex, which reseeds all three and remounts DayFlow.
   const daySchedule = useMemo(
-    () => createDaySchedule({ seed: getRunSeed(), patientIds: consultationPatients.map((patient) => patient.id) }),
-    [consultationPatients],
+    () => createDaySchedule({ seed: daySeed, patientIds: consultationPatients.map((patient) => patient.id) }),
+    [consultationPatients, daySeed],
   );
-  const callerDay = useMemo(() => createCallerDay({ seed: (getRunSeed() ^ 0x9e3779b9) >>> 0 }), []);
+  const callerDay = useMemo(() => createCallerDay({ seed: (daySeed ^ 0x9e3779b9) >>> 0 }), [daySeed]);
+  const eventDay = useMemo(() => createEventDay({ seed: (daySeed ^ 0x51ed2701) >>> 0 }), [daySeed]);
 
   // Tracks which patient's consultation is live; bumping the token remounts
   // the actor so the walk-in entrance plays when they are summoned.
@@ -182,6 +204,7 @@ export default function App() {
     daySchedule.markKept(state.patientId);
     if (state.stage === 'result' && state.result && !settledResultsRef.current.has(state.patientId)) {
       settledResultsRef.current.add(state.patientId);
+      addCents(Number(state.result.immediate?.paymentCents) || 0);
       const satisfaction = state.result.immediate?.satisfaction ?? 50;
       const reputation = Number(state.result.immediate?.reputation) || 0;
       const delta = reputation !== 0 ? reputation : (satisfaction >= 70 ? 4 : satisfaction >= 43 ? 1 : -3);
@@ -333,6 +356,34 @@ export default function App() {
     });
   }, [consultationRuntime, runtime, worldClock]);
 
+  // Sleeping ends the day: the clock jumps to eight the next morning, the
+  // day modules reseed, and the morning card carries what the papers took.
+  const startNextDay = useCallback(() => {
+    clearConsultation();
+    settledResultsRef.current.clear();
+    worldClock.advanceToHour(8, { animate: false });
+    const promised = takeReferral();
+    setReferral(promised);
+    setDayIndex((day) => day + 1);
+    setCastNonce(0);
+    setMorning({
+      press: takePressItems(),
+      referralName: promised ? `Miss ${promised.familyName}` : null,
+    });
+  }, [clearConsultation, worldClock]);
+
+  // The messenger flow: back to the practice without starting a consultation.
+  // Returns false only when travel could not happen at all.
+  const goToOffice = useCallback(() => {
+    const originId = runtime.values.zone;
+    if (originId === 'consulting-office') return true;
+    if (!requestFastTravel(runtime, 'consulting-office')) return false;
+    worldClock.advanceMinutes(travelMinutesBetween(originId, 'consulting-office'), {
+      reason: 'travel',
+    });
+    return true;
+  }, [runtime, worldClock]);
+
   const leaveConsultation = useCallback((destination) => {
     clearConsultation();
     const zoneId = destination === 'street' ? 'central-park' : 'waiting-room';
@@ -380,12 +431,12 @@ export default function App() {
                 {devConsult ? (
                   <ConsultationDevPanel
                     runtime={consultationRuntime}
-                    onRegenerate={() => setPatientSeeds((current) => current.map(nextSeed))}
+                    onRegenerate={regenerateCast}
                   />
                 ) : (
                   <ConsultationView
                     runtime={consultationRuntime}
-                    onRegenerate={() => setPatientSeeds((current) => current.map(nextSeed))}
+                    onRegenerate={regenerateCast}
                     onDismissPatient={() => actorRuntime.setSingle(null)}
                     onNextPatient={clearConsultation}
                     onLeaveConsultation={leaveConsultation}
@@ -394,15 +445,27 @@ export default function App() {
               </Suspense>
             )}
             <DayFlow
+              key={dayIndex}
               worldClock={worldClock}
               schedule={daySchedule}
               callerDay={callerDay}
+              eventDay={eventDay}
+              runtime={runtime}
               patients={consultationPatients}
               zone={zone}
               consultActive={consultActive}
               suspended={usingInstrument || examPresenting || paused}
               onSeePatient={seePatient}
+              onGoToOffice={goToOffice}
+              onNextDay={startNextDay}
+              morning={morning}
+              onMorningDone={() => setMorning(null)}
             />
+            {devEvents && (
+              <Suspense fallback={null}>
+                <EventDevPanel callerDay={callerDay} eventDay={eventDay} worldClock={worldClock} />
+              </Suspense>
+            )}
             {!usingInstrument && <DebugHud showStats={tuningOpen} />}
             <InstrumentPanel />
             <ExaminePanel examining={objectExamination} worldClock={worldClock} />

@@ -236,13 +236,15 @@ test('a complete consultation reaches distinct reputation and record ledgers', (
   });
   state = consultationTransition(state, patient, { type: 'submit-case-note' });
   assert.equal(state.stage, 'result');
-  assert.deepEqual(state.result, {
-    reputation: 12,
-    record: 8,
-    noteCoverage: 100,
-    diagnosisId: 'a-diagnosis-1',
-    treatmentIds: ['drug-morphine'],
-  });
+  // Technical patients now carry a generated outcome model, so the result is
+  // the full authored-path outcome rather than the bare ledger pair.
+  assert.equal(state.result.diagnosisId, 'a-diagnosis-1');
+  assert.deepEqual(state.result.treatmentIds, ['drug-morphine']);
+  assert.equal(state.result.noteCoverage, 100);
+  assert.ok(typeof state.result.reputation === 'number');
+  assert.ok(typeof state.result.record === 'number');
+  assert.ok(Number(state.result.immediate.paymentCents) >= 0);
+  assert.notEqual(state.result.reputation, state.result.record, 'ledgers stay distinct');
 });
 
 test('the runtime publishes states and its offline renderer is deterministic', () => {

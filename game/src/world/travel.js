@@ -9,8 +9,8 @@ const PRACTICE_ZONES = new Set(['consulting-office', 'waiting-room', 'foyer']);
 // rooms in the practice is brief; crossing the city consumes part of the day.
 export function travelMinutesBetween(fromZone, toZone) {
   if (!fromZone || !toZone || fromZone === toZone) return 0;
-  if (PRACTICE_ZONES.has(fromZone) && PRACTICE_ZONES.has(toZone)) return 2;
-  return 20;
+  if (PRACTICE_ZONES.has(fromZone) && PRACTICE_ZONES.has(toZone)) return 4;
+  return 40;
 }
 
 // Fast travel uses the same one-shot arrival contract as doors. Keeping the
@@ -35,7 +35,7 @@ export const FAST_TRAVEL_DESTINATIONS = Object.freeze([
     label: 'Your Waiting Room',
     detail: 'The practice',
     noticeLabel: 'your waiting room',
-    to: { zone: 'waiting-room', spawn: [0, 0, 4.6], facing: [0, 0, -1] },
+    to: { zone: 'waiting-room', spawn: [1.4, 0, 2.2], facing: [0, 0, -1] },
   },
   {
     id: 'consulting-office',

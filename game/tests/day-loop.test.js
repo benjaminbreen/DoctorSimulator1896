@@ -24,11 +24,11 @@ test('the schedule is a seeded shuffle into the fixed slots', () => {
 test('warning fires once, lateness respects the grace period', () => {
   const schedule = createDaySchedule({ seed: 3, patientIds: PATIENTS });
   const first = schedule.list()[0];
-  assert.equal(schedule.takeWarning(first.hours - 10 / 60), null);
-  assert.ok(schedule.takeWarning(first.hours - 4 / 60));
-  assert.equal(schedule.takeWarning(first.hours - 3 / 60), null, 'warned only once');
-  assert.equal(schedule.overdue(first.hours + 2 / 60), null, 'inside grace');
-  assert.equal(schedule.overdue(first.hours + 4 / 60)?.patientId, first.patientId);
+  assert.equal(schedule.takeWarning(first.hours - 12 / 60), null);
+  assert.ok(schedule.takeWarning(first.hours - 9 / 60));
+  assert.equal(schedule.takeWarning(first.hours - 8 / 60), null, 'warned only once');
+  assert.equal(schedule.overdue(first.hours + 5 / 60), null, 'inside grace');
+  assert.equal(schedule.overdue(first.hours + 7 / 60)?.patientId, first.patientId);
 });
 
 test('kept and forfeited appointments resolve the day', () => {
@@ -54,9 +54,11 @@ test('callers are deterministic per seed and honour patience', () => {
   if (caller) {
     assert.equal(a.due(caller.hours - 0.01), null);
     assert.ok(a.due(caller.hours + 0.01));
-    const lapsed = a.takeLapsed(caller.hours + 1.0);
+    // A caller at the door is held: patience cannot run out under the card.
+    assert.equal(a.takeLapsed(caller.hours + 2.0), null, 'presented caller does not lapse');
+    const lapsed = b.takeLapsed(caller.hours + 2.0);
     assert.equal(lapsed?.identity.name, caller.identity.name);
-    assert.equal(a.due(caller.hours + 0.01), null, 'lapsed callers are gone');
+    assert.equal(b.due(caller.hours + 0.01), null, 'lapsed callers are gone');
   }
 });
 

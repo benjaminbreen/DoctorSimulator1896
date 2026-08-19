@@ -74,12 +74,39 @@ function periodRecord(patient, state, result) {
   };
 }
 
+// What James actually reads: the visit as it happened, in the doctor's and
+// patient's own words, trimmed to fit the route's body limit.
+function transcriptForModel(state) {
+  const cut = (text, length = 240) => String(text || '').slice(0, length);
+  return state.history
+    .filter((event) => ['opening', 'speech', 'examination'].includes(event.kind))
+    .slice(-16)
+    .map((event) => {
+      if (event.kind === 'opening') return { patient: cut(event.dialogue) };
+      if (event.kind === 'speech') return { doctor: cut(event.input), patient: cut(event.dialogue) };
+      return { examined: event.label, found: cut(event.reply) };
+    });
+}
+
 export function buildJamesModelPayload(patient, state, result) {
   return {
     schemaVersion: 1,
     task: 'render-william-james-assessment',
-    record: periodRecord(patient, state, result),
-    instruction: 'Explain the fixed scores using only the period record. Do not change any score or claim modern diagnostic knowledge.',
+    record: {
+      patient: patientForModel(patient),
+      transcript: transcriptForModel(state),
+      interpretations: state.history
+        .filter((event) => event.kind === 'interpretation')
+        .map((event) => String(event.text || '').slice(0, 240)),
+      diagnosis: patient.diagnoses.find((item) => item.id === state.diagnosisId)?.label || null,
+      treatment: resolveTreatmentPlan(patient, state.treatmentIds)?.treatments.map((item) => item.label).join('; ') || null,
+      caseNote: String(state.caseNote || '').slice(0, 600),
+      selectedEvidence: (state.caseRecordFactIds || [])
+        .map((id) => patient.facts.find((fact) => fact.id === id)?.label)
+        .filter(Boolean),
+      howTheVisitEnded: result.immediate?.departureLine || null,
+      oneMonthLater: result.oneMonth?.narrative || null,
+    },
   };
 }
 

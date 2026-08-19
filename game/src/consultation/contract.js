@@ -17,8 +17,8 @@ function ids(items) {
 export function validateConsultationPatient(patient) {
   const errors = [];
   if (!patient?.id) return ['patient id is required'];
-  if (!['technical-fixture', 'research-draft', 'verified'].includes(patient.contentStatus)) {
-    errors.push('contentStatus must be technical-fixture, research-draft, or verified');
+  if (!['technical-fixture', 'procedural', 'research-draft', 'verified'].includes(patient.contentStatus)) {
+    errors.push('contentStatus must be technical-fixture, procedural, research-draft, or verified');
   }
   if (!patient.actor?.recipe) errors.push('an actor recipe is required');
   if (patient.profileStatus === 'draft-procedural' && !patient.profile?.identity?.fullName) {

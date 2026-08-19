@@ -38,8 +38,11 @@ earlier consultation proposals.
 - Thought mode presents three written interpretations plus a smaller custom option.
 - Custom text is genuine open inquiry. It may discover relevant facts that no
   displayed choice states explicitly.
-- The simulation decides what is true and what changes. An LLM may classify player
-  intent and render a response, but it may not invent ground truth or assign rewards.
+- Within consultations, the simulation decides what is true. An LLM may classify
+  player intent and render a response, but it may not invent patient facts or
+  assign consultation rewards.
+- Outside consultations, the LLM may decide outcomes (drug mixing, device
+  tinkering, event twists). Unpredictability there is a feature, not a bug.
 - LLM calls are optional fallbacks for custom input or exhausted branches. The
   authored and procedural systems must remain playable without them.
 - The runtime model is GPT-5.6 Luna at zero reasoning effort, reached through a
@@ -63,10 +66,15 @@ earlier consultation proposals.
 
 ## Time and outcomes
 
-- The simulation clock advances at four game seconds per real second during active
-  play.
-- Dialogue advances time by five game minutes.
-- Examination advances time by three game minutes.
+- The simulation clock advances at eight game seconds per real second during
+  active play. Cross-town travel costs 40 minutes; rooms within the practice, 4.
+- Consultation actions keep their authored minute costs internally (dialogue
+  five, examination three), but charge the world clock double, so a full
+  consultation fills about an hour of the day.
+- A day ends by retiring (prompted hourly from 9 p.m.) or, unavoidably, at
+  midnight. Sleep advances the clock to 8 a.m., reseeds the day's
+  appointments, callers, and street events, and opens a morning schedule card.
+  There is no page reload between days.
 - A close examination of an object advances time by the minutes its procedures
   cost, and lowers neurasthenia once per subject, capped at five points.
 - Thought choices do not advance time.

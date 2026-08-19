@@ -1,0 +1,104 @@
+/* Dev chrome, deliberately plain: this panel never ships to players. */
+
+.eventdev {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 80;
+  width: 250px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  pointer-events: auto;
+  background: rgba(10, 12, 16, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  padding: 10px;
+  font: 12px/1.4 ui-monospace, monospace;
+  color: #d5d9e0;
+}
+
+.eventdev-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.eventdev button {
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: inherit;
+  font: inherit;
+  padding: 2px 8px;
+}
+
+.eventdev button:hover { background: rgba(255, 255, 255, 0.16); }
+
+.eventdev-seed {
+  display: flex;
+  gap: 6px;
+  align-items: end;
+  margin-bottom: 6px;
+}
+
+.eventdev-seed label { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+
+.eventdev-seed input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: inherit;
+  font: inherit;
+  padding: 2px 6px;
+}
+
+.eventdev-label {
+  margin: 10px 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.eventdev-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 4px;
+}
+
+.eventdev-item span { opacity: 0.55; float: right; }
+
+.eventdev-item small {
+  margin-left: 5px;
+  color: #e4a861;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.eventdev-schedule {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  opacity: 0.85;
+}
+
+.eventdev-hint { margin-top: 8px; opacity: 0.55; }
+
+.eventdev-reopen {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 80;
+  pointer-events: auto;
+  background: rgba(10, 12, 16, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: #d5d9e0;
+  font: 12px ui-monospace, monospace;
+  padding: 4px 10px;
+  cursor: pointer;
+}

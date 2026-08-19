@@ -33,7 +33,7 @@ export const TREATMENT_CATEGORIES = Object.freeze([
 function inert(monthText, extra = {}) {
   return {
     quality: 3, patientAcceptance: 2, recovery: 0, cost: -1,
-    immediateText: 'The direction is clear enough to follow.',
+    immediateText: 'The patient takes the instruction without objection.',
     monthText, modernText: 'No active ingredient in this course addresses the underlying process.',
     ...extra,
   };

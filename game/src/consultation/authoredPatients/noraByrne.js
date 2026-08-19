@@ -482,7 +482,7 @@ export const NORA_BYRNE = Object.freeze({
   }),
   caseNote: Object.freeze({
     minimumWords: 0,
-    minimumEvidenceSelections: 2,
+    minimumEvidenceSelections: 1,
     maximumEvidenceSelections: 3,
     requiredFactIds: ['nora-bereavement', 'nora-automatic-writing', 'nora-missing-time', 'nora-sensory-pattern', 'nora-work-risk'],
   }),

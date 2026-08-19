@@ -14,8 +14,10 @@ game, own package, `npm run game`, port 5175).
   `docs/decisions.md` before doing anything.
 - Historical claims need Ben's verification before becoming game content;
   `docs/research.md` is a draft, not a source of truth.
-- Every LLM-facing system sits on deterministic ground truth. The LLM
-  renders; the simulation decides. No exceptions.
+- LLM-decided outcomes are welcome. Unpredictable results (drug mixing,
+  device tinkering, event twists) are part of what makes the game
+  interesting. Consultations keep their authored ground truth; elsewhere,
+  let the model judge. Do not invent new rules restricting this.
 - Reuse comes from `../Darwin-Game v1` by copying specific modules
   (paths in `docs/engine-reuse.md`), never by copying its god-objects
   (`store.js`, `ThreeHUD.jsx`, `ThreeDarwinGame.jsx`) whole.

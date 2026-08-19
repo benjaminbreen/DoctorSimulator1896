@@ -1,4 +1,4 @@
-import { buildDialogueModelPayload } from './modelBoundary.js';
+import { buildDialogueModelPayload, buildJamesModelPayload } from './modelBoundary.js';
 import { renderOfflineDialogue } from './offlineRenderer.js';
 
 const ROUTE = '/api/consult';
@@ -45,4 +45,26 @@ export function renderLunaDialogue(request, patient) {
   const offline = renderOfflineDialogue(request, patient);
   if (!request.custom || request.resolvedRuleId || offline.appraisal.terminates) return offline;
   return askModel(request, patient, offline);
+}
+
+// James reads the whole visit and writes in his own hand. Any failure returns
+// null; the caller falls back to the templated letter in the result.
+export async function renderJamesLetter(patient, state, result) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const response = await fetch(ROUTE, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(buildJamesModelPayload(patient, state, result)),
+      signal: controller.signal,
+    });
+    if (!response.ok) return null;
+    const reply = await response.json();
+    return typeof reply?.letter === 'string' && reply.letter.trim() ? reply.letter.trim() : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
 }

@@ -362,7 +362,7 @@ export const SAMUEL_TAYLOR = Object.freeze({
     }),
   }),
   caseNote: Object.freeze({
-    minimumWords: 0, minimumEvidenceSelections: 2, maximumEvidenceSelections: 3,
+    minimumWords: 0, minimumEvidenceSelections: 1, maximumEvidenceSelections: 3,
     requiredFactIds: ['samuel-course', 'samuel-digestion', 'samuel-metal-work', 'samuel-shop-hygiene', 'samuel-income', 'samuel-gum-line', 'samuel-wrist-weakness', 'samuel-safety'],
   }),
   outcomeModel: Object.freeze({
@@ -371,7 +371,7 @@ export const SAMUEL_TAYLOR = Object.freeze({
     fee: Object.freeze({ full: 300, reduced: 150 }),
     immediateNarratives: Object.freeze({
       high: 'Mr. Taylor rereads your instructions as carefully as a proof and folds them into his breast pocket. He believes the visit has treated him as a craftsman with a solvable problem.',
-      middle: 'Mr. Taylor leaves with a reserved nod. He has not decided whether your account will stand when he reads it again at home.',
+      middle: 'Mr. Taylor leaves with a reserved nod. He is not yet sure he believes your explanation.',
       low: 'Mr. Taylor rises stiffly and returns the paper to your desk. He believes you judged his character before you examined his work or body.',
     }),
     departureLines: Object.freeze({

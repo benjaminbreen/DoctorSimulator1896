@@ -4,7 +4,7 @@
 const SECONDS_PER_DAY = 24 * 60 * 60;
 const SECONDS_PER_MINUTE = 60;
 
-export const DEFAULT_CLOCK_RATE = 4;
+export const DEFAULT_CLOCK_RATE = 8;
 export const GAME_START = Object.freeze({
   year: 1896,
   month: 6,

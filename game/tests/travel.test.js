@@ -29,8 +29,8 @@ test('travel sets the zone and stores the arrival once', () => {
 });
 
 test('fast travel costs time without charging for staying put', () => {
-  assert.equal(travelMinutesBetween('consulting-office', 'waiting-room'), 2);
-  assert.equal(travelMinutesBetween('central-park', 'consulting-office'), 20);
+  assert.equal(travelMinutesBetween('consulting-office', 'waiting-room'), 4);
+  assert.equal(travelMinutesBetween('central-park', 'consulting-office'), 40);
   assert.equal(travelMinutesBetween('central-park', 'central-park'), 0);
 });
 

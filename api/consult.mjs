@@ -66,6 +66,26 @@ function isDialoguePayload(body) {
     && body.player.text.trim().length > 0;
 }
 
+const JAMES_SYSTEM = `You are William James of Harvard, writing in 1896 a short private letter to a young New York physician whose case record you have just read. The record contains the whole visit: what the doctor asked, in his own words, what the patient answered, what was examined and found, the diagnosis, the prescription, and how it went a month on.
+
+Write as James: blunt, warm, funny where the record earns it, plain about what was botched. Quote or closely paraphrase at least one thing the doctor actually said or did — the letter must read as if you sat in the corner of that consulting room. Praise what deserves praise in one clause, not a paragraph. If the treatment was quackery or the questioning timid, say so without cruelty. One digression of a single clause is allowed; no more.
+
+Hard rules: no numbers, grades, or scores of any kind. No facts beyond the record: never name a person, relation, symptom, or event the record does not contain. No medical knowledge unavailable in 1896. 60 to 120 words between salutation and signature — stop early rather than run long. Open "My dear Doctor," and sign "Wm. James".`;
+
+function isJamesPayload(body) {
+  return body?.task === 'render-william-james-assessment'
+    && body.schemaVersion === 1
+    && typeof body.record?.patient?.name === 'string'
+    && Array.isArray(body.record?.transcript);
+}
+
+const JAMES_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: { letter: { type: 'string' } },
+  required: ['letter'],
+};
+
 // Constraining disclosedNow to the allowed ids means the model cannot name an
 // unauthorized fact at all. The engine still rejects any that slip through.
 function replySchema(allowedIds) {
@@ -118,41 +138,36 @@ export async function POST(request) {
   } catch {
     return json({ error: 'invalid payload' }, 400);
   }
+  if (isJamesPayload(payload)) {
+    try {
+      const reply = await callModel(apiKey, {
+        instructions: JAMES_SYSTEM,
+        input: JSON.stringify(payload.record),
+        schemaName: 'james_letter',
+        schema: JAMES_SCHEMA,
+        maxTokens: 600,
+      });
+      return json({ letter: String(reply.letter || '').trim() }, 200);
+    } catch (error) {
+      console.error(`james letter failed: ${error.message}`);
+      return json({ error: 'assessment service failed' }, 502);
+    }
+  }
+
   if (!isDialoguePayload(payload)) return json({ error: 'invalid payload' }, 400);
 
   const allowedIds = (payload.allowedNewFacts || []).map((fact) => String(fact.id));
   // `output` described the reply shape before the JSON schema did that job.
   const { output, ...record } = payload;
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
   try {
-    const upstream = await fetch(ENDPOINT, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model: MODEL,
-        reasoning: { effort: 'none' },
-        max_output_tokens: MAX_OUTPUT_TOKENS,
-        instructions: SYSTEM,
-        input: JSON.stringify(record),
-        text: {
-          format: {
-            type: 'json_schema',
-            name: 'patient_reply',
-            strict: true,
-            schema: replySchema(allowedIds),
-          },
-        },
-      }),
+    const reply = await callModel(apiKey, {
+      instructions: SYSTEM,
+      input: JSON.stringify(record),
+      schemaName: 'patient_reply',
+      schema: replySchema(allowedIds),
+      maxTokens: MAX_OUTPUT_TOKENS,
     });
-    if (!upstream.ok) {
-      const detail = await upstream.text();
-      console.error(`consult upstream ${upstream.status}: ${detail.slice(0, 500)}`);
-      return json({ error: 'dialogue service failed' }, 502);
-    }
-    const reply = JSON.parse(replyText(await upstream.json()));
     return json({
       dialogue: String(reply.dialogue || '').trim(),
       behavior: String(reply.behavior || '').trim(),
@@ -164,6 +179,33 @@ export async function POST(request) {
   } catch (error) {
     console.error(`consult failed: ${error.message}`);
     return json({ error: 'dialogue service failed' }, 502);
+  }
+}
+
+async function callModel(apiKey, { instructions, input, schemaName, schema, maxTokens }) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+  try {
+    const upstream = await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: MODEL,
+        reasoning: { effort: 'none' },
+        max_output_tokens: maxTokens,
+        instructions,
+        input,
+        text: {
+          format: { type: 'json_schema', name: schemaName, strict: true, schema },
+        },
+      }),
+    });
+    if (!upstream.ok) {
+      const detail = await upstream.text();
+      throw new Error(`upstream ${upstream.status}: ${detail.slice(0, 500)}`);
+    }
+    return JSON.parse(replyText(await upstream.json()));
   } finally {
     clearTimeout(timer);
   }

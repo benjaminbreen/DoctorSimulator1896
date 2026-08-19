@@ -173,6 +173,18 @@ export function spendCents(amount) {
   return true;
 }
 
+// Pay an amount into the purse, largest pieces first.
+export function addCents(amount) {
+  let remaining = Math.max(0, Math.round(amount));
+  for (const piece of DENOMINATIONS) {
+    while (remaining >= piece.cents) {
+      holdings[piece.id] = (holdings[piece.id] ?? 0) + 1;
+      remaining -= piece.cents;
+    }
+  }
+  publish();
+}
+
 export function addPiece(id, count = 1) {
   if (!BY_ID.has(id) || count <= 0) return false;
   holdings[id] = (holdings[id] ?? 0) + Math.trunc(count);
