@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { useFrame, useLoader } from '@react-three/fiber';
+import { useFrame, useLoader, useThree } from '@react-three/fiber';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'meshoptimizer';
 import { gameDebug } from '../debug.js';
@@ -17,6 +17,7 @@ import {
 import { throwableDefinition } from '../world/throwables.js';
 import ThrowableVisual from './ThrowableVisual.jsx';
 import { normalizeNonmetallicCharacterMaterials } from './characterMaterials.js';
+import { getKTX2Loader } from './ktx2.js';
 import { BOARDING_CLIMB_SECONDS } from '../world/carriageBoarding.js';
 import { playerAvatarUrl } from './playerModel.js';
 
@@ -75,7 +76,12 @@ export default function PlayerAvatar({ runtime, onReady }) {
   const groupRef = useRef();
   const heldObjectRef = useRef();
   const [heldType, setHeldType] = useState(() => getThrowablePlay().heldType);
-  const gltf = useLoader(GLTFLoader, MODEL, (loader) => loader.setMeshoptDecoder(MeshoptDecoder));
+  const gl = useThree((state) => state.gl);
+  const configure = useCallback((loader) => {
+    loader.setMeshoptDecoder(MeshoptDecoder);
+    loader.setKTX2Loader(getKTX2Loader(gl));
+  }, [gl]);
+  const gltf = useLoader(GLTFLoader, MODEL, configure);
 
   // The master figure is 1.80m; the capsule it stands in is shorter. Match the
   // collider, so what you walk into is what you see.

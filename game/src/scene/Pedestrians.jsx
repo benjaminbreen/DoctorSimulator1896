@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { useFrame, useLoader } from '@react-three/fiber';
+import { useFrame, useLoader, useThree } from '@react-three/fiber';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
+import { getKTX2Loader } from './ktx2.js';
 import {
   RigidBody,
   CapsuleCollider,
@@ -351,8 +352,13 @@ function setBaseAction(entry, next) {
 }
 
 export default function Pedestrians({ runtime }) {
-  // All pedestrian GLBs are meshopt-compressed.
-  const withMeshopt = (loader) => loader.setMeshoptDecoder(MeshoptDecoder);
+  // All pedestrian GLBs are meshopt-compressed; the figure models also carry
+  // KTX2 textures.
+  const gl = useThree((state) => state.gl);
+  const withMeshopt = useCallback((loader) => {
+    loader.setMeshoptDecoder(MeshoptDecoder);
+    loader.setKTX2Loader(getKTX2Loader(gl));
+  }, [gl]);
   const manGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.m.modelPath, withMeshopt);
   const womanGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.w.modelPath, withMeshopt);
   const dressGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.d.modelPath, withMeshopt);

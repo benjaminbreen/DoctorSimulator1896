@@ -29,6 +29,7 @@
     "models:texture": "node scripts/models/extract-texture.mjs",
     "models:optimize": "node scripts/models/optimize-packs.mjs",
     "cast:optimize": "node scripts/characters/optimize-authored-cast.mjs",
+    "characters:ktx2": "node scripts/characters/ktx2-characters.mjs",
     "patient:audit": "node scripts/characters/audit-patients.mjs",
     "mhr:audit": "node scripts/characters/audit-mhr-identity.mjs",
     "mhr:generate": "node scripts/characters/generate-mhr.mjs",

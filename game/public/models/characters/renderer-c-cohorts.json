@@ -195,7 +195,7 @@
       "bytes": 8003900,
       "morphTargets": 128,
       "clips": 10,
-      "path": "/models/characters/renderer-c-women.glb?v=cast-opt-2"
+      "path": "/models/characters/renderer-c-women.glb?v=cast-opt-3"
     },
     "men": {
       "anchors": [
@@ -388,9 +388,9 @@
       "bytes": 13813076,
       "morphTargets": 128,
       "clips": 10,
-      "path": "/models/characters/renderer-c-men.glb?v=cast-opt-2"
+      "path": "/models/characters/renderer-c-men.glb?v=cast-opt-3"
     }
   },
   "publishedFor": "ghosts-game",
-  "motionPath": "/models/characters/renderer-c-mixamo-motions.glb?v=cast-opt-2"
+  "motionPath": "/models/characters/renderer-c-mixamo-motions.glb?v=cast-opt-3"
 }

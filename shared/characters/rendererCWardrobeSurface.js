@@ -30,6 +30,14 @@ export const RENDERER_C_WOMEN_PALETTES = Object.freeze({
   'rust-olive': Object.freeze({ primary: '#663526', secondary: '#4f5638', accent: '#c0a16f' }),
   'dove-mauve': Object.freeze({ primary: '#555765', secondary: '#826274', accent: '#c2ae91' }),
   mourning: Object.freeze({ primary: '#171719', secondary: '#343137', accent: '#676069' }),
+  'garnet-jet': Object.freeze({ primary: '#4e1a24', secondary: '#1b181c', accent: '#a8874f' }),
+  'moss-fawn': Object.freeze({ primary: '#3d4a26', secondary: '#b9a184', accent: '#6d5136' }),
+  'aubergine-silver': Object.freeze({ primary: '#37213f', secondary: '#9a93a4', accent: '#c0ae91' }),
+  'slate-cerise': Object.freeze({ primary: '#3a4a5c', secondary: '#84354c', accent: '#b49b72' }),
+  'brown-ochre': Object.freeze({ primary: '#4a3524', secondary: '#8a6d4a', accent: '#c8a25e' }),
+  'lilac-half-mourning': Object.freeze({ primary: '#6b5a6e', secondary: '#3a3440', accent: '#a99cae' }),
+  'cream-tea': Object.freeze({ primary: '#c9bda4', secondary: '#8a7460', accent: '#5c4a38' }),
+  'peacock-bronze': Object.freeze({ primary: '#1d4045', secondary: '#7c5a38', accent: '#c0a16f' }),
 });
 
 export const RENDERER_C_WOMEN_WARDROBE_IDS = Object.freeze(new Set([

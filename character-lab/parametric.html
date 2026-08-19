@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#17120d" />
+    <title>Parametric Crowd Figure — 1896</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; }
+      body { background: #17120d; color: #d8cfc0; font: 13px/1.45 -apple-system, "Segoe UI", sans-serif; }
+      #app { display: grid; grid-template-columns: 1fr 300px; height: 100vh; }
+      #stage { position: relative; }
+      #stage canvas { display: block; }
+      #hud { position: absolute; left: 12px; top: 10px; color: #9a8f7d; font-size: 12px; pointer-events: none; white-space: pre; }
+      #panel { overflow-y: auto; border-left: 1px solid #2c241a; padding: 10px 12px 40px; background: #1c1610; }
+      #panel h1 { font-size: 14px; color: #e8dcc4; margin: 2px 0 8px; }
+      .row { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
+      .row label { flex: 0 0 108px; color: #b0a48e; font-size: 12px; }
+      .row input[type=range] { flex: 1; accent-color: #a98b4e; }
+      .row select { flex: 1; }
+      .row select, .row input[type=number] { background: #261e14; color: #d8cfc0; border: 1px solid #3a2f20; border-radius: 3px; padding: 2px 4px; font-size: 12px; }
+      .row input[type=number] { width: 52px; flex: none; }
+      details { margin: 6px 0; border-top: 1px solid #2c241a; padding-top: 4px; }
+      summary { cursor: pointer; color: #cbbf9f; font-weight: 600; font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
+      .btnrow { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+      button { background: #2c2418; color: #d8cfc0; border: 1px solid #4a3b26; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer; }
+      button:hover { background: #3a2f1e; }
+      button.primary { background: #4a3b26; }
+      .seedrow { display: flex; gap: 6px; align-items: center; margin: 6px 0; }
+      .seedrow input { width: 70px; background: #261e14; color: #d8cfc0; border: 1px solid #3a2f20; border-radius: 3px; padding: 3px 5px; }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="stage"><div id="hud"></div></div>
+      <aside id="panel"></aside>
+    </div>
+    <script type="module" src="/src/parametric/lab.js"></script>
+  </body>
+</html>

@@ -133,4 +133,14 @@ function characterRegenerationPlugin() {
   };
 }
 
-export default { plugins: [characterRegenerationPlugin()] };
+export default {
+  plugins: [characterRegenerationPlugin()],
+  build: {
+    rollupOptions: {
+      input: {
+        main: path.join(labRoot, 'index.html'),
+        parametric: path.join(labRoot, 'parametric.html'),
+      },
+    },
+  },
+};

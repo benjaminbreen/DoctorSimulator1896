@@ -88,6 +88,11 @@ const ui = {
 /* ids that require rebuilding costume geometry (vs material-only or animation values) */
 const COSTUME_GEOMETRY_IDS = new Set(['bodiceFit', 'waistHeight', 'skirtFullness', 'skirtLength', 'skirtDrape',
   'bustleAmount', 'sleeveVolume', 'sleeveLength', 'collarHeight', 'collarSpread', 'buttonSpacing', 'buttonCount',
+  'frontFlatness', 'hemPleatCount', 'hemPleatDepth', 'trainLength', 'frontPointDepth',
+  'puffLength', 'sleeveTaper', 'gatherDepth',
+  'hemTrimRows', 'hemRuffle', 'seamLines', 'trimWidth', 'placketWidth',
+  'cuffWidth', 'collarThickness', 'cuffThickness',
+  'waistTaper', 'bustCurve', 'hipSpring', 'necklineHeight',
   'outfitStyle', 'hairStyle', 'hairVolume', 'partWidth', 'bunSize', 'hairHeight', 'sideVolume',
   'hairlineHeight', 'templeRecession', 'wispAmount', 'waveAmount', 'flowSweep']);
 const HERITAGE_IDS = ['african', 'asian', 'caucasian'];
@@ -135,6 +140,10 @@ const BASIC_CONTROL_IDS = new Set([
   'trimColor', 'fabricScale', 'fabricRelief', 'fabricSheen', 'fabricRoughness', 'necklineHeight',
   'cuffWidth', 'trimWidth', 'placketWidth', 'dressDetailPattern', 'dressDetailAmount', 'dressDetailScale',
   'collarThickness', 'cuffThickness',
+  'skirtFullness', 'skirtLength', 'frontFlatness', 'hemPleatCount', 'hemPleatDepth', 'trainLength',
+  'bustleAmount', 'frontPointDepth', 'sleeveVolume', 'puffLength', 'sleeveTaper', 'gatherDepth',
+  'swayAmount', 'swayStiffness', 'swayDamping', 'hemTrimRows', 'hemRuffle', 'seamLines',
+  'waistTaper', 'bustCurve', 'hipSpring',
   'menswearPalette', 'fabricPattern', 'seated', 'posture', 'headTilt', 'headTurn',
   'idleMode', 'breathing', 'fidget', 'tremor', 'smile', 'sadness', 'fatigueExpression',
   'keyIntensity', 'fillIntensity', 'exposure', 'cameraFov',
@@ -235,6 +244,7 @@ let regenerationBusy = false;
 let renderSwitchBusy = false;
 let poseCostumeRebuildPending = false;
 let poseWasTransitioning = false;
+let rendererCRefitAt = 0;
 let identityFitPending = false;
 let pendingControlFrame = null;
 let pendingControlId = null;
@@ -1056,6 +1066,9 @@ async function loadCharacter() {
         playClip(clinicIdle, { transition: 0 });
         mixer.update(0);
         model.updateMatrixWorld(true);
+        // The costume above was built (and skinned) against the pre-clip pose.
+        // Rebind against the clip's actual pose or every panel drags apart.
+        costumeDirty = true;
       }
     }
     refreshFaceUnitDebugger();
@@ -1171,10 +1184,10 @@ function playRendererCMotion(name, { preservePelvis = null } = {}) {
     'ClinicIdle', 'SittingTalking', 'SittingTalkingLegsCrossed',
     'SittingDejected', 'SittingKneeStrike', 'StandingIdle',
   ].includes(name)) {
-    // Fit again only at stable endpoints. Rebuilding during the transition
-    // would bake an arbitrary in-between frame into the dress form.
-    model.updateMatrixWorld(true);
-    rebuildCostumeNow({ preserveCurrentPose: true });
+    // Fit again only at stable endpoints, and only after the crossfade has
+    // settled: rebuilding at its start bakes the OLD pose into the bind, and
+    // the skinned panels then drag apart as the new pose arrives.
+    rendererCRefitAt = performance.now() + (preservePelvis ? 40 : 280);
   }
   if (costume && rendererCCohort === 'women') updateRendererCWomenWardrobe(preset.values);
   setView('full');
@@ -1460,6 +1473,7 @@ function updateRendererCAppearance(values) {
     setSurfaceFinish(costume.materials.dress, values.fabricRoughness, 1);
     costume.materials.trim.color.set(values.trimColor);
     costume.updateHair(values);
+    costume.updateMaterials?.(values);
     const productionRoots = [
       model?.getObjectByName?.('RendererC_VictorianDress'),
       model?.getObjectByName?.('RendererC_VictorianDetails'),
@@ -1510,6 +1524,7 @@ function applyAll(changedId = null, { final = true } = {}) {
       if (costume && (initial || COSTUME_MATERIAL_IDS.has(changedId) || COSTUME_GEOMETRY_IDS.has(changedId))) {
         costume.materials.dress.color.set(v.dressColor); setSurfaceFinish(costume.materials.dress, v.fabricRoughness, 1);
         costume.materials.trim.color.set(v.trimColor); costume.updateHair(v);
+        costume.updateMaterials?.(v);
       }
       if (final && COSTUME_GEOMETRY_IDS.has(changedId)) costumeDirty = true;
     } else if (renderStyle === 'mhr') {
@@ -1531,6 +1546,7 @@ function applyAll(changedId = null, { final = true } = {}) {
         if (initial || COSTUME_MATERIAL_IDS.has(changedId) || COSTUME_GEOMETRY_IDS.has(changedId)) {
           costume.materials.dress.color.set(v.dressColor); setSurfaceFinish(costume.materials.dress, v.fabricRoughness, 1);
           costume.materials.trim.color.set(v.trimColor); costume.updateHair(v);
+          costume.updateMaterials?.(v);
         }
         if (final && identityControl && identityFitPending) {
           costume.invalidateFit?.();
@@ -2319,6 +2335,10 @@ const clock = new THREE.Clock();
 function frame() {
   const delta = clock.getDelta();
   const elapsed = clock.elapsedTime;
+  if (rendererCRefitAt && performance.now() >= rendererCRefitAt) {
+    rendererCRefitAt = 0;
+    costumeDirty = true;
+  }
   if (costumeDirty && !mhrController?.isPoseTransitioning && performance.now() - lastCostumeBuild > 90) {
     rebuildCostumeNow({ preserveCurrentPose: renderStyle === 'rendererC' && rendererCCohort === 'women' });
   }
@@ -2358,6 +2378,7 @@ function frame() {
   }
   if (expressions && !isFallback) expressions.update(delta, elapsed, faceQaPerformanceValues || preset.values);
   if (mhrFacialDetails && renderStyle === 'mhr') mhrFacialDetails.update(preset.values);
+  costume?.update?.(delta, preset.values);
   orbit.update(); renderer.render(scene, camera); requestAnimationFrame(frame);
 }
 function resize() { const width = ui.canvas.clientWidth; const height = ui.canvas.clientHeight; renderer.setSize(width, height, false); camera.aspect = width / height; camera.updateProjectionMatrix(); }

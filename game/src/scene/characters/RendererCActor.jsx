@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { useFrame, useLoader } from '@react-three/fiber';
+import { useFrame, useLoader, useThree } from '@react-three/fiber';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { MeshoptDecoder } from 'meshoptimizer';
@@ -17,9 +17,23 @@ import {
 } from './patientHat.js';
 import { gameDebug } from '../../debug.js';
 import { examinationPresentation } from '../../consultation/examPresentation.js';
+import { getKTX2Loader } from '../ktx2.js';
 import { clearExamAnchors, publishExamAnchors } from '../../consultation/examAnchors.js';
+import { createCostumeShell, findBones as findCostumeBones } from '../../../../shared/characters/costumeShell.js';
+import { rendererCWomenPalette } from '../../../../shared/characters/rendererCWardrobeSurface.js';
 
 const ENTRANCE_WALK_SPEED = 1.05;
+
+// Body cues whose clips sit the patient; the shell rebuilds its skirt shape
+// per posture the way the lab does at motion endpoints.
+const SHELL_SEATED_CUES = new Set([
+  'clinic-idle', 'sit-down', 'sitting-talking', 'sitting-distressed',
+  'sitting-self-soothing', 'sitting-disapproval', 'sitting-disbelief',
+]);
+// ?shellDress=1 forces every woman into the procedural shell, for A/B review
+// against the authored dresses without touching cast files.
+const FORCE_SHELL_DRESS = typeof window !== 'undefined'
+  && new URLSearchParams(window.location.search).get('shellDress') === '1';
 
 const TRANSIENT_BODY_CUES = new Set([
   'sit-down',
@@ -31,11 +45,12 @@ const TRANSIENT_BODY_CUES = new Set([
 ]);
 
 export default function RendererCActor({ recipe, manifest, onReady, paused = false, walkIn = false }) {
-  const gltf = useLoader(
-    GLTFLoader,
-    recipe.asset?.path || manifest.path,
-    (loader) => loader.setMeshoptDecoder(MeshoptDecoder),
-  );
+  const gl = useThree((state) => state.gl);
+  const configure = useCallback((loader) => {
+    loader.setMeshoptDecoder(MeshoptDecoder);
+    loader.setKTX2Loader(getKTX2Loader(gl));
+  }, [gl]);
+  const gltf = useLoader(GLTFLoader, recipe.asset?.path || manifest.path, configure);
   const clips = gltf.animations;
   const currentActionRef = useRef(null);
   const settledAnimationRef = useRef(null);
@@ -106,14 +121,23 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
     recipe.values,
   ]);
 
+  const shellDress = recipe.cohort === 'women'
+    && (recipe.presentation?.outfitId === 'shell-dress' || FORCE_SHELL_DRESS);
+  const shellRef = useRef(null);
+  const shellRefitAtRef = useRef(0);
+
   // The wardrobe swaps seated and standing carriers independently of the
   // skeleton. Keep that live when a body cue changes without rebuilding the
-  // actor or its materials.
+  // actor or its materials. Under the procedural shell, the authored dresses
+  // hide and the carrier stays as the underlayer.
   useLayoutEffect(() => {
     if (recipe.asset?.applyRecipe === false) return;
-    applyRendererCWardrobe(actor.root, recipe);
+    const effective = shellDress
+      ? { ...recipe, presentation: { ...recipe.presentation, outfitId: 'shell-dress' } }
+      : recipe;
+    applyRendererCWardrobe(actor.root, effective);
     actor.root.updateMatrixWorld(true);
-  }, [actor, recipe.animation.body, recipe.asset?.applyRecipe, recipe.presentation?.outfitId]);
+  }, [actor, recipe.animation.body, recipe.asset?.applyRecipe, recipe.presentation?.outfitId, shellDress]);
 
   // Walk-in: a summoned patient enters by the waiting-room door and takes the
   // chair, when the asset carries the walking clips. Otherwise they begin
@@ -128,6 +152,43 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
     leftHand: [0, 0, 0], rightHand: [0, 0, 0],
   });
   useEffect(() => () => clearExamAnchors(), []);
+  // Shell refits at cue endpoints, after the 0.12-0.2s crossfades settle;
+  // rebinding mid-fade bakes an in-between pose into the garment.
+  useLayoutEffect(() => {
+    if (!shellDress) return;
+    shellRefitAtRef.current = performance.now() + 350;
+  }, [shellDress, recipe.animation.body, entranceDone]);
+  const updateShell = useCallback((dt) => {
+    if (!shellDress) return;
+    const seated = !entranceRef.current && SHELL_SEATED_CUES.has(recipe.animation.body) ? 1 : 0;
+    let shell = shellRef.current;
+    if (!shell) {
+      const bones = findCostumeBones(actor.root);
+      if (!bones.pelvis || !bones.head) {
+        shellRef.current = { costume: null, values: null };
+        return;
+      }
+      const palette = rendererCWomenPalette(recipe.values?.womenPalette) || rendererCWomenPalette('plum-taupe');
+      const values = {
+        ...recipe.values,
+        gender: 0.3,
+        dressColor: recipe.values?.dressColor || palette.primary,
+        secondaryColor: recipe.values?.secondaryColor || palette.secondary,
+        trimColor: recipe.values?.trimColor || palette.accent,
+      };
+      actor.root.updateMatrixWorld(true);
+      const costume = createCostumeShell(actor.root, bones, actor.root);
+      costume.rebuild({ ...values, seated });
+      shellRef.current = shell = { costume, values };
+    }
+    if (!shell.costume) return;
+    if (shellRefitAtRef.current && performance.now() >= shellRefitAtRef.current) {
+      shellRefitAtRef.current = 0;
+      actor.root.updateMatrixWorld(true);
+      shell.costume.rebuild({ ...shell.values, seated });
+    }
+    shell.costume.update(dt, shell.values);
+  }, [actor, recipe.animation.body, recipe.values, shellDress]);
   useLayoutEffect(() => {
     const config = recipe.presentation?.entrance;
     const walkClip = clips.find((clip) => clip.name === 'Walk');
@@ -137,6 +198,31 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
       return;
     }
     const [px, , pz] = recipe.placement.position;
+    // SitDown carries authored root motion: the hips drift ~0.46m backward
+    // over the clip, and ClinicIdle then holds them ~0.52m forward of that
+    // end pose. Easing the group to the chair as well drove the patient into
+    // the chair back, then the idle switch popped her forward. Measure the
+    // two hip positions and ease the group to the offset target instead, so
+    // the clip's own motion performs the sit and the idle continues in place.
+    const idleClip = clips.find((clip) => clip.name === 'ClinicIdle');
+    const pelvis = findCostumeBones(actor.root).pelvis;
+    let seatDelta = [0, 0];
+    if (idleClip && pelvis) {
+      const sampleHip = (clip, time) => {
+        const action = actor.mixer.clipAction(clip);
+        actor.mixer.stopAllAction();
+        action.reset().play();
+        action.time = time;
+        actor.mixer.update(0);
+        actor.root.updateMatrixWorld(true);
+        const world = pelvis.getWorldPosition(new THREE.Vector3());
+        action.stop();
+        return world;
+      };
+      const sitEnd = sampleHip(sitClip, Math.max(0, sitClip.duration - 0.001));
+      const idleStart = sampleHip(idleClip, 0);
+      seatDelta = [idleStart.x - sitEnd.x, idleStart.z - sitEnd.z];
+    }
     const walk = actor.mixer.clipAction(walkClip);
     walk.reset().setLoop(THREE.LoopRepeat, Infinity).play();
     actor.mixer.update(0);
@@ -154,6 +240,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
       sitTime: 0,
       sitDuration: sitClip.duration,
       sitFrom: null,
+      seatDelta,
       walkAction: walk,
       sitAction: actor.mixer.clipAction(sitClip),
     };
@@ -244,6 +331,8 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
   // this actual actor instance changes or unmounts, never for a performance cue.
   useEffect(() => () => {
     if (currentActionRef.current?.mixer === actor.mixer) currentActionRef.current = null;
+    shellRef.current?.costume?.dispose();
+    shellRef.current = null;
     actor.mixer.stopAllAction();
     actor.mixer.uncacheRoot(actor.root);
     // Hat geometry is built per actor, unlike the shared GLB geometry.
@@ -319,8 +408,11 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
         const raw = Math.min(1, entrance.sitTime / Math.max(entrance.sitDuration - 0.15, 0.4));
         const k = raw * raw * (3 - 2 * raw);
         const [fx, fz, fyaw] = entrance.sitFrom;
-        group.position.x = fx + (position[0] - fx) * k;
-        group.position.z = fz + (position[2] - fz) * k;
+        // Target is offset by the measured hip delta between SitDown's end
+        // and ClinicIdle's hold, so the hips land where the idle keeps them.
+        const [dxSeat, dzSeat] = entrance.seatDelta;
+        group.position.x = fx + ((position[0] + dxSeat) - fx) * k;
+        group.position.z = fz + ((position[2] + dzSeat) - fz) * k;
         group.position.y = position[1] * k;
         let yawDelta = rotation[1] - fyaw;
         while (yawDelta > Math.PI) yawDelta -= Math.PI * 2;
@@ -337,10 +429,12 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
         }
       }
       actor.mixer.update(dt);
+      updateShell(dt);
       actor.face.update(dt, recipe.animation);
       return;
     }
     actor.mixer.update(dt);
+    updateShell(dt);
     const animation = settledAnimationRef.current || recipe.animation;
     actor.motion.update(dt, animation, gameDebug.camera);
     actor.face.update(delta, animation);

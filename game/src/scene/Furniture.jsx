@@ -358,12 +358,12 @@ function ItemCollider({ item }) {
 // to be touching. Each part carries its own local offset and tilt; the body
 // takes one collider around the lot, because a cut flower does not need its
 // petals simulated.
-function DynamicItem({ item, material }) {
+function DynamicItem({ item, material, frozen }) {
   const boxes = itemBoxes(item);
   const parts = item.parts ?? null;
   return (
     <RigidBody
-      type="dynamic"
+      type={frozen ? 'fixed' : 'dynamic'}
       colliders={false}
       position={item.position}
       rotation={[0, item.yaw ?? 0, 0]}
@@ -394,7 +394,7 @@ function DynamicItem({ item, material }) {
 // Placeholder props: box, cylinder, sphere, or cone per blueprint entry, mesh
 // and collider from the same data. `collider: false` marks decor, `dynamic`
 // marks a piece loose enough to push around.
-export default function Furniture({ items, runtime }) {
+export default function Furniture({ items, runtime, propsReady = true }) {
   const hiddenGroup = useHiddenGroup();
   // No dependency list: any re-render may mount static pieces (the ritual
   // hides and restores a group), and new mounts need composing before the
@@ -502,7 +502,17 @@ export default function Furniture({ items, runtime }) {
         // Loose pieces hide with their group too: the pipe leaves the table
         // while the ritual's working copy is in the player's hand.
         if (hiddenGroup && item.id.startsWith(`${hiddenGroup}-`)) return null;
-        return <DynamicItem key={item.id} item={item} material={materialFor(item)} />;
+        // `awaitProps` holds a piece rigid until the catalog models are in:
+        // the vase's table mounts a stage later, and a dynamic vase would
+        // spend that gap falling through where the table will be.
+        return (
+          <DynamicItem
+            key={item.id}
+            item={item}
+            material={materialFor(item)}
+            frozen={Boolean(item.awaitProps) && !propsReady}
+          />
+        );
       })}
       <group ref={staticRef}>
       <BlockInfill items={items} />

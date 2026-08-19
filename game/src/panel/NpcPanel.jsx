@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -9,6 +9,7 @@ import {
   CHARACTER_EXPRESSIONS,
 } from '../../../shared/characters/recipe.js';
 import RendererCActor from '../scene/characters/RendererCActor.jsx';
+import { getKTX2Loader } from '../scene/ktx2.js';
 import { buildPeriodStroller } from '../scene/strollerModel.js';
 import { buildWalkingStick, findMixamoBone } from '../scene/walkingStick.js';
 import {
@@ -46,8 +47,14 @@ function pedestrianRows() {
   }));
 }
 
-function withMeshopt(loader) {
-  loader.setMeshoptDecoder(MeshoptDecoder);
+// The figure models carry KTX2 textures, so the loader needs this panel's
+// renderer for transcoder support detection.
+function useConfiguredLoader() {
+  const gl = useThree((state) => state.gl);
+  return useCallback((loader) => {
+    loader.setMeshoptDecoder(MeshoptDecoder);
+    loader.setKTX2Loader(getKTX2Loader(gl));
+  }, [gl]);
 }
 
 function clipsCompatibleWith(root, clips) {
@@ -88,7 +95,7 @@ function PatientFigure({ entry, body, expression, paused = false }) {
 function PedestrianFigure({ entry, animation, paused = false }) {
   const stageRef = useRef();
   const archetype = PEDESTRIAN_ARCHETYPES[entry.archetype];
-  const gltfs = useLoader(GLTFLoader, archetype.animationSources, withMeshopt);
+  const gltfs = useLoader(GLTFLoader, archetype.animationSources, useConfiguredLoader());
   const actor = useMemo(() => {
     const root = cloneSkeleton(gltfs[0].scene);
     root.traverse((node) => {

@@ -55,7 +55,7 @@ export const PEDESTRIAN_STANDUP_FILE = '/models/ped-anim-standup.glb';
 // decoded texture memory and per-frame skinning cost.
 const USE_MOBILE_BACKGROUND_MODELS = shouldRecycleWebGLContextOnTravel();
 function backgroundModelPath(name) {
-  return `/models/${name}${USE_MOBILE_BACKGROUND_MODELS ? '-mobile' : ''}.glb?v=crowd-opt-2`;
+  return `/models/${name}${USE_MOBILE_BACKGROUND_MODELS ? '-mobile' : ''}.glb?v=crowd-opt-3`;
 }
 
 const BOWLER_MODEL = backgroundModelPath('pedestrian-b');

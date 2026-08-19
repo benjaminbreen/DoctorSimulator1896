@@ -2,10 +2,12 @@
 // become ordinary E-key affordances; the simulation still decides whether
 // resting there changes either player meter.
 
-const SEAT_MODEL = /(chair|bench)/i;
+const SEAT_MODEL = /(chair|bench|sofa|settee|couch)/i;
 
 function seatKind(model = '') {
-  return /bench/i.test(model) ? 'bench' : 'chair';
+  if (/bench/i.test(model)) return 'bench';
+  if (/sofa|settee|couch/i.test(model)) return 'sofa';
+  return 'chair';
 }
 
 /** Add a sitting affordance to a catalog chair or bench that has no action. */

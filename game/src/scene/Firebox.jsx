@@ -51,13 +51,30 @@ function fireFlameTexture() {
   canvas.width = 128;
   canvas.height = 128;
   const context = canvas.getContext('2d');
-  // A soft teardrop: bright orange core low, fading to nothing at the tip.
-  const glow = context.createRadialGradient(64, 96, 6, 64, 84, 62);
-  glow.addColorStop(0, 'rgba(255,214,140,0.95)');
-  glow.addColorStop(0.35, 'rgba(255,138,48,0.55)');
-  glow.addColorStop(0.7, 'rgba(214,72,18,0.18)');
-  glow.addColorStop(1, 'rgba(120,30,8,0)');
-  context.fillStyle = glow;
+  // Three overlapping tongues, not one blob: a tall centre and two short
+  // flanks, each a teardrop that narrows toward its tip.
+  const tongue = (x, base, top, spread, alpha) => {
+    for (let i = 0; i < 14; i += 1) {
+      const t = i / 13;
+      const y = base - (base - top) * t;
+      const r = spread * (1 - t * 0.82);
+      const glow = context.createRadialGradient(x, y, 0, x, y, r);
+      glow.addColorStop(0, `rgba(255,224,150,${alpha * (1 - t * 0.55)})`);
+      glow.addColorStop(0.45, `rgba(255,140,44,${alpha * 0.5 * (1 - t * 0.6)})`);
+      glow.addColorStop(1, 'rgba(150,40,8,0)');
+      context.fillStyle = glow;
+      context.fillRect(0, 0, 128, 128);
+    }
+  };
+  tongue(64, 112, 18, 26, 0.16);
+  tongue(42, 114, 62, 18, 0.13);
+  tongue(86, 114, 70, 16, 0.12);
+  // A hot white-gold seat where the flames meet the coals.
+  const seat = context.createRadialGradient(64, 112, 2, 64, 110, 34);
+  seat.addColorStop(0, 'rgba(255,240,190,0.85)');
+  seat.addColorStop(0.5, 'rgba(255,160,60,0.4)');
+  seat.addColorStop(1, 'rgba(150,40,8,0)');
+  context.fillStyle = seat;
   context.fillRect(0, 0, 128, 128);
   flameTexture = new THREE.CanvasTexture(canvas);
   flameTexture.colorSpace = THREE.SRGBColorSpace;
@@ -160,14 +177,31 @@ function buildFlames(disposables) {
   });
   disposables.push(geometry, material);
   const sprites = [];
-  for (const [yaw, x, z] of [[0.2, 0, -0.06], [1.35, 0.08, -0.02], [-1.1, -0.09, -0.04]]) {
+  // Crossed planes at varied sizes so the fire has volume from any angle;
+  // the small back pair fills the gaps between the big tongues.
+  for (const [yaw, x, z, s] of [
+    [0.2, 0, -0.06, 1.0], [1.35, 0.08, -0.02, 0.9], [-1.1, -0.09, -0.04, 0.85],
+    [0.7, -0.16, -0.1, 0.55], [-0.5, 0.17, -0.09, 0.5],
+  ]) {
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(x, 0.26, z);
     mesh.rotation.y = yaw;
+    mesh.scale.setScalar(s);
     mesh.renderOrder = 3;
+    mesh.userData.baseScale = s;
     node.add(mesh);
     sprites.push(mesh);
   }
+  // Ember glow lying over the coal bed, so the basket reads hot even when
+  // the tongues are between licks.
+  const glowGeometry = new THREE.PlaneGeometry(0.62, 0.4);
+  const glow = new THREE.Mesh(glowGeometry, material.clone());
+  glow.material.opacity = 0.5;
+  glow.rotation.x = -Math.PI / 2;
+  glow.position.set(0, 0.245, -0.02);
+  glow.renderOrder = 2;
+  node.add(glow);
+  disposables.push(glowGeometry, glow.material);
   return { node, sprites };
 }
 
@@ -201,8 +235,13 @@ function Hearth({ item, index }) {
     if (lightRef.current) lightRef.current.intensity = 1.5 * flicker;
     for (const material of built.embers) material.emissiveIntensity = 0.7 + 0.8 * flicker;
     built.sprites.forEach((sprite, i) => {
-      sprite.scale.y = 0.8 + 0.3 * Math.sin(t * 7.3 + phase + i * 2.1);
-      sprite.scale.x = 0.92 + 0.08 * Math.sin(t * 11.9 + i * 4.2);
+      const base = sprite.userData.baseScale ?? 1;
+      sprite.scale.y = base * (0.8 + 0.3 * Math.sin(t * 7.3 + phase + i * 2.1)
+        + 0.08 * Math.sin(t * 17.3 + i * 5.7));
+      sprite.scale.x = base * (0.92 + 0.08 * Math.sin(t * 11.9 + i * 4.2));
+      // A lean at a different rate to the stretch, so a tongue licks
+      // sideways instead of only pumping.
+      sprite.rotation.z = 0.1 * Math.sin(t * 5.1 + phase + i * 3.3);
     });
   });
 

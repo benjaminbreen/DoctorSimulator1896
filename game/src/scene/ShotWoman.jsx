@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef } from 'react';
-import { useFrame, useLoader } from '@react-three/fiber';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useFrame, useLoader, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
@@ -8,6 +8,7 @@ import { gameDebug } from '../debug.js';
 import { PEDESTRIAN_ARCHETYPES } from '../world/pedestrianCatalog.js';
 import { figureHeight } from '../world/figureHeights.js';
 import { normalizeNonmetallicCharacterMaterial } from './characterMaterials.js';
+import { getKTX2Loader } from './ktx2.js';
 
 const STANDING_ARCHETYPES = Object.freeze(['w', 'd', 'f', 'h']);
 const MODEL_PATHS = STANDING_ARCHETYPES.map((id) => PEDESTRIAN_ARCHETYPES[id].modelPath);
@@ -18,11 +19,12 @@ const MODEL_PATHS = STANDING_ARCHETYPES.map((id) => PEDESTRIAN_ARCHETYPES[id].mo
 // at windows, stoops, and rooftops without teleporting the male player there.
 export default function ShotWoman() {
   const wrapperRef = useRef();
-  const gltfs = useLoader(
-    GLTFLoader,
-    MODEL_PATHS,
-    (loader) => loader.setMeshoptDecoder(MeshoptDecoder),
-  );
+  const gl = useThree((state) => state.gl);
+  const configure = useCallback((loader) => {
+    loader.setMeshoptDecoder(MeshoptDecoder);
+    loader.setKTX2Loader(getKTX2Loader(gl));
+  }, [gl]);
+  const gltfs = useLoader(GLTFLoader, MODEL_PATHS, configure);
   const subjects = useMemo(() => gltfs.map((gltf, index) => {
     const figure = cloneSkeleton(gltf.scene);
     figure.scale.setScalar(figureHeight(PEDESTRIAN_ARCHETYPES[STANDING_ARCHETYPES[index]].id));

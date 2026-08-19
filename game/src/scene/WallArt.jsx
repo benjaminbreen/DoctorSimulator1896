@@ -17,6 +17,24 @@ const MOULDINGS = {
   ebony: { color: '#241c15', roughness: 0.5, metalness: 0.1 },
 };
 
+// One shared loader and cache: the same painting hangs in several rooms, and
+// a rebuild must not re-decode every JPEG into VRAM. Cached textures are
+// never disposed; the set is bounded by the art files in public/art.
+const artLoader = new THREE.TextureLoader();
+const artTextureCache = new Map();
+
+function loadArtTexture(url) {
+  let texture = artTextureCache.get(url);
+  if (!texture) {
+    texture = artLoader.load(url);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+    texture.anisotropy = 8;
+    artTextureCache.set(url, texture);
+  }
+  return texture;
+}
+
 export default function WallArt({ items }) {
   const built = useMemo(() => {
     const frames = items.filter((item) => item.kind === 'wallArt');
@@ -45,8 +63,11 @@ export default function WallArt({ items }) {
       // table, laid flat with pitch -PI/2. Plate only, no rails, no mount.
       if (item.moulding === 'none') {
         const geometry = new THREE.PlaneGeometry(width, height);
+        const map = item.artTexture
+          ? loadArtTexture(item.artTexture)
+          : printTexture(art, item.seed ?? index * 7);
         const material = new THREE.MeshStandardMaterial({
-          map: printTexture(art, item.seed ?? index * 7),
+          map,
           roughness: 0.85,
           side: THREE.DoubleSide,
         });
@@ -147,14 +168,8 @@ export default function WallArt({ items }) {
       const plateH = height - rail * 2 - mount * 2;
       const geometry = new THREE.PlaneGeometry(Math.max(plateW, 0.05), Math.max(plateH, 0.05));
       const plateTexture = item.artTexture
-        ? new THREE.TextureLoader().load(item.artTexture)
+        ? loadArtTexture(item.artTexture)
         : printTexture(art, item.seed ?? index * 7);
-      if (item.artTexture) {
-        plateTexture.colorSpace = THREE.SRGBColorSpace;
-        plateTexture.wrapS = plateTexture.wrapT = THREE.ClampToEdgeWrapping;
-        plateTexture.anisotropy = 8;
-        disposables.push(plateTexture);
-      }
       const material = new THREE.MeshStandardMaterial({
         map: plateTexture,
         roughness: 0.55,

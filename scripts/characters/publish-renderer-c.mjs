@@ -22,7 +22,8 @@ const SOURCE = path.join(ROOT, 'character-lab', 'public', 'models');
 const TARGET = path.join(ROOT, 'game', 'public', 'models', 'characters');
 const CHECK_ONLY = process.argv.includes('--check');
 // Bump when republishing changes the bytes; also update phase1Cast.js.
-const CACHE_BUST = 'cast-opt-2';
+// Keep in step with the asset paths in game/src/content/clinic1896/phase1Cast.js.
+const CACHE_BUST = 'cast-opt-3';
 const REQUIRED_CLIPS = [
   'ClinicIdle', 'SittingTalking', 'SittingKneeStrike', 'SittingDejected',
   'SittingTalkingLegsCrossed', 'SitDown', 'StandUp', 'StandingIdle', 'Walk',
@@ -88,6 +89,8 @@ if (!CHECK_ONLY) {
       conservativeDedup(),
       prune({ keepAttributes: true, keepSolidTextures: true, keepLeaves: true }),
     );
+    // Publishes webp; run scripts/characters/ktx2-characters.mjs afterwards
+    // to re-encode for the GPU, or mobile texture memory regresses.
     await compressCharacterTextures(document);
     // The lab sources keep their normal deltas; only the web build sheds them.
     dropMorphTargetNormals(document);

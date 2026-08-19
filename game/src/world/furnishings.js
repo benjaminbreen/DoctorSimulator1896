@@ -368,12 +368,11 @@ export function vaseOfFlowers(id, x, y, z, options = {}) {
     position: [round(x), round(y + vaseH / 2), round(z)],
     size: [vaseR * 2, vaseH, vaseR * 2],
     yaw: 0,
-    // Fixed, not loose. Its table is a catalog model that mounts a stage
-    // later than this does, and an interior floor carries no collider for a
-    // dynamic body — so a loose vase spends that gap falling and never stops.
-    // It can go back to `dynamic: true, mass: 1.4` once interiors have a
-    // floor collider and the props stage no longer arrives after the dressing.
-    collider: false,
+    // Loose, so a shoved table spills it — but held rigid until the catalog
+    // props are in, because its table mounts a stage later than this does.
+    dynamic: true,
+    mass: 1.4,
+    awaitProps: true,
     parts,
   }];
 }

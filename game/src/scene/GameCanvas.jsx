@@ -606,7 +606,7 @@ function SceneContents({
 
               <Stage active={stage >= 1} stage={1} onRendered={onStageRendered}>
                 <Room room={room} lighting={lighting} />
-                <Furniture items={room.furnitureBoxes} runtime={runtime} />
+                <Furniture items={room.furnitureBoxes} runtime={runtime} propsReady={stage >= 3} />
               </Stage>
 
               <Stage active={stage >= 2} stage={2} onRendered={onStageRendered}>
@@ -692,7 +692,7 @@ function SceneContents({
             </Stage>
 
             <Stage active={stage >= 1} stage={1} onRendered={onStageRendered}>
-              <Furniture items={room.furnitureBoxes} runtime={runtime} />
+              <Furniture items={room.furnitureBoxes} runtime={runtime} propsReady={stage >= 3} />
               <CeilingRose room={room} lighting={lighting} />
               <WallArt items={room.furnitureBoxes} />
               <SootStains room={room} />
