@@ -33,6 +33,15 @@ test('Auto raises DPR cautiously after FPS recovers', () => {
   assert.equal(controller.dpr, 1.5);
 });
 
+test('Auto recovers on a 60Hz display that holds 55 FPS under load', () => {
+  const controller = createAdaptiveDprController(1.5);
+  sampleFor(controller, 9, 25);
+  assert.equal(controller.dpr, 1.25);
+
+  sampleFor(controller, 16, 55);
+  assert.equal(controller.dpr, 1.5);
+});
+
 test('Auto ignores loading, hidden tabs, and long frames', () => {
   const controller = createAdaptiveDprController(1.5);
   sampleFor(controller, 20, 20, 1.5, false);

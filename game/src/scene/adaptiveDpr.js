@@ -1,6 +1,8 @@
 const DPR_STEPS = [0.75, 1, 1.25, 1.5, 2];
 const LOW_FPS = 30;
-const HIGH_FPS = 57;
+// A 60Hz display under real load holds ~55 fps, so a raise bar of 57 was
+// unreachable and DPR never recovered after a dip.
+const HIGH_FPS = 52;
 const LOW_SECONDS = 3;
 const HIGH_SECONDS = 10;
 const SETTLE_SECONDS = 5;

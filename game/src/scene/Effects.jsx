@@ -162,7 +162,11 @@ export default function Effects({ runtime, indoors }) {
   });
 
   return (
-    <EffectComposer ref={composerRef} multisampling={multisampling}>
+    // Keyed on the pixel ratio: adaptive DPR resizes the drawing buffer, but
+    // the composer's internal targets (n8ao's especially) keep their old
+    // resolution, and stale half-res AO smears dark ghosts on the walls.
+    // Steps are rare by design, so a rebuild per step is cheap.
+    <EffectComposer key={dpr} ref={composerRef} multisampling={multisampling}>
       {/* Each effect is switched in and out of the chain rather than turned
           down to zero: a pass that still runs still costs its full-screen
           work, which is the whole point when measuring where frames go. */}
