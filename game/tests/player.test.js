@@ -30,6 +30,13 @@ import {
   waterWalkingEffect,
   waterWalkingStep,
   WATER_WALK_INTERVAL_SECONDS,
+  consultationStrainEffect,
+  isNeurastheniaCrisis,
+  recoverFromActivity,
+  sunnyStrollStep,
+  NEURASTHENIA_RECOVERY_TARGET,
+  PARK_BENCH_RECOVERY,
+  SUNNY_STROLL_SECONDS,
 } from '../src/world/player.js';
 import { REACTION_MOTION, REACTION_PHASE } from '../src/world/actorReactions.js';
 
@@ -175,6 +182,63 @@ test('sitting briefly gives a modest recovery with a per-seat cooldown', () => {
   tickPlayer(SEAT_COOLDOWN_SECONDS + 1);
   recoverFromSeat({ seatId: 'park-bench', seconds: SEAT_REST_SECONDS });
   assert.equal(getPlayer().health, 96);
+});
+
+test('a rejected treatment causes a crisis that clears only after active recovery', () => {
+  const effect = consultationStrainEffect({ immediate: { treatmentReaction: 'negative' } }, 'Miss Byrne');
+  applyPlayerEvent(effect);
+  assert.equal(getPlayer().neurasthenia, 91);
+  assert.equal(isNeurastheniaCrisis(), true);
+  assert.equal(neurastheniaCondition(), 'nervous crisis');
+
+  recover({ neurasthenia: 5, source: 'small-rest', label: 'Tried to rest' });
+  assert.equal(getPlayer().neurasthenia, 86);
+  assert.equal(isNeurastheniaCrisis(), true, 'the crisis does not flicker off at the entry threshold');
+
+  const recovery = recoverFromActivity({
+    activityId: 'park-bench',
+    neurasthenia: PARK_BENCH_RECOVERY,
+    label: 'Rested on a park bench',
+  });
+  assert.ok(recovery.event);
+  assert.ok(getPlayer().neurasthenia <= NEURASTHENIA_RECOVERY_TARGET);
+  assert.equal(isNeurastheniaCrisis(), false);
+});
+
+test('restorative activities have cooldowns and a sunny stroll must be sustained', () => {
+  const first = recoverFromActivity({
+    activityId: 'carousel',
+    neurasthenia: 10,
+    label: 'Rode the carousel',
+  });
+  assert.ok(first.event);
+  assert.equal(recoverFromActivity({
+    activityId: 'carousel',
+    neurasthenia: 10,
+    label: 'Rode the carousel',
+  }).reason, 'cooldown');
+
+  let stroll = sunnyStrollStep(0, SUNNY_STROLL_SECONDS - 1, true);
+  assert.equal(stroll.completed, false);
+  stroll = sunnyStrollStep(stroll.exposure, 0.1, false);
+  assert.deepEqual(stroll, { exposure: 0, completed: false });
+  stroll = sunnyStrollStep(0, SUNNY_STROLL_SECONDS, true);
+  assert.equal(stroll.completed, true);
+});
+
+test('only a restorative seat can answer a nervous crisis', () => {
+  applyPlayerEvent(consultationStrainEffect({ immediate: { treatmentReaction: 'negative' } }));
+  assert.equal(
+    recoverFromSeat({ seatId: 'office-chair', seconds: SEAT_REST_SECONDS }).reason,
+    'needs-restorative-place',
+  );
+  const parkRest = recoverFromSeat({
+    seatId: 'park-bench',
+    seconds: SEAT_REST_SECONDS,
+    restorative: true,
+  });
+  assert.ok(parkRest.event);
+  assert.equal(isNeurastheniaCrisis(), false);
 });
 
 test('falls and pushcart impacts use deterministic severity thresholds', () => {

@@ -241,9 +241,9 @@ function RecordPaper({ patient, record, status, notes, setNotes, tab, setTab, on
             </div>
             <span className={`casebook-status-stamp is-${status.id}`}>{status.legend}</span>
           </div>
-          {status.id === 'waiting' && onSeePatient && (
+          {onSeePatient && (
             <button type="button" className="casebook-see-patient" onClick={() => onSeePatient(patient)}>
-              See patient
+              Ask {patientName(patient)} to return
               <span aria-hidden="true">→</span>
             </button>
           )}

@@ -23,9 +23,20 @@ const listeners = new Set();
 
 export const MAX = 100;
 export const STARTING_NEURASTHENIA = 65;
+export const NEURASTHENIA_CRISIS_THRESHOLD = 90;
+export const NEURASTHENIA_RECOVERY_TARGET = 85;
 export const PLAYER_EVENT_HISTORY = 40;
 export const SEAT_REST_SECONDS = 8;
 export const SEAT_COOLDOWN_SECONDS = 120;
+export const ACTIVITY_COOLDOWN_SECONDS = 120;
+export const SUNNY_STROLL_SECONDS = 18;
+export const SUNNY_STROLL_RECOVERY = 8;
+export const PARK_BENCH_RECOVERY = 6;
+export const CAROUSEL_RECOVERY = 12;
+export const CHECKERS_RECOVERY = 10;
+export const CONVERSATION_RECOVERY = 10;
+export const NEGATIVE_TREATMENT_STRAIN = 26;
+export const UNCERTAIN_TREATMENT_STRAIN = 6;
 export const THROW_NEURASTHENIA = 2;
 export const NPC_STARTLE_NEURASTHENIA = 3;
 export const WATER_WALK_INTERVAL_SECONDS = 2;
@@ -49,6 +60,8 @@ function fresh() {
     reaction: createReactionState(),
     clock: 0,
     seatCooldowns: {},
+    activityCooldowns: {},
+    neurastheniaCrisis: false,
   };
 }
 
@@ -116,6 +129,7 @@ export function healthCondition(value = state.health) {
 }
 
 export function neurastheniaCondition(value = state.neurasthenia) {
+  if (value > NEURASTHENIA_CRISIS_THRESHOLD) return 'nervous crisis';
   if (value >= 80) return 'severe nervous exhaustion';
   if (value >= 60) return 'frazzled';
   if (value >= 35) return 'strained';
@@ -176,6 +190,9 @@ export function waterWalkingEffect(damage) {
 export function applyPlayerEvent({ source = 'unknown', label = source, changes = {}, note = null, down = 0 }) {
   const health = clamp(state.health + (Number(changes.health) || 0));
   const neurasthenia = clamp(state.neurasthenia + (Number(changes.neurasthenia) || 0));
+  const neurastheniaCrisis = state.neurastheniaCrisis
+    ? neurasthenia > NEURASTHENIA_RECOVERY_TARGET
+    : neurasthenia > NEURASTHENIA_CRISIS_THRESHOLD;
   const applied = {
     health: health - state.health,
     neurasthenia: neurasthenia - state.neurasthenia,
@@ -202,6 +219,7 @@ export function applyPlayerEvent({ source = 'unknown', label = source, changes =
     health,
     neurasthenia,
     fatigue: neurasthenia,
+    neurastheniaCrisis,
     downUntil,
     log: event ? [...state.log, event].slice(-PLAYER_EVENT_HISTORY) : state.log,
   };
@@ -258,6 +276,59 @@ export function recover(options = {}) {
   return state;
 }
 
+export function isNeurastheniaCrisis(player = state) {
+  return Boolean(player.neurastheniaCrisis);
+}
+
+/** Nervous strain from how the patient receives the prescribed treatment. */
+export function consultationStrainEffect(result, patientLabel = 'The patient') {
+  const reaction = result?.immediate?.treatmentReaction;
+  const amount = reaction === 'negative'
+    ? NEGATIVE_TREATMENT_STRAIN
+    : reaction === 'uncertain' ? UNCERTAIN_TREATMENT_STRAIN : 0;
+  if (!amount) return null;
+  return {
+    source: `consultation:${reaction}`,
+    label: reaction === 'negative'
+      ? `${patientLabel} rejected the treatment.`
+      : `${patientLabel} left unconvinced by the treatment.`,
+    note: 'The difficult consultation badly strains your nerves.',
+    changes: { neurasthenia: amount },
+  };
+}
+
+/** One restorative activity, with a shared cooldown that prevents farming. */
+export function recoverFromActivity({
+  activityId,
+  neurasthenia,
+  label,
+  cooldownSeconds = ACTIVITY_COOLDOWN_SECONDS,
+}) {
+  const id = String(activityId || '').trim();
+  const amount = Math.max(0, Number(neurasthenia) || 0);
+  if (!id || !amount) return { event: null, state, reason: 'invalid' };
+  const last = state.activityCooldowns[id];
+  if (Number.isFinite(last) && state.clock - last < cooldownSeconds) {
+    return {
+      event: null,
+      state,
+      reason: 'cooldown',
+      remaining: cooldownSeconds - (state.clock - last),
+    };
+  }
+  const change = Math.min(amount, state.neurasthenia);
+  if (!change) return { event: null, state, reason: 'at-bounds' };
+  state = {
+    ...state,
+    activityCooldowns: { ...state.activityCooldowns, [id]: state.clock },
+  };
+  return applyPlayerEvent({
+    source: `recovery:${id}`,
+    label,
+    changes: { neurasthenia: -change },
+  });
+}
+
 /** Deterministic recovery for the existing Rest / Pass Time action. */
 export function restEffect(hours) {
   const duration = Math.max(0, Math.min(8, Number(hours) || 0));
@@ -268,18 +339,21 @@ export function restEffect(hours) {
 }
 
 /** A brief, deliberately chosen rest on one chair or bench. */
-export function seatRestEffect(seconds) {
+export function seatRestEffect(seconds, restorative = false) {
   if ((Number(seconds) || 0) < SEAT_REST_SECONDS) {
     return { health: 0, neurasthenia: 0 };
   }
-  return { health: 1, neurasthenia: 4 };
+  return { health: 1, neurasthenia: restorative ? PARK_BENCH_RECOVERY : 4 };
 }
 
 /** Apply one seat's rest if it is ready; seats cannot be farmed repeatedly. */
-export function recoverFromSeat({ seatId, seconds, label = 'Sat down to rest' }) {
-  const effect = seatRestEffect(seconds);
+export function recoverFromSeat({ seatId, seconds, label = 'Sat down to rest', restorative = false }) {
+  const effect = seatRestEffect(seconds, restorative);
   if (!effect.health && !effect.neurasthenia) {
     return { event: null, state, reason: 'too-short' };
+  }
+  if (state.neurastheniaCrisis && !restorative) {
+    return { event: null, state, reason: 'needs-restorative-place' };
   }
   const lastRest = state.seatCooldowns[seatId];
   if (Number.isFinite(lastRest) && state.clock - lastRest < SEAT_COOLDOWN_SECONDS) {
@@ -304,6 +378,14 @@ export function recoverFromSeat({ seatId, seconds, label = 'Sat down to rest' })
     label,
     changes: { health: healthChange, neurasthenia: -nervousChange },
   });
+}
+
+/** Accumulate a deliberate daylight walk without rewarding standing still. */
+export function sunnyStrollStep(exposure, seconds, active = true) {
+  if (!active) return { exposure: 0, completed: false };
+  const total = Math.max(0, Number(exposure) || 0) + Math.max(0, Number(seconds) || 0);
+  if (total < SUNNY_STROLL_SECONDS) return { exposure: total, completed: false };
+  return { exposure: total - SUNNY_STROLL_SECONDS, completed: true };
 }
 
 /** Health and nervous strain from landing with a given downward speed. */

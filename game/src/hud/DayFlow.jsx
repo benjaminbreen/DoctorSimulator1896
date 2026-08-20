@@ -54,11 +54,13 @@ export default function DayFlow({
   zone,
   consultActive,
   suspended = false,
+  practiceBlocked = false,
   onSeePatient,
   onGoToOffice,
   onNextDay,
   morning = null,
   onMorningDone,
+  onCardOpen = () => {},
 }) {
   const [latePrompt, setLatePrompt] = useState(null);
   const [caller, setCaller] = useState(null);
@@ -91,6 +93,9 @@ export default function DayFlow({
 
   useEffect(() => subscribeErrand(setErrand), []);
   useEffect(() => subscribeStanding(() => setStandingTick((n) => n + 1)), []);
+  useEffect(() => {
+    if (!practiceBlocked) schedule.resumeHeld();
+  }, [practiceBlocked, schedule]);
 
   // The clock drives duty: warnings, lateness, callers, and the day's end.
   useEffect(() => worldClock.subscribe((snapshot) => {
@@ -127,9 +132,19 @@ export default function DayFlow({
     }
     if (blocked.current) return;
 
-    const overdue = schedule.overdue(hours);
-    if (overdue) {
-      setLatePrompt(overdue);
+    if (practiceBlocked) {
+      const dueAppointment = schedule.due(hours);
+      if (dueAppointment && schedule.hold(dueAppointment.patientId)) {
+        notice(`${nameOf(dueAppointment.patientId)} will wait while you recover your composure.`, {
+          key: 'appointment', seconds: 7,
+        });
+      }
+      return;
+    }
+
+    const dueAppointment = schedule.due(hours);
+    if (dueAppointment) {
+      setLatePrompt(dueAppointment);
       return;
     }
 
@@ -179,7 +194,7 @@ export default function DayFlow({
       const event = pickEvent((testSeed % 10000) / 10000);
       setEncounter({ event, identity: rollIdentity(event.archetype, testSeed), seed: testSeed, synthetic: true });
     }
-  }), [worldClock, schedule, callerDay, eventDay, runtime, zone, summary]);
+  }), [worldClock, schedule, callerDay, eventDay, runtime, zone, summary, practiceBlocked]);
 
   // Dev panel hook (?devevents=1): trigger any event or caller on demand.
   // Synthetic entries resolve locally; effects apply for real.
@@ -232,10 +247,14 @@ export default function DayFlow({
     if (!cardOpen) return undefined;
     worldClock.setPaused(true);
     setGamePaused(true);
+    // The card claims the screen: the patient queue hides beneath it.
+    onCardOpen(true);
     return () => {
       worldClock.setPaused(false);
       setGamePaused(false);
+      onCardOpen(false);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardOpen, worldClock]);
 
   const keepAppointment = () => {
@@ -350,11 +369,11 @@ export default function DayFlow({
       {latePrompt && (
         <div className="dayflow-scrim">
           <div className="dayflow-panel" role="dialog" aria-label="Appointment due">
-            <p className="dayflow-eyebrow">A Patient Is Waiting</p>
+            <p className="dayflow-eyebrow">Appointment Due</p>
             <p className="dayflow-body">
               {zone === 'consulting-office'
-                ? `${nameOf(latePrompt.patientId)} is waiting in your consulting room; the appointment was for ${formatHour(latePrompt.hours)}.`
-                : `You are late for your appointment. You were to see ${nameOf(latePrompt.patientId)} at ${formatHour(latePrompt.hours)}.`}
+                ? `${nameOf(latePrompt.patientId)} has arrived for the ${formatHour(latePrompt.hours)} appointment.`
+                : `${nameOf(latePrompt.patientId)} is waiting at your office for the ${formatHour(latePrompt.hours)} appointment.`}
             </p>
             <div className="dayflow-actions">
               <button type="button" className="dayflow-button is-primary" onClick={keepAppointment}>

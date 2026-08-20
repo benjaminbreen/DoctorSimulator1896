@@ -7,16 +7,17 @@ import { formatPrice, getPurseCents, spendCents, subscribePurse } from '../world
 import { settleGrievance } from '../world/grievances.js';
 import { noteNameSpoken } from '../world/acquaintance.js';
 import { clearOffer } from '../world/moneyOffer.js';
+import { CONVERSATION_RECOVERY, recoverFromActivity } from '../world/player.js';
 import { useDismissableOverlay } from './useDismissableOverlay.js';
 import './npc-dialogue.css';
 
-export default function NpcDialogueRibbon({ conversation, worldClock }) {
+export default function NpcDialogueRibbon({ conversation, worldClock, zone }) {
   const npc = useMemo(
     () => npcDialogueDefinition(conversation?.npcId),
     [conversation?.npcId],
   );
   const open = Boolean(conversation && npc);
-  const panelRef = useDismissableOverlay(open, stopUsing, {
+  const panelRef = useDismissableOverlay(open, endConversation, {
     autoFocus: false,
     trapFocus: true,
     blockInput: true,
@@ -28,6 +29,17 @@ export default function NpcDialogueRibbon({ conversation, worldClock }) {
   const [recentTurns, setRecentTurns] = useState([]);
   const [purse, setPurse] = useState(getPurseCents);
   const requestRef = useRef(null);
+
+  function endConversation() {
+    if (zone === 'central-park' && recentTurns.length >= 2 && !npc?.grievance) {
+      recoverFromActivity({
+        activityId: `conversation:${npc.id}`,
+        neurasthenia: CONVERSATION_RECOVERY,
+        label: `Had a good conversation with ${npc.name}`,
+      });
+    }
+    stopUsing();
+  }
 
   // The purse publishes its pieces; the ribbon only needs the total.
   useEffect(() => subscribePurse(() => setPurse(getPurseCents())), []);
@@ -137,7 +149,7 @@ export default function NpcDialogueRibbon({ conversation, worldClock }) {
         <button
           className="npc-dialogue-close"
           type="button"
-          onClick={stopUsing}
+          onClick={endConversation}
           aria-label={`End conversation with ${npc.name}`}
         >
           ×

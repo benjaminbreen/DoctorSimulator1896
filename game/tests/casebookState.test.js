@@ -81,3 +81,20 @@ test('an early-ended consultation closes its open casebook visit', () => {
   assert.equal(record.visits[0].stage, 'terminated');
   unsubscribe();
 });
+
+test('a recalled patient gets a new visit even when the result is unchanged', () => {
+  const storage = memoryStorage();
+  const patient = CONSULTATION_PATIENTS[0];
+  const resultState = {
+    ...startConsultation(patient),
+    stage: 'result',
+    result: { immediate: {}, oneMonth: { band: 'neutral' }, summary: {} },
+  };
+  syncConsultationRecord(patient, resultState, STAMP, storage);
+  syncConsultationRecord(patient, resultState, STAMP, storage);
+  syncConsultationRecord(patient, resultState, { ...STAMP, hours: STAMP.hours + 1 }, storage);
+
+  const record = getPatientRecord(patient, storage);
+  assert.equal(record.visits.length, 2);
+  assert.notEqual(record.visits[0].id, record.visits[1].id);
+});

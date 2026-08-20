@@ -45,6 +45,14 @@ import { notice } from './world/notices.js';
 import { clearAnnouncements } from './world/announcements.js';
 import { attachSoundUnlock } from './audio/sound.js';
 import { syncConsultationRecord } from './hud/casebookState.js';
+import {
+  applyPlayerEvent,
+  consultationStrainEffect,
+  getPlayer,
+  isNeurastheniaCrisis,
+  subscribePlayer,
+} from './world/player.js';
+import NeurastheniaCrisis from './hud/NeurastheniaCrisis.jsx';
 
 const TuningPanel = lazy(() => import('./panel/TuningPanel.jsx'));
 const PropsPanel = lazy(() => import('./panel/PropsPanel.jsx'));
@@ -73,6 +81,9 @@ const bootZone = pageParams?.get('zone');
 const patientPortraitReview = Boolean(pageParams?.has('patientPortraits'));
 // ?devevents=1 opens the street-event and caller test panel.
 const devEvents = Boolean(pageParams?.has('devevents'));
+// ?nerves=95 opens the crisis presentation for deterministic visual review.
+const nervesReviewParam = pageParams?.get('nerves');
+const nervesReview = nervesReviewParam == null ? null : Number(nervesReviewParam);
 
 export default function App() {
   const worldClock = useMemo(() => createWorldClock(), []);
@@ -152,9 +163,24 @@ export default function App() {
   const usingInstrument = isFocusedInteraction(focusedInteraction) && !conversation;
   // A live consultation owns the foot of the screen; the HUD verbs yield it.
   const [consultActive, setConsultActive] = useState(false);
+  const [practiceBlocked, setPracticeBlocked] = useState(() => isNeurastheniaCrisis(getPlayer()));
+  // True while a DayFlow card (late prompt, caller, summary…) is on screen;
+  // the patient queue yields to it rather than stacking beneath.
+  const [dayCardOpen, setDayCardOpen] = useState(false);
   // The Examine verb dims the room and strips the chrome to a bare reading.
   const [examining, setExamining] = useState(false);
   const [paused, setPaused] = useState(false);
+  useEffect(() => {
+    if (nervesReview === null || !Number.isFinite(nervesReview)) return;
+    applyPlayerEvent({
+      source: 'nerves-review',
+      label: 'Set nervous strain for visual review',
+      changes: { neurasthenia: nervesReview - getPlayer().neurasthenia },
+    });
+  }, []);
+  useEffect(() => subscribePlayer((player) => {
+    setPracticeBlocked(isNeurastheniaCrisis(player));
+  }), []);
   useEffect(() => subscribe((state) => setFocusedInteraction(state.using)), []);
   useEffect(() => actorRuntime.subscribe(setActors), [actorRuntime]);
   useEffect(() => runtime.onChange((id, value) => {
@@ -218,6 +244,8 @@ export default function App() {
       const reputation = Number(state.result.immediate?.reputation) || 0;
       const delta = reputation !== 0 ? reputation : (satisfaction >= 70 ? 4 : satisfaction >= 43 ? 1 : -3);
       adjustStanding(delta, `the consultation with ${patient.label}`);
+      const strain = consultationStrainEffect(state.result, patient.label);
+      if (strain) applyPlayerEvent(strain);
       // The first closed consultation brings the morning's other business.
       if (settledResultsRef.current.size === 1 && beginErrand()) {
         errandNoticeDueRef.current = true;
@@ -345,10 +373,16 @@ export default function App() {
     actorRuntime.setSingle(null);
   }, [actorRuntime, consultationRuntime]);
 
-  // Called from the casebook: walk to the consulting room and show the patient
-  // in, so a waiting case can be started without hunting for the door.
+  // Called from the casebook: walk to the consulting room and summon the
+  // selected patient, including a fresh return visit for a completed case.
   const seePatient = useCallback((patient) => {
     if (!patient) return;
+    if (isNeurastheniaCrisis(getPlayer())) {
+      notice('Your nerves will not bear another consultation. Seek relief in Central Park first.', {
+        key: 'nervous-crisis', seconds: 8,
+      });
+      return false;
+    }
     const originId = runtime.values.zone;
     if (originId !== 'consulting-office') {
       if (!requestFastTravel(runtime, 'consulting-office')) return;
@@ -356,11 +390,15 @@ export default function App() {
         reason: 'travel',
       });
     }
+    // A casebook recall is a fresh visit even when this patient was already
+    // seen today, so its result must settle independently.
+    settledResultsRef.current.delete(patient.id);
     consultationRuntime.start(patient.id);
     const { givenName, familyName } = patient.profile.identity;
     notice(`You show ${givenName} ${familyName} into your consulting room.`, {
       key: 'consultation',
     });
+    return true;
   }, [consultationRuntime, runtime, worldClock]);
 
   // Sleeping ends the day: the clock jumps to eight the next morning, the
@@ -422,12 +460,20 @@ export default function App() {
           onReadyForReveal={setParkReady}
         />
         {!shotMode && (
+          <NeurastheniaCrisis
+            runtime={runtime}
+            worldClock={worldClock}
+            consultationActive={consultActive}
+          />
+        )}
+        {!shotMode && (
           <>
             {!usingInstrument && !examPresenting && (
               <GameHud
                 runtime={runtime}
                 worldClock={worldClock}
                 patients={consultationPatients}
+                schedule={daySchedule}
                 onSeePatient={seePatient}
                 quiet={Boolean(conversation) || (!devConsult && zone === 'consulting-office' && consultActive)}
                 hintsReady={zone !== 'central-park' || parkReady}
@@ -443,10 +489,10 @@ export default function App() {
                 ) : (
                   <ConsultationView
                     runtime={consultationRuntime}
-                    onRegenerate={regenerateCast}
                     onDismissPatient={() => actorRuntime.setSingle(null)}
                     onNextPatient={clearConsultation}
                     onLeaveConsultation={leaveConsultation}
+                    hidden={dayCardOpen}
                   />
                 )}
               </Suspense>
@@ -462,11 +508,13 @@ export default function App() {
               zone={zone}
               consultActive={consultActive}
               suspended={usingInstrument || examPresenting || paused}
+              practiceBlocked={practiceBlocked}
               onSeePatient={seePatient}
               onGoToOffice={goToOffice}
               onNextDay={startNextDay}
               morning={morning}
               onMorningDone={() => setMorning(null)}
+              onCardOpen={setDayCardOpen}
             />
             {devEvents && (
               <Suspense fallback={null}>
@@ -477,7 +525,7 @@ export default function App() {
             <InstrumentPanel />
             <ExaminePanel examining={objectExamination} worldClock={worldClock} />
             <ExamineReticle />
-            <NpcDialogueRibbon conversation={conversation} worldClock={worldClock} />
+            <NpcDialogueRibbon conversation={conversation} worldClock={worldClock} zone={zone} />
             {!usingInstrument && !consultActive && (
               <EventDialogue raised={Boolean(conversation)} />
             )}

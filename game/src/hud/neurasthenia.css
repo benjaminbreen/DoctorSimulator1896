@@ -1,0 +1,129 @@
+.neurasthenia-vision {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 0,
+    transparent var(--nerves-aperture),
+    rgb(80 31 104 / calc(var(--nerves-opacity) * 0.45)) calc(var(--nerves-aperture) + 9%),
+    rgb(29 7 43 / var(--nerves-opacity)) 100%
+  );
+  box-shadow: inset 0 0 var(--nerves-blur) rgb(40 8 60 / calc(var(--nerves-opacity) * 0.8));
+  animation: neurasthenia-breathe 5.2s ease-in-out infinite;
+}
+
+.neurasthenia-vision.is-crisis {
+  animation-duration: 2.6s;
+}
+
+.neurasthenia-crisis-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(8 4 12 / 0.45);
+}
+
+.neurasthenia-crisis-card {
+  width: min(470px, calc(100vw - 32px));
+  padding: 32px 38px 36px;
+  border: 1px solid rgb(200 174 108 / 0.75);
+  border-radius: 8px;
+  background: linear-gradient(145deg, rgb(25 15 29 / 0.98), rgb(12 14 17 / 0.98));
+  box-shadow: 0 24px 80px rgb(0 0 0 / 0.75), inset 0 0 40px rgb(92 43 112 / 0.18);
+  color: #eee4c9;
+  text-align: center;
+}
+
+.neurasthenia-crisis-kicker {
+  color: #bda86d;
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.neurasthenia-crisis-card h2 {
+  margin: 7px 0 12px;
+  font-family: Georgia, serif;
+  font-size: clamp(2rem, 5vw, 3.1rem);
+  font-weight: 500;
+}
+
+.neurasthenia-crisis-card p {
+  margin: 0 auto 24px;
+  max-width: 34ch;
+  color: #d9d2c0;
+  font-size: 1.05rem;
+  line-height: 1.55;
+}
+
+.neurasthenia-crisis-card button {
+  min-width: 190px;
+  padding: 11px 20px;
+  border: 1px solid #bda86d;
+  border-radius: 4px;
+  background: #183c31;
+  color: #f1e8cf;
+  font: 600 0.9rem Georgia, serif;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+}
+
+.neurasthenia-crisis-card button:hover,
+.neurasthenia-crisis-card button:focus-visible {
+  background: #245344;
+  outline: 2px solid rgb(212 190 126 / 0.55);
+  outline-offset: 3px;
+}
+
+.neurasthenia-objective {
+  position: absolute;
+  top: 74px;
+  left: 50%;
+  z-index: 44;
+  display: grid;
+  gap: 3px;
+  width: min(520px, calc(100vw - 32px));
+  padding: 10px 18px 11px;
+  transform: translateX(-50%);
+  border: 1px solid rgb(193 163 99 / 0.6);
+  border-radius: 5px;
+  background: rgb(22 12 27 / 0.9);
+  box-shadow: 0 6px 22px rgb(0 0 0 / 0.48);
+  color: #eee4c9;
+  text-align: center;
+  pointer-events: none;
+}
+
+.neurasthenia-objective strong {
+  font: 600 1rem Georgia, serif;
+}
+
+.neurasthenia-objective span {
+  color: #c8b273;
+  font-size: 0.78rem;
+}
+
+.neurasthenia-objective small {
+  color: #c8c0b1;
+  font-size: 0.7rem;
+  letter-spacing: 0.025em;
+}
+
+@keyframes neurasthenia-breathe {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 1; }
+}
+
+@media (max-width: 620px) {
+  .neurasthenia-crisis-card { padding: 26px 22px 28px; }
+  .neurasthenia-objective { top: 60px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .neurasthenia-vision { animation: none; }
+}

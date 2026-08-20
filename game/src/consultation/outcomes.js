@@ -27,6 +27,12 @@ function recoveryBand(change) {
   return 'harmed';
 }
 
+function treatmentReactionBand(acceptance) {
+  if (acceptance >= 5) return 'positive';
+  if (acceptance >= 0) return 'uncertain';
+  return 'negative';
+}
+
 function scorePhrase(score) {
   if (score >= 8) return 'strong';
   if (score >= 5) return 'mixed';
@@ -185,6 +191,7 @@ export function resolveAuthoredOutcome(patient, state, noteCoverage) {
       paymentCents: payment,
       paymentLabel: payment === model.fee.full ? 'Fee paid in full' : 'Reduced fee paid',
       wordOfMouth: experienceBand === 'high' ? 'Likely recommendation' : experienceBand === 'middle' ? 'No clear recommendation' : 'Likely complaint',
+      treatmentReaction: treatmentReactionBand(plan.evaluation.patientAcceptance),
       reputation,
     },
     oneMonth: {
@@ -235,6 +242,7 @@ export function resolveFollowUpOutcome(patient, state) {
       paymentCents: model.fee.reduced,
       paymentLabel: 'Reduced consultation fee',
       wordOfMouth: 'No clear recommendation',
+      treatmentReaction: 'none',
       reputation: 0,
     },
     oneMonth: {

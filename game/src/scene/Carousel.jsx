@@ -8,7 +8,7 @@ import { buildCarousel, CAROUSEL } from '../world/carousel.js';
 import { canopyTexture, friezeTexture, drumTexture, platformTexture, valanceTexture } from './carouselPaint.js';
 import { getInteraction, useInstrument, stopUsing } from '../world/interaction.js';
 import { gameDebug } from '../debug.js';
-import { recover } from '../world/player.js';
+import { CAROUSEL_RECOVERY, recoverFromActivity } from '../world/player.js';
 import { identifyLandmark } from '../world/landmarkInformation.js';
 import { PARK_LANDMARKS } from '../world/parkLandmarks.js';
 
@@ -19,6 +19,7 @@ import { PARK_LANDMARKS } from '../world/parkLandmarks.js';
 // spin so the horses lead with their heads; the outer row gallops.
 
 const SPEED = -0.3; // rad/s — a leisurely mule's pace, heads first
+const RECOVERY_RIDE_SECONDS = (Math.PI * 2) / Math.abs(SPEED);
 const scratch = new THREE.Object3D();
 const scratchColor = new THREE.Color();
 
@@ -310,7 +311,7 @@ export default function Carousel() {
   // the next press. The interaction store handles the rest — PlayerRig
   // freezes and hides the body, CameraRig eases onto the moving framing that
   // this component steers from the saddle every frame.
-  const rideRef = useRef({ horse: null, since: 0, framing: null });
+  const rideRef = useRef({ horse: null, since: 0, framing: null, rewarded: false });
   useEffect(() => {
     const onKey = (event) => {
       if (event.code !== 'KeyE') return;
@@ -344,12 +345,8 @@ export default function Carousel() {
       if (best === null) return;
       ride.horse = best;
       ride.since = now;
+      ride.rewarded = false;
       ride.framing = { position: [0, 0, 0], target: [0, 0, 0] };
-      recover({
-        neurasthenia: 10,
-        source: 'carousel',
-        label: 'Rode on the carousel',
-      });
       useInstrument({ id: 'carousel-ride', framing: ride.framing });
     };
     window.addEventListener('keydown', onKey);
@@ -382,6 +379,14 @@ export default function Carousel() {
         // Something else ended the ride (their escape handling); let go.
         ride.horse = null;
       } else {
+        if (!ride.rewarded && (performance.now() - ride.since) / 1000 >= RECOVERY_RIDE_SECONDS) {
+          ride.rewarded = true;
+          recoverFromActivity({
+            activityId: 'carousel',
+            neurasthenia: CAROUSEL_RECOVERY,
+            label: 'Completed a turn on the carousel',
+          });
+        }
         const horse = built.horses[ride.horse];
         const spin = spinRef.current?.rotation.y ?? 0;
         const psi = horse.angle - spin - CAROUSEL.yaw;

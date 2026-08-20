@@ -6,7 +6,7 @@ import StaticColliders from './lib/StaticColliders.jsx';
 import { getInteraction, useInstrument, stopUsing } from '../world/interaction.js';
 import { terrainHeight } from '../world/terrain.js';
 import { gameDebug } from '../debug.js';
-import { recover } from '../world/player.js';
+import { CHECKERS_RECOVERY, recoverFromActivity } from '../world/player.js';
 
 // Two checkers tables under the Kinderberg. E at a table seats you over the
 // board (the interaction store freezes and hides the body, same as the
@@ -298,9 +298,9 @@ export default function CheckersTables() {
     const latest = state.games[tableIndex];
     if (latest.winner !== null && !state.rewarded[tableIndex]) {
       state.rewarded[tableIndex] = true;
-      recover({
-        neurasthenia: 8,
-        source: 'checkers',
+      recoverFromActivity({
+        activityId: 'checkers',
+        neurasthenia: CHECKERS_RECOVERY,
         label: 'Played a game of checkers',
       });
     }

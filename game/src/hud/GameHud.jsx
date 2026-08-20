@@ -301,6 +301,7 @@ export default function GameHud({
   runtime,
   worldClock,
   patients = [],
+  schedule = null,
   onSeePatient,
   quiet = false,
   hintsReady = true,
@@ -320,6 +321,7 @@ export default function GameHud({
   const [showNoteHint, setShowNoteHint] = useState(() => !quiet);
   // Which record the casebook opens on when it is opened from the queue.
   const [casebookPatientId, setCasebookPatientId] = useState(null);
+  const [, setScheduleRevision] = useState(0);
   useSyncExternalStore(subscribeCasebook, getCasebookRevision, getCasebookRevision);
   const records = getCasebookRecords();
   const lastPlayerEvent = useRef(getPlayer().log.at(-1) ?? null);
@@ -357,6 +359,7 @@ export default function GameHud({
   }, [quiet]);
 
   useEffect(() => worldClock.subscribe(setTime), [worldClock]);
+  useEffect(() => schedule?.subscribe?.(() => setScheduleRevision((revision) => revision + 1)), [schedule]);
 
   // This is an introduction, not permanent chrome. It points to the action
   // that fulfils it, then leaves the world clear once the player has read it.
@@ -404,15 +407,30 @@ export default function GameHud({
   const hours = time.hours;
   const day = time.date;
   const clock = formatClock(hours);
-  // The queue is the real patient list, so it grows on its own as patients
-  // are added; patientQueue is only the fallback silhouette order.
-  const queue = patients.length
-    ? patients.map((patient, index) => ({
+  // The schedule supplies both the order and status. The static cameo list is
+  // only a fallback for preview states without real patient records.
+  const appointments = schedule?.list?.() ?? [];
+  const patientById = new Map(patients.map((patient) => [patient.id, patient]));
+  const scheduledPatients = appointments
+    .map((appointment) => ({ patient: patientById.get(appointment.patientId), appointment }))
+    .filter((entry) => entry.patient);
+  const scheduledIds = new Set(scheduledPatients.map((entry) => entry.patient.id));
+  const orderedPatients = [
+    ...scheduledPatients,
+    ...patients.filter((patient) => !scheduledIds.has(patient.id)).map((patient) => ({ patient, appointment: null })),
+  ];
+  const queue = orderedPatients.length
+    ? orderedPatients.map(({ patient, appointment }, index) => ({
       patient,
-      seen: records[patient.id]?.status === 'complete' || records[patient.id]?.status === 'closed',
+      appointment,
+      seen: appointment?.status === 'kept' || appointment?.status === 'forfeited'
+        || records[patient.id]?.status === 'complete' || records[patient.id]?.status === 'closed',
       silhouette: patientQueue[index % patientQueue.length].silhouette,
     }))
     : patientQueue.map((entry) => ({ patient: null, seen: entry.seen, silhouette: entry.silhouette }));
+  const nextAppointment = appointments.find((appointment) => (
+    appointment.status === 'pending' || appointment.status === 'held'
+  )) ?? null;
   const unreadLetters = letters.filter((entry) => !readIds.has(entry.id)).length;
   const feedbackEvent = meterFeedback?.event ?? null;
   const eventDeltas = feedbackEvent
@@ -496,7 +514,10 @@ export default function GameHud({
         <i className="ghud-rule" aria-hidden="true" />
 
         <div className="ghud-plate ghud-plate--queue">
-          <div className="ghud-label">Patient Queue</div>
+          <div className="ghud-label">
+            Appointments
+            {nextAppointment && <span className="ghud-appointment-time">Next {formatClock(nextAppointment.hours).text}</span>}
+          </div>
           <div
             className={`ghud-queue-row${queue.length > 3 ? ' ghud-queue-row--stacked' : ''}`}
             style={queue.length > 3
@@ -510,7 +531,7 @@ export default function GameHud({
                 name={`${entry.patient.profile.identity.givenName} ${entry.patient.profile.identity.familyName}`}
                 age={entry.patient.profile.identity.age}
                 occupation={entry.patient.profile.social.occupation}
-                label={`Open the casebook for ${entry.patient.profile.identity.givenName} ${entry.patient.profile.identity.familyName}`}
+                label={`${entry.appointment ? `${formatClock(entry.appointment.hours).text} appointment. ` : ''}Open the casebook for ${entry.patient.profile.identity.givenName} ${entry.patient.profile.identity.familyName}`}
                 variant={entry.silhouette}
                 seen={entry.seen}
                 onClick={() => {

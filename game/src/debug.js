@@ -2,6 +2,7 @@
 // lighting can be driven headlessly (screenshot verification without input).
 
 import { receiveGood } from './world/pocket.js';
+import { applyPlayerEvent, getPlayer } from './world/player.js';
 
 export const gameDebug = {
   tuning: null,
@@ -123,6 +124,14 @@ export const gameDebug = {
   enterInstrument: null,
   // Set by PlayerRig so dialogue can be opened for visual and API testing.
   talk: null,
+  setNeurasthenia(value) {
+    const target = Math.min(100, Math.max(0, Number(value) || 0));
+    return applyPlayerEvent({
+      source: 'debug-neurasthenia',
+      label: 'Set nervous strain for testing',
+      changes: { neurasthenia: target - getPlayer().neurasthenia },
+    });
+  },
   // Present while the mobile controls are mounted; the screenshot harness
   // can drive the same virtual input that pointer gestures use.
   mobileInput: null,

@@ -244,7 +244,9 @@ export default function Room({ room, lighting }) {
     if (room.exterior) return null;
     const marble = colors.wallTexture === 'procedural/marble';
     const source = marble ? null : (packMaps.wall ?? plasterTexture(colors.wall));
-    const tile = packMaps.wall ? 1.15 : 1.6;
+    // `wallTile` lets a room print its paper at a larger drop; a dense
+    // repeat close to the camera reads as gift wrap.
+    const tile = colors.wallTile ?? (packMaps.wall ? 1.15 : 1.6);
     const cache = new Map();
     let seed = 11;
     for (const box of room.wallBoxes) {

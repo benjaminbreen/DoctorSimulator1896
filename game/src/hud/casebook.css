@@ -647,7 +647,7 @@
 .casebook-status-stamp.is-waiting { border-color: #987731; color: #80621f; }
 .casebook-status-stamp.is-outcome { border-color: #5e7950; color: #40603a; }
 
-/* The one action on the page: a waiting patient can be shown in from here. */
+/* The one action on the page: summon this patient for a new consultation. */
 .casebook-see-patient {
   display: inline-flex;
   align-items: center;

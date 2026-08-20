@@ -500,6 +500,18 @@
   white-space: nowrap;
 }
 
+.ghud-plate--queue .ghud-label {
+  display: flex;
+  align-items: baseline;
+  gap: 0.65em;
+}
+
+.ghud-appointment-time {
+  color: var(--g-ink-soft);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
 .ghud-plate--loc {
   flex-shrink: 1;
 }

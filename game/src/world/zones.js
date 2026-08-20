@@ -71,6 +71,8 @@ export const zones = {
       ...blueprintMouldings(consultingBlueprint, {
         trim: consultingLighting.materials.trim,
         ceiling: consultingLighting.materials.ceiling,
+        // A doctor's consulting room is a room for show: dado like the parlor.
+        dado: true,
       }),
       ...friezeBand(consultingBlueprint, {
         wall: consultingLighting.materials.wall,

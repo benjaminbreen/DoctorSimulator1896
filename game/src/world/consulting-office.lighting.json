@@ -91,6 +91,7 @@
     "ceiling": "#eef0ec",
     "trim": "#3a2c1e",
     "wallTexture": "props/Wallpaper_Vintage",
+    "wallTile": 1.65,
     "floorTexture": "victorian/WoodenFloor_02"
   }
 }

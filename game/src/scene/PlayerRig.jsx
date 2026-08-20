@@ -20,9 +20,12 @@ import {
   carriageImpactEffect,
   getPlayer,
   harm,
+  recoverFromActivity,
   recoverFromSeat,
+  sunnyStrollStep,
   fallEffect,
   applyPlayerEvent,
+  SUNNY_STROLL_RECOVERY,
   waterWalkingEffect,
   waterWalkingStep,
   SEAT_REST_SECONDS,
@@ -96,6 +99,7 @@ export default function PlayerRig({
   // Prevent an E held through a door from firing again on arrival.
   const interactLatch = useRef(true);
   const waterExposure = useRef(0);
+  const sunnyStrollExposure = useRef(0);
   const colliderPosture = useRef('standing');
   const edgeRef = useRef({ candidateId: null, since: 0, armed: true, active: null, cooldownUntil: 0 });
   const climbRef = useRef(null);
@@ -224,6 +228,7 @@ export default function PlayerRig({
     }
 
     if (reactionLocksMovement(reaction)) {
+      sunnyStrollExposure.current = 0;
       state.velocity = [0, 0, 0];
       gameDebug.player.velocity[0] = 0;
       gameDebug.player.velocity[1] = 0;
@@ -236,6 +241,7 @@ export default function PlayerRig({
 
     const using = getInteraction().using;
     if (using?.kind === 'seat') {
+      sunnyStrollExposure.current = 0;
       setReach(null);
       gameDebug.prompt = 'Stand up';
       if (!using.rewarded && getPlayer().clock - using.startedAt >= SEAT_REST_SECONDS) {
@@ -243,6 +249,8 @@ export default function PlayerRig({
           seatId: using.id,
           seconds: getPlayer().clock - using.startedAt,
           label: `Rested on ${using.item.affordance.name}`,
+          restorative: runtime.values.zone === 'central-park'
+            && /bench/i.test(using.item.affordance.name),
         });
         using.rewarded = true;
       }
@@ -256,6 +264,7 @@ export default function PlayerRig({
     // Using an instrument takes the controls; the body stays put. Clear the
     // prompt on the way in, or the "E use the…" line hangs over the console.
     if (using) {
+      sunnyStrollExposure.current = 0;
       if (gameDebug.prompt) {
         gameDebug.prompt = null;
         setReach(null);
@@ -441,6 +450,26 @@ export default function PlayerRig({
     gameDebug.player.yaw = state.yaw;
     gameDebug.player.running = Boolean(movementInput.run)
       && Math.hypot(state.velocity[0], state.velocity[2]) >= 5.25;
+
+    const horizontalSpeed = Math.hypot(state.velocity[0], state.velocity[2]);
+    const stroll = sunnyStrollStep(
+      sunnyStrollExposure.current,
+      dt,
+      runtime.values.zone === 'central-park'
+        && runtime.values.timeOfDay >= 8
+        && runtime.values.timeOfDay <= 18
+        && horizontalSpeed >= 0.8
+        && horizontalSpeed < 5.25
+        && !gameDebug.player.running,
+    );
+    sunnyStrollExposure.current = stroll.exposure;
+    if (stroll.completed) {
+      recoverFromActivity({
+        activityId: 'sunny-stroll',
+        neurasthenia: SUNNY_STROLL_RECOVERY,
+        label: 'Strolled in the sun',
+      });
+    }
 
     const edge = edgeRef.current;
     const candidate = ledgeCandidate(motionAffordances, {

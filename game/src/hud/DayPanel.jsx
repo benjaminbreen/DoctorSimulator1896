@@ -9,7 +9,7 @@ import {
   weekdayName, monthName, dayNews, dayNewsSource, widerWorld,
 } from './hudState.js';
 import { notice } from '../world/notices.js';
-import { recover, restEffect } from '../world/player.js';
+import { getPlayer, isNeurastheniaCrisis, recover, restEffect } from '../world/player.js';
 import { travelMinutesBetween } from '../world/travel.js';
 import { useDismissableOverlay } from './useDismissableOverlay.js';
 import { QuatrefoilIcon, EyebrowArrow } from './chrome.jsx';
@@ -60,6 +60,14 @@ export default function DayPanel({ open, onClose, runtime, worldClock, day }) {
   };
 
   const passTime = () => {
+    if (isNeurastheniaCrisis(getPlayer())) {
+      onClose();
+      notice('Waiting indoors will not steady you now. Seek relief in Central Park.', {
+        key: 'nervous-crisis',
+        seconds: 7,
+      });
+      return;
+    }
     const choice = REST_CHOICES.find((entry) => entry.id === restId);
     const elapsedMinutes = choice.until !== undefined
       ? worldClock.advanceToHour(choice.until, { reason: 'rest' })

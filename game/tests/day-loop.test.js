@@ -31,6 +31,15 @@ test('warning fires once, lateness respects the grace period', () => {
   assert.equal(schedule.overdue(first.hours + 7 / 60)?.patientId, first.patientId);
 });
 
+test('an appointment becomes available at its scheduled time', () => {
+  const schedule = createDaySchedule({ seed: 3, patientIds: PATIENTS });
+  const first = schedule.list()[0];
+  assert.equal(schedule.due(first.hours - 1 / 60), null);
+  assert.equal(schedule.due(first.hours)?.patientId, first.patientId);
+  schedule.markKept(first.patientId);
+  assert.notEqual(schedule.due(first.hours)?.patientId, first.patientId);
+});
+
 test('kept and forfeited appointments resolve the day', () => {
   const schedule = createDaySchedule({ seed: 3, patientIds: PATIENTS });
   const [a, b, c] = schedule.list();
@@ -41,6 +50,17 @@ test('kept and forfeited appointments resolve the day', () => {
   schedule.markKept(c.patientId);
   assert.ok(schedule.allResolved());
   assert.deepEqual(schedule.stats(), { kept: 2, forfeited: 1, pending: 0 });
+});
+
+test('appointments wait during a nervous crisis and resume afterward', () => {
+  const schedule = createDaySchedule({ seed: 3, patientIds: PATIENTS });
+  const first = schedule.list()[0];
+  assert.ok(schedule.hold(first.patientId));
+  assert.equal(schedule.due(first.hours), null);
+  assert.equal(schedule.allResolved(), false);
+  assert.deepEqual(schedule.stats(), { kept: 0, forfeited: 0, pending: 3 });
+  assert.ok(schedule.resumeHeld());
+  assert.equal(schedule.due(first.hours)?.patientId, first.patientId);
 });
 
 test('callers are deterministic per seed and honour patience', () => {

@@ -58,6 +58,13 @@ function cleanStamp(stamp = {}) {
   };
 }
 
+function sameStamp(a, b) {
+  return a?.hours === b?.hours
+    && a?.date?.year === b?.date?.year
+    && a?.date?.month === b?.date?.month
+    && a?.date?.date === b?.date?.date;
+}
+
 function observationEntries(state) {
   const seen = new Set();
   const entries = [];
@@ -162,12 +169,12 @@ export function syncConsultationRecord(patient, state, stamp, storage = browserS
   const visits = [...(current.visits || [])];
   const last = visits.at(-1) || null;
   const signature = resultSignature(state);
+  const time = cleanStamp(stamp);
   const updateLast = Boolean(last && (
     last.status === 'in-progress'
-    || (signature && last.resultSignature === signature)
+    || (signature && last.resultSignature === signature && sameStamp(last.updatedAt, time))
   ));
   const visitId = updateLast ? last.id : `visit-${book.nextVisitId++}`;
-  const time = cleanStamp(stamp);
   const visit = projectVisit(patient, state, time, updateLast ? last : null, visitId);
   if (updateLast) visits[visits.length - 1] = visit;
   else visits.push(visit);

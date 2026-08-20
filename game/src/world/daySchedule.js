@@ -46,8 +46,14 @@ export function createDaySchedule({ seed = 1, patientIds = [] } = {}) {
   return {
     list: () => appointments.map((item) => ({ ...item })),
 
-    // The next pending appointment, in slot order.
-    next: () => appointments.find((item) => item.status === 'pending') || null,
+    // The next unresolved appointment, including one held during a crisis.
+    next: () => appointments.find((item) => item.status === 'pending' || item.status === 'held') || null,
+
+    // The first patient whose appointment time has arrived.
+    due(hours) {
+      const appointment = appointments.find((item) => item.status === 'pending' && hours >= item.hours);
+      return appointment ? { ...appointment } : null;
+    },
 
     // A pending appointment wanting its five-minute warning. Marks it warned.
     takeWarning(hours) {
@@ -70,10 +76,29 @@ export function createDaySchedule({ seed = 1, patientIds = [] } = {}) {
 
     markKept(patientId) {
       const item = find(patientId);
-      if (!item || item.status !== 'pending') return false;
+      if (!item || (item.status !== 'pending' && item.status !== 'held')) return false;
       item.status = 'kept';
       notify();
       return true;
+    },
+
+    hold(patientId) {
+      const item = find(patientId);
+      if (!item || item.status !== 'pending') return false;
+      item.status = 'held';
+      notify();
+      return true;
+    },
+
+    resumeHeld() {
+      let changed = false;
+      for (const item of appointments) {
+        if (item.status !== 'held') continue;
+        item.status = 'pending';
+        changed = true;
+      }
+      if (changed) notify();
+      return changed;
     },
 
     markForfeited(patientId) {
@@ -84,12 +109,12 @@ export function createDaySchedule({ seed = 1, patientIds = [] } = {}) {
       return true;
     },
 
-    allResolved: () => appointments.every((item) => item.status !== 'pending'),
+    allResolved: () => appointments.every((item) => item.status !== 'pending' && item.status !== 'held'),
 
     stats: () => ({
       kept: appointments.filter((item) => item.status === 'kept').length,
       forfeited: appointments.filter((item) => item.status === 'forfeited').length,
-      pending: appointments.filter((item) => item.status === 'pending').length,
+      pending: appointments.filter((item) => item.status === 'pending' || item.status === 'held').length,
     }),
 
     subscribe(listener) {

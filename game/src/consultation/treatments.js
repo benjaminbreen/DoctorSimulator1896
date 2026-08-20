@@ -149,13 +149,6 @@ export const TREATMENT_LIBRARY = Object.freeze([
       monthText: 'A month later the symptoms are quieter in seclusion and the patient’s position is gone.',
       modernText: 'Enforced seclusion suppresses visible symptoms while removing work, income, and company.',
     }),
-  tx('rest-cure-sanatorium', 'rest', 'Rest cure at a sanatorium',
-    'Six weeks resident: seclusion, massage, feeding up, attendants.', 3800, {
-      quality: 4, patientAcceptance: 0, recovery: 2, cost: -14,
-      immediateText: 'The sum is named and the room goes quiet.',
-      monthText: 'A month later the cost has fallen on the household and the gain is hard to point to.',
-      modernText: 'The full Mitchell package, at a price that itself becomes the patient’s problem.',
-    }),
   tx('rest-resort', 'rest', 'A fortnight at a resort',
     'Saratoga or the Catskills. Change of scene and regular hours.', 1600, {
       quality: 5, patientAcceptance: 6, recovery: 3, cost: -6,
@@ -163,14 +156,6 @@ export const TREATMENT_LIBRARY = Object.freeze([
       monthText: 'A month later the fortnight is remembered fondly and its effect has faded.',
       modernText: 'Rest and removal from routine stressors, for as long as it lasts.',
     }),
-  tx('rest-seclusion-family', 'rest', 'Seclusion from the family',
-    'One month. No callers, no letters.', 0, {
-      quality: 4, patientAcceptance: -2, recovery: 0, cost: -5,
-      immediateText: 'Being cut off from her people is not heard as care.',
-      monthText: 'A month later the isolation has removed both the irritation and the support.',
-      modernText: 'Mitchell’s key ingredient, and the one with the clearest social cost.',
-    }),
-
   /* ---------------- diet ---------------- */
   tx('diet-milk', 'diet', 'Exclusive milk diet',
     'Four quarts daily and nothing else.', 220,
@@ -182,9 +167,6 @@ export const TREATMENT_LIBRARY = Object.freeze([
       monthText: 'A month later the patient has gained a little and the grocer’s bill has grown.',
       modernText: 'Genuine benefit where undernourishment is part of the picture.',
     }),
-  tx('diet-beef-tea', 'diet', 'Beef tea',
-    'Three times daily. Strengthens and supports.', 140,
-    inert('A month later the beef tea has been taken faithfully and changed nothing.')),
   tx('diet-brandy', 'diet', 'Brandy',
     'A wineglass at noon and at night, as a stimulant.', 120, {
       quality: 2, patientAcceptance: 6, recovery: -2, cost: -3,
@@ -192,9 +174,6 @@ export const TREATMENT_LIBRARY = Object.freeze([
       monthText: 'A month later the wineglass has become two and the sleep is worse for it.',
       modernText: 'Prescribed alcohol was routine, and unhelpful for nearly everything it was given for.',
     }),
-  tx('diet-cod-liver', 'diet', 'Cod liver oil',
-    'A spoonful before meals.', 75,
-    inert('A month later the oil has been taken and resented in equal measure.')),
   tx('diet-abstinence', 'diet', 'Abstinence',
     'No tea, coffee, tobacco, or excitement.', 0, {
       quality: 5, patientAcceptance: 1, recovery: 2, cost: -2,
@@ -214,13 +193,6 @@ export const TREATMENT_LIBRARY = Object.freeze([
   tx('exer-gymnastics', 'exercise', 'Swedish movements',
     'Medical gymnastics with an attendant.', 600,
     inert('A month later the exercises have lapsed for want of an attendant.', { cost: -4 })),
-  tx('exer-change-air', 'exercise', 'Change of air',
-    'One month at the shore or in the country.', 1400, {
-      quality: 5, patientAcceptance: 7, recovery: 3, cost: -7,
-      immediateText: 'A month away is an appealing thing to be told to do.',
-      monthText: 'A month later the change has helped and the return has undone much of it.',
-      modernText: 'Removal from routine stressors, with no lasting effect once the routine resumes.',
-    }),
   tx('exer-sea-voyage', 'exercise', 'A sea voyage',
     'Six weeks, Atlantic passage.', 6000, {
       quality: 4, patientAcceptance: 3, recovery: 2, cost: -15,
@@ -235,27 +207,10 @@ export const TREATMENT_LIBRARY = Object.freeze([
       monthText: 'A month later the open air has done real good and the absence has cost real money.',
       modernText: 'The West cure: activity and daylight, prescribed to men for what put women to bed.',
     }),
-  tx('exer-mountain-air', 'exercise', 'Mountain air',
-    'The Adirondacks, through the summer.', 3000,
-    inert('A month later the season in the mountains has not been arranged.', { cost: -12 })),
-
   /* ---------------- hydrotherapy ---------------- */
-  tx('water-cold-sponge', 'water', 'Cold sponging',
-    'On rising, briskly, followed by friction.', 0,
-    inert('A month later the morning sponging is a habit and nothing more.', { cost: 0 })),
   tx('water-wet-pack', 'water', 'The wet pack',
     'Wrapped in sheets for an hour.', 100,
     inert('A month later the packs have been given up as troublesome.', { cost: -2 })),
-  tx('water-sitz-bath', 'water', 'Sitz bath',
-    'Tepid, twice daily.', 60,
-    inert('A month later the baths have been taken without effect.')),
-  tx('water-turkish-bath', 'water', 'Turkish bath',
-    'Weekly, followed by an hour’s rest.', 200, {
-      quality: 4, patientAcceptance: 6, recovery: 1, cost: -2,
-      immediateText: 'A weekly bath is a pleasure as much as a treatment.',
-      monthText: 'A month later the weekly bath is looked forward to and has changed little else.',
-      modernText: 'Relaxation and an hour of enforced rest; no specific effect.',
-    }),
   tx('water-warm-bath', 'water', 'Continuous warm bath',
     'For excitement and agitation.', 350, {
       quality: 5, patientAcceptance: 4, recovery: 2, cost: -3,
@@ -275,15 +230,9 @@ export const TREATMENT_LIBRARY = Object.freeze([
       monthText: 'A month later the sittings have been faithfully kept and the benefit is hard to separate from the attention.',
       modernText: 'No specific effect. The ritual, the touch, and the regular appointment do the work.',
     }),
-  tx('elec-local-faradization', 'electricity', 'Local faradization',
-    'Ten minutes to the affected part.', 180,
-    inert('A month later the applications have made no difference to the part treated.', { patientAcceptance: 5, cost: -3 })),
   tx('elec-galvanization', 'electricity', 'Galvanization',
     'Constant current, ten minutes.', 220,
     inert('A month later the current has been applied regularly and changed nothing.', { patientAcceptance: 5, cost: -3 })),
-  tx('elec-central-galvanization', 'electricity', 'Central galvanization',
-    'Spine and head, Beard’s technique.', 340,
-    inert('A month later the course is complete and the complaint is where it was.', { patientAcceptance: 5, cost: -4 })),
   tx('elec-static', 'electricity', 'Static electricity',
     'The machine — sparks and the electric breeze.', 400, {
       quality: 3, patientAcceptance: 9, recovery: 1, cost: -4,
@@ -291,10 +240,6 @@ export const TREATMENT_LIBRARY = Object.freeze([
       monthText: 'A month later the patient speaks warmly of the machine and is otherwise unchanged.',
       modernText: 'Pure theatre, and unusually effective theatre.',
     }),
-  tx('elec-bath', 'electricity', 'The electric bath',
-    'Current passed through the water.', 500,
-    inert('A month later the baths have been completed without incident or benefit.', { patientAcceptance: 6, cost: -5 })),
-
   /* ---------------- mind & suggestion ---------------- */
   tx('mind-hypnotic-suggestion', 'suggestion', 'Hypnotic suggestion',
     'The symptom addressed directly under trance.', 300, {
@@ -323,13 +268,6 @@ export const TREATMENT_LIBRARY = Object.freeze([
       immediateText: 'The advice is kind and easy to accept.',
       monthText: 'A month later the patient is less alone and the underlying trouble is untouched.',
       modernText: 'Real benefit to mood, and no effect on a physical cause if there is one.',
-    }),
-  tx('mind-moral-management', 'suggestion', 'Moral management',
-    'Firm authority. No indulgence of the symptom.', 0, {
-      quality: 3, patientAcceptance: -6, recovery: -2, cost: -2,
-      immediateText: 'The firmness is heard as disbelief.',
-      monthText: 'A month later the patient has stopped reporting the symptom and has not stopped having it.',
-      modernText: 'Suppressed reporting is mistaken for improvement.',
     }),
   tx('mind-remove-influence', 'suggestion', 'Remove the suggestive influence',
     'End the sittings, the circle, or the company that feeds it.', 0, {
@@ -389,12 +327,6 @@ export const TREATMENT_LIBRARY = Object.freeze([
       monthText: 'A month later the new rooms are better and the rent is higher.',
       modernText: 'Helps where housing is genuinely part of the cause.',
     }),
-  tx('move-own-room', 'removal', 'A room of her own',
-    'Separated from the household.', 1200,
-    inert('A month later the move was not made.', { cost: -8 })),
-  tx('move-country', 'removal', 'The country for a season',
-    'Placed with relations.', 1800,
-    inert('A month later the arrangement could not be made.', { cost: -10 })),
 ]);
 
 const BY_ID = new Map(TREATMENT_LIBRARY.map((item) => [item.id, item]));

@@ -22,6 +22,7 @@ import {
   savePatientNotes,
 } from './patientNotes.js';
 import { notice } from '../world/notices.js';
+import { DENOMINATIONS } from '../world/purse.js';
 import { Vector3 } from 'three';
 import { gameDebug } from '../debug.js';
 import { getExamAnchors } from './examAnchors.js';
@@ -280,6 +281,21 @@ function money(cents) {
   return `$${((Number(cents) || 0) / 100).toFixed(2)}`;
 }
 
+// The fee as physical 1896 pieces, largest first, capped so it stays one row.
+const FEE_TILTS = [-7, 5, -3, 8, -5, 4, -8, 6];
+
+function feePieces(cents) {
+  const pieces = [];
+  let rest = Math.max(0, Math.round(Number(cents) || 0));
+  for (const piece of DENOMINATIONS) {
+    while (rest >= piece.cents && pieces.length < FEE_TILTS.length) {
+      pieces.push(piece);
+      rest -= piece.cents;
+    }
+  }
+  return pieces;
+}
+
 // The patient holds an opinion, not a score. The number stays in the aria
 // label and the dev panel; the words go in the panel title.
 function leavesPhrase(value) {
@@ -353,6 +369,8 @@ function ResultModal({
   const satisfactionBand = satisfaction >= 7 ? 'high' : satisfaction >= 4.5 ? 'mid' : 'low';
   const month = result?.oneMonth || {};
   const fee = useCountUp(Number(immediate.paymentCents) || 0, 420);
+  // Memoised so the count-up's re-renders don't rebuild the piece list.
+  const pieces = useMemo(() => feePieces(immediate.paymentCents), [immediate.paymentCents]);
   // The month report is a look ahead, so it costs a deliberate click rather
   // than sitting in the header as an equal tab. A real time gate belongs at
   // end of run, once the game advances a month.
@@ -441,13 +459,27 @@ function ResultModal({
               <blockquote className="gcon-result-departure" style={{ '--step': 0 }}>{immediate.departureLine}</blockquote>
               <p className="gcon-result-narrative" style={{ '--step': 1 }}>{immediate.narrative}</p>
               <div className="gcon-result-payment" style={{ '--step': 2 }}>
-                <span>Fee received</span>
+                <div className="gcon-result-payment-label">
+                  <span>Fee received</span>
+                  <small>{immediate.paymentLabel}</small>
+                </div>
+                <div className="gcon-result-money" aria-hidden="true">
+                  {pieces.map((piece, index) => (
+                    <img
+                      key={`${piece.id}-${index}`}
+                      src={piece.image}
+                      alt=""
+                      className={`is-${piece.kind}`}
+                      style={{ '--i': index, '--tilt': `${FEE_TILTS[index]}deg` }}
+                    />
+                  ))}
+                </div>
                 <strong>{money(fee)}</strong>
-                <small>{immediate.paymentLabel}</small>
               </div>
               <div className="gcon-result-satisfaction" style={{ '--step': 3 }}>
                 <div className="gcon-result-verdict">
                   <span>How the visit was received</span>
+                  <strong>{leavesPhrase(satisfaction).replace(/^leaves\s/, '').replace(/^./, (c) => c.toUpperCase())}</strong>
                 </div>
                 <div
                   className={`gcon-result-bar is-${satisfactionBand}`}
@@ -465,6 +497,12 @@ function ResultModal({
               <div className="gcon-result-feedback" style={{ '--step': 5 }}>
                 {result.feedback?.strengths?.[0] && <p><strong>What went well</strong>{result.feedback.strengths[0]}</p>}
                 {result.feedback?.improvements?.[0] && <p><strong>What fell short</strong>{result.feedback.improvements[0]}</p>}
+                {immediate.treatmentReaction === 'negative' && (
+                  <p><strong>Your nerves</strong>The patient’s rejection leaves you badly shaken.</p>
+                )}
+                {immediate.treatmentReaction === 'uncertain' && (
+                  <p><strong>Your nerves</strong>The patient’s doubts add to your strain.</p>
+                )}
               </div>
             </div>
           ) : (
@@ -499,7 +537,7 @@ function ResultModal({
           <p>Where will you go now?</p>
           <div className="gcon-result-actions">
             <button type="button" className="is-primary" ref={primaryRef} onClick={onNextPatient}>
-              <kbd>⏎</kbd><strong>Receive next patient</strong><span>Remain in the consulting room</span>
+              <kbd>⏎</kbd><strong>Close the record</strong><span>Remain in the consulting room</span>
             </button>
             <button type="button" onClick={onWaitingRoom}>
               <kbd>2</kbd><strong>Go to waiting room</strong><span>Leave consultation mode</span>
@@ -538,10 +576,11 @@ const RAIL_ICONS = { interview: SpeechIcon, examine: StethoscopeIcon, ruminate: 
 
 export default function ConsultationView({
   runtime,
-  onRegenerate,
   onDismissPatient,
   onNextPatient = () => runtime.reset(),
   onLeaveConsultation = () => runtime.reset(),
+  // A DayFlow card is up: the consultation hides rather than stacking beneath it.
+  hidden = false,
 }) {
   const state = useSyncExternalStore(runtime.subscribe, runtime.get, runtime.get);
   const patients = runtime.patients();
@@ -555,7 +594,6 @@ export default function ConsultationView({
   const [playerNotes, setPlayerNotes] = useState([]);
   const [noteEditor, setNoteEditor] = useState(null);
   const [errorNote, setErrorNote] = useState('');
-  const [queueDismissed, setQueueDismissed] = useState(false);
   const [customSpeech, setCustomSpeech] = useState('');
   const [customThought, setCustomThought] = useState('');
   const [customThoughtOpen, setCustomThoughtOpen] = useState(false);
@@ -777,13 +815,6 @@ export default function ConsultationView({
     }
   };
 
-  const queueVisible = (!state || !patient) && !queueDismissed;
-
-  const dismissQueue = () => {
-    setQueueDismissed(true);
-    onDismissPatient?.();
-  };
-
   // Whether the consultation can still be broken off by the doctor.
   const canEnd = Boolean(patient) && (stage === 'opening' || stage === 'inquiry' || stage === 'decision' || stage === 'case-note');
 
@@ -794,7 +825,6 @@ export default function ConsultationView({
     // finish the open visit rather than leaving it in progress.
     runtime.dispatch({ type: 'end-early' });
     runtime.reset();
-    setQueueDismissed(true);
     onDismissPatient?.();
     notice('You press a hand to your brow and beg pardon; feeling indisposed, you bring the consultation to an early close.', {
       tone: 'plain',
@@ -806,11 +836,7 @@ export default function ConsultationView({
   /* ------- the one keyboard map: arrows rove, return commits ------- */
 
   const nav = { count: 0, cols: 1, select: () => {} };
-  if (queueVisible) {
-    nav.count = patients.length;
-    nav.cols = patients.length || 1;
-    nav.select = (index) => runtime.start(patients[index].id);
-  } else if (stage === 'opening') {
+  if (stage === 'opening') {
     nav.count = 1;
     nav.select = beginInquiry;
   } else if (stage === 'inquiry' && phase === 'thought') {
@@ -853,7 +879,7 @@ export default function ConsultationView({
 
   const navRef = useRef(nav);
   navRef.current = {
-    ...nav, cursor, bookOpen, canEnd, endEarly, queueVisible, dismissQueue,
+    ...nav, cursor, bookOpen, canEnd, endEarly,
     examPresenting, exitExam: toInterview,
   };
 
@@ -887,12 +913,6 @@ export default function ConsultationView({
           event.preventDefault();
           event.stopPropagation();
           current.endEarly();
-          return;
-        }
-        if (current.queueVisible) {
-          event.preventDefault();
-          event.stopPropagation();
-          current.dismissQueue();
           return;
         }
       }
@@ -998,40 +1018,7 @@ export default function ConsultationView({
   const cardMouse = (index) => ({ onMouseEnter: () => setCursor(index) });
 
   const renderStage = () => {
-    // No consultation running: the morning list.
-    if (!state || !patient) {
-      return (
-        <>
-          <p className="gcon-eyebrow">Patient Queue</p>
-          <blockquote className="gcon-quote gcon-quote--observation">Whom will you receive?</blockquote>
-          <Ornament />
-          <div className="gcon-options gcon-options--queue">
-            {patients.map((candidate, index) => (
-              <button
-                key={candidate.id}
-                type="button"
-                className={`gcon-card gcon-card--thought${cursor === index ? ' is-hot' : ''}`}
-                {...cardMouse(index)}
-                onClick={() => runtime.start(candidate.id)}
-              >
-                {candidate.label}
-                <span className="gcon-card-sub">
-                  Aged {candidate.profile.identity.age} · {candidate.profile.social.occupation || candidate.profile.social.householdPosition}
-                </span>
-                <span className="gcon-eye" aria-hidden="true"><EyeEmblem /></span>
-              </button>
-            ))}
-          </div>
-          <footer className="gcon-hint">
-            <span>
-              <button type="button" className="gcon-hint-link" onClick={onRegenerate}>Prepare a different morning list</button>
-              {' or '}
-              <button type="button" className="gcon-hint-link" onClick={dismissQueue}>refuse to see patients</button>
-            </span>
-          </footer>
-        </>
-      );
-    }
+    if (!state || !patient) return null;
 
     if (stage === 'opening') {
       return (
@@ -1343,8 +1330,7 @@ export default function ConsultationView({
             The patient rises and ends the consultation.
           </blockquote>
           <footer className="gcon-hint">
-            <button type="button" className="gcon-hint-link" onClick={() => runtime.start(patient.id)}>Begin the consultation again</button>
-            <button type="button" className="gcon-hint-link" onClick={() => runtime.reset()}>Receive another patient</button>
+            <button type="button" className="gcon-hint-link" onClick={onNextPatient}>Close the consultation</button>
           </footer>
         </>
       );
@@ -1360,7 +1346,7 @@ export default function ConsultationView({
   const wideStage = (stage === 'inquiry' && (phase === 'speech' || phase === 'exam'))
     || stage === 'decision' || stage === 'case-note' || stage === 'result';
 
-  if (!patient && queueDismissed) return null;
+  if (!patient || hidden) return null;
 
   return (
     <div
@@ -1427,13 +1413,13 @@ export default function ConsultationView({
         className={`gcon-stage gcon-frame${wideStage ? ' gcon-stage--wide' : ''}${stage === 'decision' || stage === 'case-note' ? ' gcon-stage--paper' : ''}`}
         aria-label="The patient before you"
       >
-        {(canEnd || queueVisible) && (
+        {canEnd && (
           <button
             type="button"
             className="gcon-close"
-            aria-label={canEnd ? 'End the consultation early' : 'Close patient queue'}
-            title={canEnd ? 'End the consultation (Esc)' : 'Close patient queue (Esc)'}
-            onClick={canEnd ? endEarly : dismissQueue}
+            aria-label="End the consultation early"
+            title="End the consultation (Esc)"
+            onClick={endEarly}
           >
             ×
           </button>
