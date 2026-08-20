@@ -82,6 +82,14 @@ def _pose_bone(rig, suffix):
     )
 
 
+FINGER_PARTS = ("thumb", "index", "middle", "ring", "pinky")
+
+
+def _is_finger(name):
+    suffix = _mixamo_suffix(name)
+    return any(part in suffix for part in FINGER_PARTS)
+
+
 def _map_with_mpfb(target, source):
     """Run MPFB's official Snap to mixamo operation."""
     if bpy.context.object and bpy.context.object.mode != "OBJECT":
@@ -121,6 +129,16 @@ def _bake_action(target, source, source_action, name):
     bpy.context.scene.frame_set(start)
     bpy.context.view_layer.update()
     mapped = _map_with_mpfb(target, source)
+
+    # The doll's flat Mixamo hand and MPFB's sculpted relaxed hand disagree by
+    # up to ~47 degrees per knuckle, so copying finger rotations bakes a claw.
+    # Drop the finger constraints and let hands hold the rig's own rest pose.
+    for bone in target.pose.bones:
+        if not _is_finger(bone.name):
+            continue
+        for constraint in list(bone.constraints):
+            if constraint.type == "COPY_ROTATION" and constraint.target == source:
+                bone.constraints.remove(constraint)
 
     if bpy.context.object and bpy.context.object.mode != "OBJECT":
         bpy.ops.object.mode_set(mode="OBJECT")
@@ -186,9 +204,11 @@ def _validate_action(rig, action):
     rig.animation_data.action = action
     start = int(round(action.frame_range[0]))
     end = int(round(action.frame_range[1]))
+    fingers = [bone for bone in rig.pose.bones if _is_finger(bone.name)]
     previous_head = None
     maximum_head_step = 0.0
     maximum_position = 0.0
+    maximum_finger = 0.0
     for frame in range(start, end + 1):
         bpy.context.scene.frame_set(frame)
         bpy.context.view_layer.update()
@@ -197,6 +217,9 @@ def _validate_action(rig, action):
             if not all(math.isfinite(value) for value in position):
                 raise RuntimeError(f"{action.name} has a non-finite pose at frame {frame}")
             maximum_position = max(maximum_position, position.length)
+        for bone in fingers:
+            angle = bone.matrix_basis.to_quaternion().angle
+            maximum_finger = max(maximum_finger, angle)
         head = (rig.matrix_world @ required["head"].matrix).to_quaternion()
         if previous_head is not None:
             maximum_head_step = max(maximum_head_step, previous_head.rotation_difference(head).angle)
@@ -207,9 +230,16 @@ def _validate_action(rig, action):
         raise RuntimeError(
             f"{action.name} has a {math.degrees(maximum_head_step):.1f}-degree one-frame head jump"
         )
+    # Fingers are pinned to the rig's rest pose during baking; any real
+    # deviation means the claw-handed constraint copy has come back.
+    if maximum_finger > math.radians(5):
+        raise RuntimeError(
+            f"{action.name} moves a finger {math.degrees(maximum_finger):.1f} degrees from rest"
+        )
     print(
         f"MIXAMO_ACTION_VALID name={action.name} "
-        f"head_step_deg={math.degrees(maximum_head_step):.2f} max_position={maximum_position:.3f}"
+        f"head_step_deg={math.degrees(maximum_head_step):.2f} max_position={maximum_position:.3f} "
+        f"finger_deg={math.degrees(maximum_finger):.2f}"
     )
 
 

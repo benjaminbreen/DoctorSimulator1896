@@ -39,6 +39,7 @@ import render_mpfb_identity_diversity as identity_gate
 import render_renderer_c_face_range_grid as female_gate
 import render_renderer_c_male_face_range_grid as male_gate
 import renderer_c_asset_garments as asset_garments
+import renderer_c_elite_menswear as elite_menswear
 import retarget_mixamo_actions as mixamo_actions
 
 
@@ -369,10 +370,11 @@ def add_garment_asset(HumanService, AssetService, base, source, name):
     )
 
 
-def add_fitted_garment(HumanService, AssetService, base, source, name, color):
+def add_fitted_garment(HumanService, AssetService, base, source, name, color, keep_materials=False):
     """Add one reusable garment carrier and sample its body-build endpoints."""
     garment = add_garment_asset(HumanService, AssetService, base, source, name)
-    renderer_c.set_material_override(garment, f"{name}_Material", color, 0.84)
+    if not keep_materials:
+        renderer_c.set_material_override(garment, f"{name}_Material", color, 0.84)
     garment.shape_key_add(name="Basis", from_mix=False)
     garment_morphs = (
         *DEMOGRAPHIC_KEY_NAMES,
@@ -1148,6 +1150,8 @@ def add_variant_assets(services, definition, base):
     )
     victorian_garment = None
     if definition.get("victorian_garment"):
+        # Keep the asset's own diffuse and normal maps; a flat override was
+        # what made the sample suit read as smooth clay.
         victorian_garment = add_fitted_garment(
             HumanService,
             AssetService,
@@ -1155,8 +1159,14 @@ def add_variant_assets(services, definition, base):
             definition["victorian_garment"],
             "RendererC_VictorianGarment",
             "#343536",
+            keep_materials=definition["sex"] == "male",
         )
         victorian_garment["renderer_c_wardrobe_role"] = "victorian-sample"
+    elite_suit = (
+        elite_menswear.add_elite_morning_suit(rig, garment, common.material)
+        if definition["sex"] == "male"
+        else None
+    )
     shoes = renderer_c.add_named_asset(HumanService, AssetService, base, "clothes", "shoes05.mhclo", "Clothes", "RendererC_Shoes")
     renderer_c.set_material_override(shoes, "RendererC_Shoes_Material", "#211713", 0.78)
     return [
@@ -1164,6 +1174,7 @@ def add_variant_assets(services, definition, base):
         garment,
         *([work_garment] if work_garment else []),
         *([victorian_garment] if victorian_garment else []),
+        *([elite_suit] if elite_suit else []),
         *authored_menswear,
         *([period_source] if period_source else []),
         *([period_dress] if period_dress else []),
@@ -1182,7 +1193,9 @@ def main():
     os.makedirs(os.path.dirname(manifest_path), exist_ok=True)
 
     if not os.path.exists(args.gnm_npz):
-        raise RuntimeError(f"GNM model not found: {args.gnm_npz}")
+        # Cached anchor targets in the output directory rebuild the shipped
+        # identities without the external GNM source; a new anchor needs it.
+        print(f"GNM model not found at {args.gnm_npz}; relying on cached anchor targets")
 
     import bl_ext.user_default.mpfb  # noqa: F401
 
@@ -1286,6 +1299,7 @@ def main():
             *(["RendererC_VictorianGarment"] if definition.get("victorian_garment") else []),
             *(
                 [
+                    "RendererC_EliteMorningSuit",
                     "RendererC_AuthoredVictorianWaistcoat_01",
                 ]
                 if definition["sex"] == "male"

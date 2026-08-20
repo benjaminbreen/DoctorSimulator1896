@@ -230,6 +230,10 @@ def export_glb(output, objects):
         use_selection=True,
         export_apply=False,
         export_animations=True,
+        # The optimizer collapses constant channels to two STEP keyframes.
+        # three.js does not re-assert STEP values between keyframes, so the
+        # game's procedural gaze deltas accumulate and the head spins.
+        export_optimize_animation_size=False,
         export_morph=True,
         export_morph_normal=True,
         export_extras=True,

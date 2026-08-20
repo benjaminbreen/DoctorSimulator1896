@@ -8,6 +8,7 @@ import {
   applyRendererCSkinSurface,
 } from './rendererCSurface.js';
 import {
+  applyRendererCMenswearSurface,
   applyRendererCWomenWardrobeSurface,
   setRendererCWomenWardrobeVisible,
 } from './rendererCWardrobeSurface.js';
@@ -308,7 +309,9 @@ export function applyRendererCAppearance(root, recipe) {
   for (const prefix of ['RendererC_VictorianDress', 'RendererC_WorkGarment', 'RendererC_VictorianGarment']) {
     for (const object of namedRoots(root, prefix)) {
       for (const material of materialsUnder(object)) {
-        if (material.color) material.color.set(material.name.includes('Trim') ? trimColor : dressColor);
+        // A flat tint over an authored diffuse map darkens it to mud; only
+        // recolor untextured carrier materials.
+        if (material.color && !material.map) material.color.set(material.name.includes('Trim') ? trimColor : dressColor);
         if ('roughness' in material) material.roughness = clamp(fabricRoughness, 0.35, 1);
         configureOpaque(material);
       }
@@ -337,6 +340,12 @@ export function applyRendererCAppearance(root, recipe) {
     const productionDress = outfit ? outfit === 'fitted-dress' : (values.womenGarmentMode || 'production-dress') === 'production-dress';
     setRendererCWomenWardrobeVisible(root, productionDress);
   }
+  if (recipe.cohort === 'men') {
+    applyRendererCMenswearSurface(root, {
+      ...values,
+      clothingWrinkles: Number(presentation.clothingWrinkles) || 0,
+    });
+  }
   setAppearance(root, 'RendererC_Shoes', { color: '#211713', roughness: 0.82 });
 }
 
@@ -360,17 +369,21 @@ export function applyRendererCWardrobe(root, recipe) {
     return goldenDress ? 'golden-dress' : fittedDress ? 'fitted-dress' : 'carrier-only';
   }
 
+  // The elite morning suit failed visual review; it stays reachable by its
+  // explicit lab ids only, never as the fallback.
   const selected = outfitId === 'working-clothes'
     ? 'working-clothes'
     : outfitId === 'victorian-carrier'
       ? 'victorian-carrier'
       : outfitId === 'authored-waistcoat'
         ? 'authored-waistcoat'
-        : 'sack-suit';
+        : ['mens-formal-suit', 'mens-mourning-suit'].includes(outfitId)
+          ? 'elite-morning-suit'
+          : 'sack-suit';
   setNamedVisible(root, 'RendererC_BaseGarment', selected === 'sack-suit');
   setNamedVisible(root, 'RendererC_WorkGarment', selected === 'working-clothes');
   setNamedVisible(root, 'RendererC_VictorianGarment', selected === 'victorian-carrier');
-  setNamedVisible(root, 'RendererC_EliteMorningSuit', false);
+  setNamedVisible(root, 'RendererC_EliteMorningSuit', selected === 'elite-morning-suit');
   root.traverse((object) => {
     if (object.name.startsWith('RendererC_AuthoredVictorianWaistcoat_')) object.visible = selected === 'authored-waistcoat';
   });

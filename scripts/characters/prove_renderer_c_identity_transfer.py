@@ -464,6 +464,39 @@ def apply_gnm_transfer(
     eye_mode,
     transfer_state,
 ):
+    if os.path.exists(target_path):
+        # The target file stores exactly the deltas a previous run applied, so
+        # reusing it reproduces the shipped anchor without the GNM source,
+        # which lives outside the repo and does not survive a /tmp wipe.
+        applied_deltas = []
+        with open(target_path, "r", encoding="utf-8") as handle:
+            for line in handle:
+                parts = line.split()
+                delta = Vector((float(parts[1]), float(parts[2]), float(parts[3])))
+                base.data.vertices[int(parts[0])].co += delta
+                applied_deltas.append(tuple(delta))
+        base.data.update()
+        bpy.context.view_layer.update()
+        norms = np.linalg.norm(np.asarray(applied_deltas, dtype=np.float64), axis=1) if applied_deltas else np.zeros(1)
+        print(f"GNM_TRANSFER_CACHED target={target_path} vertices={len(applied_deltas)}")
+        return {
+            "donor": f"D{donor_index:02d}",
+            "donorSource": donor_source,
+            "semanticDiversity": semantic_diversity if donor_source == "semantic" else None,
+            "semanticGender": semantic_gender if donor_source == "semantic" else None,
+            "strength": strength,
+            "target": target_path,
+            "appliedVertexCount": int(len(applied_deltas)),
+            "deltaRms": float(np.sqrt(np.mean(norms**2))),
+            "deltaMaximum": float(norms.max()),
+            "alignmentRms": None,
+            "alignmentMedian": None,
+            "nearestTemplateMedian": None,
+            "protectedEyeVertexCount": None,
+            "eyeMode": eye_mode,
+            "cached": True,
+        }
+
     gnm = load_gnm(gnm_path)
     coefficients = donor_coefficients(
         donor_index - 1, gnm_path, donor_source, semantic_diversity, semantic_gender

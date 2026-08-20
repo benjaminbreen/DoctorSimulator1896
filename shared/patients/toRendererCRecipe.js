@@ -40,6 +40,9 @@ function mixHex(left, right, amount) {
 
 function outfitFor(patient) {
   if (patient.identity.sex === 'female') return 'golden-dress';
+  // The procedural morning suit failed visual review (flat panel geometry).
+  // The MPFB carrier with the fabric layer is the least-bad men's outfit
+  // until a real period suit asset is fitted.
   return LABORING_OCCUPATIONS.has(patient.social.occupationId) ? 'working-clothes' : 'sack-suit';
 }
 

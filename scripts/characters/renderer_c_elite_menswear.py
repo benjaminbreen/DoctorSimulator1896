@@ -446,14 +446,32 @@ def add_elite_morning_suit(rig, carrier, material_factory):
         polygon.material_index = material_index
         polygon.use_smooth = material_index not in (HARDWARE,)
 
+    # Authored weight tables write bone names without the "mixamorig:" colon,
+    # while the rig's bones carry it. Resolve every name against the rig, or
+    # the armature modifier silently ignores the group and the panel freezes
+    # in bind pose.
+    bone_names = {bone.name.replace(":", ""): bone.name for bone in rig.data.bones}
+
+    def bone_name(name):
+        return bone_names.get(name.replace(":", ""), name)
+
     groups = {}
     for weights in vertex_weights:
         for name in weights:
-            if name not in groups:
-                groups[name] = suit.vertex_groups.new(name=name)
+            actual = bone_name(name)
+            if actual not in groups:
+                groups[actual] = suit.vertex_groups.new(name=actual)
     for vertex_index, weights in enumerate(vertex_weights):
         for name, weight in weights.items():
-            groups[name].add([vertex_index], weight, "REPLACE")
+            groups[bone_name(name)].add([vertex_index], weight, "REPLACE")
+    unmatched = sorted({
+        bone_name(name)
+        for weights in vertex_weights
+        for name in weights
+        if bone_name(name) not in {bone.name for bone in rig.data.bones}
+    })
+    if unmatched:
+        raise RuntimeError(f"elite morning suit weights name unknown bones: {unmatched}")
     armature = next((modifier for modifier in suit.modifiers if modifier.type == "ARMATURE"), None)
     if armature is None:
         armature = suit.modifiers.new(name="RendererC_EliteMorningSuit_Armature", type="ARMATURE")

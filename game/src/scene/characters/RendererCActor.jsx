@@ -51,7 +51,32 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
     loader.setKTX2Loader(getKTX2Loader(gl));
   }, [gl]);
   const gltf = useLoader(GLTFLoader, recipe.asset?.path || manifest.path, configure);
-  const clips = gltf.animations;
+  // Optional sidecar of extra clips on a skeleton-only carrier. Tracks bind by
+  // bone name, so it must target the same rig as the base model.
+  const motionGltf = useLoader(
+    GLTFLoader,
+    recipe.asset?.motionPath || recipe.asset?.path || manifest.path,
+    configure,
+  );
+  const clips = useMemo(() => {
+    let merged = gltf.animations;
+    if (recipe.asset?.motionPath) {
+      const owned = new Set(gltf.animations.map((clip) => clip.name));
+      merged = [...gltf.animations, ...motionGltf.animations.filter((clip) => !owned.has(clip.name))];
+    }
+    // Newer Blender exports constant channels as STEP. The mixer does not
+    // re-assert a STEP value between keyframes, so the procedural gaze and
+    // gesture deltas accumulate instead of resetting — heads spin. Linear
+    // over equal keys renders identically and is written every frame.
+    for (const clip of merged) {
+      for (const track of clip.tracks) {
+        if (track.getInterpolation() === THREE.InterpolateDiscrete) {
+          track.setInterpolation(THREE.InterpolateLinear);
+        }
+      }
+    }
+    return merged;
+  }, [gltf, motionGltf, recipe.asset?.motionPath]);
   const currentActionRef = useRef(null);
   const settledAnimationRef = useRef(null);
   const actor = useMemo(() => {

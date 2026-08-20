@@ -96,7 +96,8 @@ async function validate(cohort, modelPath, manifest) {
   if (cohort === 'men') required.push(
     'RendererC_WorkGarment',
     'RendererC_VictorianGarment',
-      'RendererC_AuthoredVictorianWaistcoat_01',
+    'RendererC_EliteMorningSuit',
+    'RendererC_AuthoredVictorianWaistcoat_01',
   );
   for (const name of required) if (!gltf.scene.getObjectByName(name)) throw new Error(`${cohort} master is missing ${name}`);
   const body = gltf.scene.getObjectByName('Human_Body');
@@ -177,6 +178,19 @@ async function validate(cohort, modelPath, manifest) {
     }
   }
   if (cohort === 'men') {
+    const eliteMeshes = [];
+    gltf.scene.traverse((object) => {
+      if (object.isMesh && object.name.startsWith('RendererC_EliteMorningSuit')) eliteMeshes.push(object);
+    });
+    if (!eliteMeshes.length || eliteMeshes.some((mesh) => !mesh.isSkinnedMesh
+      || !mesh.geometry.attributes.skinIndex || !mesh.geometry.attributes.skinWeight)) {
+      throw new Error('men master lost the elite morning suit skin weights');
+    }
+    for (const morph of ['rc_live_weight_pos', 'elite_frock_coat', 'elite_lapel_width', 'elite_collar_height']) {
+      if (eliteMeshes.some((mesh) => !Object.hasOwn(mesh.morphTargetDictionary || {}, morph))) {
+        throw new Error(`men master lost elite suit morph ${morph}`);
+      }
+    }
     const authoredMeshes = [];
     gltf.scene.traverse((object) => {
       if (object.isMesh && object.name.startsWith('RendererC_AuthoredVictorianWaistcoat_')) {

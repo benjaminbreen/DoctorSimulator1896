@@ -741,6 +741,51 @@ export function applyRendererCWomenWardrobeSurface(root, values = {}) {
   updateBodyCoverage(root, mode === 'golden-dress' || mode === 'production-dress');
 }
 
+// Menswear counterpart of the women's surface pass: the same weave, fold,
+// and bloom treatment, with the fabric chosen per material slot. Materials
+// that arrive with their own textures (the authored waistcoat, the sample
+// suit) keep them and receive only the fold and bloom layers.
+const MENSWEAR_MESH = /^RendererC_(?:BaseGarment|WorkGarment|VictorianGarment|EliteMorningSuit|AuthoredVictorianWaistcoat_)/;
+
+function menswearFabricType(materialName) {
+  if (/Shirt/.test(materialName)) return 'cotton';
+  if (/Neckwear|Lining|Waistcoat/.test(materialName)) return 'silk';
+  return 'wool';
+}
+
+export function applyRendererCMenswearSurface(root, values = {}) {
+  const meshes = [];
+  root.traverse((object) => {
+    if ((object.isMesh || object.isSkinnedMesh) && MENSWEAR_MESH.test(object.name)) meshes.push(object);
+  });
+  for (const mesh of meshes) {
+    replaceMaterials(mesh, physicalMaterial);
+    const textured = materialsOf(mesh).some(
+      (material) => material.map && !material.userData.rendererCFabricTextures,
+    );
+    // Authored textures come with authored UVs; projecting new ones would
+    // scramble them.
+    if (!textured) ensureGarmentUv(mesh);
+    for (const material of materialsOf(mesh)) {
+      if (/Hardware/.test(material.name)) {
+        if ('metalness' in material) material.metalness = 0.75;
+        if ('roughness' in material) material.roughness = 0.45;
+        preventWardrobeBloom(material);
+        material.needsUpdate = true;
+        continue;
+      }
+      if (material.map && !material.userData.rendererCFabricTextures) {
+        applyWrinkleLayer(material, Number(values.clothingWrinkles) || 0, 1);
+        preventWardrobeBloom(material);
+        material.needsUpdate = true;
+        continue;
+      }
+      const fabricType = menswearFabricType(material.name);
+      configureFabric(material, { ...values, fabricType }, { fabricType });
+    }
+  }
+}
+
 export function setRendererCWomenWardrobeVisible(root, visible) {
   for (const name of ['RendererC_WardrobeNeckline', 'RendererC_WardrobeCuffs', 'RendererC_WardrobeButtons']) {
     const object = root.getObjectByName(name);

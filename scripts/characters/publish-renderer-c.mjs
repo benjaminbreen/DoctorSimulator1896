@@ -23,7 +23,7 @@ const TARGET = path.join(ROOT, 'game', 'public', 'models', 'characters');
 const CHECK_ONLY = process.argv.includes('--check');
 // Bump when republishing changes the bytes; also update phase1Cast.js.
 // Keep in step with the asset paths in game/src/content/clinic1896/phase1Cast.js.
-const CACHE_BUST = 'cast-opt-3';
+const CACHE_BUST = 'cast-opt-4';
 const REQUIRED_CLIPS = [
   'ClinicIdle', 'SittingTalking', 'SittingKneeStrike', 'SittingDejected',
   'SittingTalkingLegsCrossed', 'SitDown', 'StandUp', 'StandingIdle', 'Walk',

@@ -15,7 +15,7 @@
           "lashSlot": 0,
           "morph": "rc_anchor_01",
           "teethSlot": 0,
-          "transferRms": 0.0019692832224599294
+          "transferRms": 0.0022948229536587737
         },
         {
           "browSlot": 1,
@@ -29,7 +29,7 @@
           "lashSlot": 1,
           "morph": "rc_anchor_02",
           "teethSlot": 1,
-          "transferRms": 0.0009388627919012255
+          "transferRms": 0.0010917165348096319
         },
         {
           "browSlot": 2,
@@ -43,7 +43,7 @@
           "lashSlot": 2,
           "morph": "rc_anchor_03",
           "teethSlot": 2,
-          "transferRms": 0.001519978921074734
+          "transferRms": 0.0017685845434240763
         },
         {
           "browSlot": 3,
@@ -57,7 +57,7 @@
           "lashSlot": 3,
           "morph": "rc_anchor_04",
           "teethSlot": 3,
-          "transferRms": 0.0008511043016443906
+          "transferRms": 0.0009897451803123755
         },
         {
           "browSlot": 4,
@@ -71,7 +71,7 @@
           "lashSlot": 4,
           "morph": "rc_anchor_05",
           "teethSlot": 4,
-          "transferRms": 0.0016962778047534563
+          "transferRms": 0.001972444345469803
         },
         {
           "browSlot": 5,
@@ -85,7 +85,7 @@
           "lashSlot": 5,
           "morph": "rc_anchor_06",
           "teethSlot": 5,
-          "transferRms": 0.001237778018237681
+          "transferRms": 0.0014402272431000651
         },
         {
           "browSlot": 6,
@@ -99,7 +99,7 @@
           "lashSlot": 6,
           "morph": "rc_anchor_07",
           "teethSlot": 6,
-          "transferRms": 0.0012934215126180878
+          "transferRms": 0.0015070010176364392
         },
         {
           "browSlot": 7,
@@ -113,7 +113,7 @@
           "lashSlot": 7,
           "morph": "rc_anchor_08",
           "teethSlot": 7,
-          "transferRms": 0.0010414975192732112
+          "transferRms": 0.0012109694425771925
         }
       ],
       "cohort": "women",
@@ -192,7 +192,7 @@
         "RendererC_GoldenDressSeatedSkirt",
         "RendererC_GoldenDressDetails"
       ],
-      "bytes": 26480024,
+      "bytes": 27646616,
       "morphTargets": 128,
       "clips": 10,
       "path": "/models/renderer-c-women.glb"
@@ -211,7 +211,7 @@
           "lashSlot": 0,
           "morph": "rc_anchor_01",
           "teethSlot": 0,
-          "transferRms": 0.0029326478345184756
+          "transferRms": 0.003424731922145608
         },
         {
           "browSlot": 1,
@@ -225,7 +225,7 @@
           "lashSlot": 1,
           "morph": "rc_anchor_02",
           "teethSlot": 1,
-          "transferRms": 0.001324451770427425
+          "transferRms": 0.0015438767868365517
         },
         {
           "browSlot": 2,
@@ -239,7 +239,7 @@
           "lashSlot": 2,
           "morph": "rc_anchor_03",
           "teethSlot": 2,
-          "transferRms": 0.0019379965571684683
+          "transferRms": 0.0022595997897669334
         },
         {
           "browSlot": 3,
@@ -253,7 +253,7 @@
           "lashSlot": 3,
           "morph": "rc_anchor_04",
           "teethSlot": 3,
-          "transferRms": 0.001456886894318154
+          "transferRms": 0.0016999238153869699
         },
         {
           "browSlot": 4,
@@ -267,7 +267,7 @@
           "lashSlot": 4,
           "morph": "rc_anchor_05",
           "teethSlot": 4,
-          "transferRms": 0.0016796960957345764
+          "transferRms": 0.001959746710928869
         },
         {
           "browSlot": 5,
@@ -281,7 +281,7 @@
           "lashSlot": 5,
           "morph": "rc_anchor_06",
           "teethSlot": 5,
-          "transferRms": 0.0022743497874522438
+          "transferRms": 0.0026559746138211204
         },
         {
           "browSlot": 6,
@@ -295,7 +295,7 @@
           "lashSlot": 6,
           "morph": "rc_anchor_07",
           "teethSlot": 6,
-          "transferRms": 0.003012056070884996
+          "transferRms": 0.0035110706468769225
         },
         {
           "browSlot": 7,
@@ -309,7 +309,7 @@
           "lashSlot": 7,
           "morph": "rc_anchor_08",
           "teethSlot": 7,
-          "transferRms": 0.0017164262460567126
+          "transferRms": 0.0020004783917053318
         }
       ],
       "cohort": "men",
@@ -383,9 +383,10 @@
         "RendererC_BaseGarment",
         "RendererC_WorkGarment",
         "RendererC_VictorianGarment",
+        "RendererC_EliteMorningSuit",
         "RendererC_AuthoredVictorianWaistcoat_01"
       ],
-      "bytes": 34424436,
+      "bytes": 36564688,
       "morphTargets": 128,
       "clips": 10,
       "path": "/models/renderer-c-men.glb"
