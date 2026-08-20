@@ -790,6 +790,9 @@ export default function ConsultationView({
   const endEarly = () => {
     if (!canEnd) return;
     const name = patient.label;
+    // Publish the closed state before clearing the runtime so the casebook can
+    // finish the open visit rather than leaving it in progress.
+    runtime.dispatch({ type: 'end-early' });
     runtime.reset();
     setQueueDismissed(true);
     onDismissPatient?.();

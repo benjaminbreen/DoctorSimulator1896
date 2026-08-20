@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame, useLoader } from '@react-three/fiber';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -27,6 +27,7 @@ import {
 } from '../world/postedNpcs.js';
 import { normalizeNonmetallicCharacterMaterial } from './characterMaterials.js';
 import { restoreLoopingIdle } from './characterGestures.js';
+import { updateNpcAnimation } from './npcAnimationThrottle.js';
 
 const AMBIENT_GAP = 11;
 // Inside this and he calls to you; after a cry, this long before another.
@@ -108,15 +109,19 @@ export default function PostedNpcs({ runtime }) {
     [runtime.values.zone],
   );
 
+  const animationFrame = useRef(0);
   useFrame((state, delta) => {
     const step = Math.min(delta, 0.1);
+    animationFrame.current += 1;
     const now = state.clock.elapsedTime;
+    const player = gameDebug.player.position;
     const conversation = getInteraction().using;
     const speakingId = conversation?.kind === 'conversation' ? conversation.agentId : null;
-    for (const actor of actors) {
+    for (const [index, actor] of actors.entries()) {
       const visible = activeIds.has(actor.spec.id);
       actor.wrapper.visible = visible;
       if (!visible) {
+        actor.animationPending = 0;
         removeAgent(actor.spec.id);
         releaseConfrontation(actor.spec.id);
         continue;
@@ -162,7 +167,6 @@ export default function PostedNpcs({ runtime }) {
       // is scenery, and worse than silence.
       if (!confrontationFor(actor.spec.id) && !actor.confrontPose
         && speakingId !== actor.spec.id && now >= actor.nextPitchAt) {
-        const player = gameDebug.player.position;
         const range = Math.hypot(player[0] - actor.worldX, player[2] - actor.worldZ);
         if (range <= PITCH_RANGE) {
           const cried = actor.spec.role === 'newsboy'
@@ -204,8 +208,8 @@ export default function PostedNpcs({ runtime }) {
         ? stepConfrontation(actor.spec.id, {
           x: actor.worldX,
           z: actor.worldZ,
-          playerX: gameDebug.player.position[0],
-          playerZ: gameDebug.player.position[2],
+          playerX: player[0],
+          playerZ: player[2],
           delta,
           now,
         })
@@ -241,8 +245,8 @@ export default function PostedNpcs({ runtime }) {
       if (!march && !actor.confrontPose) {
         const facing = speakingId === actor.spec.id
           ? Math.atan2(
-            gameDebug.player.position[0] - actor.worldX,
-            gameDebug.player.position[2] - actor.worldZ,
+            player[0] - actor.worldX,
+            player[2] - actor.worldZ,
           )
           : actor.spec.yaw ?? 0;
         actor.wrapper.rotation.y = dampAngle(actor.wrapper.rotation.y, facing, 7, step);
@@ -251,7 +255,13 @@ export default function PostedNpcs({ runtime }) {
         x: actor.worldX, y: actor.spec.position[1], z: actor.worldZ,
       });
 
-      actor.mixer.update(step);
+      updateNpcAnimation(
+        actor,
+        step,
+        (actor.worldX - player[0]) ** 2 + (actor.worldZ - player[2]) ** 2,
+        animationFrame.current,
+        index,
+      );
       actor.figure.rotation.x = 0;
       actor.figure.rotation.z = 0;
       reportAgent(

@@ -8,6 +8,7 @@ import { existsSync } from 'node:fs';
 import { parkWarmUrls } from '../src/scene/parkPreload.js';
 import { getZone } from '../src/world/zones.js';
 import { deriveRoom } from '../src/world/blueprint.js';
+import { PEDESTRIAN_LOD_FILES } from '../src/world/pedestrianCatalog.js';
 
 function isGroundCover(item) {
   return item.id?.startsWith('cover-') || item.id?.startsWith('tuft-');
@@ -39,5 +40,8 @@ test('the park warms its set dressing, its trees, and its cast', async () => {
   // One representative of each stage the warming exists to cover.
   for (const piece of ['large_park_bench', 'Tree-01', 'horse.glb', 'carriage-driver.glb']) {
     assert.ok(urls.some((url) => url.includes(piece)), `${piece} is not warmed`);
+  }
+  for (const lod of PEDESTRIAN_LOD_FILES) {
+    assert.ok(urls.includes(lod), `${lod} is not warmed`);
   }
 });

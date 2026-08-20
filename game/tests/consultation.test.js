@@ -291,6 +291,21 @@ test('the runtime can return to patient selection', () => {
   unsubscribe();
 });
 
+test('ending early publishes a closed consultation before reset', () => {
+  const runtime = createConsultationRuntime(TECHNICAL_PATIENTS, renderOfflineDialogue);
+  const snapshots = [];
+  const unsubscribe = runtime.subscribe((state) => snapshots.push(state));
+  runtime.start('technical-a');
+  runtime.dispatch({ type: 'end-early' });
+  runtime.reset();
+
+  assert.equal(snapshots.at(-2).stage, 'terminated');
+  assert.equal(snapshots.at(-2).terminationReason, 'doctor-ended');
+  assert.equal(snapshots.at(-2).history.at(-1).kind, 'termination');
+  assert.equal(snapshots.at(-1), null);
+  unsubscribe();
+});
+
 test('a severe decorum breach ends the consultation without letting the LLM set trust directly', () => {
   const state = beginInquiry();
   const input = { stance: 'challenge', text: 'You are a liar.' };

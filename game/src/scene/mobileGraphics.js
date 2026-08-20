@@ -1,9 +1,43 @@
 const MOBILE_SCREEN_LIMIT = 1100;
 const MOBILE_PIXEL_RATIO_CAP = 1.25;
 const MOBILE_SHADOW_MAP_CAP = 1024;
-const MOBILE_OUTDOOR_SHADOW_DISTANCE_CAP = 30;
+const MOBILE_OUTDOOR_SHADOW_DISTANCE_CAP = 12;
+const MOBILE_DYNAMIC_SHADOW_DISTANCE_CAP = 10;
 const SAFARI_PIXEL_RATIO_CAP = 1.5;
 const SAFARI_SHADOW_MAP_CAP = 2048;
+
+const QUALITY_PROFILES = {
+  auto: {
+    pixelRatioCap: 1.5,
+    maxShadowMapSize: 2048,
+    maxOutdoorShadowDistance: 35,
+    maxDynamicShadowDistance: 18,
+    shadowUpdateInterval: 1,
+    waterReflectionEnabled: true,
+    waterReflectionSize: 384,
+    waterReflectionInterval: 6,
+  },
+  performance: {
+    pixelRatioCap: 1,
+    maxShadowMapSize: 1024,
+    maxOutdoorShadowDistance: 12,
+    maxDynamicShadowDistance: 10,
+    shadowUpdateInterval: 1,
+    waterReflectionEnabled: false,
+    waterReflectionSize: 1,
+    waterReflectionInterval: 8,
+  },
+  quality: {
+    pixelRatioCap: 2,
+    maxShadowMapSize: Infinity,
+    maxOutdoorShadowDistance: Infinity,
+    maxDynamicShadowDistance: Infinity,
+    shadowUpdateInterval: 1,
+    waterReflectionEnabled: true,
+    waterReflectionSize: 512,
+    waterReflectionInterval: 4,
+  },
+};
 
 // React Three Fiber defers forceContextLoss by 500ms during Canvas teardown.
 // Give WebKit another full second to release the old backing stores before the
@@ -49,23 +83,34 @@ export function graphicsSettingsForDevice(
   constrainedMobile,
   safari = isSafariUserAgent(),
 ) {
-  const pixelRatioCap = Number(values.pixelRatioCap) || 1;
+  const graphicsQuality = QUALITY_PROFILES[values.graphicsQuality] ? values.graphicsQuality : 'auto';
+  const profile = QUALITY_PROFILES[graphicsQuality];
+  const pixelRatioCap = Math.min(Number(values.pixelRatioCap) || 1, profile.pixelRatioCap);
+  const performance = graphicsQuality === 'performance';
   return {
-    antialias: constrainedMobile ? false : Boolean(values.antialias),
-    postEnabled: constrainedMobile ? false : Boolean(values.postEnabled),
+    graphicsQuality,
+    antialias: constrainedMobile || performance ? false : Boolean(values.antialias),
+    postEnabled: constrainedMobile || performance ? false : Boolean(values.postEnabled),
     pixelRatioCap: constrainedMobile
       ? Math.min(pixelRatioCap, MOBILE_PIXEL_RATIO_CAP)
       : safari
         ? Math.min(pixelRatioCap, SAFARI_PIXEL_RATIO_CAP)
         : pixelRatioCap,
     maxShadowMapSize: constrainedMobile
-      ? MOBILE_SHADOW_MAP_CAP
+      ? Math.min(profile.maxShadowMapSize, MOBILE_SHADOW_MAP_CAP)
       : safari
-        ? SAFARI_SHADOW_MAP_CAP
-        : Infinity,
+        ? Math.min(profile.maxShadowMapSize, SAFARI_SHADOW_MAP_CAP)
+        : profile.maxShadowMapSize,
     maxOutdoorShadowDistance: constrainedMobile
-      ? MOBILE_OUTDOOR_SHADOW_DISTANCE_CAP
-      : Infinity,
+      ? Math.min(profile.maxOutdoorShadowDistance, MOBILE_OUTDOOR_SHADOW_DISTANCE_CAP)
+      : profile.maxOutdoorShadowDistance,
+    maxDynamicShadowDistance: constrainedMobile
+      ? Math.min(profile.maxDynamicShadowDistance, MOBILE_DYNAMIC_SHADOW_DISTANCE_CAP)
+      : profile.maxDynamicShadowDistance,
+    shadowUpdateInterval: profile.shadowUpdateInterval,
+    waterReflectionEnabled: constrainedMobile ? false : profile.waterReflectionEnabled,
+    waterReflectionSize: constrainedMobile ? 1 : profile.waterReflectionSize,
+    waterReflectionInterval: profile.waterReflectionInterval,
     deferIdleActors: constrainedMobile,
   };
 }

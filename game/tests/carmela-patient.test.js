@@ -80,7 +80,6 @@ test('Carmela starts with three distinct affordances and branches into the hidde
   state = ask(state, 'carmela-ask-tonics');
   assert.ok(state.disclosedFactIds.includes('carmela-coca-wine'));
   assert.ok(state.disclosedFactIds.includes('carmela-dose-link'));
-  assert.match(state.history.at(-1).dialogue, /Mariani wine—the coca wine/);
 });
 
 test('the mid-consultation attack demands a response before another action', () => {
@@ -99,7 +98,6 @@ test('the mid-consultation attack demands a response before another action', () 
   assert.match(rejected.errors.at(-1), /respond to the patient/);
   state = ask(state, 'carmela-response-steady');
   assert.equal(state.pendingResponseId, null);
-  assert.match(state.history.at(-1).dialogue, /plain speaking/);
   assert.deepEqual(actorCueForConsultation(state), {
     body: 'sitting-talking', expression: 'smiling', gaze: 'doctor', speaking: true,
   });

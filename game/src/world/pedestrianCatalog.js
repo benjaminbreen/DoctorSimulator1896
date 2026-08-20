@@ -58,6 +58,10 @@ function backgroundModelPath(name) {
   return `/models/${name}${USE_MOBILE_BACKGROUND_MODELS ? '-mobile' : ''}.glb?v=crowd-opt-3`;
 }
 
+function backgroundLodPath(name) {
+  return `/models/${name}-lod.glb?v=crowd-lod-2`;
+}
+
 const BOWLER_MODEL = backgroundModelPath('pedestrian-b');
 const WORKING_WOMAN_MODEL = backgroundModelPath('pedestrian-c');
 const SUMMER_DRESS_MODEL = backgroundModelPath('pedestrian-d');
@@ -70,6 +74,25 @@ const LILAC_WOMAN_MODEL = '/models/lilac-dress-woman.glb';
 const RATIONAL_WOMAN_MODEL = '/models/rational-dress-woman.glb';
 const HOTEL_MAID_MODEL = '/models/hotel-maid.glb';
 const HOTEL_BELLHOP_MODEL = '/models/hotel-bellhop.glb';
+
+const LOD_MODEL_NAMES = Object.freeze({
+  m: 'pedestrian-b',
+  w: 'pedestrian-c',
+  d: 'pedestrian-d',
+  s: 'pedestrian-e',
+  f: 'pedestrian-f',
+  h: 'strawhat-pedestrian',
+  n: 'nursemaid',
+  l: 'lilac-dress-woman',
+  r: 'rational-dress-woman',
+  hm: 'hotel-maid',
+  bh: 'hotel-bellhop',
+});
+
+export const PEDESTRIAN_LOD_ARCHETYPES = Object.freeze(Object.keys(LOD_MODEL_NAMES));
+export const PEDESTRIAN_LOD_FILES = Object.freeze(
+  PEDESTRIAN_LOD_ARCHETYPES.map((key) => backgroundLodPath(LOD_MODEL_NAMES[key])),
+);
 
 export const PEDESTRIAN_SHARED_CLIPS = Object.freeze(['Sit Ground', 'Lie Down', 'Sit']);
 
@@ -91,6 +114,7 @@ export const PEDESTRIAN_ARCHETYPES = Object.freeze({
     id: 'bowler-man',
     label: 'Bowler-hat man',
     modelPath: BOWLER_MODEL,
+    lodModelPath: backgroundLodPath(LOD_MODEL_NAMES.m),
     animationSources: Object.freeze([
       BOWLER_MODEL,
       ...PEDESTRIAN_MAN_CLIP_FILES,
@@ -112,6 +136,7 @@ export const PEDESTRIAN_ARCHETYPES = Object.freeze({
     id: 'working-woman',
     label: 'Working woman',
     modelPath: WORKING_WOMAN_MODEL,
+    lodModelPath: backgroundLodPath(LOD_MODEL_NAMES.w),
     animationSources: Object.freeze([
       WORKING_WOMAN_MODEL,
       ...PEDESTRIAN_WOMAN_CLIP_FILES,
@@ -136,6 +161,7 @@ export const PEDESTRIAN_ARCHETYPES = Object.freeze({
     id: 'summer-dress-woman',
     label: 'Summer-dress woman',
     modelPath: SUMMER_DRESS_MODEL,
+    lodModelPath: backgroundLodPath(LOD_MODEL_NAMES.d),
     animationSources: Object.freeze([
       SUMMER_DRESS_MODEL,
       ...PEDESTRIAN_WOMAN_CLIP_FILES,
@@ -152,6 +178,7 @@ export const PEDESTRIAN_ARCHETYPES = Object.freeze({
     id: 'somber-seated-woman',
     label: 'Somber seated woman',
     modelPath: SOMBER_WOMAN_MODEL,
+    lodModelPath: backgroundLodPath(LOD_MODEL_NAMES.s),
     animationSources: Object.freeze([
       SOMBER_WOMAN_MODEL,
       ...PEDESTRIAN_WOMAN_CLIP_FILES,
@@ -166,6 +193,7 @@ export const PEDESTRIAN_ARCHETYPES = Object.freeze({
     id: 'nursemaid',
     label: 'Nursemaid',
     modelPath: NURSEMAID_MODEL,
+    lodModelPath: backgroundLodPath(LOD_MODEL_NAMES.n),
     animationSources: Object.freeze([
       NURSEMAID_MODEL,
       PEDESTRIAN_STRAWHAT_MOTION_FILE,
@@ -179,6 +207,7 @@ export const PEDESTRIAN_ARCHETYPES = Object.freeze({
     id: 'lilac-dress-woman',
     label: 'Lilac-dress woman',
     modelPath: LILAC_WOMAN_MODEL,
+    lodModelPath: backgroundLodPath(LOD_MODEL_NAMES.l),
     animationSources: Object.freeze([
       LILAC_WOMAN_MODEL,
       PEDESTRIAN_STRAWHAT_MOTION_FILE,
@@ -192,6 +221,7 @@ export const PEDESTRIAN_ARCHETYPES = Object.freeze({
     id: 'rational-dress-woman',
     label: 'Rational-dress woman',
     modelPath: RATIONAL_WOMAN_MODEL,
+    lodModelPath: backgroundLodPath(LOD_MODEL_NAMES.r),
     animationSources: Object.freeze([
       RATIONAL_WOMAN_MODEL,
       PEDESTRIAN_STRAWHAT_MOTION_FILE,
@@ -207,6 +237,7 @@ export const PEDESTRIAN_ARCHETYPES = Object.freeze({
     id: 'forties-walking-woman',
     label: 'Woman in her forties',
     modelPath: FORTIES_WOMAN_MODEL,
+    lodModelPath: backgroundLodPath(LOD_MODEL_NAMES.f),
     animationSources: Object.freeze([
       FORTIES_WOMAN_MODEL,
       STRAWHAT_MODEL,
@@ -221,6 +252,7 @@ export const PEDESTRIAN_ARCHETYPES = Object.freeze({
     id: 'strawhat-pedestrian',
     label: 'Straw-hatted pedestrian',
     modelPath: STRAWHAT_MODEL,
+    lodModelPath: backgroundLodPath(LOD_MODEL_NAMES.h),
     animationSources: Object.freeze([
       STRAWHAT_MODEL,
       PEDESTRIAN_STRAWHAT_MOTION_FILE,
@@ -236,6 +268,7 @@ export const PEDESTRIAN_ARCHETYPES = Object.freeze({
     id: 'hotel-maid',
     label: 'Hotel maid',
     modelPath: HOTEL_MAID_MODEL,
+    lodModelPath: backgroundLodPath(LOD_MODEL_NAMES.hm),
     animationSources: Object.freeze([
       HOTEL_MAID_MODEL,
       PEDESTRIAN_STRAWHAT_MOTION_FILE,
@@ -249,6 +282,7 @@ export const PEDESTRIAN_ARCHETYPES = Object.freeze({
     id: 'hotel-bellhop',
     label: 'Hotel bellhop',
     modelPath: HOTEL_BELLHOP_MODEL,
+    lodModelPath: backgroundLodPath(LOD_MODEL_NAMES.bh),
     animationSources: Object.freeze([
       HOTEL_BELLHOP_MODEL,
       PEDESTRIAN_STRAWHAT_MOTION_FILE,

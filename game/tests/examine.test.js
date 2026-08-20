@@ -62,6 +62,18 @@ test('answers are kept apart from observations, so only observations are re-sent
   endExamination();
 });
 
+test('an answer from an old examination cannot enter the current session', () => {
+  const first = beginExamination('opium-pipe');
+  const second = beginExamination('ladys-glove');
+
+  assert.equal(recordQuestion('What is it?', 'An answer about the pipe.', 'luna', first.id), false);
+  assert.equal(getExamination().subjectId, 'ladys-glove');
+  assert.equal(getExamination().entries.length, 1);
+  assert.equal(recordQuestion('What is it?', 'An answer about the glove.', 'luna', second.id), true);
+  assert.equal(getExamination().entries.at(-1).text, 'An answer about the glove.');
+  endExamination();
+});
+
 test('framing stands off along the line the player is already on', () => {
   const item = {
     position: [2, 1, 0],

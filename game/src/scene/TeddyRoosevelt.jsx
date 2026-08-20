@@ -17,6 +17,7 @@ import {
 } from '../world/teddyRoosevelt.js';
 import { normalizeNonmetallicCharacterMaterial } from './characterMaterials.js';
 import { restoreLoopingIdle } from './characterGestures.js';
+import { updateNpcAnimation } from './npcAnimationThrottle.js';
 import { figureHeight } from '../world/figureHeights.js';
 
 const NPC_SCALE = figureHeight('teddy-roosevelt');
@@ -149,12 +150,22 @@ export default function TeddyRoosevelt({ runtime }) {
   }, [modelGltf, motionGltf]);
 
   const elapsed = useRef(0);
+  const animationFrame = useRef(0);
   useFrame((_, delta) => {
     const step = Math.min(delta, 0.1);
     elapsed.current += step;
+    animationFrame.current += 1;
     const now = elapsed.current;
     const state = rooseveltScheduleState(runtime.values.timeOfDay, zone);
-    actor.mixer.update(step);
+    const player = gameDebug.player.position;
+    updateNpcAnimation(
+      actor,
+      step,
+      (state.position[0] - player[0]) ** 2 + (state.position[2] - player[2]) ** 2,
+      animationFrame.current,
+      0,
+      state.active,
+    );
     actor.wrapper.visible = state.active;
     actor.box.group.visible = state.active && state.hasSoapbox;
     actor.figure.position.y = state.hasSoapbox ? SOAPBOX_HEIGHT : 0;

@@ -74,6 +74,7 @@ export default function ExaminePanel({ examining, worldClock }) {
   const [session, setSession] = useState(() => getExamination());
   const [question, setQuestion] = useState('');
   const notesRef = useRef(null);
+  const requestRef = useRef(null);
 
   useEffect(() => subscribe(setSession), []);
 
@@ -84,7 +85,11 @@ export default function ExaminePanel({ examining, worldClock }) {
     if (!subjectId) return undefined;
     beginExamination(subjectId, examining.record);
     setQuestion('');
-    return () => endExamination();
+    return () => {
+      requestRef.current?.abort();
+      requestRef.current = null;
+      endExamination();
+    };
   }, [subjectId]);
 
   // Gameplay keys must not fire while the question box has focus.
@@ -121,15 +126,26 @@ export default function ExaminePanel({ examining, worldClock }) {
     if (!text || session.pending) return;
     setQuestion('');
     setPending(true);
+    const sessionId = session.id;
+    const request = new AbortController();
+    requestRef.current = request;
     const { facts, seen } = disclosedFacts();
-    const reply = await askAboutObject({
-      subjectId: session.subjectId,
-      question: text,
-      facts,
-      seen,
-    });
-    recordQuestion(text, reply.answer, reply.source);
-    worldClock?.advanceMinutes(1, { reason: 'examination' });
+    try {
+      const reply = await askAboutObject({
+        subjectId: session.subjectId,
+        question: text,
+        facts,
+        seen,
+        signal: request.signal,
+      });
+      if (recordQuestion(text, reply.answer, reply.source, sessionId)) {
+        worldClock?.advanceMinutes(1, { reason: 'examination' });
+      }
+    } catch (error) {
+      if (error?.name !== 'AbortError') throw error;
+    } finally {
+      if (requestRef.current === request) requestRef.current = null;
+    }
   };
 
   return (

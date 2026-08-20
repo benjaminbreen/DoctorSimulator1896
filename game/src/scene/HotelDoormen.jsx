@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame, useLoader } from '@react-three/fiber';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -25,6 +25,7 @@ import {
 } from '../world/hotelDoormen.js';
 import { normalizeNonmetallicCharacterMaterial } from './characterMaterials.js';
 import { restoreLoopingIdle } from './characterGestures.js';
+import { updateNpcAnimation } from './npcAnimationThrottle.js';
 import { figureHeight } from '../world/figureHeights.js';
 
 const NPC_SCALE = figureHeight('hotel-doorman');
@@ -141,11 +142,19 @@ export default function HotelDoormen({ runtime }) {
     };
   }), [modelGltf, motionGltf, zone]);
 
+  const animationFrame = useRef(0);
   useFrame((_, delta) => {
+    animationFrame.current += 1;
     const now = performance.now() / 1000;
     const player = gameDebug.player.position;
-    for (const actor of actors) {
-      actor.mixer.update(Math.min(delta, 0.1));
+    for (const [index, actor] of actors.entries()) {
+      updateNpcAnimation(
+        actor,
+        Math.min(delta, 0.1),
+        (actor.worldX - player[0]) ** 2 + (actor.worldZ - player[2]) ** 2,
+        animationFrame.current,
+        index,
+      );
       actor.figure.rotation.x = 0;
       actor.figure.rotation.z = 0;
       if (actor.active && now >= actor.gestureUntil) returnToIdle(actor);

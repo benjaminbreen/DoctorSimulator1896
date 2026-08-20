@@ -37,6 +37,22 @@ test('touch controls and mobile notices remain safe-area anchored', () => {
   assert.match(toasts, /@media \(max-width: 900px\) and \(max-height: 500px\)/);
 });
 
+test('the interaction prompt clears an active NPC announcement', () => {
+  const hud = source('../src/hud/DebugHud.jsx');
+
+  assert.match(hud, /subscribeAnnouncement/);
+  assert.match(hud, /\.event-dialogue:not\(\.event-dialogue--raised\) \.event-line/);
+  assert.match(hud, /window\.innerHeight - rect\.top \+ DIALOGUE_GAP/);
+  assert.match(hud, /style=\{dialogueBottom === null \? undefined : \{ bottom:/);
+});
+
+test('scene diagnostics only scan while the tuning readout is open', () => {
+  const hud = source('../src/hud/DebugHud.jsx');
+
+  assert.match(hud, /if \(showStats && now >= nextSceneSampleAt\.current\)/);
+  assert.match(hud, /\}, \[showStats\]\);/);
+});
+
 test('an active mobile consultation compacts chrome without shrinking touch targets', () => {
   const app = source('../src/hud/GameHud.jsx');
   const consultation = source('../src/consultation/ConsultationView.jsx');

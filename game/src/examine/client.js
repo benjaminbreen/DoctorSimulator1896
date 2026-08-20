@@ -74,5 +74,6 @@ export async function askAboutObject({
     return { answer: offlineAnswer(facts, question), source: 'offline' };
   } finally {
     clearTimeout(timer);
+    signal?.removeEventListener('abort', abort);
   }
 }

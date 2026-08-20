@@ -167,6 +167,14 @@ export function startConsultation(patient) {
 export function consultationTransition(state, patient, action) {
   if (!CONSULTATION_STAGES.includes(state.stage)) return withError(state, `unknown stage ${state.stage}`);
   switch (action?.type) {
+    case 'end-early': {
+      const error = requireStage(state, 'opening', 'inquiry', 'decision', 'case-note');
+      return error ? withError(state, error) : record({
+        ...state,
+        stage: 'terminated',
+        terminationReason: 'doctor-ended',
+      }, { kind: 'termination', reason: 'doctor-ended' });
+    }
     case 'begin-inquiry': {
       const error = requireStage(state, 'opening');
       return error ? withError(state, error) : { ...state, stage: 'inquiry' };

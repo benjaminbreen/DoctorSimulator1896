@@ -40,6 +40,7 @@ import {
   shouldRecycleWebGLContextOnTravel,
   webGLContextKey,
 } from './mobileGraphics.js';
+import { createAdaptiveDprController } from './adaptiveDpr.js';
 import { warmInteriorAssets, warmParkAssets } from './parkPreload.js';
 
 const Room = lazy(() => import('./Room.jsx'));
@@ -199,10 +200,13 @@ function isGroundCover(item) {
 }
 
 // Applies live renderer params each frame and wires mouse look to the canvas.
-function FrameSettings({ runtime, look, exposureBase, exterior, pixelRatioCap }) {
+function FrameSettings({ runtime, look, exposureBase, exterior, graphicsQuality, pixelRatioCap }) {
   const gl = useThree((state) => state.gl);
   const camera = useThree((state) => state.camera);
   const setDpr = useThree((state) => state.setDpr);
+  const adaptiveDpr = useRef(createAdaptiveDprController(
+    Math.min(globalThis.devicePixelRatio ?? 1, pixelRatioCap),
+  ));
   useEffect(() => {
     look.attach(gl.domElement);
     return () => look.detach();
@@ -251,9 +255,22 @@ function FrameSettings({ runtime, look, exposureBase, exterior, pixelRatioCap })
       camera.fov = values.fov;
       camera.updateProjectionMatrix();
     }
-    const dpr = Math.min(window.devicePixelRatio, pixelRatioCap);
-    if (Math.abs(gl.getPixelRatio() - dpr) > 0.01) setDpr(dpr);
     gameDebug.stats.fps = damp(gameDebug.stats.fps, 1 / Math.max(delta, 1e-4), 3.5, delta);
+    const maxDpr = Math.min(globalThis.devicePixelRatio ?? 1, pixelRatioCap);
+    if (graphicsQuality === 'auto') {
+      adaptiveDpr.current.sample(
+        gameDebug.stats.fps,
+        delta,
+        maxDpr,
+        Boolean(gameDebug.stats.boot.complete) && globalThis.document?.visibilityState !== 'hidden',
+      );
+    } else if (adaptiveDpr.current.dpr !== maxDpr) {
+      adaptiveDpr.current.reset(maxDpr);
+    }
+    const dpr = graphicsQuality === 'auto' ? adaptiveDpr.current.dpr : maxDpr;
+    if (Math.abs(gl.getPixelRatio() - dpr) > 0.01) setDpr(dpr);
+    gameDebug.stats.pixelRatio = dpr;
+    gameDebug.stats.graphicsQuality = graphicsQuality;
   });
   return null;
 }
@@ -278,7 +295,7 @@ export default function GameCanvas({
   const recycleOnTravel = useMemo(shouldRecycleWebGLContextOnTravel, []);
   const graphics = useMemo(
     () => graphicsSettingsForDevice(values, recycleOnTravel),
-    [recycleOnTravel, values.antialias, values.pixelRatioCap, values.postEnabled],
+    [recycleOnTravel, values.antialias, values.graphicsQuality, values.pixelRatioCap, values.postEnabled],
   );
   const [canvasZone, setCanvasZone] = useState(values.zone);
   useEffect(() => {
@@ -554,6 +571,7 @@ function SceneContents({
         look={look}
         exposureBase={lighting.exposureBase ?? 1}
         exterior={room.exterior}
+        graphicsQuality={graphics.graphicsQuality}
         pixelRatioCap={graphics.pixelRatioCap}
       />
       <PlayerStateStep />
@@ -573,6 +591,7 @@ function SceneContents({
                 runtime={runtime}
                 maxShadowMapSize={graphics.maxShadowMapSize}
                 maxShadowDistance={graphics.maxOutdoorShadowDistance}
+                shadowUpdateInterval={graphics.shadowUpdateInterval}
               />
               {/* In stage 0 so every later stage's shader compile sees
                   scene.environment; compiled without it, each material
@@ -625,7 +644,14 @@ function SceneContents({
               <Stage active={stage >= 5} stage={5} onRendered={onStageRendered}>
                 <WindowField items={parkBackdrops} runtime={runtime} />
                 {zone.water && (
-                  <Water runtime={runtime} outline={zone.water.outline} level={zone.water.level} />
+                  <Water
+                    runtime={runtime}
+                    outline={zone.water.outline}
+                    level={zone.water.level}
+                    reflectionEnabled={graphics.waterReflectionEnabled}
+                    reflectionSize={graphics.waterReflectionSize}
+                    reflectionInterval={graphics.waterReflectionInterval}
+                  />
                 )}
               </Stage>
 
@@ -633,6 +659,7 @@ function SceneContents({
                 <ZoneFeatures
                   zone={zone}
                   runtime={runtime}
+                  graphics={graphics}
                   ids={staticFeatures}
                   suspendTogether
                 />
@@ -642,6 +669,7 @@ function SceneContents({
                 <ZoneFeatures
                   zone={zone}
                   runtime={runtime}
+                  graphics={graphics}
                   ids={lifeFeatures}
                   suspendTogether
                 />
@@ -721,7 +749,7 @@ function SceneContents({
               <Firebox items={room.furnitureBoxes} />
               <InstrumentStage />
               <ExaminePicker room={room} zone={zone} />
-              <ZoneFeatures zone={zone} runtime={runtime} />
+              <ZoneFeatures zone={zone} runtime={runtime} graphics={graphics} />
               <ColliderDebug room={room} runtime={runtime} />
               {blueprint.id === 'CONSULTING_OFFICE' && <OpiumRitual />}
             </Stage>

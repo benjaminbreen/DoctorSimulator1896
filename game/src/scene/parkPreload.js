@@ -35,6 +35,7 @@ async function crowdUrls() {
     import('../world/teddyRoosevelt.js'),
   ]);
   return [
+    ...pedestrians.PEDESTRIAN_LOD_FILES,
     ...Object.values(pedestrians.PEDESTRIAN_ARCHETYPES).flatMap(
       (archetype) => archetype.animationSources,
     ),

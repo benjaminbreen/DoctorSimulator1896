@@ -20,6 +20,8 @@ export const gameDebug = {
   setLook: null,
   stats: {
     fps: 0,
+    pixelRatio: 1,
+    graphicsQuality: 'auto',
     // Whole-frame GPU counters, filled by FrameSettings. Shadow passes and
     // post passes are included, so these are what the frame actually costs.
     draws: 0,
@@ -27,6 +29,8 @@ export const gameDebug = {
     programs: 0,
     textures: 0,
     geometries: 0,
+    pedestrianFarLods: 0,
+    pedestrianLodTotal: 0,
     cameraDistance: 0,
     cameraYaw: null,
     boot: { zone: null, stage: null, elapsedMs: null, complete: false },

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame, useLoader } from '@react-three/fiber';
 import { CapsuleCollider, RigidBody } from '@react-three/rapier';
@@ -23,6 +23,7 @@ import {
 } from '../world/parkGardener.js';
 import { normalizeNonmetallicCharacterMaterial } from './characterMaterials.js';
 import { fadeInAction } from './characterGestures.js';
+import { updateNpcAnimation } from './npcAnimationThrottle.js';
 import { findMixamoBone } from './walkingStick.js';
 import { buildWateringCan } from './wateringCan.js';
 import { figureHeight } from '../world/figureHeights.js';
@@ -119,7 +120,9 @@ export default function ParkGardener({ runtime }) {
     };
   }, [modelGltf, motionGltf]);
 
+  const animationFrame = useRef(0);
   useFrame((_, delta) => {
+    animationFrame.current += 1;
     const step = Math.min(delta, 0.1);
     const state = parkGardenerScheduleState(runtime.values.timeOfDay);
 
@@ -159,7 +162,16 @@ export default function ParkGardener({ runtime }) {
       actor.marchZ = null;
       setAnimation(actor, state);
     }
-    actor.mixer.update(step);
+    const actorX = march ? march.x : state.position[0];
+    const actorZ = march ? march.z : state.position[2];
+    updateNpcAnimation(
+      actor,
+      step,
+      (actorX - player[0]) ** 2 + (actorZ - player[2]) ** 2,
+      animationFrame.current,
+      0,
+      state.active,
+    );
     actor.wrapper.visible = state.active;
     actor.wrapper.rotation.y = march ? march.yaw : state.yaw;
     actor.figure.rotation.x = 0;

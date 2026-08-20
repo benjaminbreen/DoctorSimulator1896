@@ -6,7 +6,7 @@ export const STARTING_ZONE = 'central-park';
 export const STARTING_TIME = 9.5;
 
 export const settingsSchema = {
-  version: 5,
+  version: 6,
   groups: [
     {
       id: 'world',
@@ -254,6 +254,7 @@ export const settingsSchema = {
       id: 'renderer',
       label: 'Renderer',
       parameters: [
+        { id: 'graphicsQuality', label: 'Graphics quality', type: 'select', options: ['auto', 'performance', 'quality'], default: 'auto', mode: 'rebuild' },
         { id: 'exposure', label: 'Exposure', type: 'range', min: 0.2, max: 2.5, step: 0.05, default: 1.05 },
         { id: 'postEnabled', label: 'Post-processing (all)', type: 'toggle', default: true, mode: 'rebuild' },
         // Per-effect switches, so a frame cost can be attributed to one pass

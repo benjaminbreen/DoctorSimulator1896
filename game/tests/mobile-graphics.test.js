@@ -59,19 +59,79 @@ test('constrained mobile graphics avoid the destination allocation spike', () =>
   };
 
   assert.deepEqual(graphicsSettingsForDevice(authored, true), {
+    graphicsQuality: 'auto',
     antialias: false,
     postEnabled: false,
     pixelRatioCap: 1.25,
     maxShadowMapSize: 1024,
-    maxOutdoorShadowDistance: 30,
+    maxOutdoorShadowDistance: 12,
+    maxDynamicShadowDistance: 10,
+    shadowUpdateInterval: 1,
+    waterReflectionEnabled: false,
+    waterReflectionSize: 1,
+    waterReflectionInterval: 6,
     deferIdleActors: true,
   });
   assert.deepEqual(graphicsSettingsForDevice(authored, false), {
+    graphicsQuality: 'auto',
+    antialias: true,
+    postEnabled: true,
+    pixelRatioCap: 1.5,
+    maxShadowMapSize: 2048,
+    maxOutdoorShadowDistance: 35,
+    maxDynamicShadowDistance: 18,
+    shadowUpdateInterval: 1,
+    waterReflectionEnabled: true,
+    waterReflectionSize: 384,
+    waterReflectionInterval: 6,
+    deferIdleActors: false,
+  });
+});
+
+test('performance mode removes the costly optional passes', () => {
+  const authored = {
+    graphicsQuality: 'performance',
+    antialias: true,
+    postEnabled: true,
+    pixelRatioCap: 2,
+  };
+
+  assert.deepEqual(graphicsSettingsForDevice(authored, false, false), {
+    graphicsQuality: 'performance',
+    antialias: false,
+    postEnabled: false,
+    pixelRatioCap: 1,
+    maxShadowMapSize: 1024,
+    maxOutdoorShadowDistance: 12,
+    maxDynamicShadowDistance: 10,
+    shadowUpdateInterval: 1,
+    waterReflectionEnabled: false,
+    waterReflectionSize: 1,
+    waterReflectionInterval: 8,
+    deferIdleActors: false,
+  });
+});
+
+test('quality mode preserves the authored renderer budget', () => {
+  const authored = {
+    graphicsQuality: 'quality',
+    antialias: true,
+    postEnabled: true,
+    pixelRatioCap: 2,
+  };
+
+  assert.deepEqual(graphicsSettingsForDevice(authored, false, false), {
+    graphicsQuality: 'quality',
     antialias: true,
     postEnabled: true,
     pixelRatioCap: 2,
     maxShadowMapSize: Infinity,
     maxOutdoorShadowDistance: Infinity,
+    maxDynamicShadowDistance: Infinity,
+    shadowUpdateInterval: 1,
+    waterReflectionEnabled: true,
+    waterReflectionSize: 512,
+    waterReflectionInterval: 4,
     deferIdleActors: false,
   });
 });
@@ -84,11 +144,17 @@ test('desktop Safari caps Retina rendering without disabling effects', () => {
   };
 
   assert.deepEqual(graphicsSettingsForDevice(authored, false, true), {
+    graphicsQuality: 'auto',
     antialias: true,
     postEnabled: true,
     pixelRatioCap: 1.5,
     maxShadowMapSize: 2048,
-    maxOutdoorShadowDistance: Infinity,
+    maxOutdoorShadowDistance: 35,
+    maxDynamicShadowDistance: 18,
+    shadowUpdateInterval: 1,
+    waterReflectionEnabled: true,
+    waterReflectionSize: 384,
+    waterReflectionInterval: 6,
     deferIdleActors: false,
   });
   assert.equal(isSafariUserAgent(

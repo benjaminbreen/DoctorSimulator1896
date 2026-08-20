@@ -12,7 +12,13 @@ import './settings.css';
 
 // The tuning parameters this panel owns. Restore Defaults resets these and
 // nothing else, so a player cannot wreck the dev tuning from here.
-const TUNING_IDS = ['exposure', 'contrast', 'vignetteAmount', 'fov', 'shadowsEnabled', 'lookSensitivity', 'invertY'];
+const TUNING_IDS = ['graphicsQuality', 'exposure', 'contrast', 'vignetteAmount', 'fov', 'shadowsEnabled', 'lookSensitivity', 'invertY'];
+
+const GRAPHICS_QUALITY = [
+  { value: 'auto', label: 'Auto' },
+  { value: 'performance', label: 'Performance' },
+  { value: 'quality', label: 'Quality' },
+];
 
 const HOURS = [
   { label: 'Dawn', hour: 5.5 },
@@ -64,6 +70,28 @@ function ToggleRow({ label, on, onToggle }) {
           {on ? 'On' : 'Off'}
         </button>
       </span>
+    </div>
+  );
+}
+
+function ChoiceRow({ label, value, choices, onChange }) {
+  return (
+    <div className="ghud-set-row">
+      <span className="ghud-set-label">{label}</span>
+      <div className="ghud-set-choice" role="radiogroup" aria-label={label}>
+        {choices.map((choice) => (
+          <button
+            key={choice.value}
+            type="button"
+            role="radio"
+            aria-checked={value === choice.value}
+            className={`ghud-set-chip${value === choice.value ? ' ghud-set-chip--on' : ''}`}
+            onClick={() => onChange(choice.value)}
+          >
+            {choice.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -130,6 +158,12 @@ export default function SettingsPanel({ open, onClose, runtime, worldClock }) {
               <span>Picture</span>
               <EyebrowArrow flip size={22} />
             </div>
+            <ChoiceRow
+              label="Graphics"
+              value={values.graphicsQuality}
+              choices={GRAPHICS_QUALITY}
+              onChange={tune('graphicsQuality')}
+            />
             <SliderRow
               label="Brightness"
               min={0.4}

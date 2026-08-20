@@ -137,6 +137,13 @@
   justify-self: start;
 }
 
+.ghud-set-choice {
+  grid-column: 2 / 4;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
 /* ---------------- sliders ---------------- */
 
 .ghud-set-slider {

@@ -19,10 +19,6 @@ const DEPTH_RES = 256;
 const DEPTH_RANGE = 2.5; // metres packed into one byte of the bake
 const MARGIN = 5; // bake/geometry margin beyond the outline, metres
 const CELL = 1.7; // surface grid cell, metres
-const MIRROR_RES = 512;
-// The distorted, blurred surface hides intermediate reflection frames well.
-// Avoid redrawing the entire park for the mirror on half of all frames.
-const MIRROR_INTERVAL = 4;
 // How many mirror-eligible frames a cached exclusion list stays valid.
 const MIRROR_EXCLUDE_REFRESH = 240;
 const MAX_IMPULSES = 8;
@@ -413,14 +409,21 @@ const mirrorTarget = new THREE.Vector3();
 const clipPlane = new THREE.Vector4();
 const clipQ = new THREE.Vector4();
 
-export default function Water({ runtime, outline, level = -0.5 }) {
+export default function Water({
+  runtime,
+  outline,
+  level = -0.5,
+  reflectionEnabled = true,
+  reflectionSize = 512,
+  reflectionInterval = 4,
+}) {
   const bake = useMemo(() => bakeDepth(outline, level), [outline, level]);
   const geometry = useMemo(() => buildSurface(bake), [bake]);
   const rippleTexture = useMemo(() => createRippleTexture(), []);
 
   const mirror = useMemo(
     () => ({
-      target: new THREE.WebGLRenderTarget(MIRROR_RES, MIRROR_RES),
+      target: new THREE.WebGLRenderTarget(reflectionSize, reflectionSize),
       camera: new THREE.PerspectiveCamera(),
       matrix: new THREE.Matrix4(),
       frame: 0,
@@ -433,7 +436,7 @@ export default function Water({ runtime, outline, level = -0.5 }) {
       lastFov: 0,
       lastAt: -Infinity,
     }),
-    [],
+    [reflectionSize],
   );
   useEffect(() => () => mirror.target.dispose(), [mirror]);
   useEffect(() => () => {
@@ -613,12 +616,17 @@ export default function Water({ runtime, outline, level = -0.5 }) {
     s.wasGrounded = grounded;
   });
 
-  // Renders the scene mirrored about the water plane into a small target,
-  // every MIRROR_INTERVAL frames. Shadow maps are reused, not re-rendered.
+  // Renders the scene mirrored about the water plane into a small target at
+  // the active quality tier's cadence. Shadow maps are reused.
   const renderMirror = (renderer, scene, camera) => {
     mirror.renderer = renderer;
     mirror.frame += 1;
-    if (mirror.live && mirror.frame % MIRROR_INTERVAL !== 0) return;
+    if (!reflectionEnabled || runtime.values.waterMirrorStrength <= 0) {
+      material.uniforms.uHasReflection.value = 0;
+      mirror.live = false;
+      return;
+    }
+    if (mirror.live && mirror.frame % reflectionInterval !== 0) return;
     const mesh = meshRef.current;
     if (!mesh) return;
 

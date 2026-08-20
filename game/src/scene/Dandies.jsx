@@ -34,6 +34,7 @@ import {
 } from '../world/pingPongRoute.js';
 import { normalizeNonmetallicCharacterMaterial } from './characterMaterials.js';
 import { restoreLoopingIdle } from './characterGestures.js';
+import { updateNpcAnimation } from './npcAnimationThrottle.js';
 import { buildWalkingStick, findMixamoBone } from './walkingStick.js';
 import { figureHeight } from '../world/figureHeights.js';
 
@@ -164,14 +165,22 @@ export default function Dandies({ runtime }) {
   }), [modelGltf, motionGltf, runtime, zone]);
 
   const elapsed = useRef(0);
+  const animationFrame = useRef(0);
   useFrame((_, delta) => {
     const step = Math.min(delta, 0.1);
     elapsed.current += step;
+    animationFrame.current += 1;
     const now = elapsed.current;
     const player = gameDebug.player.position;
-    for (const actor of actors) {
+    for (const [index, actor] of actors.entries()) {
       const conversing = dandyConversationActive(actor.placement, runtime.values.timeOfDay);
-      actor.mixer.update(step);
+      updateNpcAnimation(
+        actor,
+        step,
+        (actor.worldX - player[0]) ** 2 + (actor.worldZ - player[2]) ** 2,
+        animationFrame.current,
+        index,
+      );
       actor.figure.rotation.x = 0;
       actor.figure.rotation.z = 0;
       if (actor.active && now >= actor.gestureUntil) finishGesture(actor);

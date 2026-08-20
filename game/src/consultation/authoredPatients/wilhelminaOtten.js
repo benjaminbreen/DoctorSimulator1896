@@ -63,7 +63,7 @@ const facts = Object.freeze([
     id: 'otten-hand-pain', kind: 'symptom', label: 'Aching hands',
     value: 'Both hands ache at the finger joints and the base of the thumbs, worst on washing mornings and in damp weather.',
     notebookSummary: 'Aching of the finger joints, both hands, worse with laundry work and damp.',
-    patientWording: 'Washing day tells me the weather before the sky does.',
+    patientWording: 'They ache most when I do the washing, especially in damp weather.',
     disclosure: 'open', confidence: 'high', measurement: false,
     releaseOn: ['hands', 'ache', 'pain', 'fingers', 'joints'], noteTerms: ['hands', 'joints', 'aching', 'damp'],
   }),
@@ -71,7 +71,7 @@ const facts = Object.freeze([
     id: 'otten-morning-stiffness', kind: 'symptom', label: 'Morning stiffness',
     value: 'The fingers are stiff for a quarter hour on waking and loosen with use; they do not lock or swell hot.',
     notebookSummary: 'Brief morning stiffness that eases with use; no hot swelling.',
-    patientWording: 'They wake after I do. By the second kettle they obey.',
+    patientWording: 'They are stiff for about fifteen minutes after I wake. Using them helps.',
     disclosure: 'open', confidence: 'high', measurement: false,
     releaseOn: ['morning', 'stiff', 'waking', 'loosen'], noteTerms: ['stiffness', 'morning', 'quarter hour'],
   }),
@@ -79,7 +79,7 @@ const facts = Object.freeze([
     id: 'otten-work-history', kind: 'social', label: 'A lifetime of laundry',
     value: 'She took in washing for thirty years before keeping lodgers, and still does the house linens herself each Monday.',
     notebookSummary: 'Thirty years of laundry work; still washes the house linens weekly.',
-    patientWording: 'Thirty years at the tubs. The lodgers are lighter work, except on Mondays.',
+    patientWording: 'I took in washing for thirty years. I still do the house linens every Monday.',
     disclosure: 'open', confidence: 'high', measurement: false,
     releaseOn: ['work', 'washing', 'laundry', 'lodgers', 'linens'], noteTerms: ['laundry', 'lodging house', 'Mondays'],
   }),
@@ -87,7 +87,7 @@ const facts = Object.freeze([
     id: 'otten-sister-fear', kind: 'history', label: 'Her sister’s shaking illness',
     value: 'Her elder sister in Bremen died after years of a shaking palsy that began, she believes, in the hands. She has told no one she fears the same beginning.',
     notebookSummary: 'Family history of a fatal shaking palsy; private fear that her hand trouble is its start.',
-    patientWording: 'My sister’s hands went first. I have watched mine for two years and said nothing.',
+    patientWording: 'My sister’s hands shook before she died. I have feared the same thing for two years.',
     disclosure: 'withheld', confidence: 'high', measurement: false,
     requiresFactIds: ['otten-hand-pain'],
     releaseOn: ['sister', 'family', 'fear', 'shaking', 'palsy', 'tremble', 'afraid'],
@@ -97,7 +97,7 @@ const facts = Object.freeze([
     id: 'otten-sleep-spirits', kind: 'symptom', label: 'Broken sleep and low spirits',
     value: 'She wakes near three and lies calculating: the pain, the lodgers’ rent, and what became of her sister. Her spirits are lower than she will admit.',
     notebookSummary: 'Early waking with rumination; low spirits, understated.',
-    patientWording: 'At three in the morning the house is quiet and my head is not.',
+    patientWording: 'I often wake at three and worry about my hands, the rent, and my sister.',
     disclosure: 'guarded', confidence: 'medium', measurement: false,
     releaseOn: ['sleep', 'night', 'waking', 'spirits', 'sad', 'worry'],
     noteTerms: ['sleep', 'three o’clock', 'spirits'],
@@ -127,22 +127,22 @@ const facts = Object.freeze([
 
 const prompts = Object.freeze([
   Object.freeze({
-    id: 'otten-ask-pattern', stance: 'question', text: 'Ask when the hands hurt most and what eases them.',
+    id: 'otten-ask-pattern', stance: 'question', text: 'Ask when her hands hurt most and what helps.',
     discloseFactIds: ['otten-hand-pain', 'otten-morning-stiffness'],
     effects: { trust: 2 }, appraisal: { register: 'courteous', decorumBreach: 0, intent: 'clinical pattern' },
   }),
   Object.freeze({
-    id: 'otten-ask-work', stance: 'question', text: 'Ask what the hands are asked to do in a week.',
+    id: 'otten-ask-work', stance: 'question', text: 'Ask about her work and how she uses her hands.',
     discloseFactIds: ['otten-work-history'],
     effects: { trust: 2, satisfaction: 1 }, appraisal: { register: 'courteous', decorumBreach: 0, intent: 'occupation' },
   }),
   Object.freeze({
-    id: 'otten-ask-family', stance: 'question', text: 'Ask whether anyone in her family had trouble of the hands or nerves.',
+    id: 'otten-ask-family', stance: 'question', text: 'Ask about any family history of hand or nerve problems.',
     requiresFactIds: ['otten-hand-pain'], discloseFactIds: ['otten-sister-fear'],
     effects: { trust: 3 }, appraisal: { register: 'courteous', decorumBreach: 0, intent: 'family history' },
   }),
   Object.freeze({
-    id: 'otten-ask-sleep', stance: 'question', text: 'Ask how she sleeps and how her spirits stand.',
+    id: 'otten-ask-sleep', stance: 'question', text: 'Ask about her sleep and mood.',
     discloseFactIds: ['otten-sleep-spirits'],
     effects: { trust: 1 }, appraisal: { register: 'courteous', decorumBreach: 0, intent: 'sleep and mood' },
   }),
@@ -177,7 +177,7 @@ export const WILHELMINA_OTTEN = Object.freeze({
   actor,
   appointment: Object.freeze({ minutes: 30, overtimeExtensionMinutes: 5, maxOvertimeExtensions: 1 }),
   opening: Object.freeze({
-    dialogue: '“My hands, Doctor. They ache, and they are changing their shape. I have kept house through worse, so I would not have come—but I want you to look at them and tell me plainly what they are becoming.”',
+    dialogue: '“My hands ache, Doctor, and the joints are changing shape. I have had aches before, but not like this. Can you tell me what is happening?”',
     behavior: 'Mrs. Otten sits straight-backed with her gloves already off, her hands laid on her knee like items presented for inspection. She watches your face rather than her fingers.',
   }),
   groundTruth: Object.freeze({
@@ -197,9 +197,9 @@ export const WILHELMINA_OTTEN = Object.freeze({
   prompts,
   inquiryIntents,
   interpretations: Object.freeze([
-    Object.freeze({ id: 'otten-approach-joints', label: 'Examine the joints first', text: 'Changed shape is a finding, not a mood. The joints should be examined before any word like rheumatism or palsy is used.', alignment: 3, nextMode: 'examination' }),
-    Object.freeze({ id: 'otten-approach-fear', label: 'Find what she fears', text: 'A woman this composed does not come for an ache. Something specific frightens her, and the history should draw it out.', alignment: 3, nextMode: 'patient' }),
-    Object.freeze({ id: 'otten-approach-age', label: 'Weigh age and work', text: 'Sixty-seven years and thirty of them at the wash-tub: the life should be read alongside the joints.', alignment: 2, nextMode: 'patient' }),
+    Object.freeze({ id: 'otten-approach-joints', label: 'Examine the joints first', text: 'The joints should be examined first, to rule out physical issues.', alignment: 3, nextMode: 'examination' }),
+    Object.freeze({ id: 'otten-approach-fear', label: 'Ask what she fears', text: 'I should ask if something specific is frightening her.', alignment: 3, nextMode: 'patient' }),
+    Object.freeze({ id: 'otten-approach-age', label: 'Ask about her history', text: 'I should ask about her life history.', alignment: 2, nextMode: 'patient' }),
   ]),
   thoughtIntents: Object.freeze([
     Object.freeze({ id: 'rheumatism', label: 'Chronic joint disease', matchTerms: ['rheumatism', 'arthritis', 'joints', 'wear', 'deformans'], alignment: 3 }),

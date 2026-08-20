@@ -34,10 +34,16 @@ const FEATURES = {
   fireflies: lazy(() => import('./Fireflies.jsx')),
 };
 
-export default function ZoneFeatures({ zone, runtime, ids = zone.features ?? [], suspendTogether = false }) {
+export default function ZoneFeatures({
+  zone,
+  runtime,
+  graphics,
+  ids = zone.features ?? [],
+  suspendTogether = false,
+}) {
   const nodes = ids.map((id) => {
     const Feature = FEATURES[id];
-    return Feature ? <Feature key={id} runtime={runtime} zone={zone} /> : null;
+    return Feature ? <Feature key={id} runtime={runtime} zone={zone} graphics={graphics} /> : null;
   });
   if (suspendTogether) return nodes;
   return nodes.map((node, index) => (

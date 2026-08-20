@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CONSULTATION_PATIENTS } from '../src/consultation/patients.js';
-import { startConsultation, consultationTransition } from '../src/consultation/engine.js';
+import {
+  createConsultationRuntime,
+  startConsultation,
+  consultationTransition,
+} from '../src/consultation/engine.js';
+import { renderOfflineDialogue } from '../src/consultation/offlineRenderer.js';
 import {
   getPatientRecord,
   syncConsultationRecord,
@@ -55,4 +60,24 @@ test('records for different patients stay isolated', () => {
   assert.equal(getPatientRecord(first, storage).visits.length, 1);
   assert.equal(getPatientRecord(second, storage).visits.length, 1);
   assert.notEqual(getPatientRecord(first, storage).patientId, getPatientRecord(second, storage).patientId);
+});
+
+test('an early-ended consultation closes its open casebook visit', () => {
+  const storage = memoryStorage();
+  const patient = CONSULTATION_PATIENTS[0];
+  const runtime = createConsultationRuntime([patient], renderOfflineDialogue);
+  const unsubscribe = runtime.subscribe((state) => {
+    if (state) syncConsultationRecord(patient, state, STAMP, storage);
+  });
+
+  runtime.start(patient.id);
+  runtime.dispatch({ type: 'end-early' });
+  runtime.reset();
+
+  const record = getPatientRecord(patient, storage);
+  assert.equal(record.status, 'closed');
+  assert.equal(record.visits.length, 1);
+  assert.equal(record.visits[0].status, 'closed');
+  assert.equal(record.visits[0].stage, 'terminated');
+  unsubscribe();
 });

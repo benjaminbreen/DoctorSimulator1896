@@ -303,7 +303,7 @@ function updateDriverMood(driver, state, dt) {
   driver.hold = MOOD_HOLD;
 }
 
-export default function HorselessCarriage({ runtime }) {
+export default function HorselessCarriage({ runtime, graphics }) {
   const driverGltf = useLoader(GLTFLoader, '/models/carriage-driver.glb', (loader) =>
     loader.setMeshoptDecoder(MeshoptDecoder),
   );
@@ -490,7 +490,10 @@ export default function HorselessCarriage({ runtime }) {
 
       // Shadows and rider animation only near the camera.
       const distSq = (state.x - eye.x) ** 2 + (state.z - eye.z) ** 2;
-      const shadowDistance = runtime.values.outdoorShadowDistance;
+      const shadowDistance = Math.min(
+        runtime.values.outdoorShadowDistance,
+        graphics?.maxDynamicShadowDistance ?? Infinity,
+      );
       const near = distSq < shadowDistance * shadowDistance;
       if (near !== unit.shadowNear) {
         unit.shadowNear = near;

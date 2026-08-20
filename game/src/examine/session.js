@@ -10,6 +10,7 @@ import { applyPlayerEvent } from '../world/player.js';
 
 const listeners = new Set();
 let session = null;
+let nextSessionId = 1;
 // Subjects that have already paid their quiet. Looking hard at a thing settles
 // the nerves once; looking at it again is just looking at it again.
 const settled = new Set();
@@ -37,6 +38,7 @@ export function getExamination() {
 export function beginExamination(subjectId, record = examinable(subjectId)) {
   if (!record) return null;
   session = {
+    id: nextSessionId++,
     subjectId,
     record,
     // Every observation, procedure result and answered question, in the order
@@ -112,8 +114,8 @@ export function setPending(value) {
   notify();
 }
 
-export function recordQuestion(question, answer, source = 'offline') {
-  if (!session) return;
+export function recordQuestion(question, answer, source = 'offline', expectedSessionId = session?.id) {
+  if (!session || session.id !== expectedSessionId) return false;
   session.entries = [...session.entries, {
     id: `question:${session.entries.length}`,
     kind: 'question',
@@ -123,6 +125,7 @@ export function recordQuestion(question, answer, source = 'offline') {
   }];
   session.pending = false;
   notify();
+  return true;
 }
 
 /**

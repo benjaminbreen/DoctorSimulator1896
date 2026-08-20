@@ -33,6 +33,13 @@ test('select parameters include their default', () => {
   }
 });
 
+test('player graphics quality defaults to Auto and rebuilds render targets', () => {
+  const definition = parameters.find((parameter) => parameter.id === 'graphicsQuality');
+  assert.equal(definition.default, 'auto');
+  assert.deepEqual(definition.options, ['auto', 'performance', 'quality']);
+  assert.equal(definition.mode, 'rebuild');
+});
+
 test('a game session starts in Central Park at 9:30 am', () => {
   const runtime = createTuningRuntime(settingsSchema);
   runtime.set('zone', 'consulting-office');

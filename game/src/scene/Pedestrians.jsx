@@ -71,10 +71,13 @@ import { buildPeriodStroller } from './strollerModel.js';
 import { figureHeight } from '../world/figureHeights.js';
 import { normalizeNonmetallicCharacterMaterial } from './characterMaterials.js';
 import { fadeInAction, restoreLoopingIdle } from './characterGestures.js';
+import { useFarPedestrianLod } from './pedestrianLod.js';
 import {
   CROWD_CAST_AGES,
   PEDESTRIAN_ARCHETYPES,
   PEDESTRIAN_BENCH_SITTERS as BENCH_SITTERS,
+  PEDESTRIAN_LOD_ARCHETYPES,
+  PEDESTRIAN_LOD_FILES,
   PEDESTRIAN_MAN_CLIP_FILES as MAN_CLIP_FILES,
   PEDESTRIAN_POSERS as POSERS,
   PEDESTRIAN_REACTION_FILE,
@@ -351,7 +354,7 @@ function setBaseAction(entry, next) {
   entry.base = next;
 }
 
-export default function Pedestrians({ runtime }) {
+export default function Pedestrians({ runtime, graphics }) {
   // All pedestrian GLBs are meshopt-compressed; the figure models also carry
   // KTX2 textures.
   const gl = useThree((state) => state.gl);
@@ -370,6 +373,7 @@ export default function Pedestrians({ runtime }) {
   const rationalGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.r.modelPath, withMeshopt);
   const maidGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.hm.modelPath, withMeshopt);
   const bellhopGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.bh.modelPath, withMeshopt);
+  const lodGltfs = useLoader(GLTFLoader, PEDESTRIAN_LOD_FILES, withMeshopt);
   const strawhatMotionGltf = useLoader(GLTFLoader, PEDESTRIAN_STRAWHAT_MOTION_FILE, withMeshopt);
   const standupGltf = useLoader(GLTFLoader, PEDESTRIAN_STANDUP_FILE, withMeshopt);
   const manClipGltfs = useLoader(GLTFLoader, MAN_CLIP_FILES, withMeshopt);
@@ -468,6 +472,16 @@ export default function Pedestrians({ runtime }) {
         ]),
       },
     };
+    PEDESTRIAN_LOD_ARCHETYPES.forEach((who, index) => {
+      let lodGeometry = null;
+      lodGltfs[index].scene.traverse((node) => {
+        if (!lodGeometry && node.isSkinnedMesh) lodGeometry = node.geometry;
+      });
+      if (!lodGeometry?.getAttribute('skinIndex') || !lodGeometry.getAttribute('skinWeight')) {
+        throw new Error(`Pedestrian ${who} far LOD is missing skin data`);
+      }
+      cast[who].lodGeometry = lodGeometry;
+    });
     // Getting up off a bench is the one thing every rig needs and none of the
     // packs carried, so it is added to all of them in one pass.
     for (const member of Object.values(cast)) {
@@ -494,11 +508,19 @@ export default function Pedestrians({ runtime }) {
       const height = figureHeight(PEDESTRIAN_ARCHETYPES[who].id);
       figure.scale.setScalar(height * (0.95 + hash01(index * 3.7) * 0.1));
       const meshes = [];
+      const lodMeshes = [];
       figure.traverse((node) => {
         if (!node.isMesh && !node.isSkinnedMesh) return;
         node.castShadow = true;
         node.receiveShadow = true;
         meshes.push(node);
+        if (node.isSkinnedMesh) {
+          lodMeshes.push({
+            mesh: node,
+            fullGeometry: node.geometry,
+            farGeometry: cast[who].lodGeometry,
+          });
+        }
         // One suit reads as a uniform; drift the colour a little per figure.
         // Kept small and symmetric: the figure has one material, so any
         // lightness drop darkens the face along with the suit.
@@ -583,6 +605,8 @@ export default function Pedestrians({ runtime }) {
         gender: who === 'm' ? 'male' : 'female',
         wrapper,
         meshes,
+        lodMeshes,
+        farLod: false,
         mixer,
         base,
         actions,
@@ -752,7 +776,7 @@ export default function Pedestrians({ runtime }) {
     });
 
     return { group: root, walkers: walking, figures: all, crowdGraph: graph };
-  }, [manGltf, womanGltf, dressGltf, somberGltf, fortiesGltf, strawhatGltf, nursemaidGltf, lilacGltf, rationalGltf, maidGltf, bellhopGltf, strawhatMotionGltf, standupGltf, manClipGltfs, womanClipGltfs, reactGltf]);
+  }, [manGltf, womanGltf, dressGltf, somberGltf, fortiesGltf, strawhatGltf, nursemaidGltf, lilacGltf, rationalGltf, maidGltf, bellhopGltf, lodGltfs, strawhatMotionGltf, standupGltf, manClipGltfs, womanClipGltfs, reactGltf]);
 
   // Crowd scheduling state survives re-renders but resets on a new game day.
   const crowdRef = useRef(null);
@@ -771,7 +795,11 @@ export default function Pedestrians({ runtime }) {
   useEffect(() => {
     gameDebug.pedestrians = trackedPeople;
     return () => {
-      if (gameDebug.pedestrians === trackedPeople) gameDebug.pedestrians = [];
+      if (gameDebug.pedestrians === trackedPeople) {
+        gameDebug.pedestrians = [];
+        gameDebug.stats.pedestrianFarLods = 0;
+        gameDebug.stats.pedestrianLodTotal = 0;
+      }
     };
   }, [trackedPeople]);
   useFrame((state, delta) => {
@@ -827,6 +855,8 @@ export default function Pedestrians({ runtime }) {
     }
     const conversation = getInteraction().using;
     const speakingId = conversation?.kind === 'conversation' ? conversation.agentId : null;
+    let activePedestrianLods = 0;
+    let farPedestrianLods = 0;
     for (let index = 0; index < figures.length; index += 1) {
       const entry = figures[index];
       const { x, z } = entry.wrapper.position;
@@ -854,7 +884,19 @@ export default function Pedestrians({ runtime }) {
         continue;
       }
       const dist2 = (x - eye.x) ** 2 + (z - eye.z) ** 2;
-      const shadowDistance = runtime.values.outdoorShadowDistance;
+      const farLod = useFarPedestrianLod(entry.farLod, dist2);
+      if (farLod !== entry.farLod) {
+        entry.farLod = farLod;
+        for (const lod of entry.lodMeshes) {
+          lod.mesh.geometry = farLod ? lod.farGeometry : lod.fullGeometry;
+        }
+      }
+      activePedestrianLods += 1;
+      if (farLod) farPedestrianLods += 1;
+      const shadowDistance = Math.min(
+        runtime.values.outdoorShadowDistance,
+        graphics?.maxDynamicShadowDistance ?? Infinity,
+      );
       const near = dist2 < shadowDistance * shadowDistance;
       for (const mesh of entry.meshes) mesh.castShadow = near;
       // Accumulate time so a throttled figure moves at true speed, just in
@@ -1137,6 +1179,8 @@ export default function Pedestrians({ runtime }) {
         }
       }
     }
+    gameDebug.stats.pedestrianFarLods = farPedestrianLods;
+    gameDebug.stats.pedestrianLodTotal = activePedestrianLods;
 
     for (const walker of walkers) {
       // Coming over to complain overrides the route entirely; the figures

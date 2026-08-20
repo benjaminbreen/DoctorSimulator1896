@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame, useLoader } from '@react-three/fiber';
 import { CapsuleCollider, RigidBody } from '@react-three/rapier';
@@ -27,6 +27,7 @@ import {
 } from '../world/sailorBoy.js';
 import { normalizeNonmetallicCharacterMaterial } from './characterMaterials.js';
 import { fadeInAction } from './characterGestures.js';
+import { updateNpcAnimation } from './npcAnimationThrottle.js';
 import { figureHeight } from '../world/figureHeights.js';
 
 const ACTOR_ID = 'gapstow-sailor-boy';
@@ -113,7 +114,9 @@ export default function SailorBoy() {
     };
   }, [modelGltf, motionGltf]);
 
+  const animationFrame = useRef(0);
   useFrame((state, delta) => {
+    animationFrame.current += 1;
     const step = Math.min(delta, 0.1);
     const now = state.clock.elapsedTime;
     const behavior = sailorBoyBehaviorState(now);
@@ -181,7 +184,12 @@ export default function SailorBoy() {
       playState(actor, behavior.phase, behavior);
     }
     actor.confronted = Boolean(march);
-    actor.mixer.update(step);
+    updateNpcAnimation(
+      actor,
+      step,
+      (actor.worldX - player[0]) ** 2 + (actor.worldZ - player[2]) ** 2,
+      animationFrame.current,
+    );
     actor.figure.rotation.x = 0;
     actor.figure.rotation.z = 0;
     const ground = sailorBoyGroundY(actor.worldX, actor.worldZ);

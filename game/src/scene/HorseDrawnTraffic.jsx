@@ -563,7 +563,7 @@ function updateDrawGear(unit, state) {
   }
 }
 
-export default function HorseDrawnTraffic({ runtime }) {
+export default function HorseDrawnTraffic({ runtime, graphics }) {
   const horseGltf = useLoader(GLTFLoader, '/models/horse.glb');
   const driverGltf = useLoader(GLTFLoader, '/models/carriage-driver.glb', (loader) =>
     loader.setMeshoptDecoder(MeshoptDecoder));
@@ -729,7 +729,10 @@ export default function HorseDrawnTraffic({ runtime }) {
         }
       });
       const distSq = (state.coachX - eye.x) ** 2 + (state.coachZ - eye.z) ** 2;
-      const shadowDistance = runtime.values.outdoorShadowDistance;
+      const shadowDistance = Math.min(
+        runtime.values.outdoorShadowDistance,
+        graphics?.maxDynamicShadowDistance ?? Infinity,
+      );
       const shadowNear = distSq < shadowDistance ** 2;
       if (shadowNear !== unit.shadowNear) {
         unit.shadowNear = shadowNear;
