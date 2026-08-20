@@ -191,7 +191,7 @@ const prompts = Object.freeze([
     noteSummary: 'Poor appetite, four-day constipation, and gripping lower abdominal pain relieved by pressure.',
     dialogue: '“I can go four days without a movement. Then I get a gripping pain low down for an hour or two. Pressure helps. I have little appetite, but I make myself eat at noon.”',
     effects: { satisfaction: 2 }, appraisal: { register: 'clinical', decorumBreach: 0, intent: 'gastrointestinal symptoms' },
-    reactionExpression: 'discouraged', bodyCue: 'sitting-distressed',
+    reactionExpression: 'pained', bodyCue: 'sitting-distressed',
   }),
   Object.freeze({
     id: 'samuel-ask-bereavement', text: 'Ask whether this began after his wife died.', stance: 'question',
@@ -223,12 +223,12 @@ const prompts = Object.freeze([
 ]);
 
 const inquiryIntents = Object.freeze([
-  Object.freeze({ id: 'samuel-intent-course', matchTerms: ['when begin', 'started', 'how long', 'Sunday', 'worse'], discloseFactIds: ['samuel-course', 'samuel-headache'], maxDisclosures: 2, dialogue: prompts.find((item) => item.id === 'samuel-ask-course').dialogue, appraisal: { register: 'clinical', decorumBreach: 0, intent: 'course and pattern' } }),
-  Object.freeze({ id: 'samuel-intent-work', matchTerms: ['printing', 'shop', 'metal', 'lead', 'type', 'stereotype', 'dross'], requiresFactIds: ['samuel-course'], discloseFactIds: ['samuel-metal-work', 'samuel-shop-hygiene'], maxDisclosures: 2, dialogue: prompts.find((item) => item.id === 'samuel-ask-work').dialogue, effects: { trust: 1 }, appraisal: { register: 'clinical', decorumBreach: 0, intent: 'occupational exposure' } }),
-  Object.freeze({ id: 'samuel-intent-digestion', matchTerms: ['bowels', 'constipation', 'appetite', 'stomach', 'abdomen', 'colic'], discloseFactIds: ['samuel-digestion'], dialogue: prompts.find((item) => item.id === 'samuel-ask-bowels').dialogue, appraisal: { register: 'clinical', decorumBreach: 0, intent: 'gastrointestinal symptoms' } }),
-  Object.freeze({ id: 'samuel-intent-grief', matchTerms: ['wife', 'Rebecca', 'grief', 'bereavement', 'loss'], discloseFactIds: ['samuel-bereavement'], dialogue: prompts.find((item) => item.id === 'samuel-ask-bereavement').dialogue, appraisal: { register: 'courteous', decorumBreach: 0, intent: 'bereavement chronology' } }),
-  Object.freeze({ id: 'samuel-intent-safety', matchTerms: ['suicide', 'harm himself', 'wish for death', 'not wake', 'safe'], requiresFactIds: ['samuel-bereavement'], discloseFactIds: ['samuel-safety'], dialogue: prompts.find((item) => item.id === 'samuel-ask-safety').dialogue, effects: { trust: 3 }, appraisal: { register: 'clinical', decorumBreach: 0, intent: 'suicide risk assessment' } }),
-  Object.freeze({ id: 'samuel-intent-income', matchTerms: ['wages', 'income', 'son', 'Daniel', 'reassign', 'rest', 'foreman'], requiresFactIds: ['samuel-metal-work'], discloseFactIds: ['samuel-income'], dialogue: prompts.find((item) => item.id === 'samuel-ask-income').dialogue, effects: { satisfaction: 2 }, appraisal: { register: 'courteous', decorumBreach: 0, intent: 'treatment feasibility' } }),
+  Object.freeze({ id: 'samuel-intent-course', matchTerms: ['when begin', 'started', 'how long', 'Sunday', 'worse'], discloseFactIds: ['samuel-course', 'samuel-headache'], maxDisclosures: 2, dialogue: prompts.find((item) => item.id === 'samuel-ask-course').dialogue, appraisal: { register: 'clinical', decorumBreach: 0, intent: 'course and pattern' }, reactionExpression: 'discouraged', bodyCue: 'sitting-self-soothing' }),
+  Object.freeze({ id: 'samuel-intent-work', matchTerms: ['printing', 'shop', 'metal', 'lead', 'type', 'stereotype', 'dross'], requiresFactIds: ['samuel-course'], discloseFactIds: ['samuel-metal-work', 'samuel-shop-hygiene'], maxDisclosures: 2, dialogue: prompts.find((item) => item.id === 'samuel-ask-work').dialogue, effects: { trust: 1 }, appraisal: { register: 'clinical', decorumBreach: 0, intent: 'occupational exposure' }, reactionExpression: 'frowning', bodyCue: 'sitting-disapproval' }),
+  Object.freeze({ id: 'samuel-intent-digestion', matchTerms: ['bowels', 'constipation', 'appetite', 'stomach', 'abdomen', 'colic'], discloseFactIds: ['samuel-digestion'], dialogue: prompts.find((item) => item.id === 'samuel-ask-bowels').dialogue, appraisal: { register: 'clinical', decorumBreach: 0, intent: 'gastrointestinal symptoms' }, reactionExpression: 'pained', bodyCue: 'sitting-distressed' }),
+  Object.freeze({ id: 'samuel-intent-grief', matchTerms: ['wife', 'Rebecca', 'grief', 'bereavement', 'loss'], discloseFactIds: ['samuel-bereavement'], dialogue: prompts.find((item) => item.id === 'samuel-ask-bereavement').dialogue, appraisal: { register: 'courteous', decorumBreach: 0, intent: 'bereavement chronology' }, reactionExpression: 'discouraged', bodyCue: 'sitting-self-soothing' }),
+  Object.freeze({ id: 'samuel-intent-safety', matchTerms: ['suicide', 'harm himself', 'wish for death', 'not wake', 'safe'], requiresFactIds: ['samuel-bereavement'], discloseFactIds: ['samuel-safety'], dialogue: prompts.find((item) => item.id === 'samuel-ask-safety').dialogue, effects: { trust: 3 }, appraisal: { register: 'clinical', decorumBreach: 0, intent: 'suicide risk assessment' }, reactionExpression: 'discouraged', bodyCue: 'sitting-distressed' }),
+  Object.freeze({ id: 'samuel-intent-income', matchTerms: ['wages', 'income', 'son', 'Daniel', 'reassign', 'rest', 'foreman'], requiresFactIds: ['samuel-metal-work'], discloseFactIds: ['samuel-income'], dialogue: prompts.find((item) => item.id === 'samuel-ask-income').dialogue, effects: { satisfaction: 2 }, appraisal: { register: 'courteous', decorumBreach: 0, intent: 'treatment feasibility' }, reactionExpression: 'frowning', bodyCue: 'sitting-disapproval' }),
 ]);
 
 export const SAMUEL_TAYLOR = Object.freeze({
@@ -281,6 +281,7 @@ export const SAMUEL_TAYLOR = Object.freeze({
       reply: 'A narrow blue-grey line marks parts of the gum margin. Grip is preserved, but repeated wrist and middle-finger extension is subtly weak on both sides; there is no complete wrist-drop.',
       uncertainty: 'The gum line is not unique to lead, and effort may affect subtle weakness; the cluster must be weighed with exposure and symptoms.',
       effects: { trust: 2, satisfaction: 3 }, gesture: 'present-wrist',
+      reactionExpression: 'guarded',
     }),
     Object.freeze({
       id: 'samuel-exam-abdomen', label: 'Examine the abdomen and count the pulse', minutes: 3,
@@ -288,6 +289,7 @@ export const SAMUEL_TAYLOR = Object.freeze({
       reply: facts.find((fact) => fact.id === 'samuel-abdominal-exam').value,
       uncertainty: 'These findings support but do not prove lead colic, and do not exclude another abdominal disorder.',
       effects: { satisfaction: 1 }, gesture: 'present-wrist',
+      reactionExpression: 'pained',
     }),
   ]),
   diagnoses: Object.freeze([

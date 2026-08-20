@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { POST } from '../../api/consult.mjs';
-import { buildDialogueRequest, createConsultationRuntime, startConsultation } from '../src/consultation/engine.js';
+import {
+  actorCueForConsultation,
+  buildDialogueRequest,
+  createConsultationRuntime,
+  startConsultation,
+} from '../src/consultation/engine.js';
 import { renderLunaDialogue } from '../src/consultation/lunaRenderer.js';
 import { NORA_BYRNE } from '../src/consultation/authoredPatients/noraByrne.js';
 
@@ -61,15 +66,64 @@ test('an unmatched custom question takes wording from the model but not decorum'
       dialogue: '“A tabby, doctor. She sleeps on the press.”',
       behavior: 'She almost smiles.',
       register: 'courteous',
+      expression: 'smiling',
+      bodyCue: 'sitting-talking',
       disclosedNow: [],
     }),
     () => renderLunaDialogue(request, patient),
   );
   assert.match(rendered.dialogue, /tabby/);
   assert.equal(rendered.behavior, 'She almost smiles.');
+  assert.equal(rendered.reactionExpression, 'smiling');
+  assert.equal(rendered.bodyCue, 'sitting-talking');
   assert.equal(rendered.appraisal.register, 'courteous');
   assert.equal(rendered.appraisal.terminates, false);
   assert.equal(rendered.appraisal.decorumBreach, 0);
+});
+
+test('a model performance cue drives the actor when no authored rule matched', async () => {
+  const runtime = createConsultationRuntime([patient], (request, currentPatient) => (
+    renderLunaDialogue(request, currentPatient)
+  ));
+  runtime.start(patient.id);
+  runtime.dispatch({ type: 'begin-inquiry' });
+  const state = await withFetch(
+    async () => reply({
+      dialogue: '“No, Doctor, no cat. Mrs. Doyle would not allow one.”',
+      behavior: 'She folds her hands in her lap.',
+      register: 'clinical',
+      expression: 'anxious',
+      bodyCue: 'sitting-self-soothing',
+      disclosedNow: [],
+    }),
+    () => runtime.speak({ custom: true, stance: 'question', text: 'Do you keep a cat at home?' }),
+  );
+  assert.equal(state.history.at(-1).reactionExpression, 'anxious');
+  assert.equal(state.history.at(-1).bodyCue, 'sitting-self-soothing');
+  const cue = actorCueForConsultation(state);
+  assert.equal(cue.expression, 'anxious');
+  assert.equal(cue.body, 'sitting-self-soothing');
+});
+
+test('a cue outside the shared vocabulary is dropped, not displayed', async () => {
+  const runtime = createConsultationRuntime([patient], (request, currentPatient) => (
+    renderLunaDialogue(request, currentPatient)
+  ));
+  runtime.start(patient.id);
+  runtime.dispatch({ type: 'begin-inquiry' });
+  const state = await withFetch(
+    async () => reply({
+      dialogue: '“No, Doctor.”',
+      behavior: 'She waits.',
+      register: 'clinical',
+      expression: 'grimacing',
+      bodyCue: 'lying-down',
+      disclosedNow: [],
+    }),
+    () => runtime.speak({ custom: true, stance: 'question', text: 'Do you keep a cat at home?' }),
+  );
+  assert.equal(state.history.at(-1).reactionExpression, null);
+  assert.equal(state.history.at(-1).bodyCue, null);
 });
 
 test('an insult ends the visit deterministically without calling the model', async () => {

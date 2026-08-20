@@ -1,3 +1,4 @@
+import { CHARACTER_BODY_CUES, CHARACTER_EXPRESSIONS } from '../../../shared/characters/recipe.js';
 import { TREATMENT_LIBRARY } from './treatments.js';
 
 const TREATMENT_IDS = new Set(TREATMENT_LIBRARY.map((item) => item.id));
@@ -89,6 +90,10 @@ export function normalizeDialogueResponse(response = {}) {
     disclosedNow: Array.isArray(response.disclosedNow)
       ? [...new Set(response.disclosedNow.map(String))].slice(0, 6)
       : [],
+    reactionExpression: CHARACTER_EXPRESSIONS.includes(response.reactionExpression)
+      ? response.reactionExpression
+      : null,
+    bodyCue: CHARACTER_BODY_CUES.includes(response.bodyCue) ? response.bodyCue : null,
     appraisal: {
       register,
       decorumBreach: Math.max(0, Math.min(3, Math.trunc(Number(appraisal.decorumBreach) || 0))),

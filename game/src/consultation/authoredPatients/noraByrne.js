@@ -61,15 +61,17 @@ const recipe = patientToRendererCRecipe(profile, {
     applyRecipe: false,
     opaque: true,
     modelRotationX: -Math.PI / 2,
+    motionPath: '/models/characters/nora-byrne-motions.glb',
     motionClips: [
       'ClinicIdle', 'SittingTalking', 'SittingSelfSoothing',
+      'SittingDisapproval', 'SittingDisbelief',
     ],
     clipMap: {
       'clinic-idle': 'ClinicIdle',
       'sitting-talking': 'SittingTalking',
       'sitting-distressed': 'SittingSelfSoothing',
-      'sitting-disapproval': 'SittingSelfSoothing',
-      'sitting-disbelief': 'SittingSelfSoothing',
+      'sitting-disapproval': 'SittingDisapproval',
+      'sitting-disbelief': 'SittingDisbelief',
       'sitting-self-soothing': 'SittingSelfSoothing',
       'sit-down': 'ClinicIdle',
       'stand-up': 'ClinicIdle',
@@ -208,7 +210,7 @@ const prompts = Object.freeze([
     noteSummary: 'Sleep disturbance worsened around her sister Mary’s illness and death in January.',
     discloseFactIds: ['nora-bereavement'], dialogue: '“It began after Christmas—no, after my older sister Mary became ill. I was sleeping poorly before she died in January, but not like this.”',
     effects: { satisfaction: 2 }, appraisal: { register: 'courteous', decorumBreach: 0, intent: 'onset' },
-    bodyCue: 'sitting-self-soothing',
+    bodyCue: 'sitting-self-soothing', reactionExpression: 'discouraged',
   }),
   Object.freeze({
     id: 'nora-ask-work', text: 'Ask how time away from work would affect her.', stance: 'question',
@@ -216,6 +218,7 @@ const prompts = Object.freeze([
     noteSummary: 'Patient depends on copyist wages for her room and cannot afford prolonged rest.',
     discloseFactIds: ['nora-work-risk'], dialogue: '“I copy contracts for Mr. Pritchard. If I cannot work, I will lose my wages and my room. I have no family who can support me.”',
     effects: { satisfaction: 3 }, appraisal: { register: 'courteous', decorumBreach: 0, intent: 'social history' },
+    bodyCue: 'sitting-talking', reactionExpression: 'anxious',
   }),
   Object.freeze({
     id: 'nora-ask-hand-agency', text: 'Ask what happens when her hand moves on its own.', stance: 'question',
@@ -225,7 +228,7 @@ const prompts = Object.freeze([
     opensPendingResponseId: 'nora-spiritualism-concern',
     dialogue: '“Mrs. Bell took me to a spiritualist circle. My left hand sometimes writes while I watch it. They say Mary may be speaking through it. You will not dismiss me as a fool, will you?”',
     effects: { trust: 2, satisfaction: 3 }, appraisal: { register: 'courteous', decorumBreach: 0, intent: 'social suggestion' },
-    bodyCue: 'sitting-self-soothing',
+    bodyCue: 'sitting-self-soothing', reactionExpression: 'anxious',
   }),
   Object.freeze({
     id: 'nora-response-respect', text: '“No. I want to understand what happened, not ridicule you.”', stance: 'reassure',
@@ -233,6 +236,7 @@ const prompts = Object.freeze([
     requiresPendingResponseId: 'nora-spiritualism-concern', resolvesPendingResponseId: 'nora-spiritualism-concern',
     dialogue: '“Thank you. I was afraid you would dismiss me before hearing the rest.”',
     effects: { trust: 6, satisfaction: 7 }, appraisal: { register: 'courteous', decorumBreach: 0, intent: 'respectful response' },
+    bodyCue: 'sitting-talking', reactionExpression: 'relieved',
   }),
   Object.freeze({
     id: 'nora-response-clinical', text: '“I will record only what happened and what I can observe.”', stance: 'suggest',
@@ -240,6 +244,7 @@ const prompts = Object.freeze([
     requiresPendingResponseId: 'nora-spiritualism-concern', resolvesPendingResponseId: 'nora-spiritualism-concern',
     dialogue: '“Very well. That is all I ask.”',
     effects: { trust: 1, satisfaction: 2 }, appraisal: { register: 'clinical', decorumBreach: 0, intent: 'clinical response' },
+    reactionExpression: 'guarded',
   }),
   Object.freeze({
     id: 'nora-response-dismiss', text: '“Spiritualism is foolishness; it has no place in a medical account.”', stance: 'challenge',
@@ -247,7 +252,7 @@ const prompts = Object.freeze([
     requiresPendingResponseId: 'nora-spiritualism-concern', resolvesPendingResponseId: 'nora-spiritualism-concern',
     dialogue: '“That was not what I asked. I should not have told you.”',
     effects: { trust: -10, satisfaction: -13 }, appraisal: { register: 'prying', decorumBreach: 1, intent: 'dismissive response' },
-    bodyCue: 'sitting-disapproval',
+    bodyCue: 'sitting-disapproval', reactionExpression: 'ashamed',
   }),
   Object.freeze({
     id: 'nora-ask-memory', text: 'Ask about the memory gaps and signs of a seizure.', stance: 'question',
@@ -256,7 +261,7 @@ const prompts = Object.freeze([
     requiresFactIds: ['nora-automatic-writing'], discloseFactIds: ['nora-missing-time', 'nora-seizure-negatives'],
     dialogue: '“It has happened three times. They say I spoke and put things away, but I remember none of it. I did not fall, have a fit, or feel confused afterward.”',
     effects: { trust: 1, satisfaction: 1 }, appraisal: { register: 'clinical', decorumBreach: 0, intent: 'amnesia differential' },
-    bodyCue: 'sitting-disbelief',
+    bodyCue: 'sitting-disbelief', reactionExpression: 'anxious',
   }),
   Object.freeze({
     id: 'nora-ask-messages', text: 'Ask whether the writing contains new information.', stance: 'question',
@@ -265,6 +270,7 @@ const prompts = Object.freeze([
     requiresFactIds: ['nora-automatic-writing'], discloseFactIds: ['nora-message-limits'],
     dialogue: '“It signs Mary’s name and uses phrases we shared, but it has said nothing I did not already know. I am not sure what that means.”',
     effects: { satisfaction: 1 }, appraisal: { register: 'clinical', decorumBreach: 0, intent: 'message content' },
+    bodyCue: 'sitting-talking', reactionExpression: 'guarded',
   }),
 ]);
 
@@ -275,7 +281,7 @@ const inquiryIntents = Object.freeze([
     discloseFactIds: ['nora-automatic-writing'], minimumTrust: 52,
     dialogue: '“It is my left hand. It may start as soon as I hold a pencil. I can see the words, but I do not feel that I am choosing them.”',
     effects: { satisfaction: 1 }, appraisal: { register: 'clinical', decorumBreach: 0, intent: 'automatic writing' },
-    bodyCue: 'sitting-self-soothing',
+    bodyCue: 'sitting-self-soothing', reactionExpression: 'anxious',
   }),
   Object.freeze({
     id: 'nora-intent-amnesia', matchTerms: ['lose time', 'missing time', 'remember everything', 'memory', 'blank', 'gap'],
@@ -283,7 +289,7 @@ const inquiryIntents = Object.freeze([
     requiresFactIds: ['nora-automatic-writing'], discloseFactIds: ['nora-missing-time'], minimumTrust: 58,
     dialogue: '“There have been three gaps, perhaps ten or twenty minutes each. Mrs. Bell says I spoke normally. I remember none of it.”',
     effects: { trust: 1 }, appraisal: { register: 'clinical', decorumBreach: 0, intent: 'amnesia' },
-    bodyCue: 'sitting-disbelief',
+    bodyCue: 'sitting-disbelief', reactionExpression: 'distressed',
   }),
   Object.freeze({
     id: 'nora-intent-bereavement', matchTerms: ['sister', 'mary', 'died', 'death', 'grief', 'loss', 'when did it begin'],
@@ -291,6 +297,7 @@ const inquiryIntents = Object.freeze([
     discloseFactIds: ['nora-bereavement'],
     dialogue: '“My sister Mary died in January. At first I blamed grief for the poor sleep. The shaking began around the same time, though I cannot say exactly when.”',
     effects: { satisfaction: 2 }, appraisal: { register: 'courteous', decorumBreach: 0, intent: 'bereavement' },
+    bodyCue: 'sitting-self-soothing', reactionExpression: 'discouraged',
   }),
   Object.freeze({
     id: 'nora-intent-seance', matchTerms: ['seance', 'séance', 'spiritualist', 'circle', 'spirit', 'dead speaking'],
@@ -298,6 +305,7 @@ const inquiryIntents = Object.freeze([
     requiresFactIds: ['nora-bereavement'], discloseFactIds: ['nora-seance'], minimumTrust: 50,
     dialogue: '“Mrs. Bell, another lodger, took me to a spiritualist circle. They watched my hand for a sign from Mary. She had to persuade me the first time.”',
     effects: { trust: 2 }, appraisal: { register: 'courteous', decorumBreach: 0, intent: 'séance' },
+    bodyCue: 'sitting-talking', reactionExpression: 'guarded',
   }),
   Object.freeze({
     id: 'nora-intent-message-content', matchTerms: ['what did it say', 'messages say', 'message', 'anything unknown', 'could not know'],
@@ -305,6 +313,7 @@ const inquiryIntents = Object.freeze([
     requiresFactIds: ['nora-automatic-writing'], discloseFactIds: ['nora-message-limits'],
     dialogue: '“Nothing I could not have known. It uses Mary’s name and phrases from home. I do not know whether it means anything.”',
     appraisal: { register: 'clinical', decorumBreach: 0, intent: 'message content' },
+    reactionExpression: 'guarded',
   }),
   Object.freeze({
     id: 'nora-intent-work', matchTerms: ['work', 'job', 'office', 'pay rent', 'room', 'afford rest'],
@@ -312,6 +321,7 @@ const inquiryIntents = Object.freeze([
     discloseFactIds: ['nora-work-risk'],
     dialogue: '“I must keep my job at the law office. Without the wages I will lose my room. No one can support me while I rest.”',
     effects: { satisfaction: 3 }, appraisal: { register: 'courteous', decorumBreach: 0, intent: 'social history' },
+    bodyCue: 'sitting-talking', reactionExpression: 'anxious',
   }),
   Object.freeze({
     id: 'nora-intent-seizure', matchTerms: ['seizure', 'fit', 'convulsion', 'bite your tongue', 'fall down', 'confused afterward'],
@@ -319,13 +329,14 @@ const inquiryIntents = Object.freeze([
     requiresFactIds: ['nora-missing-time'], discloseFactIds: ['nora-seizure-negatives'],
     dialogue: '“There has been no fit or fall. They say I remain quiet. Afterward I know where I am, but I cannot remember the missing time.”',
     appraisal: { register: 'clinical', decorumBreach: 0, intent: 'seizure differential' },
+    reactionExpression: 'guarded',
   }),
   Object.freeze({
     id: 'nora-intent-fraud', matchTerms: ['pretend', 'faking', 'fake', 'attention', 'making it up'],
     noteKey: 'nora-denies-fraud', noteSummary: 'Patient denies deliberate production and says she came from fear and the need to keep working.',
     dialogue: '“I expected doubt, but not an accusation. If you think I invented it, I should leave.”',
     effects: { trust: -12, satisfaction: -16 }, appraisal: { register: 'prying', decorumBreach: 1, intent: 'accusation' },
-    bodyCue: 'sitting-disapproval',
+    bodyCue: 'sitting-disapproval', reactionExpression: 'frowning',
   }),
 ]);
 
@@ -399,12 +410,14 @@ export const NORA_BYRNE = Object.freeze({
       reply: 'The tremor diminishes during a counting task. Sensation is dull in a glove-like boundary, while strength and reflexes remain normal.',
       uncertainty: 'The combined pattern argues against a single damaged nerve but does not by itself establish a cause.',
       effects: { satisfaction: -1 }, bodyCue: 'sitting-self-soothing', gesture: 'extend-both-arms',
+      reactionExpression: 'anxious',
     }),
     Object.freeze({
       id: 'nora-exam-general', label: 'General physical examination', minutes: 5,
       factIds: ['nora-thyroid-negative'],
       reply: facts.find((fact) => fact.id === 'nora-thyroid-negative').value,
       uncertainty: 'A brief office examination cannot exclude every bodily disease.', effects: { satisfaction: 0 },
+      reactionExpression: 'guarded',
     }),
   ]),
   diagnoses: Object.freeze([

@@ -300,8 +300,9 @@ export function consultationTransition(state, patient, action) {
         promptId: request.promptId, custom: request.custom, resolvedRuleId: request.resolvedRuleId,
         minutes: request.minutes, responseTo: request.responseTo,
         countsAsQuestion: rule?.countsAsQuestion ?? (!request.responseTo && request.stance === 'question'),
-        bodyCue: rule?.bodyCue || null,
-        reactionExpression: rule?.reactionExpression || null,
+        // Authored cues win; a model-chosen cue only fills a turn no rule covers.
+        bodyCue: rule?.bodyCue || response.bodyCue || null,
+        reactionExpression: rule?.reactionExpression || response.reactionExpression || null,
         trustDelta: trust - state.trust,
         satisfactionDelta: satisfaction - state.satisfaction,
         dialogue, behavior,

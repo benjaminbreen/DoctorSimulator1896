@@ -25,6 +25,8 @@ const BONE_SUFFIXES = {
 // the clinical measurement lives in the patient record, not here.
 const BREATH_RATES = {
   distressed: 20,
+  anxious: 19,
+  pained: 17,
   fatigued: 16,
   default: 14,
 };

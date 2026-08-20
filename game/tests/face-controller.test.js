@@ -25,6 +25,8 @@ const NAMES = [
   'browInnerUp', 'mouthFrownLeft', 'mouthFrownRight',
   'mouthSmileLeft', 'mouthSmileRight', 'cheekSquintLeft', 'cheekSquintRight',
   'eyeLookOutLeft', 'eyeLookInRight', 'eyeLookDownLeft', 'eyeLookDownRight',
+  'eyeSquintLeft', 'eyeSquintRight', 'eyeWideLeft', 'eyeWideRight',
+  'noseSneerLeft', 'noseSneerRight', 'mouthStretchLeft', 'mouthStretchRight',
 ];
 
 function faceFixture() {
@@ -107,6 +109,24 @@ test('consultation reactions drive distinct smiles, frowns, and discouraged face
   assertNear(fixture.value('browInnerUp'), 0.35, 'inner brow clamp');
   assertNear(fixture.value('mouthFrownLeft'), FACIAL_EXPRESSION_RECIPES.discouraged.mouthFrownLeft, 'discouraged frown');
   assertNear(fixture.value('eyeLookDownLeft'), FACIAL_GAZE_RECIPES.down.eyeLookDownLeft, 'gaze down');
+});
+
+test('pained, anxious, and ashamed reactions read on the face', () => {
+  const fixture = faceFixture();
+  const controller = createFaceController(fixture.root, recipe({ speaking: false, gaze: 'doctor' }));
+
+  settle(controller, recipe({ expression: 'pained', speaking: false, gaze: 'doctor' }).animation);
+  assertNear(fixture.value('eyeSquintLeft'), FACIAL_EXPRESSION_RECIPES.pained.eyeSquintLeft, 'pained squint');
+  assertNear(fixture.value('mouthStretchLeft'), FACIAL_EXPRESSION_RECIPES.pained.mouthStretchLeft, 'pained stretch');
+
+  settle(controller, recipe({ expression: 'anxious', speaking: false, gaze: 'doctor' }).animation);
+  assertNear(fixture.value('eyeSquintLeft'), 0, 'squint released');
+  assertNear(fixture.value('eyeWideLeft'), FACIAL_EXPRESSION_RECIPES.anxious.eyeWideLeft, 'anxious eyes');
+  assertNear(fixture.value('browInnerUp'), 0.35, 'anxious brow clamp');
+
+  settle(controller, recipe({ expression: 'ashamed', speaking: false, gaze: 'down' }).animation);
+  assertNear(fixture.value('mouthPressLeft'), FACIAL_EXPRESSION_RECIPES.ashamed.mouthPressLeft, 'ashamed press');
+  assertNear(fixture.value('eyeLookDownLeft'), FACIAL_GAZE_RECIPES.down.eyeLookDownLeft, 'ashamed gaze down');
 });
 
 test('emotional mouth corners remain legible while the patient speaks', () => {

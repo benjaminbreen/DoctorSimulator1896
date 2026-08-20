@@ -8,7 +8,7 @@ export const CHARACTER_BODY_CUES = Object.freeze([
 ]);
 export const CHARACTER_EXPRESSIONS = Object.freeze([
   'neutral', 'guarded', 'distressed', 'fatigued', 'relieved',
-  'smiling', 'frowning', 'discouraged',
+  'smiling', 'frowning', 'discouraged', 'pained', 'anxious', 'ashamed',
 ]);
 export const CHARACTER_GAZES = Object.freeze(['doctor', 'away', 'down', 'neutral']);
 // Procedural overlays, not clips: applied by the renderer on top of the

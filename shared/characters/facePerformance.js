@@ -8,6 +8,9 @@ export const FACIAL_EXPRESSION_RECIPES = Object.freeze({
   smiling: Object.freeze({ mouthSmileLeft: 0.46, mouthSmileRight: 0.46, cheekSquintLeft: 0.2, cheekSquintRight: 0.2, browInnerUp: 0.06 }),
   frowning: Object.freeze({ browDownLeft: 0.36, browDownRight: 0.36, mouthFrownLeft: 0.3, mouthFrownRight: 0.3, mouthPressLeft: 0.12, mouthPressRight: 0.12 }),
   discouraged: Object.freeze({ browInnerUp: 0.44, mouthFrownLeft: 0.26, mouthFrownRight: 0.26, eyeBlinkLeft: 0.13, eyeBlinkRight: 0.13 }),
+  pained: Object.freeze({ browDownLeft: 0.3, browDownRight: 0.3, eyeSquintLeft: 0.3, eyeSquintRight: 0.3, noseSneerLeft: 0.14, noseSneerRight: 0.14, mouthStretchLeft: 0.18, mouthStretchRight: 0.18 }),
+  anxious: Object.freeze({ browInnerUp: 0.4, eyeWideLeft: 0.16, eyeWideRight: 0.16, mouthPressLeft: 0.2, mouthPressRight: 0.2, mouthStretchLeft: 0.1, mouthStretchRight: 0.1 }),
+  ashamed: Object.freeze({ browInnerUp: 0.3, eyeBlinkLeft: 0.18, eyeBlinkRight: 0.18, mouthPressLeft: 0.26, mouthPressRight: 0.26, mouthFrownLeft: 0.12, mouthFrownRight: 0.12 }),
 });
 
 export const FACIAL_GAZE_RECIPES = Object.freeze({
@@ -43,6 +46,9 @@ export const FACE_QA_STATES = Object.freeze([
   Object.freeze({ id: 'smiling', label: 'Smiling', weights: FACIAL_EXPRESSION_RECIPES.smiling }),
   Object.freeze({ id: 'frowning', label: 'Frowning', weights: FACIAL_EXPRESSION_RECIPES.frowning }),
   Object.freeze({ id: 'discouraged', label: 'Discouraged', weights: FACIAL_EXPRESSION_RECIPES.discouraged }),
+  Object.freeze({ id: 'pained', label: 'Pained', weights: FACIAL_EXPRESSION_RECIPES.pained }),
+  Object.freeze({ id: 'anxious', label: 'Anxious', weights: FACIAL_EXPRESSION_RECIPES.anxious }),
+  Object.freeze({ id: 'ashamed', label: 'Ashamed', weights: FACIAL_EXPRESSION_RECIPES.ashamed }),
 ]);
 
 const SPEECH_PULSES = Object.freeze([

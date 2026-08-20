@@ -6,13 +6,16 @@ const ROUTE = '/api/consult';
 // fires if the route itself is unreachable.
 const TIMEOUT_MS = 10000;
 
-// The model only ever supplies wording and a reading of the doctor's manner.
-// Decorum and termination stay deterministic so an insult cannot be talked away.
+// The model only ever supplies wording, a performance cue, and a reading of
+// the doctor's manner. Decorum and termination stay deterministic so an
+// insult cannot be talked away.
 function merge(offline, reply, maxDisclosures) {
   return {
     dialogue: reply.dialogue,
     behavior: reply.behavior || offline.behavior,
     disclosedNow: (reply.disclosedNow || []).slice(0, maxDisclosures),
+    reactionExpression: reply.expression || null,
+    bodyCue: reply.bodyCue || null,
     appraisal: { ...offline.appraisal, register: reply.register || offline.appraisal.register },
   };
 }

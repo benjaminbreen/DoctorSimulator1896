@@ -5,6 +5,17 @@
 const MODEL = 'gpt-5.6-luna';
 const ENDPOINT = 'https://api.openai.com/v1/responses';
 const REGISTERS = ['neutral', 'courteous', 'clinical', 'prying', 'hostile'];
+// Keep in sync with CHARACTER_EXPRESSIONS and CHARACTER_BODY_CUES in
+// shared/characters/recipe.js. Body cues are the seated subset only: a
+// generated reply never stands the patient up or walks her out.
+const EXPRESSIONS = [
+  'neutral', 'guarded', 'distressed', 'fatigued', 'relieved',
+  'smiling', 'frowning', 'discouraged', 'pained', 'anxious', 'ashamed',
+];
+const BODY_CUES = [
+  'sitting-talking', 'sitting-distressed', 'sitting-disapproval',
+  'sitting-disbelief', 'sitting-self-soothing', 'clinic-idle',
+];
 const MAX_BODY_BYTES = 24000;
 const MAX_OUTPUT_TOKENS = 400;
 const UPSTREAM_TIMEOUT_MS = 9000;
@@ -25,7 +36,9 @@ Write dialogue in the first person inside curly quotes, one to three sentences, 
 
 Write behavior as one short third-person sentence describing what the physician can see you do. No quotes, no thoughts, no account of your illness.
 
-Set register by judging the physician's question, not your own reply: courteous if it is kind or reassuring, clinical if it is a plain professional question, prying if it is intrusive or accusing, hostile if it is contemptuous, neutral if none of these fit.`;
+Set register by judging the physician's question, not your own reply: courteous if it is kind or reassuring, clinical if it is a plain professional question, prying if it is intrusive or accusing, hostile if it is contemptuous, neutral if none of these fit.
+
+Set expression to the face the physician sees while you give this reply, and bodyCue to your seated bearing. Choose by how the reply feels to say. They are manners, not symptoms: never use them to signal a disease the words do not state.`;
 
 // Fixed window per client. The Vercel WAF rule is the real limit; this covers
 // local dev and repeated hits on one warm instance.
@@ -94,6 +107,8 @@ function replySchema(allowedIds) {
     dialogue: { type: 'string' },
     behavior: { type: 'string' },
     register: { type: 'string', enum: REGISTERS },
+    expression: { type: 'string', enum: EXPRESSIONS },
+    bodyCue: { type: 'string', enum: BODY_CUES },
   };
   if (allowedIds.length > 0) {
     properties.disclosedNow = { type: 'array', items: { type: 'string', enum: allowedIds } };
@@ -173,6 +188,8 @@ export async function POST(request) {
       dialogue: String(reply.dialogue || '').trim(),
       behavior: String(reply.behavior || '').trim(),
       register: REGISTERS.includes(reply.register) ? reply.register : 'neutral',
+      expression: EXPRESSIONS.includes(reply.expression) ? reply.expression : 'neutral',
+      bodyCue: BODY_CUES.includes(reply.bodyCue) ? reply.bodyCue : 'sitting-talking',
       disclosedNow: Array.isArray(reply.disclosedNow)
         ? reply.disclosedNow.filter((id) => allowedIds.includes(id))
         : [],

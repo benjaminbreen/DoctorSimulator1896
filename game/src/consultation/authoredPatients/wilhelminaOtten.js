@@ -130,21 +130,25 @@ const prompts = Object.freeze([
     id: 'otten-ask-pattern', stance: 'question', text: 'Ask when her hands hurt most and what helps.',
     discloseFactIds: ['otten-hand-pain', 'otten-morning-stiffness'],
     effects: { trust: 2 }, appraisal: { register: 'courteous', decorumBreach: 0, intent: 'clinical pattern' },
+    bodyCue: 'sitting-talking', reactionExpression: 'guarded',
   }),
   Object.freeze({
     id: 'otten-ask-work', stance: 'question', text: 'Ask about her work and how she uses her hands.',
     discloseFactIds: ['otten-work-history'],
     effects: { trust: 2, satisfaction: 1 }, appraisal: { register: 'courteous', decorumBreach: 0, intent: 'occupation' },
+    bodyCue: 'sitting-talking', reactionExpression: 'neutral',
   }),
   Object.freeze({
     id: 'otten-ask-family', stance: 'question', text: 'Ask about any family history of hand or nerve problems.',
     requiresFactIds: ['otten-hand-pain'], discloseFactIds: ['otten-sister-fear'],
     effects: { trust: 3 }, appraisal: { register: 'courteous', decorumBreach: 0, intent: 'family history' },
+    bodyCue: 'sitting-self-soothing', reactionExpression: 'anxious',
   }),
   Object.freeze({
     id: 'otten-ask-sleep', stance: 'question', text: 'Ask about her sleep and mood.',
     discloseFactIds: ['otten-sleep-spirits'],
     effects: { trust: 1 }, appraisal: { register: 'courteous', decorumBreach: 0, intent: 'sleep and mood' },
+    bodyCue: 'sitting-talking', reactionExpression: 'fatigued',
   }),
 ]);
 
@@ -153,16 +157,19 @@ const inquiryIntents = Object.freeze([
     id: 'otten-intent-pattern', label: 'Pain pattern and use',
     matchTerms: ['pain', 'ache', 'hands', 'stiff', 'morning', 'weather', 'work', 'washing'],
     discloseFactIds: ['otten-hand-pain', 'otten-morning-stiffness', 'otten-work-history'], maxDisclosures: 2,
+    bodyCue: 'sitting-talking', reactionExpression: 'guarded',
   }),
   Object.freeze({
     id: 'otten-intent-family', label: 'Family history and fear',
     matchTerms: ['family', 'sister', 'mother', 'shaking', 'palsy', 'tremor', 'afraid', 'fear'],
     requiresFactIds: ['otten-hand-pain'], discloseFactIds: ['otten-sister-fear'],
+    bodyCue: 'sitting-self-soothing', reactionExpression: 'anxious',
   }),
   Object.freeze({
     id: 'otten-intent-sleep', label: 'Sleep and spirits',
     matchTerms: ['sleep', 'night', 'waking', 'spirits', 'mood', 'melancholy', 'worry'],
     discloseFactIds: ['otten-sleep-spirits'],
+    bodyCue: 'sitting-talking', reactionExpression: 'fatigued',
   }),
 ]);
 
@@ -215,6 +222,7 @@ export const WILHELMINA_OTTEN = Object.freeze({
       reply: 'The end joints carry firm bony knots without heat. There is no tremor at rest or in motion, and her writing is steady: nothing of the shaking palsy.',
       uncertainty: 'Early paralysis agitans can be subtle, but two years without tremor, gait, or writing change argues strongly against it.',
       effects: { trust: 3, satisfaction: 2 }, gesture: 'present-wrist',
+      reactionExpression: 'relieved',
     }),
     Object.freeze({
       id: 'otten-exam-general', label: 'General examination for her age', minutes: 4,
@@ -222,6 +230,7 @@ export const WILHELMINA_OTTEN = Object.freeze({
       reply: facts.find((fact) => fact.id === 'otten-general-soundness').value,
       uncertainty: 'A sound general state does not rule out disease of slow onset, but it narrows the field considerably.',
       effects: { satisfaction: 1 },
+      reactionExpression: 'neutral',
     }),
   ]),
   diagnoses: Object.freeze([

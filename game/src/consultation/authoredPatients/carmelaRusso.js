@@ -205,6 +205,7 @@ const prompts = Object.freeze([
     noteSummary: 'No syncope, exertional pain, edema, cyanosis, or sustained irregular beating.',
     dialogue: '“I do not faint, and there is no crushing pain or swelling. I can carry a basket upstairs without trouble. The attacks come when I am standing still.”',
     appraisal: { register: 'clinical', decorumBreach: 0, intent: 'cardiac red flags' },
+    bodyCue: 'sitting-talking', reactionExpression: 'neutral',
   }),
   Object.freeze({
     id: 'carmela-ask-shop', text: 'Ask how closing the shop would affect her family.', stance: 'question',
@@ -224,24 +225,28 @@ const inquiryIntents = Object.freeze([
     discloseFactIds: ['carmela-episode-pattern', 'carmela-robbery-fright'], maxDisclosures: 2,
     dialogue: prompts.find((item) => item.id === 'carmela-ask-pattern').dialogue,
     effects: { trust: 1 }, appraisal: { register: 'clinical', decorumBreach: 0, intent: 'episode history' },
+    bodyCue: 'sitting-self-soothing', reactionExpression: 'discouraged',
   }),
   Object.freeze({
     id: 'carmela-intent-tonic', matchTerms: ['medicine', 'tonic', 'wine', 'coca', 'remedy', 'drug'],
     requiresFactIds: ['carmela-episode-pattern'], discloseFactIds: ['carmela-coca-wine', 'carmela-dose-link'], maxDisclosures: 2,
     dialogue: prompts.find((item) => item.id === 'carmela-ask-tonics').dialogue,
     appraisal: { register: 'clinical', decorumBreach: 0, intent: 'drug exposure' },
+    bodyCue: 'sitting-self-soothing', reactionExpression: 'discouraged',
   }),
   Object.freeze({
     id: 'carmela-intent-heart', matchTerms: ['faint', 'chest pain', 'stairs', 'exercise', 'swelling', 'irregular'],
     discloseFactIds: ['carmela-no-cardiac-red-flags'],
     dialogue: prompts.find((item) => item.id === 'carmela-ask-red-flags').dialogue,
     appraisal: { register: 'clinical', decorumBreach: 0, intent: 'cardiac red flags' },
+    bodyCue: 'sitting-talking', reactionExpression: 'neutral',
   }),
   Object.freeze({
     id: 'carmela-intent-shop', matchTerms: ['shop', 'work', 'daughter', 'close', 'income', 'rest'],
     discloseFactIds: ['carmela-shop-stakes'],
     dialogue: prompts.find((item) => item.id === 'carmela-ask-shop').dialogue,
     effects: { satisfaction: 2 }, appraisal: { register: 'courteous', decorumBreach: 0, intent: 'practical stakes' },
+    bodyCue: 'sitting-disapproval', reactionExpression: 'frowning',
   }),
 ]);
 
@@ -295,12 +300,13 @@ export const CARMELA_RUSSO = Object.freeze({
       factIds: ['carmela-cardiac-exam', 'carmela-respiratory-exam'],
       reply: 'Pulse is 96 and regular during her account, then falls to 80 with quiet breathing. Heart sounds and lungs are normal; respiration settles from 20 to 15.',
       uncertainty: 'A normal office examination cannot exclude every intermittent rhythm disturbance.', effects: { satisfaction: 2 },
-      gesture: 'present-wrist',
+      gesture: 'present-wrist', reactionExpression: 'anxious',
     }),
     Object.freeze({
       id: 'carmela-exam-general', label: 'Check thyroid, colour, weight, and temperature', minutes: 5,
       factIds: ['carmela-general-exam'], reply: facts.find((fact) => fact.id === 'carmela-general-exam').value,
       uncertainty: 'These findings make Basedow’s disease and marked anaemia less likely without excluding every bodily cause.',
+      reactionExpression: 'guarded',
     }),
   ]),
   diagnoses: Object.freeze([
