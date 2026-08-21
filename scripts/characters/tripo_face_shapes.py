@@ -17,6 +17,45 @@ from mathutils import Vector
 HEAD = "mixamorig:Head"
 HEAD_TOP = "mixamorig:HeadTop_End"
 
+# The game's recipes drive shapes at 0.2-0.5, following the MPFB convention
+# where a unit at 1.0 is overdriven caricature. Shapes are authored natural
+# and gained here so recipe weights land at natural strength. Blink stays
+# 1:1 because the runtime drives it to 0.92 on its own.
+SHAPE_GAIN = {
+    "default": 2.2,
+    "eyeBlinkLeft": 1.0, "eyeBlinkRight": 1.0,
+    "eyeSquintLeft": 1.5, "eyeSquintRight": 1.5,
+    "jawOpen": 2.5,
+}
+
+# Keep in sync with FACIAL_EXPRESSION_RECIPES and FACE_WEIGHT_LIMITS in
+# shared/characters/facePerformance.js; the sheet must show what the game
+# shows.
+EXPRESSION_RECIPES = {
+    "neutral": {},
+    "guarded": {"browDownLeft": 0.26, "browDownRight": 0.24, "mouthPressLeft": 0.24, "mouthPressRight": 0.22},
+    "distressed": {"browInnerUp": 0.5, "mouthFrownLeft": 0.36, "mouthFrownRight": 0.36, "eyeSquintLeft": 0.14, "eyeSquintRight": 0.14},
+    "fatigued": {"eyeBlinkLeft": 0.22, "eyeBlinkRight": 0.22, "browInnerUp": 0.18, "mouthFrownLeft": 0.14, "mouthFrownRight": 0.14},
+    "relieved": {"mouthSmileLeft": 0.38, "mouthSmileRight": 0.38, "cheekSquintLeft": 0.16, "cheekSquintRight": 0.16},
+    "smiling": {"mouthSmileLeft": 0.46, "mouthSmileRight": 0.46, "cheekSquintLeft": 0.2, "cheekSquintRight": 0.2, "browInnerUp": 0.06},
+    "frowning": {"browDownLeft": 0.36, "browDownRight": 0.36, "mouthFrownLeft": 0.3, "mouthFrownRight": 0.3, "mouthPressLeft": 0.12, "mouthPressRight": 0.12},
+    "discouraged": {"browInnerUp": 0.44, "mouthFrownLeft": 0.26, "mouthFrownRight": 0.26, "eyeBlinkLeft": 0.13, "eyeBlinkRight": 0.13},
+    "pained": {"browDownLeft": 0.3, "browDownRight": 0.3, "eyeSquintLeft": 0.3, "eyeSquintRight": 0.3, "noseSneerLeft": 0.14, "noseSneerRight": 0.14, "mouthStretchLeft": 0.18, "mouthStretchRight": 0.18},
+    "anxious": {"browInnerUp": 0.4, "eyeWideLeft": 0.16, "eyeWideRight": 0.16, "mouthPressLeft": 0.2, "mouthPressRight": 0.2, "mouthStretchLeft": 0.1, "mouthStretchRight": 0.1},
+    "ashamed": {"browInnerUp": 0.3, "eyeBlinkLeft": 0.18, "eyeBlinkRight": 0.18, "mouthPressLeft": 0.26, "mouthPressRight": 0.26, "mouthFrownLeft": 0.12, "mouthFrownRight": 0.12},
+}
+WEIGHT_LIMITS = {
+    "jawOpen": 0.04, "mouthFunnel": 0.08, "mouthPucker": 0.08,
+    "mouthPressLeft": 0.32, "mouthPressRight": 0.32,
+    "mouthFrownLeft": 0.42, "mouthFrownRight": 0.42,
+    "mouthSmileLeft": 0.52, "mouthSmileRight": 0.52,
+    "eyeBlinkLeft": 1, "eyeBlinkRight": 1,
+}
+
+
+def _safe_weight(name, value):
+    return min(value, WEIGHT_LIMITS.get(name, 0.35))
+
 
 def _weight(mesh, group_index, vertex):
     for entry in vertex.groups:
@@ -138,6 +177,21 @@ class FaceFrame:
         self.eye_dx = 0.145 * S
         self.jaw_pivot = self.head + self.up * (nose_h - 0.05 * S)
 
+        # Snapping finds different surface points left and right (beards are
+        # asymmetric), and expressions built on lopsided anchors read as
+        # smirks. Mirror each pair through the centre plane and average.
+        def symmetrize(left, right_point):
+            mirrored = left - self.right * (2 * (left - self.head).dot(self.right))
+            merged_r = (right_point + mirrored) / 2
+            mirrored_back = merged_r - self.right * (2 * (merged_r - self.head).dot(self.right))
+            return mirrored_back, merged_r
+
+        self.eye_l, self.eye_r = symmetrize(self.eye_l, self.eye_r)
+        self.mouth_l, self.mouth_r = symmetrize(self.mouth_l, self.mouth_r)
+        self.brow_l, self.brow_r = symmetrize(self.brow_l, self.brow_r)
+        self.nose_wing_l, self.nose_wing_r = symmetrize(self.nose_wing_l, self.nose_wing_r)
+        self.mouth -= self.right * (self.mouth - self.head).dot(self.right)
+
     def landmarks(self):
         return {
             "nose": self.nose, "eyeL": self.eye_l, "eyeR": self.eye_r,
@@ -155,12 +209,13 @@ def _add_shape(mesh_obj, name, displace, allowed):
     if name in mesh.shape_keys.key_blocks:
         mesh_obj.shape_key_remove(mesh.shape_keys.key_blocks[name])
     key = mesh_obj.shape_key_add(name=name, from_mix=False)
+    gain = SHAPE_GAIN.get(name, SHAPE_GAIN["default"])
     moved = 0
     for index in allowed:
         point = key.data[index]
         delta = displace(mesh.vertices[index].co)
         if delta is not None and delta.length > 1e-7:
-            point.co = point.co + delta
+            point.co = point.co + delta * gain
             moved += 1
     print(f"FACE_SHAPE_OK name={name} vertices={moved}")
     return moved
@@ -274,19 +329,27 @@ def build_face_shapes(mesh_obj, rig):
     register("browDownRight", brow_down(frame.brow_r))
 
     # --- mouth -----------------------------------------------------------
-    def corner(center, lift, spread):
+    def corner(center, lift, spread, tuck=0.0, radius=0.09):
         def displace(co):
-            w = _falloff((co - center).length, 0.09 * S)
+            w = _falloff((co - center).length, radius * S)
             if w <= 0:
                 return None
-            side = 1 if (co - frame.mouth).dot(right) >= 0 else -1
-            return (up * lift + right * side * spread) * S * w
+            lateral = (co - frame.mouth).dot(right)
+            # Corners move, the centre of the lips stays: without this mask
+            # the two corner spheres overlap mid-lip and every frown reads
+            # as a swollen pout.
+            w *= min(1.0, abs(lateral) / (0.085 * S))
+            side = 1 if lateral >= 0 else -1
+            # Tuck grows with depth below the seam: a dropped lip otherwise
+            # rotates outward, catches the light, and reads as a pout.
+            depth = max(0.0, frame.mouth_h - (co - frame.head).dot(up)) / (0.05 * S)
+            return (up * lift + right * side * spread - facing * tuck * min(1.5, depth)) * S * w
         return displace
 
-    register("mouthSmileLeft", corner(frame.mouth_l, 0.050, 0.030))
-    register("mouthSmileRight", corner(frame.mouth_r, 0.050, 0.030))
-    register("mouthFrownLeft", corner(frame.mouth_l, -0.050, 0.010))
-    register("mouthFrownRight", corner(frame.mouth_r, -0.050, 0.010))
+    register("mouthSmileLeft", corner(frame.mouth_l, 0.062, 0.034))
+    register("mouthSmileRight", corner(frame.mouth_r, 0.062, 0.034))
+    register("mouthFrownLeft", corner(frame.mouth_l, -0.036, 0.010, tuck=0.014, radius=0.075))
+    register("mouthFrownRight", corner(frame.mouth_r, -0.036, 0.010, tuck=0.014, radius=0.075))
     register("mouthStretchLeft", corner(frame.mouth_l, -0.014, 0.048))
     register("mouthStretchRight", corner(frame.mouth_r, -0.014, 0.048))
 
@@ -314,6 +377,19 @@ def build_face_shapes(mesh_obj, rig):
 
     register("noseSneerLeft", sneer(frame.nose_wing_l))
     register("noseSneerRight", sneer(frame.nose_wing_r))
+
+    # --- cheeks ----------------------------------------------------------
+    def cheek_squint(eye_center):
+        center = eye_center - up * 0.06 * S
+        def displace(co):
+            w = _falloff((co - center).length, 0.09 * S)
+            if w <= 0:
+                return None
+            return (up * 0.014 + facing * 0.004) * S * w
+        return displace
+
+    register("cheekSquintLeft", cheek_squint(frame.eye_l))
+    register("cheekSquintRight", cheek_squint(frame.eye_r))
 
     allowed = frame.head_verts
     for name, displace in shapes.items():
@@ -401,3 +477,60 @@ def render_debug(mesh_obj, rig, frame, out_dir, shapes=None):
         bpy.ops.render.render(write_still=True)
         keys[name].value = 0.0
     print(f"FACE_DEBUG_RENDERS out={out_dir} count={len(names) + 1}")
+
+
+def render_expression_sheet(mesh_obj, rig, frame, out_dir):
+    """Render each game expression recipe, capped exactly as the runtime caps
+    it, one tile per expression for a montage."""
+    os.makedirs(out_dir, exist_ok=True)
+    scene = bpy.context.scene
+    scene.render.engine = "BLENDER_WORKBENCH"
+    scene.display.shading.light = "STUDIO"
+    scene.display.shading.color_type = "TEXTURE"
+    scene.render.resolution_x = 512
+    scene.render.resolution_y = 512
+
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    evaluated = mesh_obj.evaluated_get(depsgraph)
+    raw = mesh_obj.data.vertices
+
+    def deformed(local):
+        best = min(frame.head_verts, key=lambda i: (raw[i].co - local).length)
+        return evaluated.matrix_world @ evaluated.data.vertices[best].co
+
+    eye_l = deformed(frame.eye_l)
+    eye_r = deformed(frame.eye_r)
+    mouth = deformed(frame.mouth)
+    nose = deformed(frame.nose)
+    brow = deformed(frame.brow_c)
+    eye_mid = (eye_l + eye_r) / 2
+    interocular = max((eye_l - eye_r).length, 1e-4)
+    right_w = (eye_l - eye_r).normalized()
+    up_w = (brow - mouth).normalized()
+    facing_w = right_w.cross(up_w).normalized()
+    if facing_w.dot((nose - eye_mid).normalized()) < 0:
+        facing_w = -facing_w
+    center = (eye_mid + mouth) / 2
+    camera_data = bpy.data.cameras.new("FaceSheetCam")
+    camera = bpy.data.objects.new("FaceSheetCam", camera_data)
+    bpy.context.collection.objects.link(camera)
+    camera.location = center + facing_w * interocular * 4.6 + up_w * interocular * 0.3
+    direction = (center - camera.location).normalized()
+    camera.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
+    camera_data.lens = 60
+    camera_data.clip_start = 0.001
+    scene.camera = camera
+
+    keys = mesh_obj.data.shape_keys.key_blocks
+    for key in keys:
+        key.value = 0.0
+    for index, (expression, recipe) in enumerate(EXPRESSION_RECIPES.items()):
+        for name, value in recipe.items():
+            if name in keys:
+                keys[name].value = _safe_weight(name, value)
+        scene.render.filepath = os.path.join(out_dir, f"{index:02d}-{expression}.png")
+        bpy.ops.render.render(write_still=True)
+        for key in keys:
+            key.value = 0.0
+    bpy.data.objects.remove(camera, do_unlink=True)
+    print(f"FACE_SHEET_RENDERS out={out_dir} count={len(EXPRESSION_RECIPES)}")

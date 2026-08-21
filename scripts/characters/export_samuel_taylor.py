@@ -273,6 +273,8 @@ def main():
     face_frame = face_shapes.build_face_shapes(meshes[0], rig)
     if os.environ.get("FACE_DEBUG"):
         face_shapes.render_debug(meshes[0], rig, face_frame, os.environ["FACE_DEBUG"])
+    if os.environ.get("FACE_SHEET"):
+        face_shapes.render_expression_sheet(meshes[0], rig, face_frame, os.environ["FACE_SHEET"])
 
     bpy.context.scene.frame_start = 1
     bpy.context.scene.frame_end = max(int(round(action.frame_range[1])) for action in actions)
