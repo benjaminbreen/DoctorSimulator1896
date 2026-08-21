@@ -72,7 +72,9 @@ const hotelReviewMode = Boolean(pageParams?.has('hotelReview'));
 // ?gerryReview=1 provides the same deterministic art-review framing for the
 // Elbridge T. Gerry Mansion at Fifth Avenue and East 61st Street.
 const gerryReviewMode = pageParams?.get('gerryReview') ?? false;
-const shotMode = Boolean(pageParams?.has('shot') || hotelReviewMode || gerryReviewMode);
+// ?dairyReview=1 frames Vaux's Dairy for quick material and texture checks.
+const dairyReviewMode = Boolean(pageParams?.has('dairyReview'));
+const shotMode = Boolean(pageParams?.has('shot') || hotelReviewMode || gerryReviewMode || dairyReviewMode);
 // ?devconsult=1 keeps the raw engine fixture panel for testing.
 const devConsult = Boolean(pageParams?.has('devconsult'));
 // A test or art-review URL can boot one zone directly. Normal play still opens
@@ -96,8 +98,10 @@ export default function App() {
     const next = applyGameStart(createTuningRuntime(settingsSchema));
     const zoneDefinition = next.definitions.find((item) => item.id === 'zone');
     if (bootZone && zoneDefinition?.options?.includes(bootZone)) next.set('zone', bootZone);
-    if (hotelReviewMode || gerryReviewMode) {
-      next.values.fov = gerryReviewMode === 'detail' ? 60 : (gerryReviewMode === 'close' ? 50 : (gerryReviewMode ? 42 : 40));
+    if (hotelReviewMode || gerryReviewMode || dairyReviewMode) {
+      next.values.fov = dairyReviewMode
+        ? 50
+        : (gerryReviewMode === 'detail' ? 60 : (gerryReviewMode === 'close' ? 50 : (gerryReviewMode ? 42 : 40)));
       next.values.showAvatarGlb = false;
       next.values.timeOfDay = 10.25;
     }
@@ -311,6 +315,13 @@ export default function App() {
           ? { position: [100, 2, -2], yaw: -2.41861, pitch: 0.23104 }
           : { position: [88, 3, -13], yaw: -2.38436, pitch: 0.13457 });
       gameDebug.player.visible = false;
+    } else if (dairyReviewMode) {
+      gameDebug.freeCamera = {
+        position: [29, 2.7, -34],
+        yaw: 0,
+        pitch: 0.02,
+      };
+      gameDebug.player.visible = false;
     }
     gameDebug.look = look.look;
     gameDebug.setLook = look.set;
@@ -362,7 +373,7 @@ export default function App() {
       window.removeEventListener('keydown', onKey);
       keyboard.detach();
       detachSound();
-      if (hotelReviewMode || gerryReviewMode) gameDebug.freeCamera = null;
+      if (hotelReviewMode || gerryReviewMode || dairyReviewMode) gameDebug.freeCamera = null;
       setGamePaused(false);
       offRebuild();
     };

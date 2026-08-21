@@ -33,8 +33,31 @@ const profile = Object.freeze({
 
 const generatedRecipe = patientToRendererCRecipe(profile, {
   id,
+  // Authored Mixamo-skinned typesetter model; exported upright and Y-up by
+  // scripts/characters/export_samuel_taylor.py, so no axis correction here.
+  asset: {
+    kind: 'authored-character',
+    path: '/models/characters/samuel-taylor.glb?v=1',
+    applyRecipe: false,
+    opaque: true,
+    motionClips: [
+      'ClinicIdle', 'StandingIdle', 'SittingDisbelief', 'SittingCrying', 'SittingGalvanicShock',
+    ],
+    clipMap: {
+      'clinic-idle': 'ClinicIdle',
+      'sitting-talking': 'ClinicIdle',
+      'sitting-distressed': 'SittingCrying',
+      'sitting-disapproval': 'SittingDisbelief',
+      'sitting-disbelief': 'SittingDisbelief',
+      'sitting-self-soothing': 'ClinicIdle',
+      'sit-down': 'ClinicIdle',
+      'stand-up': 'StandingIdle',
+      'standing-idle': 'StandingIdle',
+      walk: 'StandingIdle',
+    },
+  },
   animation: { body: 'clinic-idle', expression: 'discouraged', gaze: 'doctor', speaking: false },
-  placement: { position: [0.45, 0.22, -1.7], rotation: [0, Math.PI, 0], scale: 1 },
+  placement: { position: [0.45, 0.04, -1.57], rotation: [0, Math.PI, 0], scale: 1.78 },
 });
 
 const recipe = {
@@ -43,6 +66,7 @@ const recipe = {
 };
 
 // Enter by the waiting-room door (south wall, consulting-office blueprint).
+// The renderer skips the walk until this asset carries Walk and SitDown clips.
 recipe.presentation.entrance = { from: [2.4, 0, 4.55] };
 
 const actor = createActorInstance({ id, recipe });

@@ -250,6 +250,9 @@ def main():
         use_selection=True,
         export_apply=False,
         export_animations=True,
+        # The optimizer writes constant channels as STEP, which the game's
+        # mixer does not re-assert between keyframes; see retarget notes.
+        export_optimize_animation_size=False,
         export_frame_range=False,
         export_nla_strips=True,
         export_skins=True,

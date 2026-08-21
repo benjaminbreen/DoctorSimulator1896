@@ -7,10 +7,120 @@ import { PARK_LANDMARKS } from '../world/parkLandmarks.js';
 import { instanced } from './lib/instances.js';
 import StaticColliders from './lib/StaticColliders.jsx';
 
+const SLATE_TEXTURE_METRES_X = 7.8;
+const SLATE_TEXTURE_METRES_Y = 3.6;
+const MASONRY_TEXTURE_METRES = 2.8;
+
 // Vaux's Dairy from world/dairy.js: instanced stone, painted trim, dark
 // recesses, and plank work, under one slate roof. The stone half's walk
 // collider lives in centralPark.js; the loggia's colliders come from the
 // build. About seven draw calls.
+
+let masonryMapsCache = null;
+
+function seededRandom(seed) {
+  let state = seed >>> 0;
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+}
+
+function traceStone(context, points) {
+  context.beginPath();
+  context.moveTo(points[0][0], points[0][1]);
+  for (let i = 1; i < points.length; i += 1) context.lineTo(points[i][0], points[i][1]);
+  context.closePath();
+}
+
+// The old source was a close-up of bare rock. This small generated map keeps
+// the roughness while giving the Dairy readable stone courses and mortar.
+function dairyMasonryMaps() {
+  if (masonryMapsCache) return masonryMapsCache;
+
+  const size = 512;
+  const colorCanvas = document.createElement('canvas');
+  const bumpCanvas = document.createElement('canvas');
+  colorCanvas.width = colorCanvas.height = size;
+  bumpCanvas.width = bumpCanvas.height = size;
+  const colorContext = colorCanvas.getContext('2d');
+  const bumpContext = bumpCanvas.getContext('2d');
+  const random = seededRandom(1896);
+
+  colorContext.fillStyle = '#aaa597';
+  colorContext.fillRect(0, 0, size, size);
+  bumpContext.fillStyle = '#303030';
+  bumpContext.fillRect(0, 0, size, size);
+
+  const courses = 7;
+  const courseHeight = size / courses;
+  for (let row = 0; row < courses; row += 1) {
+    const y0 = row * courseHeight + 3;
+    const y1 = (row + 1) * courseHeight - 3;
+    const edgeWidth = 52 + random() * 42;
+    let x = edgeWidth / 2 + 3;
+    const rowEnd = size - edgeWidth / 2 - 3;
+    const stones = [];
+
+    while (x < rowEnd - 35) {
+      const remaining = rowEnd - x;
+      const width = remaining < 100 ? remaining : Math.min(72 + random() * 72, remaining);
+      stones.push({ x0: x, x1: x + width });
+      x += width + 5;
+    }
+    stones.push({ x0: -edgeWidth / 2, x1: edgeWidth / 2, wraps: true });
+
+    for (const stone of stones) {
+      const shade = 74 + Math.floor(random() * 38);
+      const warm = Math.floor(random() * 10);
+      const points = [
+        [stone.x0 + random() * 2, y0 + random() * 3],
+        [stone.x1 - random() * 2, y0 + random() * 3],
+        [stone.x1 - random() * 2, y1 - random() * 3],
+        [stone.x0 + random() * 2, y1 - random() * 3],
+      ];
+      const copies = stone.wraps ? [0, size] : [0];
+
+      for (const shift of copies) {
+        const shifted = points.map(([px, py]) => [px + shift, py]);
+        traceStone(colorContext, shifted);
+        colorContext.fillStyle = `rgb(${shade + warm}, ${shade + warm - 2}, ${shade})`;
+        colorContext.fill();
+        colorContext.strokeStyle = 'rgba(44, 48, 48, 0.48)';
+        colorContext.lineWidth = 1.5;
+        colorContext.stroke();
+
+        colorContext.save();
+        traceStone(colorContext, shifted);
+        colorContext.clip();
+        for (let mark = 0; mark < 5; mark += 1) {
+          const markX = stone.x0 + (stone.x1 - stone.x0) * random() + shift;
+          const markY = y0 + (y1 - y0) * random();
+          colorContext.fillStyle = random() > 0.5 ? 'rgba(205, 201, 187, 0.11)' : 'rgba(20, 26, 27, 0.1)';
+          colorContext.beginPath();
+          colorContext.ellipse(markX, markY, 4 + random() * 13, 2 + random() * 7, random(), 0, Math.PI * 2);
+          colorContext.fill();
+        }
+        colorContext.restore();
+
+        traceStone(bumpContext, shifted);
+        const height = 174 + Math.floor(random() * 48);
+        bumpContext.fillStyle = `rgb(${height}, ${height}, ${height})`;
+        bumpContext.fill();
+      }
+    }
+  }
+
+  const color = new THREE.CanvasTexture(colorCanvas);
+  const bump = new THREE.CanvasTexture(bumpCanvas);
+  color.colorSpace = THREE.SRGBColorSpace;
+  for (const texture of [color, bump]) {
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.anisotropy = 8;
+  }
+  masonryMapsCache = { color, bump };
+  return masonryMapsCache;
+}
 
 function roofGeometry(roof) {
   const { x0, x1, width, eaveY, ridgeY } = roof;
@@ -31,7 +141,9 @@ function roofGeometry(roof) {
     const uvOrder = side > 0
       ? [[x0, 0], [x1, 0], [x1, slope], [x0, 0], [x1, slope], [x0, slope]]
       : [[x1, 0], [x0, 0], [x0, slope], [x1, 0], [x0, slope], [x1, slope]];
-    for (let i = 0; i < 6; i += 1) push(order[i], uvOrder[i][0] / 1.15, uvOrder[i][1] / 1.15);
+    for (let i = 0; i < 6; i += 1) {
+      push(order[i], uvOrder[i][0] / SLATE_TEXTURE_METRES_X, uvOrder[i][1] / SLATE_TEXTURE_METRES_Y);
+    }
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -46,7 +158,11 @@ function roofGeometry(roof) {
 function gableGeometry(x, width, eaveY, ridgeY, facing) {
   const half = width / 2;
   let tri = [[x, eaveY, -half], [x, eaveY, half], [x, ridgeY, 0]];
-  let uv = [[0, 0], [width / 2.2, 0], [width / 4.4, (ridgeY - eaveY) / 2.2]];
+  let uv = [
+    [0, 0],
+    [width / MASONRY_TEXTURE_METRES, 0],
+    [width / (MASONRY_TEXTURE_METRES * 2), (ridgeY - eaveY) / MASONRY_TEXTURE_METRES],
+  ];
   const [a, b, c] = tri;
   const normalX = (b[1] - a[1]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[1] - a[1]);
   if (Math.sign(normalX) !== Math.sign(facing)) {
@@ -61,9 +177,7 @@ function gableGeometry(x, width, eaveY, ridgeY, facing) {
 }
 
 export default function DairyCottage() {
-  const [rockCol, rockNrm, slateCol, slateNrm, planksCol, planksNrm] = useLoader(THREE.TextureLoader, [
-    '/textures/rock_col.webp',
-    '/textures/rock_nrm.webp',
+  const [slateCol, slateNrm, planksCol, planksNrm] = useLoader(THREE.TextureLoader, [
     '/textures/slate_col.jpg',
     '/textures/slate_nrm.jpg',
     '/textures/planks_col.jpg',
@@ -71,33 +185,38 @@ export default function DairyCottage() {
   ]);
 
   const { meshes, colliders, ground } = useMemo(() => {
-    for (const texture of [rockCol, slateCol, planksCol, rockNrm, slateNrm, planksNrm]) {
+    for (const texture of [slateCol, planksCol, slateNrm, planksNrm]) {
       texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+      texture.anisotropy = 8;
     }
-    rockCol.colorSpace = THREE.SRGBColorSpace;
     slateCol.colorSpace = THREE.SRGBColorSpace;
     planksCol.colorSpace = THREE.SRGBColorSpace;
+    const masonry = dairyMasonryMaps();
 
     const built = buildDairy();
-    // Stone walls get individual meshes with the texture repeat matched to
-    // each box, so masonry never stretches across a whole wall. A cloned
-    // texture shares the underlying image; only the transform differs.
-    const stoneGain = [2.1, 2.05, 1.9];
+    // Each wall keeps a local texture transform. Offsetting by its world-local
+    // position lets neighboring wall boxes share courses instead of restarting.
     const stoneMeshFor = (entry) => {
       const [sx, sy, sz] = entry.s;
-      const col = rockCol.clone();
-      const nrm = rockNrm.clone();
-      col.repeat.set(Math.max(sx, sz) / 2.2, sy / 2.2);
-      nrm.repeat.copy(col.repeat);
+      const across = Math.max(sx, sz);
+      const horizontalStart = sx >= sz ? entry.p[0] - sx / 2 : entry.p[2] - sz / 2;
+      const verticalStart = entry.p[1] - sy / 2;
+      const col = masonry.color.clone();
+      const bump = masonry.bump.clone();
+      col.repeat.set(across / MASONRY_TEXTURE_METRES, sy / MASONRY_TEXTURE_METRES);
+      bump.repeat.copy(col.repeat);
+      col.offset.set(horizontalStart / MASONRY_TEXTURE_METRES, verticalStart / MASONRY_TEXTURE_METRES);
+      bump.offset.copy(col.offset);
       col.needsUpdate = true;
-      nrm.needsUpdate = true;
+      bump.needsUpdate = true;
       const material = new THREE.MeshStandardMaterial({
         map: col,
-        normalMap: nrm,
-        normalScale: new THREE.Vector2(0.4, 0.4),
-        roughness: 0.92,
+        bumpMap: bump,
+        bumpScale: 0.08,
+        roughness: 0.96,
       });
-      material.color.setRGB(stoneGain[0] * entry.tint[0], stoneGain[1] * entry.tint[1], stoneGain[2] * entry.tint[2]);
+      const shade = 0.97 + (entry.tint[0] - 0.82) * 0.25;
+      material.color.setRGB(shade, shade * 0.99, shade * 0.97);
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), material);
       mesh.position.set(...entry.p);
       if (entry.r) mesh.rotation.set(...entry.r);
@@ -106,17 +225,15 @@ export default function DairyCottage() {
       return mesh;
     };
     const gableStone = new THREE.MeshStandardMaterial({
-      map: rockCol,
-      normalMap: rockNrm,
-      normalScale: new THREE.Vector2(0.4, 0.4),
-      roughness: 0.92,
+      map: masonry.color,
+      bumpMap: masonry.bump,
+      bumpScale: 0.08,
+      roughness: 0.96,
     });
-    gableStone.color.setRGB(...stoneGain);
     const creamMat = new THREE.MeshStandardMaterial({
-      map: planksCol,
-      roughness: 0.75,
+      color: '#f0e6c9',
+      roughness: 0.82,
     });
-    creamMat.color.setRGB(1.5, 1.45, 1.3);
     // Window glass: near-black with a low-roughness sheen so panes catch
     // the sky instead of reading as tar.
     const darkMat = new THREE.MeshStandardMaterial({
@@ -128,16 +245,17 @@ export default function DairyCottage() {
     const planksMat = new THREE.MeshStandardMaterial({
       map: planksCol,
       normalMap: planksNrm,
+      normalScale: new THREE.Vector2(0.28, 0.28),
       roughness: 0.9,
     });
     planksMat.color.setRGB(1.4, 1.32, 1.15);
     const slateMat = new THREE.MeshStandardMaterial({
       map: slateCol,
       normalMap: slateNrm,
-      normalScale: new THREE.Vector2(0.6, 0.6),
-      roughness: 0.8,
+      normalScale: new THREE.Vector2(0.35, 0.35),
+      roughness: 0.9,
     });
-    slateMat.color.setRGB(0.92, 0.97, 1.08);
+    slateMat.color.setRGB(0.48, 0.51, 0.55);
 
     const unit = new THREE.BoxGeometry(1, 1, 1);
     const roofMesh = new THREE.Mesh(roofGeometry(built.roof), slateMat);
@@ -166,7 +284,7 @@ export default function DairyCottage() {
       colliders: built.colliders,
       ground: built.ground,
     };
-  }, [rockCol, rockNrm, slateCol, slateNrm, planksCol, planksNrm]);
+  }, [slateCol, slateNrm, planksCol, planksNrm]);
 
   return (
     <>

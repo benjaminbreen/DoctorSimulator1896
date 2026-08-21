@@ -35,7 +35,22 @@ The client queries the MediaWiki Action API for two plain-text lead sentences,
 a canonical page URL, and a freely licensed PageImages thumbnail. Results are
 presentation data only and fail back to the authored landmark name and location.
 
+## Dairy visual reference
+
+The Dairy material pass uses the Central Park Conservancy's current photographs
+to judge the physical scale of its slate courses, rough stone blocks, mortar,
+and painted timber. The modern building includes reconstructed and restored
+work, so its bright red accents are not treated as evidence of the 1896 paint
+scheme. The game uses restrained warm-painted trim where the period color is
+uncertain.
+
 Sources:
+
+- [Central Park Conservancy: Dairy Visitor Center](https://www.centralparknyc.org/locations/dairy-visitor-center)
+- [Central Park Conservancy: Dairy restoration](https://www.centralparknyc.org/restoration/dairy-visitor-center-gift-shop)
+- [Central Park Conservancy: the Children's District](https://www.centralparknyc.org/articles/childrens-district)
+
+Landmark card data sources:
 
 - [MediaWiki example combining extracts and PageImages](https://www.mediawiki.org/wiki/API:Page_info_in_search_results)
 - [MediaWiki PageImages API](https://www.mediawiki.org/wiki/Extension:PageImages#API)

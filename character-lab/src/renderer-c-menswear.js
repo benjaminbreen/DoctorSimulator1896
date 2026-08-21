@@ -435,7 +435,15 @@ export function createRendererCMenswear(scene, bones, model) {
     position.needsUpdate = true;
     mesh.geometry.computeVertexNormals();
     mesh.geometry.computeBoundingSphere();
-    mesh.material = state.components.map((component) => materialFor(component, values, role));
+    if (role === 'victorian') {
+      // The imported suit ships its own textures; the flat pattern materials
+      // are what made it read as clay. Keep its authored surfaces.
+      mesh.geometry.setIndex(state.originalIndex);
+      mesh.geometry.groups = state.originalGroups.map((group) => ({ ...group }));
+      mesh.material = state.originalMaterial;
+    } else {
+      mesh.material = state.components.map((component) => materialFor(component, values, role));
+    }
   }
 
   function updateMaterials(values) {
@@ -470,6 +478,7 @@ export function createRendererCMenswear(scene, bones, model) {
       material.needsUpdate = true;
     }
     for (const state of carrierStates) {
+      if (state.role === 'victorian') continue;
       state.mesh.material = state.components.map((component) => materialFor(component, values, state.role));
     }
     const eliteMaterialByName = {
