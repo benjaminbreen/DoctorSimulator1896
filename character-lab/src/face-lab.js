@@ -134,20 +134,27 @@ performanceSection.append(check('Auto blink', state.autoBlink, (value) => { stat
 controlsHost.append(performanceSection);
 
 const rawSection = document.createElement('div');
-const zeroRow = document.createElement('div');
-zeroRow.className = 'btnrow';
-zeroRow.append(button('Zero all', () => {
+// Opposing shapes cancel when driven together (blink vs wide, smile vs
+// frown), so judging a shape means seeing it alone. Solo zeroes the rest
+// whenever a slider moves.
+let solo = true;
+const zeroAll = (except = null) => {
   for (const name of morphNames) {
+    if (name === except) continue;
     state.raw[name] = 0;
     const slider = rawSection.querySelector(`input[data-morph="${name}"]`);
     if (slider) { slider.value = 0; slider.nextElementSibling.value = '0.00'; }
   }
-}));
+};
+const zeroRow = document.createElement('div');
+zeroRow.className = 'btnrow';
+zeroRow.append(button('Zero all', () => zeroAll()));
 zeroRow.append(button('Log values', () => {
   const active = Object.fromEntries(Object.entries(state.raw).filter(([, v]) => v > 0));
   console.log(JSON.stringify(active, null, 2));
 }));
 rawSection.append(zeroRow);
+rawSection.append(check('Solo (one shape at a time)', solo, (value) => { solo = value; }));
 for (const name of morphNames) {
   const row = document.createElement('div');
   row.className = 'row';
@@ -160,6 +167,7 @@ for (const name of morphNames) {
   const readout = document.createElement('output');
   readout.value = '0.00';
   slider.addEventListener('input', () => {
+    if (solo) zeroAll(name);
     state.raw[name] = Number(slider.value);
     readout.value = Number(slider.value).toFixed(2);
   });

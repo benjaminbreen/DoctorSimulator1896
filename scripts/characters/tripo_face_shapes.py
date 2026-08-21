@@ -210,10 +210,11 @@ def build_face_shapes(mesh_obj, rig):
             if w <= 0:
                 return None
             h = (co - eye_center).dot(up)
-            if h <= -0.01 * S:
-                return None
-            # Upper lid sweeps down across the eye opening.
-            return up * (-min(max(h, 0.0) + 0.01 * S, 0.042 * S)) * w
+            # Upper lid sweeps down and the lower lid rises to meet it, so a
+            # full blink actually closes rather than half-covering the eye.
+            if h > -0.008 * S:
+                return up * (-min(max(h, 0.0) + 0.014 * S, 0.05 * S)) * w
+            return up * (0.012 * S) * w
         return displace
 
     register("eyeBlinkLeft", blink(frame.eye_l))
@@ -275,19 +276,19 @@ def build_face_shapes(mesh_obj, rig):
     # --- mouth -----------------------------------------------------------
     def corner(center, lift, spread):
         def displace(co):
-            w = _falloff((co - center).length, 0.075 * S)
+            w = _falloff((co - center).length, 0.09 * S)
             if w <= 0:
                 return None
             side = 1 if (co - frame.mouth).dot(right) >= 0 else -1
             return (up * lift + right * side * spread) * S * w
         return displace
 
-    register("mouthSmileLeft", corner(frame.mouth_l, 0.032, 0.018))
-    register("mouthSmileRight", corner(frame.mouth_r, 0.032, 0.018))
-    register("mouthFrownLeft", corner(frame.mouth_l, -0.032, 0.006))
-    register("mouthFrownRight", corner(frame.mouth_r, -0.032, 0.006))
-    register("mouthStretchLeft", corner(frame.mouth_l, -0.010, 0.030))
-    register("mouthStretchRight", corner(frame.mouth_r, -0.010, 0.030))
+    register("mouthSmileLeft", corner(frame.mouth_l, 0.050, 0.030))
+    register("mouthSmileRight", corner(frame.mouth_r, 0.050, 0.030))
+    register("mouthFrownLeft", corner(frame.mouth_l, -0.050, 0.010))
+    register("mouthFrownRight", corner(frame.mouth_r, -0.050, 0.010))
+    register("mouthStretchLeft", corner(frame.mouth_l, -0.014, 0.048))
+    register("mouthStretchRight", corner(frame.mouth_r, -0.014, 0.048))
 
     def press(side):
         center = frame.mouth + right * side * 0.05 * S
