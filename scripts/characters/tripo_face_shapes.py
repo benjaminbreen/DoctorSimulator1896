@@ -195,6 +195,77 @@ class FaceFrame:
         self.nose_wing_l, self.nose_wing_r = symmetrize(self.nose_wing_l, self.nose_wing_r)
         self.mouth -= self.right * (self.mouth - self.head).dot(self.right)
 
+        # Geometry windows put the eye centres half a centimetre under the
+        # true apertures. The iris and sclera are painted, so the texture is
+        # the ground truth: sample each head vertex's UV colour and take the
+        # centroids of the cool/near-white clusters.
+        measured = self._measure_eye_apertures(mesh_obj)
+        if measured:
+            self.eye_l, self.eye_r, self.aperture_half = measured
+        else:
+            self.aperture_half = 0.016 * S
+
+    def _measure_eye_apertures(self, mesh_obj):
+        mesh = mesh_obj.data
+        material = next((slot.material for slot in mesh_obj.material_slots if slot.material), None)
+        if not material or not material.use_nodes:
+            return None
+        image = next(
+            (node.image for node in material.node_tree.nodes if node.type == "TEX_IMAGE" and node.image),
+            None,
+        )
+        if image is None or not mesh.uv_layers.active:
+            return None
+        width, height = image.size
+        if not width or not height:
+            return None
+        pixels = list(image.pixels)
+        uv_data = mesh.uv_layers.active.data
+        vert_uv = {}
+        for poly in mesh.polygons:
+            for loop_index in poly.loop_indices:
+                vertex = mesh.loops[loop_index].vertex_index
+                if vertex not in vert_uv:
+                    vert_uv[vertex] = uv_data[loop_index].uv[:]
+        S = self.span
+        clusters = {1: [], -1: []}
+        for index in self.head_verts:
+            co = mesh.vertices[index].co
+            offset = co - self.head
+            if offset.dot(self.facing) < 0.2 * S:
+                continue
+            lat = offset.dot(self.right)
+            if abs(lat) < 0.03 * S:
+                continue
+            u, v = vert_uv.get(index, (0.0, 0.0))
+            x = min(width - 1, max(0, int((u % 1.0) * width)))
+            y = min(height - 1, max(0, int((v % 1.0) * height)))
+            base = (y * width + x) * 4
+            r, g, b = pixels[base], pixels[base + 1], pixels[base + 2]
+            cool = b >= r * 0.92 and r + g + b > 0.35
+            bright = r > 0.75 and g > 0.75 and b > 0.72
+            if cool or bright:
+                clusters[1 if lat > 0 else -1].append(co.copy())
+        if len(clusters[1]) < 4 or len(clusters[-1]) < 4:
+            return None
+        def centroid(points):
+            total = Vector((0, 0, 0))
+            for point in points:
+                total += point
+            return total / len(points)
+        left = centroid(clusters[1])
+        right_c = centroid(clusters[-1])
+        heights = [
+            (point - self.head).dot(self.up)
+            for point in clusters[1] + clusters[-1]
+        ]
+        half = max(0.012 * S, (max(heights) - min(heights)) / 2 + 0.004 * S)
+        print(
+            f"FACE_EYES_MEASURED left={len(clusters[1])} right={len(clusters[-1])} "
+            f"half_frac={half / S:.3f}"
+        )
+        return left, right_c, half
+
     def landmarks(self):
         return {
             "nose": self.nose, "eyeL": self.eye_l, "eyeR": self.eye_r,
@@ -262,24 +333,31 @@ def build_face_shapes(mesh_obj, rig):
 
     # --- eyes ------------------------------------------------------------
     def blink(eye_center):
-        # The iris is texture on a fused eye surface, so closing means
-        # collapsing every aperture vertex down to the lower rim: the
-        # painted iris band squeezes to a line exactly like a closing lid.
-        # The falloff is elliptical — the aperture is twice as wide as it is
-        # tall, and a circular field leaves the corners open.
-        target = -0.02 * S
+        # A closing lid must OCCLUDE the painted iris, not just squeeze it.
+        # Three zones, the overlap a sculptor would give a closed eye: the
+        # eyeball band sinks to the rim and recedes, the upper-lid skin
+        # descends as a curtain in front of it, the lower lid rises to meet
+        # it. Elliptical falloff: the aperture is twice as wide as tall.
+        ap_top = frame.aperture_half
+        ap_bot = -frame.aperture_half
         def displace(co):
             offset = co - eye_center
             lat = offset.dot(right)
             h = offset.dot(up)
-            dep = offset.dot(facing)
-            distance = math.sqrt((lat / 1.9) ** 2 + h * h + dep * dep)
+            # Depth stays out of the falloff: the eyeball bulges forward and
+            # a spherical metric bleeds exactly the weight the iris needs.
+            distance = math.sqrt((lat / 1.9) ** 2 + h * h)
             w = _falloff(distance, 0.055 * S)
             if w <= 0:
                 return None
-            if h <= target:
-                return None
-            return up * max(target - h, -0.06 * S) * w * 1.3
+            # Full closure at the runtime's 0.92 peak, not at 1.0.
+            w *= 1.09
+            if h <= ap_bot:
+                return up * (0.006 * S) * w
+            if h <= ap_top:
+                return (up * (ap_bot - 0.006 * S - h) - facing * 0.03 * S) * w
+            drop = ap_bot + (h - ap_top) * 0.25 - h
+            return up * max(drop, -0.075 * S) * w
         return displace
 
     register("eyeBlinkLeft", blink(frame.eye_l))
