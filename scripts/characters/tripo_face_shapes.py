@@ -105,6 +105,30 @@ class FaceFrame:
         self.facing = forward.normalized()
         self.right = self.facing.cross(self.up).normalized()
 
+        # The toe-derived axes are a few degrees off the face's own, which
+        # skews every centreline feature into one-sided expressions. The
+        # painted eyes are the ground truth: measure them first and align
+        # the lateral axis to the interocular line, the midline to its
+        # midpoint.
+        measured = self._measure_eye_apertures(mesh_obj)
+        if measured:
+            self.eye_l, self.eye_r, self.aperture_half = measured
+            axis = self.eye_l - self.eye_r
+            axis -= self.up * axis.dot(self.up)
+            if axis.length > 1e-6:
+                axis.normalize()
+                if axis.dot(self.right) < 0:
+                    axis.negate()
+                self.right = axis
+                new_facing = self.right.cross(self.up)
+                if new_facing.dot(self.facing) < 0:
+                    new_facing.negate()
+                self.facing = new_facing.normalized()
+            self.mid = (self.eye_l + self.eye_r) / 2
+        else:
+            self.aperture_half = 0.016 * self.span
+            self.mid = self.head.copy()
+
         # The nose is the most frontal, near-centreline point in the
         # lower-face band; a hat brim lives higher, the chin lower.
         best = None
@@ -114,7 +138,7 @@ class FaceFrame:
             h = offset.dot(self.up)
             if not (0.14 * self.span <= h <= 0.34 * self.span):
                 continue
-            if abs(offset.dot(self.right)) > 0.08 * self.span:
+            if abs((co - self.mid).dot(self.right)) > 0.08 * self.span:
                 continue
             frontal = offset.dot(self.facing)
             if best is None or frontal > best[0]:
@@ -144,7 +168,7 @@ class FaceFrame:
                     offset = co - self.head
                     if abs(offset.dot(self.up) - mid_h) > (h_hi - h_lo) / 2 * grow:
                         continue
-                    if abs(offset.dot(self.right) - mid_lat) > (lat_hi - lat_lo) / 2 * grow:
+                    if abs((co - self.mid).dot(self.right) - mid_lat) > (lat_hi - lat_lo) / 2 * grow:
                         continue
                     if offset.dot(self.facing) < front * S:
                         continue
@@ -167,8 +191,9 @@ class FaceFrame:
         eye_h = nose_h + 0.090 * S
         brow_h = nose_h + 0.145 * S
         self.mouth_h = mouth_h = nose_h - 0.165 * S
-        self.eye_l = snap(window(eye_h - 0.045 * S, eye_h + 0.045 * S, 0.06 * S, 0.22 * S))
-        self.eye_r = snap(window(eye_h - 0.045 * S, eye_h + 0.045 * S, -0.22 * S, -0.06 * S))
+        if not measured:
+            self.eye_l = snap(window(eye_h - 0.045 * S, eye_h + 0.045 * S, 0.06 * S, 0.22 * S))
+            self.eye_r = snap(window(eye_h - 0.045 * S, eye_h + 0.045 * S, -0.22 * S, -0.06 * S))
         self.mouth = snap(window(mouth_h - 0.045 * S, mouth_h + 0.045 * S, -0.05 * S, 0.05 * S))
         self.mouth_l = snap(window(mouth_h - 0.05 * S, mouth_h + 0.05 * S, 0.055 * S, 0.16 * S))
         self.mouth_r = snap(window(mouth_h - 0.05 * S, mouth_h + 0.05 * S, -0.16 * S, -0.055 * S))
@@ -182,28 +207,20 @@ class FaceFrame:
 
         # Snapping finds different surface points left and right (beards are
         # asymmetric), and expressions built on lopsided anchors read as
-        # smirks. Mirror each pair through the centre plane and average.
+        # smirks. Mirror each pair through the measured midline and average.
+        # The measured eyes stay as measured.
         def symmetrize(left, right_point):
-            mirrored = left - self.right * (2 * (left - self.head).dot(self.right))
+            mirrored = left - self.right * (2 * (left - self.mid).dot(self.right))
             merged_r = (right_point + mirrored) / 2
-            mirrored_back = merged_r - self.right * (2 * (merged_r - self.head).dot(self.right))
+            mirrored_back = merged_r - self.right * (2 * (merged_r - self.mid).dot(self.right))
             return mirrored_back, merged_r
 
-        self.eye_l, self.eye_r = symmetrize(self.eye_l, self.eye_r)
+        if not measured:
+            self.eye_l, self.eye_r = symmetrize(self.eye_l, self.eye_r)
         self.mouth_l, self.mouth_r = symmetrize(self.mouth_l, self.mouth_r)
         self.brow_l, self.brow_r = symmetrize(self.brow_l, self.brow_r)
         self.nose_wing_l, self.nose_wing_r = symmetrize(self.nose_wing_l, self.nose_wing_r)
-        self.mouth -= self.right * (self.mouth - self.head).dot(self.right)
-
-        # Geometry windows put the eye centres half a centimetre under the
-        # true apertures. The iris and sclera are painted, so the texture is
-        # the ground truth: sample each head vertex's UV colour and take the
-        # centroids of the cool/near-white clusters.
-        measured = self._measure_eye_apertures(mesh_obj)
-        if measured:
-            self.eye_l, self.eye_r, self.aperture_half = measured
-        else:
-            self.aperture_half = 0.016 * S
+        self.mouth -= self.right * (self.mouth - self.mid).dot(self.right)
 
     def _measure_eye_apertures(self, mesh_obj):
         mesh = mesh_obj.data
@@ -346,7 +363,7 @@ def build_face_shapes(mesh_obj, rig):
             h = offset.dot(up)
             # Depth stays out of the falloff: the eyeball bulges forward and
             # a spherical metric bleeds exactly the weight the iris needs.
-            distance = math.sqrt((lat / 1.9) ** 2 + h * h)
+            distance = math.sqrt((lat / 2.3) ** 2 + h * h)
             w = _falloff(distance, 0.055 * S)
             if w <= 0:
                 return None
