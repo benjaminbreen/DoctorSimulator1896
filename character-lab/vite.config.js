@@ -140,6 +140,7 @@ export default {
       input: {
         main: path.join(labRoot, 'index.html'),
         parametric: path.join(labRoot, 'parametric.html'),
+        faceLab: path.join(labRoot, 'face-lab.html'),
       },
     },
   },
