@@ -13,6 +13,12 @@ import sys
 
 import bpy
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+if SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, SCRIPT_DIR)
+
+import tripo_face_shapes as face_shapes
+
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DEFAULT_SOURCE_DIR = os.path.join(ROOT, "assets", "source", "samuel-taylor")
@@ -264,6 +270,9 @@ def main():
         validate_action(rig, action)
     stash_actions(rig, actions)
     make_materials_opaque(meshes)
+    face_frame = face_shapes.build_face_shapes(meshes[0], rig)
+    if os.environ.get("FACE_DEBUG"):
+        face_shapes.render_debug(meshes[0], rig, face_frame, os.environ["FACE_DEBUG"])
 
     bpy.context.scene.frame_start = 1
     bpy.context.scene.frame_end = max(int(round(action.frame_range[1])) for action in actions)
@@ -285,6 +294,7 @@ def main():
         export_frame_range=False,
         export_nla_strips=True,
         export_skins=True,
+        export_morph=True,
         export_yup=True,
     )
     print(
