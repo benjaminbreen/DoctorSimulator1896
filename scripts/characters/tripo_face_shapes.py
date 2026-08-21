@@ -33,6 +33,9 @@ SHAPE_GAIN = {
 # shows.
 EXPRESSION_RECIPES = {
     "neutral": {},
+    # Not a game recipe: the runtime blink peak, on the sheet so closure is
+    # checked on every build.
+    "blink-peak": {"eyeBlinkLeft": 0.92, "eyeBlinkRight": 0.92},
     "guarded": {"browDownLeft": 0.26, "browDownRight": 0.24, "mouthPressLeft": 0.24, "mouthPressRight": 0.22},
     "distressed": {"browInnerUp": 0.5, "mouthFrownLeft": 0.36, "mouthFrownRight": 0.36, "eyeSquintLeft": 0.14, "eyeSquintRight": 0.14},
     "fatigued": {"eyeBlinkLeft": 0.22, "eyeBlinkRight": 0.22, "browInnerUp": 0.18, "mouthFrownLeft": 0.14, "mouthFrownRight": 0.14},
@@ -259,17 +262,24 @@ def build_face_shapes(mesh_obj, rig):
 
     # --- eyes ------------------------------------------------------------
     def blink(eye_center):
-        radius = 0.075 * S
+        # The iris is texture on a fused eye surface, so closing means
+        # collapsing every aperture vertex down to the lower rim: the
+        # painted iris band squeezes to a line exactly like a closing lid.
+        # The falloff is elliptical — the aperture is twice as wide as it is
+        # tall, and a circular field leaves the corners open.
+        target = -0.02 * S
         def displace(co):
-            w = _falloff((co - eye_center).length, radius)
+            offset = co - eye_center
+            lat = offset.dot(right)
+            h = offset.dot(up)
+            dep = offset.dot(facing)
+            distance = math.sqrt((lat / 1.9) ** 2 + h * h + dep * dep)
+            w = _falloff(distance, 0.055 * S)
             if w <= 0:
                 return None
-            h = (co - eye_center).dot(up)
-            # Upper lid sweeps down and the lower lid rises to meet it, so a
-            # full blink actually closes rather than half-covering the eye.
-            if h > -0.008 * S:
-                return up * (-min(max(h, 0.0) + 0.014 * S, 0.05 * S)) * w
-            return up * (0.012 * S) * w
+            if h <= target:
+                return None
+            return up * max(target - h, -0.06 * S) * w * 1.3
         return displace
 
     register("eyeBlinkLeft", blink(frame.eye_l))
@@ -329,29 +339,42 @@ def build_face_shapes(mesh_obj, rig):
     register("browDownRight", brow_down(frame.brow_r))
 
     # --- mouth -----------------------------------------------------------
-    def corner(center, lift, spread, tuck=0.0, radius=0.09):
+    # One smooth deformation field along the whole lip line. Two independent
+    # corner spheres put an S-kink where their masks met; a single curve
+    # profile keeps the lip line continuous. Each side's shape covers its
+    # half with a soft overlap at the centre, so equal left+right weights
+    # reconstruct the full curve.
+    half_width = 0.115 * S
+
+    def lip_curve(side, lift, spread, tuck=0.0):
         def displace(co):
-            w = _falloff((co - center).length, radius * S)
-            if w <= 0:
+            offset = co - frame.mouth
+            if offset.dot(facing) < -0.06 * S:
                 return None
-            lateral = (co - frame.mouth).dot(right)
-            # Corners move, the centre of the lips stays: without this mask
-            # the two corner spheres overlap mid-lip and every frown reads
-            # as a swollen pout.
-            w *= min(1.0, abs(lateral) / (0.085 * S))
-            side = 1 if lateral >= 0 else -1
-            # Tuck grows with depth below the seam: a dropped lip otherwise
-            # rotates outward, catches the light, and reads as a pout.
-            depth = max(0.0, frame.mouth_h - (co - frame.head).dot(up)) / (0.05 * S)
-            return (up * lift + right * side * spread - facing * tuck * min(1.5, depth)) * S * w
+            t = offset.dot(right) / half_width
+            if abs(t) > 1.6:
+                return None
+            h = (co - frame.head).dot(up) - frame.mouth_h
+            band = _falloff(abs(h), 0.085 * S)
+            if band <= 0:
+                return None
+            # Quadratic corner profile: zero at the philtrum, full at the
+            # corners, no kink anywhere.
+            profile = min(1.0, abs(t)) ** 2 * _falloff(max(0.0, abs(t) - 1.0), 0.6)
+            side_blend = max(0.0, min(1.0, t * side * 2 + 0.5))
+            w = band * profile * side_blend
+            if w <= 1e-4:
+                return None
+            depth = max(0.0, -h) / (0.05 * S)
+            return (up * lift + right * (1 if t >= 0 else -1) * spread - facing * tuck * min(1.5, depth)) * S * w
         return displace
 
-    register("mouthSmileLeft", corner(frame.mouth_l, 0.062, 0.034))
-    register("mouthSmileRight", corner(frame.mouth_r, 0.062, 0.034))
-    register("mouthFrownLeft", corner(frame.mouth_l, -0.036, 0.010, tuck=0.014, radius=0.075))
-    register("mouthFrownRight", corner(frame.mouth_r, -0.036, 0.010, tuck=0.014, radius=0.075))
-    register("mouthStretchLeft", corner(frame.mouth_l, -0.014, 0.048))
-    register("mouthStretchRight", corner(frame.mouth_r, -0.014, 0.048))
+    register("mouthSmileLeft", lip_curve(1, 0.055, 0.030))
+    register("mouthSmileRight", lip_curve(-1, 0.055, 0.030))
+    register("mouthFrownLeft", lip_curve(1, -0.034, 0.008, tuck=0.014))
+    register("mouthFrownRight", lip_curve(-1, -0.034, 0.008, tuck=0.014))
+    register("mouthStretchLeft", lip_curve(1, -0.012, 0.044))
+    register("mouthStretchRight", lip_curve(-1, -0.012, 0.044))
 
     def press(side):
         center = frame.mouth + right * side * 0.05 * S
