@@ -22,6 +22,7 @@ const FILES = [
   'game/public/models/characters/nora-byrne.glb',
   'game/public/models/characters/nora-byrne-motions.glb',
   'game/public/models/characters/samuel-taylor.glb',
+  'game/public/models/characters/wine-merchant.glb',
 ];
 
 const io = await createIO();

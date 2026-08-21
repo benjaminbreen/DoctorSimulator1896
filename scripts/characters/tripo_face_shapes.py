@@ -245,43 +245,74 @@ class FaceFrame:
                 if vertex not in vert_uv:
                     vert_uv[vertex] = uv_data[loop_index].uv[:]
         S = self.span
-        clusters = {1: [], -1: []}
-        for index in self.head_verts:
-            co = mesh.vertices[index].co
-            offset = co - self.head
-            if offset.dot(self.facing) < 0.2 * S:
-                continue
-            lat = offset.dot(self.right)
-            if abs(lat) < 0.03 * S:
-                continue
+
+        def warmness(index):
             u, v = vert_uv.get(index, (0.0, 0.0))
             x = min(width - 1, max(0, int((u % 1.0) * width)))
             y = min(height - 1, max(0, int((v % 1.0) * height)))
             base = (y * width + x) * 4
             r, g, b = pixels[base], pixels[base + 1], pixels[base + 2]
-            cool = b >= r * 0.92 and r + g + b > 0.35
-            bright = r > 0.75 and g > 0.75 and b > 0.72
-            if cool or bright:
-                clusters[1 if lat > 0 else -1].append(co.copy())
-        if len(clusters[1]) < 4 or len(clusters[-1]) < 4:
+            return (r - b, r + g + b)
+
+        band = []
+        for index in self.head_verts:
+            co = mesh.vertices[index].co
+            offset = co - self.head
+            if offset.dot(self.facing) < 0.2 * S:
+                continue
+            h = offset.dot(self.up)
+            if not (0.35 * S <= h <= 0.62 * S):
+                continue
+            band.append(index)
+        cool = []
+        for index in band:
+            warm, total = warmness(index)
+            if warm < 0.08 and total > 0.28:
+                cool.append(index)
+        if len(cool) < 4:
             return None
-        def centroid(points):
+
+        def centroid(indices):
             total = Vector((0, 0, 0))
-            for point in points:
-                total += point
-            return total / len(points)
-        left = centroid(clusters[1])
-        right_c = centroid(clusters[-1])
-        heights = [
-            (point - self.head).dot(self.up)
-            for point in clusters[1] + clusters[-1]
+            for index in indices:
+                total += mesh.vertices[index].co
+            return total / len(indices)
+
+        # Split on the widest lateral gap; baked shading can hide one eye
+        # entirely, so a missing cluster is recovered by taking the least
+        # warm vertices around the found eye's mirror point.
+        lats = sorted(cool, key=lambda i: (mesh.vertices[i].co - self.head).dot(self.right))
+        gaps = [
+            ((mesh.vertices[lats[i + 1]].co - mesh.vertices[lats[i]].co).dot(self.right), i)
+            for i in range(len(lats) - 1)
         ]
+        widest, split = max(gaps)
+        groups = [lats[: split + 1], lats[split + 1 :]]
+        groups = [g for g in groups if len(g) >= 4] if widest > 0.05 * S else [lats]
+        if len(groups) == 2:
+            first, second = centroid(groups[0]), centroid(groups[1])
+            counts = (len(groups[0]), len(groups[1]))
+        else:
+            found = centroid(groups[0])
+            mirrored = found - self.right * (2 * (found - self.head).dot(self.right))
+            nearby = sorted(
+                band,
+                key=lambda i: (mesh.vertices[i].co - mirrored).length,
+            )[:60]
+            darkest = sorted(nearby, key=lambda i: warmness(i)[0])[:10]
+            first, second = found, centroid(darkest)
+            counts = (len(groups[0]), 0)
+            print("FACE_EYES_MIRRORED one eye recovered from its mirror point")
+        if (first - self.head).dot(self.right) < (second - self.head).dot(self.right):
+            first, second = second, first
+        heights = [(mesh.vertices[i].co - self.head).dot(self.up) for i in cool]
         half = max(0.012 * S, (max(heights) - min(heights)) / 2 + 0.004 * S)
+        half = min(half, 0.024 * S)
         print(
-            f"FACE_EYES_MEASURED left={len(clusters[1])} right={len(clusters[-1])} "
+            f"FACE_EYES_MEASURED left={counts[0]} right={counts[1]} "
             f"half_frac={half / S:.3f}"
         )
-        return left, right_c, half
+        return first, second, half
 
     def landmarks(self):
         return {

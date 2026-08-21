@@ -13,7 +13,16 @@ import {
   speechJawWeight,
 } from '../../shared/characters/facePerformance.js';
 
-const MODEL = '/models/samuel-taylor.glb';
+// Switching characters reloads the page: a dev tool has no state worth
+// preserving, and it keeps the loader single-path.
+const CHARACTERS = [
+  { id: 'samuel-taylor', label: 'Samuel Taylor', path: '/models/samuel-taylor.glb' },
+  { id: 'wine-merchant', label: 'Wine merchant', path: '/models/wine-merchant.glb' },
+];
+const requested = new URLSearchParams(window.location.search).get('model');
+const CHARACTER = CHARACTERS.find((entry) => entry.id === requested) || CHARACTERS[0];
+const MODEL = CHARACTER.path;
+document.querySelector('#panel h1').textContent = `Face Lab — ${CHARACTER.label}`;
 
 const stage = document.getElementById('stage');
 const hud = document.getElementById('hud');
@@ -101,6 +110,24 @@ function check(label, value, onChange) {
   wrap.append(box, label);
   return wrap;
 }
+
+const characterRow = document.createElement('div');
+characterRow.className = 'row';
+const characterLabel = document.createElement('label');
+characterLabel.textContent = 'Character';
+const characterSelect = document.createElement('select');
+for (const entry of CHARACTERS) {
+  const option = document.createElement('option');
+  option.value = entry.id;
+  option.textContent = entry.label;
+  option.selected = entry.id === CHARACTER.id;
+  characterSelect.append(option);
+}
+characterSelect.addEventListener('change', () => {
+  window.location.search = `?model=${characterSelect.value}`;
+});
+characterRow.append(characterLabel, characterSelect);
+controlsHost.append(characterRow);
 
 const modeRow = document.createElement('div');
 modeRow.className = 'btnrow';
