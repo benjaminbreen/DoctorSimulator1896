@@ -5,13 +5,22 @@
 // Compose every transform once, then prune the subtree out of the scene's
 // per-frame updateMatrixWorld walk. Only for content whose object transforms
 // never change after build — anything moved later must not sit under `root`.
+const staticUpdates = new WeakMap();
+const skipStaticUpdate = () => {};
+
 export function freezeStaticTransforms(root) {
   if (!root) return;
-  root.updateMatrixWorld(true);
+  const update = staticUpdates.get(root) ?? root.updateMatrixWorld;
+  staticUpdates.set(root, update);
+  root.parent?.updateWorldMatrix(true, false);
+  root.traverse((object) => object.updateMatrix());
+  update.call(root, true);
   root.traverse((object) => {
     object.matrixAutoUpdate = false;
   });
-  root.matrixWorldAutoUpdate = false;
+  // Three still visits children when matrixWorldAutoUpdate is false. This
+  // subtree is immutable; only an explicit freeze call needs to visit it.
+  root.updateMatrixWorld = skipStaticUpdate;
 }
 
 // A material shared by an InstancedMesh and a plain Mesh makes three re-init

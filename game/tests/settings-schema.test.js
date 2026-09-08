@@ -81,8 +81,8 @@ test('Central Park starts with the approved outdoor art direction', () => {
   assert.equal(runtime.values.sunIntensity, 1.25);
   assert.equal(runtime.values.skyTurbidity, 6.45);
   assert.equal(runtime.values.skySaturation, 0.75);
-  assert.equal(runtime.values.skyFill, 1.4);
-  assert.equal(runtime.values.groundBounce, 0.3);
+  assert.equal(runtime.values.skyFill, 1.6);
+  assert.equal(runtime.values.groundBounce, 0.4);
   assert.equal(runtime.values.outdoorShadowDistance, 50);
   assert.equal(runtime.values.exposure, 1.0);
   assert.equal(runtime.values.toneMapping, 'ACESFilmic');
@@ -102,8 +102,8 @@ test('reset restores the outdoor preset without changing the game clock', () => 
 
   assert.equal(runtime.values.toneMapping, 'ACESFilmic');
   assert.equal(runtime.values.sunIntensity, 1.25);
-  assert.equal(runtime.values.skyFill, 1.4);
-  assert.equal(runtime.values.groundBounce, 0.3);
+  assert.equal(runtime.values.skyFill, 1.6);
+  assert.equal(runtime.values.groundBounce, 0.4);
   assert.equal(runtime.values.outdoorShadowDistance, 50);
   assert.equal(runtime.values.exposure, 1.0);
   assert.equal(runtime.values.timeOfDay, 12.3);
@@ -216,4 +216,15 @@ test('preset round-trips through export and apply', () => {
   const second = createTuningRuntime(settingsSchema);
   second.applyPreset(preset);
   assert.equal(second.values.walkSpeed, 6);
+});
+
+
+test('performance and lighting defaults migrate while custom settings survive', () => {
+  const migrate = values => migrateStoredTuning({ schemaVersion: 6, values }, settingsSchema).values;
+  const defaults = migrate({ zone: 'central-park', walkSpeed: 4.1, runSpeed: 8, envIntensity: .35, skyFill: 1.4, groundBounce: .3 });
+  assert.equal(defaults.walkSpeed, 2.2);
+  assert.equal(defaults.runSpeed, 5);
+  assert.equal(defaults.skyFill, 1.6);
+  const custom = { zone: 'central-park', walkSpeed: 3, runSpeed: 7, envIntensity: .6, skyFill: 2, groundBounce: .8 };
+  assert.deepEqual(migrate(custom), custom);
 });

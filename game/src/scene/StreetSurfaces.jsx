@@ -113,6 +113,11 @@ function sideGeometry(points, top, bottom, closed = true) {
 
 function decorateMaterial(material, { axis, center = 0, width = 1, road = false, gutter = false }) {
   material.onBeforeCompile = (shader) => {
+    shader.uniforms.uStreetAxis = { value: axis === 'x' ? 0 : 1 };
+    shader.uniforms.uStreetCenter = { value: center };
+    shader.uniforms.uStreetWidth = { value: Math.max(width, 0.1) };
+    shader.uniforms.uStreetRoad = { value: road ? 1 : 0 };
+    shader.uniforms.uStreetGutter = { value: gutter ? 0.82 : 1 };
     shader.vertexShader =
       'varying vec3 vStreetWorldPosition;\n' +
       shader.vertexShader.replace(
@@ -120,15 +125,8 @@ function decorateMaterial(material, { axis, center = 0, width = 1, road = false,
         '#include <begin_vertex>\n  vStreetWorldPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;',
       );
 
-    const crossPosition = axis === 'x' ? 'vStreetWorldPosition.x' : 'vStreetWorldPosition.z';
-    const wear = road
-      ? `float streetLane = abs((${crossPosition} - ${center.toFixed(3)}) / ${Math.max(width, 0.1).toFixed(3)});
-         float streetWear = exp(-pow((streetLane - 0.205) * 15.0, 2.0));`
-      : 'float streetWear = 0.0;';
-    const gutterDarken = gutter ? '0.82' : '1.0';
-
     shader.fragmentShader =
-      'varying vec3 vStreetWorldPosition;\n' +
+      'varying vec3 vStreetWorldPosition;\nuniform float uStreetAxis, uStreetCenter, uStreetWidth, uStreetRoad, uStreetGutter;\n' +
       shader.fragmentShader
         .replace(
           '#include <map_fragment>',
@@ -138,15 +136,17 @@ function decorateMaterial(material, { axis, center = 0, width = 1, road = false,
            streetMacro *= 0.5;
            float streetMottle = sin(vStreetWorldPosition.x * 0.31 + vStreetWorldPosition.z * 0.17);
            streetMottle *= sin(vStreetWorldPosition.z * 0.23 - vStreetWorldPosition.x * 0.11);
-           ${wear}
-           diffuseColor.rgb *= (${gutterDarken} + streetMacro * 0.035 + streetMottle * 0.018 - streetWear * 0.075);`,
+           float across = mix(vStreetWorldPosition.x, vStreetWorldPosition.z, uStreetAxis);
+           float streetLane = abs((across - uStreetCenter) / uStreetWidth);
+           float streetWear = exp(-pow((streetLane - 0.205) * 15.0, 2.0)) * uStreetRoad;
+           diffuseColor.rgb *= (uStreetGutter + streetMacro * 0.075 + streetMottle * 0.03 - streetWear * 0.075);`,
         )
         .replace(
           '#include <roughnessmap_fragment>',
           '#include <roughnessmap_fragment>\n  roughnessFactor *= (1.0 - streetWear * 0.16);',
         );
   };
-  material.customProgramCacheKey = () => [axis, center, width, road, gutter].join(':');
+  material.customProgramCacheKey = () => 'street-wear-uniforms-v2';
   return material;
 }
 

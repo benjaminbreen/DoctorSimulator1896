@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useFrame, useLoader, useThree } from '@react-three/fiber';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFLoader } from './modelLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { getKTX2Loader } from './ktx2.js';
@@ -17,6 +17,7 @@ import { dampAngle, shortestArc } from '../movement/mathUtils.js';
 import { terrainHeight } from '../world/terrain.js';
 import { parkItems } from '../world/centralPark.js';
 import { APRON_W, GAPSTOW, walkY as gapstowWalkY } from '../world/gapstow.js';
+import { getAnnouncement } from '../world/announcements.js';
 import { listAgents, removeAgent, reportAgent } from '../world/agents.js';
 import { getInteraction } from '../world/interaction.js';
 import { crowdSpeakerDetails } from '../world/crowdDialogue.js';
@@ -72,6 +73,7 @@ import { figureHeight } from '../world/figureHeights.js';
 import { normalizeNonmetallicCharacterMaterial } from './characterMaterials.js';
 import { fadeInAction, restoreLoopingIdle } from './characterGestures.js';
 import { useFarPedestrianLod } from './pedestrianLod.js';
+import { manageActorTransforms } from './actorTransforms.js';
 import {
   CROWD_CAST_AGES,
   PEDESTRIAN_ARCHETYPES,
@@ -354,6 +356,14 @@ function setBaseAction(entry, next) {
   entry.base = next;
 }
 
+// One request group avoids a Suspense waterfall between model decodes. The
+// KTX2 worker pool limits concurrent texture transcoding to four workers.
+const PEDESTRIAN_FILES = [
+  ...['m', 'w', 'd', 's', 'f', 'h', 'n', 'l', 'r', 'hm', 'bh'].map((key) => PEDESTRIAN_ARCHETYPES[key].modelPath),
+  ...PEDESTRIAN_LOD_FILES, PEDESTRIAN_STRAWHAT_MOTION_FILE, PEDESTRIAN_STANDUP_FILE,
+  ...MAN_CLIP_FILES, ...WOMAN_CLIP_FILES, PEDESTRIAN_REACTION_FILE,
+];
+
 export default function Pedestrians({ runtime, graphics }) {
   // All pedestrian GLBs are meshopt-compressed; the figure models also carry
   // KTX2 textures.
@@ -362,27 +372,28 @@ export default function Pedestrians({ runtime, graphics }) {
     loader.setMeshoptDecoder(MeshoptDecoder);
     loader.setKTX2Loader(getKTX2Loader(gl));
   }, [gl]);
-  const manGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.m.modelPath, withMeshopt);
-  const womanGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.w.modelPath, withMeshopt);
-  const dressGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.d.modelPath, withMeshopt);
-  const somberGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.s.modelPath, withMeshopt);
-  const fortiesGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.f.modelPath, withMeshopt);
-  const strawhatGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.h.modelPath, withMeshopt);
-  const nursemaidGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.n.modelPath, withMeshopt);
-  const lilacGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.l.modelPath, withMeshopt);
-  const rationalGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.r.modelPath, withMeshopt);
-  const maidGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.hm.modelPath, withMeshopt);
-  const bellhopGltf = useLoader(GLTFLoader, PEDESTRIAN_ARCHETYPES.bh.modelPath, withMeshopt);
-  const lodGltfs = useLoader(GLTFLoader, PEDESTRIAN_LOD_FILES, withMeshopt);
-  const strawhatMotionGltf = useLoader(GLTFLoader, PEDESTRIAN_STRAWHAT_MOTION_FILE, withMeshopt);
-  const standupGltf = useLoader(GLTFLoader, PEDESTRIAN_STANDUP_FILE, withMeshopt);
-  const manClipGltfs = useLoader(GLTFLoader, MAN_CLIP_FILES, withMeshopt);
-  const womanClipGltfs = useLoader(GLTFLoader, WOMAN_CLIP_FILES, withMeshopt);
-  const reactGltf = useLoader(GLTFLoader, PEDESTRIAN_REACTION_FILE, withMeshopt);
+  const loaded = useLoader(GLTFLoader, PEDESTRIAN_FILES, withMeshopt);
+  const {
+    manGltf, womanGltf, dressGltf, somberGltf, fortiesGltf, strawhatGltf,
+    nursemaidGltf, lilacGltf, rationalGltf, maidGltf, bellhopGltf, lodGltfs,
+    strawhatMotionGltf, standupGltf, manClipGltfs, womanClipGltfs, reactGltf,
+  } = useMemo(() => {
+    let at = 11;
+    const take = (count) => loaded.slice(at, at += count);
+    return {
+      manGltf: loaded[0], womanGltf: loaded[1], dressGltf: loaded[2], somberGltf: loaded[3],
+      fortiesGltf: loaded[4], strawhatGltf: loaded[5], nursemaidGltf: loaded[6], lilacGltf: loaded[7],
+      rationalGltf: loaded[8], maidGltf: loaded[9], bellhopGltf: loaded[10],
+      lodGltfs: take(PEDESTRIAN_LOD_FILES.length),
+      strawhatMotionGltf: loaded[at++], standupGltf: loaded[at++],
+      manClipGltfs: take(MAN_CLIP_FILES.length), womanClipGltfs: take(WOMAN_CLIP_FILES.length),
+      reactGltf: loaded[at],
+    };
+  }, [loaded]);
   const { world, rapier } = useRapier();
   const bodyQuaternion = useRef(new THREE.Quaternion());
 
-  const { group, walkers, figures, crowdGraph } = useMemo(() => {
+  const { group, walkers, figures, crowdGraph, jobs, finishPreparation } = useMemo(() => {
     const reactClip = reactGltf.animations[0];
     const manClips = compatibleClips(manGltf.scene, [
       ...manGltf.animations,
@@ -644,7 +655,20 @@ export default function Pedestrians({ runtime, graphics }) {
       return entry;
     };
 
-    STANDERS.forEach((spec, index) => {
+    const jobs = [];
+    let finishPreparation;
+    root.userData.preparation = new Promise(resolve => { finishPreparation = resolve; });
+    const enqueue = (items, build) => items.forEach((item, index) => jobs.push(() => {
+      const first = all.length;
+      build(item, index);
+      for (const entry of all.slice(first)) {
+        entry.transforms = manageActorTransforms(entry.wrapper);
+        entry.transforms.update();
+        for (const lod of entry.lodMeshes) lod.mesh.userData.warmGeometries = [lod.fullGeometry, lod.farGeometry];
+      }
+    }));
+
+    enqueue(STANDERS, (spec, index) => {
       const entry = spawn(index, spec);
       entry.wrapper.position.set(spec.x, spec.onTerrain ? terrainHeight(spec.x, spec.z) : WALK_TOP, spec.z);
       entry.wrapper.rotation.y = spec.yaw;
@@ -659,7 +683,7 @@ export default function Pedestrians({ runtime, graphics }) {
       });
     });
 
-    POSERS.forEach((spec, index) => {
+    enqueue(POSERS, (spec, index) => {
       const entry = spawn(index + 20, spec);
       entry.wrapper.position.set(spec.x, terrainHeight(spec.x, spec.z), spec.z);
       entry.wrapper.rotation.y = spec.yaw;
@@ -670,7 +694,7 @@ export default function Pedestrians({ runtime, graphics }) {
       });
     });
 
-    BENCH_SITTERS.forEach((sitter, index) => {
+    enqueue(BENCH_SITTERS, (sitter, index) => {
       const { x, z, yaw } = benchSitterPose(sitter);
       const entry = spawn(index + 30, sitter);
       entry.wrapper.position.set(x, terrainHeight(x, z), z);
@@ -685,7 +709,7 @@ export default function Pedestrians({ runtime, graphics }) {
     // graph. They spawn hidden; the frame loop materializes them once their
     // logical position is far enough from the player to appear unseen.
     const graph = buildWalkGraph();
-    CROWD_SLOT_ARCHETYPES.forEach((who, index) => {
+    enqueue(CROWD_SLOT_ARCHETYPES, (who, index) => {
       const entry = spawn(index + 80, {
         id: `crowd-${index}`,
         who,
@@ -737,8 +761,7 @@ export default function Pedestrians({ runtime, graphics }) {
       }));
     });
 
-    {
-      const spec = PARK_VISITOR_ITINERARY;
+    enqueue([PARK_VISITOR_ITINERARY], (spec) => {
       const entry = spawn(55, spec, 'Walk');
       const [x, z] = spec.toCarousel.points[0];
       entry.wrapper.position.set(x, terrainHeight(x, z), z);
@@ -751,9 +774,9 @@ export default function Pedestrians({ runtime, graphics }) {
         },
         itineraryPhase: null,
       }));
-    }
+    });
 
-    STROLLER_CIRCUITS.forEach((route, index) => {
+    enqueue(STROLLER_CIRCUITS, (route, index) => {
       const entry = spawn(index + 60, route, 'StrollerWalk');
       entry.dialogueProfile = crowdSpeakerDetails({
         archetype: route.who, role: 'stroller', activity: 'walking', hour: 12, seed: index + 61, age: route.age,
@@ -775,8 +798,26 @@ export default function Pedestrians({ runtime, graphics }) {
       }));
     });
 
-    return { group: root, walkers: walking, figures: all, crowdGraph: graph };
+    return { group: root, walkers: walking, figures: all, crowdGraph: graph, jobs, finishPreparation };
   }, [manGltf, womanGltf, dressGltf, somberGltf, fortiesGltf, strawhatGltf, nursemaidGltf, lilacGltf, rationalGltf, maidGltf, bellhopGltf, lodGltfs, strawhatMotionGltf, standupGltf, manClipGltfs, womanClipGltfs, reactGltf]);
+
+  const [, refreshBodies] = useState(0);
+  useEffect(() => {
+    let frame;
+    let at = 0;
+    const buildBatch = () => {
+      const start = performance.now();
+      let built = 0;
+      while (at < jobs.length && built < 4 && performance.now() - start < 5) {
+        jobs[at++]();
+        built++;
+      }
+      refreshBodies(value => value + 1);
+      frame = requestAnimationFrame(at < jobs.length ? buildBatch : finishPreparation);
+    };
+    frame = requestAnimationFrame(buildBatch);
+    return () => { cancelAnimationFrame(frame); finishPreparation(); };
+  }, [jobs, finishPreparation]);
 
   // Crowd scheduling state survives re-renders but resets on a new game day.
   const crowdRef = useRef(null);
@@ -855,16 +896,19 @@ export default function Pedestrians({ runtime, graphics }) {
     }
     const conversation = getInteraction().using;
     const speakingId = conversation?.kind === 'conversation' ? conversation.agentId : null;
+    const announcement = getAnnouncement();
     let activePedestrianLods = 0;
     let farPedestrianLods = 0;
     for (let index = 0; index < figures.length; index += 1) {
       const entry = figures[index];
       const { x, z } = entry.wrapper.position;
-      const tracked = trackedPeople[index];
+      const tracked = trackedPeople[index] ??= { id: entry.id, archetype: entry.archetype,
+        gender: entry.gender, position: [0, 0, 0], yaw: 0 };
       tracked.position[0] = x;
       tracked.position[1] = entry.wrapper.position.y;
       tracked.position[2] = z;
       tracked.yaw = entry.wrapper.rotation.y;
+      tracked.contact = !entry.poser && !entry.seated;
       const scheduleActive = pedestrianScheduleActive(entry.schedule, runtime.values.timeOfDay)
         && !entry.crowdHidden;
       entry.wrapper.visible = scheduleActive;
@@ -1009,7 +1053,10 @@ export default function Pedestrians({ runtime, graphics }) {
       // the pose the bench gave them; a stander goes back to facing their
       // post (their cart, the street) once the talk ends.
       if (!confronting && !entry.poser && entry.crowdActivity !== 'resting') {
-        const facing = speaking
+        const nearbySpeaker = announcement?.line && announcement.anchorId === entry.id
+          && Math.hypot(x - gameDebug.player.position[0], z - gameDebug.player.position[2]) < 8
+          && entry.postYaw !== undefined && !entry.seated;
+        const facing = speaking || nearbySpeaker
           ? Math.atan2(
             gameDebug.player.position[0] - entry.wrapper.position.x,
             gameDebug.player.position[2] - entry.wrapper.position.z,
@@ -1253,6 +1300,14 @@ export default function Pedestrians({ runtime, graphics }) {
 
       if (walker.crowdActions) {
         const playerPos = gameDebug.player.position;
+        const farFromPlayer = (walker.wrapper.position.x - playerPos[0]) ** 2
+          + (walker.wrapper.position.z - playerPos[2]) ** 2 > 60 * 60;
+        walker.navigationPending = Math.min((walker.navigationPending ?? 0) + delta, .5);
+        walker.nextNavigationAt ??= t + (walker.crowdSlot % 4) * .06;
+        if (farFromPlayer && t < walker.nextNavigationAt) continue;
+        const navigationDelta = walker.navigationPending;
+        walker.navigationPending = 0;
+        walker.nextNavigationAt = t + .24;
         const active = isSlotActive(values.timeOfDay ?? 12, walker.crowdSlot);
         if (!active) {
           // Leave only while unobserved; otherwise finish the walk first.
@@ -1279,7 +1334,8 @@ export default function Pedestrians({ runtime, graphics }) {
         }
         const wx = walker.wrapper.position.x;
         const wz = walker.wrapper.position.z;
-        const neighbours = [];
+        const neighbours = walker.neighbours ??= [];
+        neighbours.length = 0;
         for (const tracked of trackedPeople) {
           if (tracked.id === walker.id || tracked.hidden) continue;
           const dx = tracked.position[0] - wx;
@@ -1301,7 +1357,7 @@ export default function Pedestrians({ runtime, graphics }) {
           );
         }
         const step = stepCrowdAgent(walker.crowdAgent, {
-          dt: delta,
+          dt: navigationDelta,
           now: t,
           logicalDistance: pose.distance,
           dwelling: pose.dwelling,
@@ -1499,7 +1555,6 @@ export default function Pedestrians({ runtime, graphics }) {
     for (const entry of figures) {
       const wrapper = entry.wrapper;
       if (!wrapper.visible) {
-        wrapper.matrixWorldAutoUpdate = false;
         continue;
       }
       const pose = entry.lastPose ?? (entry.lastPose = [NaN, 0, 0, 0]);
@@ -1511,7 +1566,7 @@ export default function Pedestrians({ runtime, graphics }) {
       pose[1] = y;
       pose[2] = z;
       pose[3] = yaw;
-      wrapper.matrixWorldAutoUpdate = dirty;
+      if (dirty) entry.transforms.update();
     }
   });
 
@@ -1523,6 +1578,7 @@ export default function Pedestrians({ runtime, graphics }) {
         releaseConfrontation(entry.id);
       });
       for (const entry of figures) {
+        entry.transforms.dispose();
         entry.stroller?.dispose();
         for (const mesh of entry.meshes) mesh.material?.dispose?.();
       }

@@ -50,7 +50,6 @@ function starGeometry() {
 const VERTEX = /* glsl */ `
   attribute float aSize;
   attribute float aPhase;
-  attribute vec3 color;
   uniform float uTime;
   uniform float uPixelRatio;
   varying vec3 vColor;

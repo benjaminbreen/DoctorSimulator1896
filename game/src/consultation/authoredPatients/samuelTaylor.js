@@ -57,7 +57,7 @@ const generatedRecipe = patientToRendererCRecipe(profile, {
     },
   },
   animation: { body: 'clinic-idle', expression: 'discouraged', gaze: 'doctor', speaking: false },
-  placement: { position: [0.45, 0.04, -1.57], rotation: [0, Math.PI, 0], scale: 1.78 },
+  placement: { position: [0.45, 0.22, -1.57], rotation: [0, Math.PI, 0], scale: 1.78 },
 });
 
 const recipe = {

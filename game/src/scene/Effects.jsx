@@ -104,7 +104,7 @@ export default function Effects({ runtime, indoors }) {
   // quality regression in playtesting. Fix shimmering facade geometry at the
   // asset/LOD level, or evaluate targeted MSAA/SMAA separately.
   const multisampling = dpr >= 1.5 ? 0 : 2;
-  const vignetteBase = indoors ? 0.55 : 0.32;
+  const vignetteBase = indoors ? 0.55 : 0.24;
 
   useFrame(() => {
     const composer = composerRef.current;

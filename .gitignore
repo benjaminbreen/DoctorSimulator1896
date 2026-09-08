@@ -39,3 +39,6 @@ assets-local/
 /ChatGPT Image *.png
 /item icon.png
 /casebook mockup example .jpg
+
+# Local performance captures and browser traces.
+artifacts/performance/

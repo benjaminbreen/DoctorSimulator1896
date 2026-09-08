@@ -43,6 +43,15 @@ const MIGRATIONS = {
   5: (values) => {
     if (values.tuftSize === 1) values.tuftSize = 2;
   },
+  7: (values) => {
+    if (values.walkSpeed === 4.1) values.walkSpeed = 2.2;
+    if (values.runSpeed === 8) values.runSpeed = 5;
+    if (isOutdoorZone(values.zone)) {
+      if (values.envIntensity === 0.35) values.envIntensity = 0.48;
+      if (values.skyFill === 1.4) values.skyFill = 1.6;
+      if (values.groundBounce === 0.3) values.groundBounce = 0.4;
+    }
+  },
 };
 
 export function migrateStoredTuning(stored, schema) {

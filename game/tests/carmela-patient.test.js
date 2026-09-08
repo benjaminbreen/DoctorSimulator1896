@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CARMELA_RUSSO, createConsultationPatients } from '../src/consultation/patients.js';
+import { AUTHORED_PATIENT_POOL, CARMELA_RUSSO } from '../src/consultation/patients.js';
 import { validateConsultationPatient } from '../src/consultation/contract.js';
 import {
   actorCueForConsultation,
@@ -55,9 +55,8 @@ function finish(state, diagnosisId, treatmentId) {
   return consultationTransition(state, patient, { type: 'submit-case-note' });
 }
 
-test('Carmela is a complete authored patient in the third queue position', () => {
-  const patients = createConsultationPatients();
-  assert.equal(patients[2], patient);
+test('Carmela is a complete patient in the authored pool', () => {
+  assert.ok(AUTHORED_PATIENT_POOL.includes(patient));
   assert.equal(patient.label, 'Mrs. Carmela Russo');
   assert.equal(patient.profile.identity.migration.arrivalYear, 1861);
   assert.equal(patient.profile.social.occupation, 'proprietor of a provisions shop');

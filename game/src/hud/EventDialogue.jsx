@@ -20,7 +20,7 @@ import './event-dialogue.css';
 // the tallest of them rather than across it; anything added later joins the
 // stack by carrying data-hud-foot.
 const FOOT = '.ghud-actions, .ghud-note, .control-helper, .mctl-left, .mctl-right, [data-hud-foot]';
-const FOOT_GAP = 12;
+const FOOT_GAP = 24;
 
 export default function EventDialogue({ raised = false }) {
   const entry = useSyncExternalStore(subscribeAnnouncement, getAnnouncement);
@@ -49,8 +49,22 @@ export default function EventDialogue({ raised = false }) {
       setFoot(top < window.innerHeight ? window.innerHeight - top + FOOT_GAP : null);
     };
     place();
+    const observer = new ResizeObserver(place);
+    const observeFoot = () => {
+      document.querySelectorAll(FOOT).forEach((node) => observer.observe(node));
+      place();
+    };
+    observeFoot();
+    // Controls can be mounted again while a line is still being shown.
+    const changes = new MutationObserver(observeFoot);
+    changes.observe(document.body, { childList: true, subtree: true });
+    if (line.current) observer.observe(line.current);
     window.addEventListener('resize', place);
-    return () => window.removeEventListener('resize', place);
+    return () => {
+      observer.disconnect();
+      changes.disconnect();
+      window.removeEventListener('resize', place);
+    };
   }, [entry?.id, entry?.line, raised]);
 
   useEffect(() => {

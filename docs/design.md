@@ -188,7 +188,8 @@ The implementation contract is in
 ## Development direction
 
 The current playable focus is the consultation. Nora Byrne, Samuel Taylor,
-Carmela Russo, and Wilhelmina Otten are the reference authored encounters. More researched patients and stronger
-procedural cases can use the same engine. Consultation results can then feed the
+Carmela Russo, Wilhelmina Otten, and Ferdinand de Chapuys are the reference
+authored encounters. More researched patients and stronger procedural cases
+can use the same engine. Consultation results can then feed the
 wider practice, social graph, laboratory, and park without imposing a fixed
 milestone scheme.

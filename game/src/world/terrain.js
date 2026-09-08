@@ -37,14 +37,29 @@ function segmentDistance(x, z, [x1, z1], [x2, z2]) {
   return Math.hypot(x - (x1 + dx * t), z - (z1 + dz * t));
 }
 
-// Distance to the nearest path centerline minus its half width (0 on a path).
+const pathSegments = PATHS.flatMap(path => path.points.slice(1).map((end, i) => {
+  const start = path.points[i];
+  return { start, end, halfWidth: path.width / 2,
+    minX: Math.min(start[0], end[0]), maxX: Math.max(start[0], end[0]),
+    minZ: Math.min(start[1], end[1]), maxZ: Math.max(start[1], end[1]) };
+}));
+const pondBounds = {
+  minX: Math.min(...POND_OUTLINE.map(p => p[0])) - 7,
+  maxX: Math.max(...POND_OUTLINE.map(p => p[0])) + 7,
+  minZ: Math.min(...POND_OUTLINE.map(p => p[1])) - 7,
+  maxZ: Math.max(...POND_OUTLINE.map(p => p[1])) + 7,
+};
+
+// Bounds reject segments that cannot improve the nearest exact distance.
 export function pathsDistance(x, z) {
   let nearest = Infinity;
-  for (const path of PATHS) {
-    for (let i = 0; i < path.points.length - 1; i += 1) {
-      const distance = segmentDistance(x, z, path.points[i], path.points[i + 1]) - path.width / 2;
-      if (distance < nearest) nearest = distance;
-    }
+  for (const segment of pathSegments) {
+    const limit = nearest + segment.halfWidth;
+    const dx = Math.max(segment.minX - x, 0, x - segment.maxX);
+    const dz = Math.max(segment.minZ - z, 0, z - segment.maxZ);
+    if (limit <= 0 || dx * dx + dz * dz > limit * limit) continue;
+    nearest = Math.min(nearest, segmentDistance(x, z, segment.start, segment.end) - segment.halfWidth);
+    if (nearest <= 0) return 0;
   }
   return Math.max(0, nearest);
 }
@@ -70,6 +85,7 @@ function polygonEdgeDistance(x, z, polygon) {
 
 // Signed pond field: negative inside (toward -1 at depth), positive outside.
 export function pondDepth(x, z) {
+  if (x < pondBounds.minX || x > pondBounds.maxX || z < pondBounds.minZ || z > pondBounds.maxZ) return 1;
   const edge = polygonEdgeDistance(x, z, POND_OUTLINE);
   if (pointInPolygon(x, z, POND_OUTLINE)) return -Math.min(1, edge / 7);
   return Math.min(1, edge / 7);
@@ -93,7 +109,7 @@ export function terrainHeight(x, z) {
     const distance = Math.hypot(x - pad.x, z - pad.z);
     if (distance >= pad.radius) continue;
     const weight = 1 - smooth(clamp((distance - pad.flat) / (pad.radius - pad.flat), 0, 1));
-    height = height * (1 - weight) + baseHeight(pad.x, pad.z) * weight;
+    height = height * (1 - weight) + padHeights.get(pad) * weight;
   }
   return height;
 }
@@ -163,3 +179,5 @@ export function sampleHeights(size, segments) {
   }
   return heights;
 }
+
+const padHeights = new Map(PADS.map(pad => [pad, baseHeight(pad.x, pad.z)]));

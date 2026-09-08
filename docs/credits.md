@@ -34,6 +34,8 @@ The plants kit is one file holding thirty pieces; the converter splits it into
 a model each (`__Tree-01-1_0`, `__Bush-03_15`, …). All of them carry the same
 credit. Both entries came across from Young Darwin, which had already converted
 them; the credit rides in the file, so it survived the trip.
+The six `shapespark_plants__Tree-*-lod.glb` derivatives simplify the same
+credited tree geometry for distant groves; they reuse the original textures.
 
 ## Interior props — `game/public/models/props/`
 
@@ -101,6 +103,7 @@ the existing MPFB fitting stage; generated characters export to GLB afterward.
 | Piece | Creator / source | Licence / use |
 | --- | --- | --- |
 | Straw-hatted pedestrian | Project-provided character mesh; rig and motion processing through [Adobe Mixamo](https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html) | Project asset; Mixamo permits royalty-free incorporation into video games |
+| Ferdinand de Chapuys / wine merchant | Project-created character mesh and portrait; rig and motion processing through Adobe Mixamo | Project asset |
 
 The web build separates this character's mesh from its nineteen animation-only
 clips. The motion pack retains the common 65-bone Mixamo contract so it can be

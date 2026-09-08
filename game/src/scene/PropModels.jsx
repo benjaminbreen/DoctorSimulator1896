@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { useFrame, useLoader, useThree } from '@react-three/fiber';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFLoader } from './modelLoader.js';
 import { MeshoptDecoder } from 'meshoptimizer';
 import { getKTX2Loader } from './ktx2.js';
 import { freezeStaticTransforms } from './lib/staticScene.js';

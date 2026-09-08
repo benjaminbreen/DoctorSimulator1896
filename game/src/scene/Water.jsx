@@ -19,8 +19,6 @@ const DEPTH_RES = 256;
 const DEPTH_RANGE = 2.5; // metres packed into one byte of the bake
 const MARGIN = 5; // bake/geometry margin beyond the outline, metres
 const CELL = 1.7; // surface grid cell, metres
-// How many mirror-eligible frames a cached exclusion list stays valid.
-const MIRROR_EXCLUDE_REFRESH = 240;
 const MAX_IMPULSES = 8;
 const IMPULSE_LIFETIME = 5;
 
@@ -375,7 +373,7 @@ const FRAGMENT = /* glsl */ `
 // ripple distortion smears both to nothing — so they are not worth drawing.
 // The same goes for any small loose piece: at the mirror's resolution, under
 // blur and ripple, a bottle or a railing collar never resolves.
-const MIRROR_MIN_CASTER_SIZE = 0.35;
+const MIRROR_MIN_CASTER_SIZE = 1.0;
 
 function collectMirrorExclusions(scene) {
   const objects = [];
@@ -409,6 +407,26 @@ const mirrorTarget = new THREE.Vector3();
 const clipPlane = new THREE.Vector4();
 const clipQ = new THREE.Vector4();
 
+const coveragePoint = new THREE.Vector3();
+function projectedWaterCoverage(mesh, camera) {
+  if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+  const box = mesh.geometry.boundingBox;
+  let left = 1, right = -1, top = -1, bottom = 1;
+  for (const x of [box.min.x, box.max.x]) {
+    for (const z of [box.min.z, box.max.z]) {
+      coveragePoint.set(x, 0, z).applyMatrix4(mesh.matrixWorld).project(camera);
+      // A rectangle crossing the near plane needs a conservative estimate.
+      if (coveragePoint.z > 1) return 1;
+      left = Math.min(left, coveragePoint.x);
+      right = Math.max(right, coveragePoint.x);
+      bottom = Math.min(bottom, coveragePoint.y);
+      top = Math.max(top, coveragePoint.y);
+    }
+  }
+  return Math.max(0, Math.min(1, right) - Math.max(-1, left))
+    * Math.max(0, Math.min(1, top) - Math.max(-1, bottom)) / 4;
+}
+
 export default function Water({
   runtime,
   outline,
@@ -435,6 +453,7 @@ export default function Water({
       lastQuaternion: new THREE.Quaternion(),
       lastFov: 0,
       lastAt: -Infinity,
+      lastCostMs: 0,
     }),
     [reflectionSize],
   );
@@ -626,12 +645,19 @@ export default function Water({
       mirror.live = false;
       return;
     }
-    if (mirror.live && mirror.frame % reflectionInterval !== 0) return;
+    const now = performance.now() / 1000;
     const mesh = meshRef.current;
     if (!mesh) return;
-
+    const coverage = projectedWaterCoverage(mesh, camera);
+    if (coverage < .015) {
+      material.uniforms.uHasReflection.value = 0;
+      return;
+    }
+    material.uniforms.uHasReflection.value = mirror.live ? 1 : 0;
+    const interval = Math.max(reflectionInterval / 60, coverage < .12 ? .4 : coverage < .3 ? .2 : .1,
+      Math.min(.5, mirror.lastCostMs / 1000 * 12));
+    if (mirror.live && now - mirror.lastAt < interval) return;
     if (mirror.live) {
-      const now = performance.now() / 1000;
       const cameraStill =
         camera.position.distanceToSquared(mirror.lastPosition) < 0.0004
         && Math.abs(camera.quaternion.dot(mirror.lastQuaternion)) > 0.9999995
@@ -692,7 +718,8 @@ export default function Water({
     proj.elements[14] = clipPlane.w;
 
     const exclusions = mirrorExclusions.current;
-    if (mirror.frame - exclusions.frame >= MIRROR_EXCLUDE_REFRESH) {
+    if (exclusions.stage !== gameDebug.stats.boot.stage || !exclusions.objects.length) {
+      exclusions.stage = gameDebug.stats.boot.stage;
       exclusions.objects = collectMirrorExclusions(scene);
       exclusions.frame = mirror.frame;
     }
@@ -709,15 +736,25 @@ export default function Water({
     mesh.visible = false;
     const previousTarget = renderer.getRenderTarget();
     const previousShadowAuto = renderer.shadowMap.autoUpdate;
+    const previousShadowNeeded = renderer.shadowMap.needsUpdate;
+    const started = performance.now();
     renderer.shadowMap.autoUpdate = false;
-    renderer.setRenderTarget(mirror.target);
-    renderer.state.buffers.depth.setMask(true);
-    renderer.clear();
-    renderer.render(scene, virtual);
-    renderer.shadowMap.autoUpdate = previousShadowAuto;
-    renderer.setRenderTarget(previousTarget);
-    mesh.visible = true;
-    for (const object of hidden) object.visible = true;
+    renderer.shadowMap.needsUpdate = false;
+    try {
+      renderer.setRenderTarget(mirror.target);
+      renderer.state.buffers.depth.setMask(true);
+      renderer.clear();
+      renderer.render(scene, virtual);
+    } finally {
+      renderer.shadowMap.autoUpdate = previousShadowAuto;
+      renderer.shadowMap.needsUpdate = previousShadowNeeded;
+      renderer.setRenderTarget(previousTarget);
+      mesh.visible = true;
+      for (const object of hidden) object.visible = true;
+    }
+    mirror.lastCostMs = performance.now() - started;
+    mirror.lastAt = now;
+    gameDebug.stats.reflectionMs = mirror.lastCostMs;
 
     if (!mirror.live) {
       mirror.live = true;

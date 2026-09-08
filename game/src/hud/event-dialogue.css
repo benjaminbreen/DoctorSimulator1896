@@ -53,8 +53,8 @@
 /* A short tail so the plate reads as attached to the person under it. */
 .event-badge-stem {
   width: 1px;
-  height: 14px;
-  background: linear-gradient(180deg, rgba(204, 164, 82, .7), rgba(204, 164, 82, 0));
+  height: 20px;
+  background: linear-gradient(180deg, rgba(204, 164, 82, .7), rgba(204, 164, 82, .8));
 }
 
 .event-line {
@@ -67,8 +67,8 @@
   padding: 11px clamp(20px, 3vw, 30px) 13px;
   border: 1px solid rgba(204, 164, 82, .3);
   border-radius: 8px;
-  background: rgba(10, 12, 11, .74);
-  backdrop-filter: blur(3px);
+  background: rgba(10, 19, 14, .91);
+
   box-shadow: 0 12px 34px rgba(0, 0, 0, .5);
   color: var(--event-paper);
   font-size: clamp(16px, 1.55vw, 21px);
@@ -102,4 +102,22 @@
 @media (max-width: 640px) {
   .event-line { bottom: clamp(120px, 20vh, 180px); }
   .event-badge-name { font-size: 15px; }
+}
+
+.event-badge-stem::after {
+  content: '';
+  display: block;
+  width: 7px;
+  height: 7px;
+  margin: 17px 0 0 -3px;
+  background: #edce84;
+  border: 1px solid #283b2d;
+  transform: rotate(45deg);
+}
+
+.event-line-speaker::before {
+  content: '◆';
+  margin-right: .5em;
+  font-size: .65em;
+  vertical-align: .12em;
 }

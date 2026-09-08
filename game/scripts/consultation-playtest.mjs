@@ -1,4 +1,9 @@
-import { CARMELA_RUSSO, NORA_BYRNE, SAMUEL_TAYLOR } from '../src/consultation/patients.js';
+import {
+  CARMELA_RUSSO,
+  FERDINAND_DE_CHAPUYS,
+  NORA_BYRNE,
+  SAMUEL_TAYLOR,
+} from '../src/consultation/patients.js';
 import {
   buildDialogueRequest,
   consultationTiming,
@@ -15,13 +20,20 @@ import {
 const rawArgs = process.argv.slice(2);
 const patientFlag = rawArgs.find((argument) => argument.startsWith('--patient='));
 const patientKey = patientFlag?.slice('--patient='.length)
-  || (rawArgs.includes('--carmela') ? 'carmela' : rawArgs.includes('--samuel') ? 'samuel' : 'nora');
-const args = rawArgs.filter((argument) => !['--carmela', '--samuel', patientFlag].includes(argument));
-const patients = { nora: NORA_BYRNE, samuel: SAMUEL_TAYLOR, carmela: CARMELA_RUSSO };
+  || (rawArgs.includes('--chapuys') ? 'chapuys'
+    : rawArgs.includes('--carmela') ? 'carmela'
+      : rawArgs.includes('--samuel') ? 'samuel' : 'nora');
+const args = rawArgs.filter((argument) => !['--chapuys', '--carmela', '--samuel', patientFlag].includes(argument));
+const patients = {
+  nora: NORA_BYRNE,
+  samuel: SAMUEL_TAYLOR,
+  carmela: CARMELA_RUSSO,
+  chapuys: FERDINAND_DE_CHAPUYS,
+};
 const patient = patients[patientKey];
 
 if (!patient) {
-  throw new Error(`Unknown authored patient: ${patientKey}. Use nora, samuel, or carmela.`);
+  throw new Error(`Unknown authored patient: ${patientKey}. Use nora, samuel, carmela, or chapuys.`);
 }
 
 function begin() {
@@ -208,7 +220,43 @@ const samuelScenarios = [
   },
 ];
 
-const scenarios = { nora: noraScenarios, samuel: samuelScenarios, carmela: carmelaScenarios }[patientKey];
+const chapuysScenarios = [
+  {
+    label: 'Evidence-led protection plan',
+    tokens: [
+      'think:chapuys-approach-automatism',
+      'chapuys-ask-sequence', 'chapuys-ask-witnesses', 'chapuys-ask-pattern',
+      'chapuys-response-evidence', 'chapuys-ask-galvanism', 'chapuys-ask-family',
+      'chapuys-exam-neurologic', 'chapuys-exam-general',
+      'decide:chapuys-dx-periodic-inebriety:diet-abstinence:chapuys-last-episode,chapuys-witnessed-activity,chapuys-prodrome',
+    ],
+  },
+  {
+    label: 'Flattering nervous explanation',
+    tokens: [
+      'think:chapuys-approach-nerves',
+      'chapuys-ask-sequence', 'chapuys-ask-pattern', 'chapuys-response-nerves',
+      'chapuys-ask-galvanism', 'chapuys-ask-family', 'chapuys-exam-neurologic',
+      'decide:chapuys-dx-neurasthenia:elec-galvanization:chapuys-missing-days,chapuys-galvanism,chapuys-family-stakes',
+    ],
+  },
+  {
+    label: 'Moral warning and bromide',
+    tokens: [
+      'think:chapuys-approach-periodic',
+      'chapuys-ask-sequence', 'chapuys-ask-pattern', 'chapuys-response-moralize',
+      'chapuys-ask-witnesses', 'chapuys-exam-neurologic',
+      'decide:chapuys-dx-periodic-inebriety:drug-bromide:chapuys-last-episode,chapuys-witnessed-activity,chapuys-sober-intervals',
+    ],
+  },
+];
+
+const scenarios = {
+  nora: noraScenarios,
+  samuel: samuelScenarios,
+  carmela: carmelaScenarios,
+  chapuys: chapuysScenarios,
+}[patientKey];
 
 if (args[0] === '--compare') {
   const states = scenarios.map((scenario) => run(scenario.label, scenario.tokens, false));
@@ -232,5 +280,6 @@ if (args[0] === '--compare') {
   console.log('  npm run playtest:consult -- --compare');
   console.log('  npm run playtest:consult -- --patient=samuel --compare');
   console.log('  npm run playtest:consult -- --patient=carmela --compare');
+  console.log('  npm run playtest:consult -- --patient=chapuys --compare');
   console.log('  npm run playtest:consult -- <prompt-or-exam-id> ... decide:<diagnosis>:<treatment>:<fact,fact>');
 }

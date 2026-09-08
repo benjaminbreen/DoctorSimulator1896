@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { useLoader } from '@react-three/fiber';
 import { RigidBody, HeightfieldCollider } from '@react-three/rapier';
 import { terrainHeight, pathsDistance, pondDepth, rockiness } from '../world/terrain.js';
+import { SHELTERS } from '../world/rusticwork.js';
 import { WORLD_BOUNDS } from '../world/streetGrid.js';
 import { constructedSurfaceAt } from '../world/constructedSurfaces.js';
 import { freezeStaticTransforms } from './lib/staticScene.js';
@@ -53,7 +54,19 @@ export default function Terrain() {
       const fromPath = pathsDistance(x, z);
       const nearPath = Math.max(0, 1 - fromPath / 1.5);
       const pond = pondDepth(x, z);
-      splat[i * 4] = nearPath * nearPath;
+      let shelterWear = 0;
+      for (const shelter of SHELTERS) {
+        const distance = Math.hypot(x - shelter.x, z - shelter.z);
+        if (distance > shelter.radius + 2) continue;
+        for (const bay of shelter.entries) {
+          const angle = shelter.yaw + (bay + 0.5) * Math.PI * 2 / shelter.sides;
+          const radius = shelter.radius * Math.cos(Math.PI / shelter.sides);
+          const approach = Math.hypot(x - shelter.x - Math.cos(angle) * radius,
+            z - shelter.z - Math.sin(angle) * radius);
+          shelterWear = Math.max(shelterWear, Math.max(0, 1 - approach / 2.3) * 0.55);
+        }
+      }
+      splat[i * 4] = Math.max(nearPath * nearPath, shelterWear);
       splat[i * 4 + 1] = Math.min(1, rockiness(x, z)) * 0.85;
       splat[i * 4 + 2] = pond < 0.3 ? 1 - Math.max(0, pond) / 0.3 : 0;
       // Worn verge: grass within a few metres of a walk, tinted in-shader.
@@ -122,11 +135,13 @@ export default function Terrain() {
             // of metres, two octaves so the patches have ragged edges.
             // ('patch' itself is a reserved word in GLSL ES 3.0.)
             float turfPatch = turfNoise(wuv / 27.0) * 0.65 + turfNoise(wuv / 9.0) * 0.35;
-            blended *= mix(vec3(0.92, 1.04, 0.88), vec3(1.08, 1.02, 0.72), smoothstep(0.3, 0.8, turfPatch));
+            blended *= mix(vec3(0.96, 1.0, 0.93), vec3(1.04, 1.0, 0.86), smoothstep(0.3, 0.8, turfPatch));
+            float grassLuma = dot(blended, vec3(0.2126, 0.7152, 0.0722));
+            blended = mix(vec3(grassLuma), blended, 0.76);
             // Worn verges: walked-on grass dulls and yellows near the paths,
             // noise-broken so the band has no crisp edge.
             float verge = vSplat.w * vSplat.w * (0.4 + 0.5 * turfNoise(wuv / 4.3));
-            blended = mix(blended, blended * vec3(1.05, 0.96, 0.7), verge * 0.6);
+            blended = mix(blended, blended * vec3(1.02, 0.97, 0.85), verge * 0.45);
             blended = mix(blended, texture2D(rockMap, uvT * 0.71).rgb, clamp(vSplat.y, 0.0, 1.0));
             // The same two-scale trick as the grass, with the far sample
             // rotated so the two lattices never line up, and a slow domain

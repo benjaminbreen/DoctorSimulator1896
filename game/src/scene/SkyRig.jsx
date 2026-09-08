@@ -34,7 +34,7 @@ export default function SkyRig({
   const hemisphereRef = useRef();
   const shadowExtentRef = useRef(0);
   const shadowFrameRef = useRef(0);
-  const nextShadowCullAt = useRef(0);
+  const shadowCullKey = useRef(null);
   // The sun's map covers 50m against an interior light's few metres, so it
   // needs the extra rank to resolve thin casters. A bench is slats and iron
   // bars: below about 3cm per texel it writes nothing and casts no shadow.
@@ -181,10 +181,9 @@ void main() {`,
         camera.updateProjectionMatrix();
       }
       const texel = (shadowExtent * 2) / shadowMapSize;
-      // Zone stages keep arriving after boot, so this re-checks on a slow beat
-      // rather than once. Objects already decided cost only a bounds compare.
-      if (state.clock.elapsedTime >= nextShadowCullAt.current) {
-        nextShadowCullAt.current = state.clock.elapsedTime + 1;
+      const cullKey = `${gameDebug.stats.boot.stage}:${texel}`;
+      if (shadowCullKey.current !== cullKey) {
+        shadowCullKey.current = cullKey;
         gameDebug.stats.shadowCulled = cullSubTexelShadowCasters(state.scene, texel);
       }
       const anchorX = Math.round(player[0] / texel) * texel;

@@ -2,7 +2,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFLoader } from '../scene/modelLoader.js';
 import { builtBounds } from '../world/propCatalog.js';
 import { modelUrl, modelSize } from '../world/modelPacks.js';
 import PropShape from '../scene/PropShape.jsx';

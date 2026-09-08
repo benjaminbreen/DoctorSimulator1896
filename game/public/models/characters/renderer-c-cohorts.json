@@ -195,7 +195,17 @@
       "bytes": 7771836,
       "morphTargets": 128,
       "clips": 10,
-      "path": "/models/characters/renderer-c-women.glb?v=cast-opt-4"
+      "path": "/models/characters/renderer-c-women.glb?v=cast-opt-4",
+      "consultationPaths": [
+        "/models/characters/consultation/women-0.glb?v=1",
+        "/models/characters/consultation/women-1.glb?v=1",
+        "/models/characters/consultation/women-2.glb?v=1",
+        "/models/characters/consultation/women-3.glb?v=1",
+        "/models/characters/consultation/women-4.glb?v=1",
+        "/models/characters/consultation/women-5.glb?v=1",
+        "/models/characters/consultation/women-6.glb?v=1",
+        "/models/characters/consultation/women-7.glb?v=1"
+      ]
     },
     "men": {
       "anchors": [
@@ -389,7 +399,17 @@
       "bytes": 14123664,
       "morphTargets": 128,
       "clips": 10,
-      "path": "/models/characters/renderer-c-men.glb?v=cast-opt-4"
+      "path": "/models/characters/renderer-c-men.glb?v=cast-opt-4",
+      "consultationPaths": [
+        "/models/characters/consultation/men-0.glb?v=1",
+        "/models/characters/consultation/men-1.glb?v=1",
+        "/models/characters/consultation/men-2.glb?v=1",
+        "/models/characters/consultation/men-3.glb?v=1",
+        "/models/characters/consultation/men-4.glb?v=1",
+        "/models/characters/consultation/men-5.glb?v=1",
+        "/models/characters/consultation/men-6.glb?v=1",
+        "/models/characters/consultation/men-7.glb?v=1"
+      ]
     }
   },
   "publishedFor": "ghosts-game",

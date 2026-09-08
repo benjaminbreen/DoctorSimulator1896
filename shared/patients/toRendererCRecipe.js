@@ -52,7 +52,9 @@ export function patientToRendererCRecipe(patient, options = {}) {
   const faceRandom = createRandom(appearanceSeed, 'renderer-c.face');
   const bodyRandom = createRandom(appearanceSeed, 'renderer-c.body');
   const colorRandom = createRandom(appearanceSeed, 'renderer-c.color');
-  const origin = getOriginProfile(patient.identity.origin.id);
+  // Authored identities may be more specific than the procedural cohort.
+  // Their model can borrow a cohort palette without falsifying the profile.
+  const origin = getOriginProfile(options.appearanceOriginId || patient.identity.origin.id);
   const female = patient.identity.sex === 'female';
   const laboring = LABORING_OCCUPATIONS.has(patient.social.occupationId);
   const classWeight = { elite: 0.55, affluent: 0.52, comfortable: 0.48, sponsored: 0.44 }[patient.social.classId] ?? 0.48;
@@ -83,7 +85,10 @@ export function patientToRendererCRecipe(patient, options = {}) {
     skinRoughness: clamp(0.84 + ((patient.identity.age - 18) / 58) * 0.14, 0.82, 1),
     fabricRoughness: 0.96,
     necklineHeight: clamp(0.82 + colorRandom.bell() * 0.09, 0.68, 0.98),
-    cuffWidth: clamp(0.58 + colorRandom.bell() * 0.16, 0.28, 0.9),
+    cuffWidth: clamp(0.24 + colorRandom.bell() * 0.10, 0.12, 0.45),
+    collarHeight: 0.40,
+    collarThickness: 0.12,
+    cuffThickness: 0.12,
     trimWidth: clamp((laboring ? 0.24 : 0.44) + colorRandom.bell() * 0.16, 0.08, 0.85),
     placketWidth: clamp(0.32 + colorRandom.bell() * 0.1, 0.14, 0.62),
     buttonCount: Math.round(clamp(6 + colorRandom.bell() * 1.5, 4, 9)),

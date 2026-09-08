@@ -27,16 +27,43 @@ function KeyGroup({ keys, label }) {
 }
 
 const SETTLE_MS = 60000;
+let learnedControls = false;
 
 export default function ControlHelper({ hidden = false, zone }) {
   const [walked, setWalked] = useState(false);
   const [fastTravelUsed, setFastTravelUsed] = useState(hasUsedFastTravel);
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(() => !learnedControls);
 
   useEffect(() => subscribeOnboardingProgress(setFastTravelUsed), []);
 
-  // A new room is worth a second look, so the card comes back on arrival.
-  useEffect(() => { setOpen(true); }, [zone]);
+  const [looked, setLooked] = useState(false);
+  const [manual, setManual] = useState(false);
+
+  useEffect(() => {
+    if (!walked || !looked || manual || !open) return undefined;
+    learnedControls = true;
+    const timer = setTimeout(() => setOpen(false), 5000);
+    return () => clearTimeout(timer);
+  }, [walked, looked, manual, open]);
+
+  useEffect(() => {
+    const onLook = (event) => {
+      if (event.target?.tagName === 'CANVAS'
+        && (event.type === 'wheel' || event.buttons === 1)) setLooked(true);
+    };
+    const onViewKey = (event) => {
+      if (event.code === 'KeyM' && !FORM_TAGS.has(event.target?.tagName)
+        && !event.target?.isContentEditable) setLooked(true);
+    };
+    window.addEventListener('keydown', onViewKey);
+    window.addEventListener('pointermove', onLook);
+    window.addEventListener('wheel', onLook, { passive: true });
+    return () => {
+      window.removeEventListener('keydown', onViewKey);
+      window.removeEventListener('pointermove', onLook);
+      window.removeEventListener('wheel', onLook);
+    };
+  }, []);
 
   // zone is a dependency so arriving somewhere restarts the clock even when
   // the card was already open.
@@ -63,7 +90,7 @@ export default function ControlHelper({ hidden = false, zone }) {
       <button
         type="button"
         className="control-helper__tab"
-        onClick={() => setOpen(true)}
+        onClick={() => { setManual(true); setOpen(true); }}
         aria-label="Show controls"
       >
         ?

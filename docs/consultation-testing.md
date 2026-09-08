@@ -28,16 +28,17 @@ The current consultation follows this sequence:
 ## Current test content
 
 `game/src/consultation/authoredPatients/` contains the complete Nora Byrne,
-Samuel Taylor, and Carmela Russo authored cases. `technicalPatients.js` still
-creates seeded fixtures used to test procedural identity, appearance, and
-basic consultation behavior, but those fixtures are no longer in the opening
-queue.
+Samuel Taylor, Carmela Russo, Wilhelmina Otten, and Ferdinand de Chapuys cases.
+`technicalPatients.js` still creates seeded fixtures used to test procedural
+identity, appearance, and basic consultation behavior, but those fixtures are
+no longer in the opening queue.
 
-All three authored patients are researched fictional composites. Their sources and
+All five authored patients are researched fictional composites. Their sources and
 invented connective material are recorded in
 [patients/nora-byrne.md](patients/nora-byrne.md),
-[patients/samuel-taylor.md](patients/samuel-taylor.md), and
-[patients/carmela-russo.md](patients/carmela-russo.md). The technical fixture's
+[patients/samuel-taylor.md](patients/samuel-taylor.md),
+[patients/carmela-russo.md](patients/carmela-russo.md), and
+[patients/ferdinand-de-chapuys.md](patients/ferdinand-de-chapuys.md). The technical fixture's
 diagnosis and treatment mappings remain placeholders.
 Animation parameters are not clinical measurements unless the patient record
 defines them as such.
@@ -87,10 +88,13 @@ npm --prefix game run playtest:samuel -- --demo
 npm --prefix game run playtest:samuel -- --compare
 npm --prefix game run playtest:carmela -- --demo
 npm --prefix game run playtest:carmela -- --compare
+npm --prefix game run playtest:chapuys -- --demo
+npm --prefix game run playtest:chapuys -- --compare
 ```
 
 `playtest:consult` defaults to Nora. `playtest:samuel` selects Samuel and
-`playtest:carmela` selects Carmela. `--demo` prints every state transition in
+`playtest:carmela` selects Carmela and `playtest:chapuys` selects Ferdinand.
+`--demo` prints every state transition in
 the focused path. `--compare` shows three
 routes and their time, question count, examination count, satisfaction,
 payment, and one-month outcome in one table. Individual prompt and examination
@@ -99,7 +103,7 @@ see the current available IDs and custom-path syntax.
 
 The tests cover:
 
-- all three patient records satisfying the contract;
+- all authored patient records satisfying the contract;
 - seeded patient and appearance generation being reproducible;
 - the generated draft presentation remaining connected to the playable case;
 - interpretation taking no time;
@@ -117,6 +121,8 @@ The tests cover:
 - Samuel's state-based occupational branch and mandatory foreman response;
 - Samuel's focused route concluding in twenty-three minutes without exhausting
   his bereavement and safety history;
+- Ferdinand's drink-pattern branch, mandatory response, and twenty-seven-minute
+  evidence-led route;
 - optional prose notes accepting zero words when the case requirements are met;
 - a focused Carmela route filling exactly thirty minutes;
 - Carmela's immediate approval diverging from one-month health;

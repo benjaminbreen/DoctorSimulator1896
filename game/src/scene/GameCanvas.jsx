@@ -1,3 +1,4 @@
+import GroundContacts from './GroundContacts.jsx';
 import {
   lazy,
   Suspense,
@@ -29,7 +30,6 @@ import { takeArrival } from '../world/travel.js';
 import { terrainHeight } from '../world/terrain.js';
 import { deriveRoom, validateBlueprint } from '../world/blueprint.js';
 import { dressWindows } from '../world/windowDressing.js';
-import { damp } from '../movement/mathUtils.js';
 import { solarRamps } from '../world/solar.js';
 import { gameDebug } from '../debug.js';
 import { getInteraction } from '../world/interaction.js';
@@ -41,7 +41,9 @@ import {
   webGLContextKey,
 } from './mobileGraphics.js';
 import { createAdaptiveDprController } from './adaptiveDpr.js';
-import { warmInteriorAssets, warmParkAssets } from './parkPreload.js';
+import { warmInteriorAssets, warmParkAssets, warmPatient } from './parkPreload.js';
+import { prepareStage } from './prepareStage.js';
+import { createFrameTiming } from './frameTiming.js';
 
 const Room = lazy(() => import('./Room.jsx'));
 const Furniture = lazy(() => import('./Furniture.jsx'));
@@ -133,7 +135,7 @@ function RenderedStage({ stage, onRendered }) {
 
 // Start the browser's parallel shader compilation while the previous stage
 // remains visible. The group is revealed only after compilation completes.
-function CompiledStage({ stage, onRendered, children }) {
+function CompiledStage({ stage, onRendered, children, final }) {
   const group = useRef(null);
   const [compiled, setCompiled] = useState(false);
   const gl = useThree((state) => state.gl);
@@ -145,33 +147,26 @@ function CompiledStage({ stage, onRendered, children }) {
     const object = group.current;
     if (!object) return undefined;
     let cancelled = false;
-    let compilation;
-    try {
-      // three reads the first argument as the new object to compile and the
-      // third as the scene it is joining, so this initializes only this
-      // stage's materials against the live lighting. Passing the whole scene
-      // as both — which is what omitting the third argument does — made every
-      // stage walk everything already compiled.
-      //
-      // Lights are gathered with traverseVisible, so the group has to still be
-      // visible here; materials are not, so hiding it straight afterwards is
-      // safe and keeps ordinary frames showing the previous stage.
-      compilation = gl.compileAsync?.(object, camera, scene) ?? Promise.resolve();
-      object.visible = false;
-    } catch (error) {
-      compilation = Promise.reject(error);
-    }
+    object.userData.preparing = true;
+    object.updateWorldMatrix(true, true);
+    const compilation = prepareStage(gl, final ? scene : object, camera, scene, () => cancelled);
+    object.visible = false;
     const finish = () => {
       if (cancelled) return;
+      delete object.userData.preparing;
       object.visible = true;
       setCompiled(true);
       invalidate();
     };
-    Promise.resolve(compilation).then(finish, finish);
+    Promise.resolve(compilation).then(finish, (error) => {
+      console.error('Scene preparation failed', error);
+      finish();
+    });
     return () => {
+      delete object.userData.preparing;
       cancelled = true;
     };
-  }, [camera, gl, invalidate, scene]);
+  }, [camera, gl, invalidate, scene, final]);
 
   return (
     <group ref={group}>
@@ -184,11 +179,11 @@ function CompiledStage({ stage, onRendered, children }) {
 // One batch of a zone's arrival: suspends on its own assets, compiles its own
 // shaders, then reports so the next batch can start. Interiors and exteriors
 // both use it — a consulting room built in one go froze for as long as a park.
-function Stage({ active, stage, onRendered, children }) {
+function Stage({ active, stage, onRendered, children, final = false }) {
   if (!active) return null;
   return (
     <Suspense fallback={null}>
-      <CompiledStage stage={stage} onRendered={onRendered}>
+      <CompiledStage stage={stage} onRendered={onRendered} final={final}>
         {children}
       </CompiledStage>
     </Suspense>
@@ -204,6 +199,8 @@ function FrameSettings({ runtime, look, exposureBase, exterior, graphicsQuality,
   const gl = useThree((state) => state.gl);
   const camera = useThree((state) => state.camera);
   const setDpr = useThree((state) => state.setDpr);
+  const frameTiming = useRef(createFrameTiming());
+  const wasMeasuring = useRef(false);
   const adaptiveDpr = useRef(createAdaptiveDprController(
     Math.min(globalThis.devicePixelRatio ?? 1, pixelRatioCap),
   ));
@@ -255,14 +252,23 @@ function FrameSettings({ runtime, look, exposureBase, exterior, graphicsQuality,
       camera.fov = values.fov;
       camera.updateProjectionMatrix();
     }
-    gameDebug.stats.fps = damp(gameDebug.stats.fps, 1 / Math.max(delta, 1e-4), 3.5, delta);
+    const measuring = Boolean(gameDebug.stats.boot.complete) && globalThis.document?.visibilityState !== 'hidden';
+    if (measuring) {
+      if (!wasMeasuring.current) frameTiming.current.reset();
+      const timing = frameTiming.current.sample(delta);
+      Object.assign(gameDebug.stats, {
+        fps: timing.fps, frameP95: timing.p95, frameP99: timing.p99,
+        frameWorst: timing.worst, longFrames: timing.longFrames,
+      });
+    }
+    wasMeasuring.current = measuring;
     const maxDpr = Math.min(globalThis.devicePixelRatio ?? 1, pixelRatioCap);
     if (graphicsQuality === 'auto') {
       adaptiveDpr.current.sample(
         gameDebug.stats.fps,
         delta,
         maxDpr,
-        Boolean(gameDebug.stats.boot.complete) && globalThis.document?.visibilityState !== 'hidden',
+        measuring,
       );
     } else if (adaptiveDpr.current.dpr !== maxDpr) {
       adaptiveDpr.current.reset(maxDpr);
@@ -286,6 +292,7 @@ export default function GameCanvas({
   keyboard,
   look,
   actors = [],
+  nextPatientRecipe,
   consultationActive = false,
   shotMode = false,
   rebuildVersion = 0,
@@ -337,6 +344,7 @@ export default function GameCanvas({
         keyboard={keyboard}
         look={look}
         actors={actors}
+        nextPatientRecipe={nextPatientRecipe}
         consultationActive={consultationActive}
         shotMode={shotMode}
         graphics={graphics}
@@ -348,12 +356,12 @@ export default function GameCanvas({
 
 // Applies rebuild-mode renderer params on each zone mount; the context usually
 // persists on desktop, so this replaces what onCreated used to do there.
-function RendererZoneSettings({ runtime }) {
+function RendererZoneSettings({ runtime, postEnabled }) {
   const gl = useThree((state) => state.gl);
   useEffect(() => {
     gameDebug.renderer = gl;
-    gl.toneMapping = TONE_MAPPINGS[runtime.values.toneMapping] ?? THREE.ACESFilmicToneMapping;
-  }, [gl, runtime]);
+    gl.toneMapping = postEnabled ? THREE.NoToneMapping : (TONE_MAPPINGS[runtime.values.toneMapping] ?? THREE.ACESFilmicToneMapping);
+  }, [gl, runtime, postEnabled]);
   return null;
 }
 
@@ -363,6 +371,7 @@ function SceneContents({
   keyboard,
   look,
   actors,
+  nextPatientRecipe,
   consultationActive,
   shotMode,
   graphics,
@@ -448,8 +457,14 @@ function SceneContents({
     [zone],
   );
 
+  const gl = useThree((state) => state.gl);
+  useEffect(() => {
+    if (room.exterior || !nextPatientRecipe) return undefined;
+    return warmPatient(nextPatientRecipe, gl);
+  }, [room.exterior, nextPatientRecipe, gl]);
   const [stage, setStage] = useState(0);
   const [coreReady, setCoreReady] = useState(false);
+  const [bootComplete, setBootComplete] = useState(false);
   const [avatarReady, setAvatarReady] = useState(() => !values.showAvatarGlb);
   const bootStartedAt = useRef(globalThis.performance?.now?.() ?? Date.now());
   const advanceTimer = useRef(null);
@@ -463,54 +478,16 @@ function SceneContents({
   // on a slow connection.
   useEffect(() => {
     if (!room.exterior || !coreReady) return undefined;
-    return warmParkAssets(parkModelGroups);
-  }, [coreReady, parkModelGroups, room.exterior]);
+    return warmParkAssets(parkModelGroups, gl);
+  }, [coreReady, parkModelGroups, room.exterior, gl]);
 
-  // Once the park's own stages are all mounted, spend the idle pipe on where
-  // the day goes next: the interiors and the patient cohort models.
+  // Leave the connection and main thread to the park until it has settled.
   useEffect(() => {
-    if (!room.exterior || stage < PARK_STAGE_LABELS.length - 1) return undefined;
-    return warmInteriorAssets();
-  }, [room.exterior, stage]);
-
-  // Upload every texture at idle once the stages are in. Left to first sight,
-  // each upload lands mid-play as a hitch when the player walks somewhere new.
-  const gl = useThree((state) => state.gl);
-  const scene = useThree((state) => state.scene);
-  useEffect(() => {
-    if (stage < stageLabels.length - 1) return undefined;
-    const textures = new Set();
-    scene.traverse((object) => {
-      const materials = Array.isArray(object.material)
-        ? object.material
-        : object.material ? [object.material] : [];
-      for (const material of materials) {
-        for (const value of Object.values(material)) {
-          if (value?.isTexture) textures.add(value);
-        }
-        for (const uniform of Object.values(material.uniforms ?? {})) {
-          if (uniform?.value?.isTexture) textures.add(uniform.value);
-        }
-      }
-    });
-    const queue = [...textures].filter((texture) => texture.image);
-    let cancelled = false;
-    const schedule = globalThis.requestIdleCallback ?? ((fn) => setTimeout(() => fn({ timeRemaining: () => 6 }), 50));
-    const cancel = globalThis.cancelIdleCallback ?? clearTimeout;
-    let handle = null;
-    const step = () => {
-      // One per callback: a single large upload can eat a whole frame, so
-      // batching more into one idle slice would recreate the hitch this
-      // warm-up exists to remove.
-      if (queue.length > 0) gl.initTexture(queue.pop());
-      if (queue.length > 0 && !cancelled) handle = schedule(step);
-    };
-    handle = schedule(step);
-    return () => {
-      cancelled = true;
-      if (handle !== null) cancel(handle);
-    };
-  }, [stage, stageLabels.length, gl, scene]);
+    if (!room.exterior || !bootComplete) return undefined;
+    let abort;
+    const timer = setTimeout(() => { abort = warmInteriorAssets(); }, 15000);
+    return () => { clearTimeout(timer); abort?.(); };
+  }, [room.exterior, bootComplete]);
 
   useEffect(() => {
     bootStartedAt.current = globalThis.performance?.now?.() ?? Date.now();
@@ -548,7 +525,7 @@ function SceneContents({
     globalThis.performance?.mark?.(`${bootTag}:boot:${label}`);
     console.info(`[${bootTag}-boot] ${label} ${elapsedMs}ms`);
     if (rendered === 0) setCoreReady(true);
-    if (complete) return;
+    if (complete) { setBootComplete(true); return; }
     if (advanceTimer.current !== null) clearTimeout(advanceTimer.current);
     // A short quiet frame between batches makes the progress visible and
     // stops React, model parsing, Rapier, and shader work piling up at once.
@@ -564,7 +541,7 @@ function SceneContents({
 
   return (
     <>
-      <RendererZoneSettings runtime={runtime} />
+      <RendererZoneSettings runtime={runtime} postEnabled={graphics.postEnabled} />
       <WorldClockStep clock={worldClock} runtime={runtime} />
       <FrameSettings
         runtime={runtime}
@@ -602,6 +579,7 @@ function SceneContents({
               <MoonDisc runtime={runtime} />
               <CloudDome config={lighting} runtime={runtime} />
               <Terrain />
+              <GroundContacts />
               <PlayerRig
                 room={room}
                 runtime={runtime}
@@ -665,7 +643,7 @@ function SceneContents({
                 />
               </Stage>
 
-              <Stage active={stage >= 7} stage={7} onRendered={onStageRendered}>
+              <Stage final active={stage >= 7} stage={7} onRendered={onStageRendered}>
                 <ZoneFeatures
                   zone={zone}
                   runtime={runtime}
@@ -682,7 +660,7 @@ function SceneContents({
               <PlayerAvatar runtime={runtime} onReady={onAvatarReady} />
             </Suspense>
           )}
-          {graphics.postEnabled && stage >= 6 && (
+          {graphics.postEnabled && (
             <Suspense fallback={null}>
               <Effects runtime={runtime} indoors={false} />
             </Suspense>
@@ -755,12 +733,13 @@ function SceneContents({
             </Stage>
 
             <Stage active={stage >= 3} stage={3} onRendered={onStageRendered}>
-              {blueprint.id === 'CONSULTING_OFFICE'
-                && actors.length > 0
-                && (!graphics.deferIdleActors || consultationActive) && (
-                <ActorLayer actors={actors} />
-              )}
+
             </Stage>
+
+            <Suspense fallback={null}>
+              {blueprint.id === 'CONSULTING_OFFICE' && actors.length > 0
+                && (!graphics.deferIdleActors || consultationActive) && <ActorLayer actors={actors} />}
+            </Suspense>
 
             {/* Outside the stages: a 3.6MB figure, and nothing in the room
                 waits on it. */}
@@ -776,7 +755,7 @@ function SceneContents({
             )}
           </Physics>
           </Suspense>
-          {graphics.postEnabled && stage >= 2 && (
+          {graphics.postEnabled && (
             <Suspense fallback={null}>
               <Effects runtime={runtime} indoors />
             </Suspense>

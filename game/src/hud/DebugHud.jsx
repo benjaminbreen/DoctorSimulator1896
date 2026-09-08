@@ -72,6 +72,12 @@ export default function DebugHud({ showStats = false }) {
       const scene = cachedSceneMetrics.current;
       setSnapshot({
         fps: Math.round(gameDebug.stats.fps),
+        p95: Math.round(gameDebug.stats.frameP95 ?? 0),
+        p99: Math.round(gameDebug.stats.frameP99 ?? 0),
+        worst: Math.round(gameDebug.stats.frameWorst ?? 0),
+        longFrames: gameDebug.stats.longFrames ?? 0,
+        loading: !gameDebug.stats.boot.complete,
+        stage: gameDebug.stats.boot.stage,
         pixelRatio: gameDebug.stats.pixelRatio.toFixed(2),
         graphicsQuality: gameDebug.stats.graphicsQuality,
         zone: gameDebug.zoneLabel ?? '',
@@ -112,6 +118,8 @@ export default function DebugHud({ showStats = false }) {
         <div className="pointer-events-none absolute left-3 top-28 rounded bg-black/55 px-3 py-2 font-mono text-[11px] leading-relaxed text-neutral-300">
           <div className="text-amber-200">{snapshot.zone}</div>
           <div>{snapshot.fps} fps · {snapshot.graphicsQuality} · {snapshot.pixelRatio}× DPR</div>
+          <div>p95 {snapshot.p95}ms · p99 {snapshot.p99}ms · worst {snapshot.worst}ms</div>
+          <div>{snapshot.longFrames} frames over 50ms · {snapshot.loading ? `loading ${snapshot.stage}` : 'ready'}</div>
           <div>{snapshot.draws} draws · {Math.round(snapshot.triangles / 1000)}k tris</div>
           <div>{snapshot.skinned} figures · {snapshot.skinnedBones} bones</div>
           <div>{snapshot.pedestrianFarLods}/{snapshot.pedestrianLodTotal} pedestrian far LODs</div>
@@ -123,6 +131,11 @@ export default function DebugHud({ showStats = false }) {
           <div>
             {snapshot.grounded ? 'grounded' : 'airborne'} · cam {snapshot.camera}m
           </div>
+        </div>
+      )}
+      {!showStats && snapshot.loading && (
+        <div role="status" className="pointer-events-none absolute bottom-5 left-4 rounded bg-black/65 px-3 py-2 text-xs text-amber-100">
+          Preparing {snapshot.zone.split(' — ')[0] || 'the scene'}…
         </div>
       )}
       {contextualPrompt && (

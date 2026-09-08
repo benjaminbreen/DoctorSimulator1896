@@ -264,11 +264,18 @@ function latestUtterance(history) {
 // Words that would unlock a withheld fact glow gold, like the mockup's
 // emphasized "weight": the clue words are the ones worth pursuing.
 function markedQuote(text, tokens) {
-  if (!tokens.length) return text;
-  return String(text).split(/(\s+)/).map((chunk, index) => {
-    const word = chunk.replace(/[^\p{L}\p{N}]/gu, '').toLowerCase();
-    const marked = word.length > 2 && tokens.some((token) => word.includes(token));
-    return marked ? <em key={index} className="gcon-mark">{chunk}</em> : chunk;
+  return String(text).split(/(\*[^*\n]+\*)/g).map((piece, pieceIndex) => {
+    if (piece.startsWith('*') && piece.endsWith('*')) {
+      return <em key={`stress-${pieceIndex}`}>{piece.slice(1, -1)}</em>;
+    }
+    if (!tokens.length) return piece;
+    return piece.split(/(\s+)/).map((chunk, chunkIndex) => {
+      const word = chunk.replace(/[^\p{L}\p{N}]/gu, '').toLowerCase();
+      const marked = word.length > 2 && tokens.some((token) => word.includes(token));
+      return marked
+        ? <em key={`${pieceIndex}-${chunkIndex}`} className="gcon-mark">{chunk}</em>
+        : chunk;
+    });
   });
 }
 
@@ -1025,7 +1032,7 @@ export default function ConsultationView({
         <div className="gcon-arrival">
           <p className="gcon-eyebrow">{patient.label}</p>
           <p className="gcon-arrival-description">{patient.opening.behavior}</p>
-          <blockquote className="gcon-quote">{patient.opening.dialogue}</blockquote>
+          <blockquote className="gcon-quote">{markedQuote(patient.opening.dialogue, [])}</blockquote>
           <Ornament />
           <footer className="gcon-hint gcon-hint--arrival">
             <button type="button" className="gcon-continue" onClick={beginInquiry}>Continue</button>

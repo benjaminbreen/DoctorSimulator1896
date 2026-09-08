@@ -350,11 +350,12 @@ adherence, and social consequences.
 
 ## Current implementation
 
-As of 2026-08-13, the game has:
+As of 2026-08-21, the game has:
 
 - a mounted consultation view in the consulting office;
-- Nora Byrne, Samuel Taylor, and Carmela Russo, playable research-draft
-  authored composites with source provenance and deterministic etiologies;
+- Nora Byrne, Samuel Taylor, Carmela Russo, Wilhelmina Otten, and Ferdinand de
+  Chapuys as playable research-draft authored composites with source provenance
+  and deterministic etiologies;
 - fixed interpretation, speech, examination, diagnosis, treatment, and case
   note stages;
 - state-based authored prompt selection, three written speech choices, custom
@@ -391,7 +392,7 @@ The following parts of the final design are not yet implemented:
 - persistent practice-wide reputation effects;
 - the multi-day practice economy;
 - model-rendered James letters and modern debriefs;
-- additional researched authored patients beyond Nora, Samuel, and Carmela;
+- additional researched authored patients beyond the current authored pool;
 - the future patient role.
 
 ## Acceptance conditions

@@ -128,3 +128,9 @@ test('the Center Drive conversation occupies opposite ends of one real bench', (
     assert.ok(parkItems.some((entry) => entry.id === talker.benchId));
   }
 });
+
+test('Belt Line passengers stand on the pavement rather than the buried terrain', () => {
+  const passengers = PEDESTRIAN_STANDERS.filter((entry) => entry.id.startsWith('belt-line-wait-'));
+  assert.ok(passengers.length > 0);
+  for (const passenger of passengers) assert.equal(passenger.onTerrain, false, passenger.id);
+});

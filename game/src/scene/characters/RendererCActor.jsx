@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useFrame, useLoader, useThree } from '@react-three/fiber';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { patientModelPath } from './patientModelPath.js';
+import { prepareStage } from '../prepareStage.js';
+import { GLTFLoader } from '../modelLoader.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { MeshoptDecoder } from 'meshoptimizer';
 import { BODY_CUE_CLIPS } from '../../../../shared/characters/recipe.js';
@@ -46,18 +48,15 @@ const TRANSIENT_BODY_CUES = new Set([
 
 export default function RendererCActor({ recipe, manifest, onReady, paused = false, walkIn = false }) {
   const gl = useThree((state) => state.gl);
+  const renderScene = useThree((state) => state.scene);
+  const camera = useThree((state) => state.camera);
   const configure = useCallback((loader) => {
     loader.setMeshoptDecoder(MeshoptDecoder);
     loader.setKTX2Loader(getKTX2Loader(gl));
   }, [gl]);
-  const gltf = useLoader(GLTFLoader, recipe.asset?.path || manifest.path, configure);
-  // Optional sidecar of extra clips on a skeleton-only carrier. Tracks bind by
-  // bone name, so it must target the same rig as the base model.
-  const motionGltf = useLoader(
-    GLTFLoader,
-    recipe.asset?.motionPath || recipe.asset?.path || manifest.path,
-    configure,
-  );
+  const bodyPath = patientModelPath(recipe, manifest);
+  const [gltf, motionGltf] = useLoader(GLTFLoader,
+    [bodyPath, recipe.asset?.motionPath || bodyPath], configure);
   const clips = useMemo(() => {
     let merged = gltf.animations;
     if (recipe.asset?.motionPath) {
@@ -161,6 +160,12 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
       ? { ...recipe, presentation: { ...recipe.presentation, outfitId: 'shell-dress' } }
       : recipe;
     applyRendererCWardrobe(actor.root, effective);
+    if (effective.presentation?.outfitId === 'golden-dress') {
+      for (const name of ['RendererC_GoldenDressSkirt', 'RendererC_GoldenDressSeatedSkirt']) {
+        const skirt = actor.root.getObjectByName(name);
+        if (skirt) skirt.userData.preparing = true;
+      }
+    }
     actor.root.updateMatrixWorld(true);
   }, [actor, recipe.animation.body, recipe.asset?.applyRecipe, recipe.presentation?.outfitId, shellDress]);
 
@@ -382,12 +387,21 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
     for (const material of materials) material.dispose();
   }, [actor]);
 
-  const readyRef = useCallback((node) => {
-    if (node) onReady?.(recipe.id);
-  }, [onReady, recipe.id]);
+  useEffect(() => {
+    let cancelled = false;
+    actor.root.visible = false;
+    prepareStage(gl, actor.root, camera, renderScene, () => cancelled).then(() => {
+      if (cancelled) return;
+      actor.root.visible = true;
+      onReady?.(recipe.id);
+    }, error => {
+      if (!cancelled) { actor.root.visible = true; console.error('Patient preparation failed', error); }
+    });
+    return () => { cancelled = true; };
+  }, [actor, gl, camera, renderScene, onReady, recipe.id]);
 
   useFrame((_, delta) => {
-    if (paused) return;
+    if (paused || !actor.root.visible) return;
     const dt = Math.min(delta, 0.1);
     const entrance = entranceRef.current;
     const group = groupRef.current;
@@ -488,7 +502,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
 
   const { position, rotation, scale } = recipe.placement;
   return (
-    <group ref={(node) => { groupRef.current = node; readyRef(node); }} position={position} rotation={rotation} scale={scale}>
+    <group ref={groupRef} position={position} rotation={rotation} scale={scale}>
       <primitive object={actor.root} />
     </group>
   );

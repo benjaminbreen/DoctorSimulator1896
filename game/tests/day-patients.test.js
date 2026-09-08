@@ -1,12 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createDayPatients } from '../src/consultation/technicalPatients.js';
-import { createConsultationPatients, NORA_BYRNE } from '../src/consultation/patients.js';
+import {
+  AUTHORED_PATIENT_POOL,
+  FERDINAND_DE_CHAPUYS,
+  createConsultationPatients,
+} from '../src/consultation/patients.js';
+import { validateConsultationPatient } from '../src/consultation/contract.js';
 import { consultationTransition, startConsultation, buildDialogueRequest } from '../src/consultation/engine.js';
 import { renderOfflineDialogue } from '../src/consultation/offlineRenderer.js';
 
-test('day one is authored; later days roll distinct procedural casts', () => {
-  assert.equal(createConsultationPatients()[0], NORA_BYRNE);
+test('day one draws three from the authored pool; later days roll procedural casts', () => {
+  const day1 = createConsultationPatients({ daySeed: 77, dayIndex: 0, count: 3 });
+  assert.equal(day1.length, 3);
+  assert.ok(day1.every((patient) => AUTHORED_PATIENT_POOL.includes(patient)));
   const day2 = createConsultationPatients({ daySeed: 77, dayIndex: 2 });
   const day3 = createConsultationPatients({ daySeed: 78, dayIndex: 3 });
   assert.equal(day2.length, 4);
@@ -14,6 +21,25 @@ test('day one is authored; later days roll distinct procedural casts', () => {
   // Ids carry the day, so casebook records never collide across days.
   assert.ok(day2.every((p) => p.id.startsWith('day2-')));
   assert.ok(day3.every((p) => p.id.startsWith('day3-')));
+});
+
+test('every patient eligible for day one satisfies the authored contract', () => {
+  for (const patient of AUTHORED_PATIENT_POOL) {
+    assert.deepEqual(validateConsultationPatient(patient), [], patient.id);
+  }
+});
+
+test('the authored day-one draw is deterministic and can include Chapuys', () => {
+  const first = createConsultationPatients({ daySeed: 42, dayIndex: 0, count: 3 });
+  const again = createConsultationPatients({ daySeed: 42, dayIndex: 0, count: 3 });
+  assert.deepEqual(first.map((patient) => patient.id), again.map((patient) => patient.id));
+
+  const seen = new Set();
+  for (let daySeed = 1; daySeed <= 40; daySeed += 1) {
+    for (const patient of createConsultationPatients({ daySeed, dayIndex: 0, count: 3 })) seen.add(patient);
+  }
+  assert.ok(seen.has(FERDINAND_DE_CHAPUYS));
+  assert.equal(seen.size, AUTHORED_PATIENT_POOL.length);
 });
 
 test('a rolled cast is deterministic per seed', () => {

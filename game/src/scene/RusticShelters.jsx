@@ -38,20 +38,21 @@ function roofGeometry(roofs, inset = 0) {
     const eave = ring(r, eaveY - inset * 0.05);
     if (roof.topR) {
       const top = ring(roof.topR, roof.topY - inset * 0.05);
-      const slope = Math.hypot(r - roof.topR, roof.topY - eaveY);
+      const slope = Math.hypot((r - roof.topR) * Math.cos(Math.PI / sides), roof.topY - eaveY);
       for (let k = 0; k < sides; k += 1) {
         const [e1, e2, t1, t2] = [eave(k), eave(k + 1), top(k), top(k + 1)];
         const edge = Math.hypot(e2[0] - e1[0], e2[2] - e1[2]);
-        pushTriangle(e1, e2, t2, [0, 0], [edge / 1.6, 0], [edge / 1.6, slope / 1.6]);
-        pushTriangle(e1, t2, t1, [0, 0], [edge / 1.6, slope / 1.6], [0, slope / 1.6]);
+        const insetU = edge * (1 - roof.topR / r) / 2;
+        pushTriangle(e1, e2, t2, [0, 0], [edge, 0], [edge - insetU, slope]);
+        pushTriangle(e1, t2, t1, [0, 0], [edge - insetU, slope], [insetU, slope]);
       }
     } else {
       const apex = [center[0], roof.apexY - inset * 0.07, center[1]];
-      const slope = Math.hypot(r, roof.apexY - eaveY);
+      const slope = Math.hypot(r * Math.cos(Math.PI / sides), roof.apexY - eaveY);
       for (let k = 0; k < sides; k += 1) {
         const [e1, e2] = [eave(k), eave(k + 1)];
         const edge = Math.hypot(e2[0] - e1[0], e2[2] - e1[2]);
-        pushTriangle(e1, e2, apex, [0, 0], [edge / 1.6, 0], [edge / 3.2, slope / 1.6]);
+        pushTriangle(e1, e2, apex, [0, 0], [edge, 0], [edge / 2, slope]);
       }
     }
   }
@@ -86,7 +87,7 @@ export default function RusticShelters() {
       normalMap: barkNrm,
       normalScale: new THREE.Vector2(0.6, 0.6),
       roughness: 0.95,
-      color: '#c9bba6',
+      color: '#c4c2ba',
     });
     // The plank albedo is dark; gain over 1 lifts it to weathered cedar.
     const planks = new THREE.MeshStandardMaterial({
@@ -94,7 +95,7 @@ export default function RusticShelters() {
       normalMap: planksNrm,
       roughness: 0.9,
     });
-    planks.color.setRGB(1.6, 1.5, 1.28);
+    planks.color.setRGB(1.35, 1.32, 1.26);
     const shingles = new THREE.MeshStandardMaterial({
       map: shingleCol,
       normalMap: shingleNrm,
@@ -104,17 +105,40 @@ export default function RusticShelters() {
     const underside = new THREE.MeshStandardMaterial({
       map: planksCol,
       roughness: 0.97,
-      color: '#5c5244',
+      color: '#49483e',
       side: THREE.DoubleSide,
     });
 
+    for (const material of [bark, planks, shingles]) {
+      material.onBeforeCompile = (shader) => {
+        shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
+          #include <map_fragment>
+          float timberLuma = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+          diffuseColor.rgb = mix(vec3(timberLuma), diffuseColor.rgb, 0.60);
+        `);
+      };
+      material.customProgramCacheKey = () => 'weathered-timber-v1';
+    }
+
     // Poles are faceted and slightly tapered; branches thinner and rougher.
-    const poleGeo = new THREE.CylinderGeometry(0.82, 1, 1, 7);
-    const branchGeo = new THREE.CylinderGeometry(0.86, 1, 1, 5);
+    const poleGeo = new THREE.CylinderGeometry(0.82, 1, 1, 7, 4);
+    const branchGeo = new THREE.CylinderGeometry(0.86, 1, 1, 5, 4);
+    // Darken the ends where poles meet beams without another shadow pass.
+    for (const geometry of [poleGeo, branchGeo]) {
+      const position = geometry.attributes.position;
+      const colors = new Float32Array(position.count * 3);
+      for (let i = 0; i < position.count; i++) {
+        const shade = Math.abs(position.getY(i)) > 0.49 ? 0.78 : 1;
+        colors.set([shade, shade, shade], i * 3);
+      }
+      geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    }
+    bark.vertexColors = true;
     const roofMesh = new THREE.Mesh(roofGeometry(built.roofs), shingles);
     roofMesh.castShadow = true;
     roofMesh.receiveShadow = true;
     const roofUnder = new THREE.Mesh(roofGeometry(built.roofs, 1), underside);
+    roofUnder.receiveShadow = true;
 
     return {
       meshes: [

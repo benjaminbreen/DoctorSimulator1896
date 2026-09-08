@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useFrame, useLoader, useThree } from '@react-three/fiber';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFLoader } from './modelLoader.js';
 import { MeshoptDecoder } from 'meshoptimizer';
 import { gameDebug } from '../debug.js';
 import { getPlayer } from '../world/player.js';
@@ -28,14 +28,12 @@ import { playerAvatarUrl } from './playerModel.js';
 // it follows the capsule from the debug handle instead of being parented to it.
 const MODEL = playerAvatarUrl();
 
-// Ground the Mixamo walk covers per second at timeScale 1. Playback scales
-// with real speed so the feet roughly keep up, but the game's walk is far
-// faster than a person's, so the ratio is capped low: an ambling stride that
-// slides a little reads better than legs pumping at double speed.
+// Keep foot speed matched to the tuned walk and run. The old 1.3x ceiling
+// made the character slide at even the ordinary walking speed.
 const CLIP_SPEED = 1.4;
-const MAX_PLAYBACK = 1.3;
+const MAX_PLAYBACK = 2.0;
 const RUN_CLIP_SPEED = 3.2;
-const MAX_RUN_PLAYBACK = 1.3;
+const MAX_RUN_PLAYBACK = 2.0;
 // CarryWalk is a deliberately careful 2.9s cycle; speed it up enough to keep
 // its feet near the game pace without losing the weighted, two-handed read.
 const CARRY_WALK_CLIP_SPEED = 1.8;
@@ -113,6 +111,22 @@ export default function PlayerAvatar({ runtime, onReady }) {
       object.frustumCulled = false;
     });
     normalizeNonmetallicCharacterMaterials(root);
+    root.traverse((object) => {
+      if (!object.isMesh) return;
+      for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+        if (material.userData.fabricLift) continue;
+        material.userData.fabricLift = true;
+        material.onBeforeCompile = (shader) => {
+          shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
+            #include <map_fragment>
+            float clothLuma = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+            float darkCloth = 1.0 - smoothstep(0.015, 0.07, clothLuma);
+            diffuseColor.rgb += vec3(0.009, 0.010, 0.012) * darkCloth;
+          `);
+        };
+        material.customProgramCacheKey = () => 'player-dark-fabric-v1';
+      }
+    });
     const animations = new THREE.AnimationMixer(root);
     const clip = (name) => {
       const found = gltf.animations.find((entry) => entry.name === name);

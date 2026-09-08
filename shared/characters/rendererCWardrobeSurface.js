@@ -64,7 +64,7 @@ export function rendererCFabricMaterialSettings(fabricType, values = {}) {
   return Object.freeze({
     fabric,
     roughness: clamp(preset.roughness + (roughnessControl - 1) * 0.18, 0.72, 0.98),
-    normalScale: preset.normalScale * relief,
+    normalScale: preset.normalScale * relief * 0.45,
     sheen: clamp(preset.sheen * sheenControl, 0, 0.18),
     sheenRoughness: preset.sheenRoughness,
     anisotropy: clamp(preset.anisotropy * Math.min(sheenControl, 1.2), 0, 0.27),
@@ -223,6 +223,7 @@ function assignedTexture(material, fabric, channel) {
 function ensureGarmentUv(mesh) {
   const geometry = mesh.geometry;
   if (!geometry?.attributes?.position || geometry.userData.rendererCWardrobeUv) return;
+  if (/GoldenDress/.test(mesh.name) && geometry.attributes.uv) return;
   geometry.computeBoundingBox();
   const { min, max } = geometry.boundingBox;
   const span = new THREE.Vector3().subVectors(max, min);
@@ -270,6 +271,20 @@ outgoingLight *= min(1.0, ${WARDROBE_HDR_LUMINANCE_CEILING.toFixed(1)} / max(rcW
 }
 
 function configureFabric(material, values, { color, fabricType } = {}) {
+  if (!material.userData.softFabricWeave) {
+    material.userData.softFabricWeave = true;
+    const previous = material.onBeforeCompile;
+    const previousKey = material.customProgramCacheKey.bind(material);
+    material.onBeforeCompile = (shader, renderer) => {
+      previous?.(shader, renderer);
+      shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
+        #include <map_fragment>
+        diffuseColor.rgb = mix(diffuse * 0.65, diffuseColor.rgb, 0.30);
+      `);
+    };
+    material.customProgramCacheKey = () => `${previousKey()}|soft-fabric-v1`;
+    material.needsUpdate = true;
+  }
   const settings = rendererCFabricMaterialSettings(fabricType, values);
   const { fabric } = settings;
   const preset = RENDERER_C_FABRICS[fabric];
@@ -291,7 +306,7 @@ function configureFabric(material, values, { color, fabricType } = {}) {
   material.map = assignedTexture(material, fabric, 'albedo');
   material.roughnessMap = assignedTexture(material, fabric, 'roughness');
   material.normalMap = assignedTexture(material, fabric, 'normal');
-  const repeat = preset.repeat * scale;
+  const repeat = preset.repeat * scale * 4;
   for (const texture of [material.map, material.roughnessMap, material.normalMap]) {
     texture?.repeat?.set(repeat, repeat);
   }
@@ -710,7 +725,7 @@ export function applyRendererCWomenWardrobeSurface(root, values = {}) {
   const { neckline, cuffs } = ensureBodyBoundDetails(root);
 
   for (const mesh of garmentMeshes(root)) {
-    replaceMaterials(mesh, physicalMaterial);
+    if (!['cotton', 'wool'].includes(fabricType)) replaceMaterials(mesh, physicalMaterial);
     ensureGarmentUv(mesh);
     mesh.geometry.computeBoundingBox();
     const trim = materialsOf(mesh).some((material) => /Trim/.test(material.name));
@@ -720,7 +735,7 @@ export function applyRendererCWomenWardrobeSurface(root, values = {}) {
     for (const material of materialsOf(mesh)) {
       const materialTrim = /Trim/.test(material.name);
       const goldenColor = /Accent/.test(material.name)
-        ? accent
+        ? (/GoldenDress.*Skirt/.test(mesh.name) ? primary : accent)
         : /Secondary/.test(material.name) ? secondary : primary;
       configureFabric(material, values, {
         color: golden
@@ -728,7 +743,7 @@ export function applyRendererCWomenWardrobeSurface(root, values = {}) {
           : role === 'neckline' || role === 'cuff' ? secondary : materialTrim || trim ? accent : primary,
         fabricType,
       });
-      if (golden && /(?:Secondary|Accent)/.test(material.name)) updateGoldenDetailShader(material, values);
+      if (golden && /GoldenDressDetails/.test(mesh.name) && /(?:Secondary|Accent)/.test(material.name)) updateGoldenDetailShader(material, values);
       if (!golden && !materialTrim) {
         shaderState(material, role, mesh.geometry.boundingBox);
         updateShader(material, { ...values, secondaryColor: secondary, trimColor: accent }, mesh.geometry.boundingBox);

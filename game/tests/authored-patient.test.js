@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { NORA_BYRNE, createConsultationPatients } from '../src/consultation/patients.js';
+import { AUTHORED_PATIENT_POOL, NORA_BYRNE } from '../src/consultation/patients.js';
 import { validateConsultationPatient } from '../src/consultation/contract.js';
 import {
   buildDialogueRequest,
@@ -72,9 +72,8 @@ function finish(state, diagnosisId, treatmentId) {
   return consultationTransition(state, patient, { type: 'submit-case-note' });
 }
 
-test('Nora is the first playable patient and satisfies the authored contract', () => {
-  const patients = createConsultationPatients();
-  assert.equal(patients[0], patient);
+test('Nora is in the authored pool and satisfies the authored contract', () => {
+  assert.ok(AUTHORED_PATIENT_POOL.includes(patient));
   assert.equal(patient.label, 'Miss Nora Byrne');
   assert.equal(patient.profile.identity.age, 28);
   assert.equal(patient.contentStatus, 'research-draft');

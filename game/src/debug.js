@@ -21,6 +21,7 @@ export const gameDebug = {
   setLook: null,
   stats: {
     fps: 0,
+    frameP95: 0, frameP99: 0, frameWorst: 0, longFrames: 0, reflectionMs: 0,
     pixelRatio: 1,
     graphicsQuality: 'auto',
     // Whole-frame GPU counters, filled by FrameSettings. Shadow passes and
@@ -68,7 +69,9 @@ export const gameDebug = {
     let skinnedBones = 0;
     scene.traverse((object) => {
       if (object.isMesh) meshes += 1;
-      if (object.isSkinnedMesh && object.visible) {
+      let visible = object.visible;
+      for (let parent = object.parent; visible && parent; parent = parent.parent) visible = parent.visible;
+      if (object.isSkinnedMesh && visible) {
         skinnedVisible += 1;
         skinnedBones += object.skeleton?.bones?.length ?? 0;
       }

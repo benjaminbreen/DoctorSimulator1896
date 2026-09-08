@@ -22,3 +22,5 @@ const MODEL_NAMES = ARCHETYPE_MODELS.flatMap((name, archetype) =>
 );
 
 export const TREE_MODEL_URLS = MODEL_NAMES.map(modelUrl);
+
+export const TREE_LOD_URLS = TREE_MODEL_URLS.map((url) => url.replace('.glb', '-lod.glb'));

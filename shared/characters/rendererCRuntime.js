@@ -354,7 +354,8 @@ export function applyRendererCWardrobe(root, recipe) {
   if (recipe.cohort === 'women') {
     const fittedDress = outfitId === 'fitted-dress';
     const goldenDress = outfitId === 'golden-dress';
-    const seated = ['clinic-idle', 'sitting-talking', 'sitting-distressed'].includes(recipe.animation.body);
+    const seated = ['clinic-idle', 'sit-down', 'sitting-talking', 'sitting-distressed',
+      'sitting-self-soothing', 'sitting-disapproval', 'sitting-disbelief'].includes(recipe.animation.body);
     setNamedVisible(root, 'RendererC_BaseGarment', !goldenDress);
     setNamedVisible(root, 'RendererC_VictorianDress', fittedDress && !seated);
     setNamedVisible(root, 'RendererC_VictorianDetails', false);

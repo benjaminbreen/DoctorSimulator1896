@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createConsultationPatients, SAMUEL_TAYLOR } from '../src/consultation/patients.js';
+import { AUTHORED_PATIENT_POOL, SAMUEL_TAYLOR } from '../src/consultation/patients.js';
 import { validateConsultationPatient } from '../src/consultation/contract.js';
 import {
   actorCueForConsultation,
@@ -52,14 +52,14 @@ function finish(state, diagnosisId, treatmentId, factIds) {
   return consultationTransition(state, patient, { type: 'submit-case-note' });
 }
 
-test('Samuel is a complete authored patient in the second queue position', () => {
-  const patients = createConsultationPatients();
-  assert.equal(patients[1], patient);
+test('Samuel is a complete patient in the authored pool', () => {
+  assert.ok(AUTHORED_PATIENT_POOL.includes(patient));
   assert.equal(patient.label, 'Mr. Samuel Taylor');
   assert.equal(patient.profile.social.occupation, 'compositor temporarily assigned to stereotype work');
   assert.equal(patient.profileStatus, 'authored-composite');
   assert.equal(patient.sources.length, 4);
   assert.equal(patient.actor.recipe.values.skinTone, '#afa59b');
+  assert.deepEqual(patient.actor.recipe.placement.position, [0.45, 0.22, -1.57]);
   assert.deepEqual(validateConsultationPatient(patient), []);
 });
 
