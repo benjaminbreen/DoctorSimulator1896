@@ -29,7 +29,7 @@ import { setConsultationMode, setGamePaused } from './input/uiMode.js';
 import { setExaminationPresentation } from './consultation/examPresentation.js';
 import { seatFramingForPatient, setConsultationSeat } from './consultation/seatFraming.js';
 import { createConsultationPatients } from './consultation/patients.js';
-import { createWorldClock } from './world/clock.js';
+import { createWorldClock, DEFAULT_CLOCK_RATE } from './world/clock.js';
 import { createDaySchedule } from './world/daySchedule.js';
 import { createCallerDay } from './world/callers.js';
 import { createEventDay } from './world/streetEvents.js';
@@ -88,7 +88,18 @@ const nervesReviewParam = pageParams?.get('nerves');
 const nervesReview = nervesReviewParam == null ? null : Number(nervesReviewParam);
 
 export default function App() {
-  const worldClock = useMemo(() => createWorldClock(), []);
+  // Loading speed must not change the opening appointment state in a replay.
+  const worldClock = useMemo(() => createWorldClock({
+    rate: pageParams?.has('playtest') ? 0 : DEFAULT_CLOCK_RATE,
+  }), []);
+  useEffect(() => {
+    if (!pageParams?.has('playtest')) return undefined;
+    window.__playtest = {
+      startClock: () => worldClock.setRate(DEFAULT_CLOCK_RATE),
+      clock: () => ({ ...worldClock.getSnapshot(), logicalHours: worldClock.getLogicalHours() }),
+    };
+    return () => { delete window.__playtest; };
+  }, [worldClock]);
   // Any speaking NPC (the park keeper included) resolves through this
   // provider, so it must not wait for the pedestrian models to load.
   useEffect(() => {
@@ -217,6 +228,7 @@ export default function App() {
   // Tracks which patient's consultation is live; bumping the token remounts
   // the actor so the walk-in entrance plays when they are summoned.
   const consultEntranceRef = useRef({ patientId: null, token: 0 });
+  const actorPerformanceRef = useRef(null);
   // Standing settles once per consultation, when its result first appears.
   const settledResultsRef = useRef(new Set());
   // The errand notice waits out the result modal; it shows once the player is
@@ -225,7 +237,7 @@ export default function App() {
   useEffect(() => consultationRuntime.subscribe((state) => {
     setConsultActive(Boolean(state));
     setExamining(Boolean(state && state.stage === 'inquiry' && state.mode === 'examination'));
-    if (errandNoticeDueRef.current && (!state || state.stage !== 'result')) {
+    if (errandNoticeDueRef.current && (!state || !['result', 'return-visit'].includes(state.stage))) {
       errandNoticeDueRef.current = false;
       notice('A boy leaves a parcel: a volume to be delivered to Professor Cattell at the laboratory.', {
         key: 'errand', seconds: 9,
@@ -233,6 +245,7 @@ export default function App() {
     }
     if (!state) {
       consultEntranceRef.current.patientId = null;
+      actorPerformanceRef.current = null;
       return;
     }
     const patient = consultationPatients.find((candidate) => candidate.id === state.patientId);
@@ -260,7 +273,14 @@ export default function App() {
       entrance.token += 1;
       actorRuntime.setSingle({ ...patient.actor, entranceToken: entrance.token });
     }
-    actorRuntime.cue(patient.actor.id, actorCueForConsultation(state));
+    const event = state.history.findLast(item => ['opening', 'speech', 'examination', 'discussion', 'return-visit'].includes(item.kind));
+    const previous = actorPerformanceRef.current;
+    // Notes and menu changes must not restart the last spoken gesture.
+    const departureChanged = ['result', 'terminated', 'return-visit'].includes(state.stage) && previous?.stage !== state.stage;
+    if (previous?.patientId !== state.patientId || previous?.event !== event || departureChanged) {
+      actorRuntime.cue(patient.actor.id, actorCueForConsultation(state, patient));
+      actorPerformanceRef.current = { patientId: state.patientId, event, stage: state.stage };
+    }
   }), [actorRuntime, consultationRuntime, consultationPatients, worldClock, daySchedule]);
 
   // The examination reading only exists seated in the office; anywhere else
@@ -290,7 +310,10 @@ export default function App() {
     }
     const state = consultationRuntime.get();
     const patient = consultationPatients.find((candidate) => candidate.id === state?.patientId);
-    setConsultationSeat(seatFramingForPatient(patient?.actor.recipe.placement?.position));
+    setConsultationSeat({
+      ...seatFramingForPatient(patient?.actor.recipe.placement?.position),
+      zoom: patient?.actor.recipe.presentation?.consultationZoom,
+    });
     return () => {
       setConsultationMode(false);
       setConsultationSeat(null);

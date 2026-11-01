@@ -1,0 +1,565 @@
+{
+  "date": "2026-10-30",
+  "status": "verified-prototype",
+  "assets": [
+    {
+      "id": "carmela-russo",
+      "path": "game/public/models/characters/carmela-russo.glb",
+      "bytes": 8373664,
+      "sha256": "42f366ab4bfa34eaf8b1cb50a55591ca367929087d926da1b07f3f2b733a8671"
+    },
+    {
+      "id": "seamstress-prototype",
+      "path": "game/public/models/characters/seamstress-prototype.glb",
+      "bytes": 8228668,
+      "sha256": "9d802ef91d2a25d69ea126dfc249bf72dcc1effd075a61498511ed1b6b4c2a8a"
+    }
+  ],
+  "tests": {
+    "game": {
+      "tests": 766,
+      "passed": 766,
+      "failed": 0
+    },
+    "characterRuntime": {
+      "tests": 9,
+      "passed": 9,
+      "failed": 0
+    },
+    "focusedFaceAndIdentity": {
+      "tests": 25,
+      "passed": 25,
+      "failed": 0
+    },
+    "rootNpmTest": "Stops at legacy wardrobe preset validation: required fields are missing.",
+    "legacyRenderer": {
+      "tests": 20,
+      "passed": 2,
+      "failed": 18,
+      "reason": "Legacy model files remain Git LFS pointers; the working modular game assets are present."
+    }
+  },
+  "builds": {
+    "game": "passed",
+    "characterLab": "passed",
+    "warning": "Existing large JavaScript chunks"
+  },
+  "visualReview": {
+    "directory": "artifacts/characters/carmela-face-polish/review",
+    "captures": 134,
+    "errors": [],
+    "emotionDirectory": "artifacts/characters/carmela-face-polish/final",
+    "emotionCaptures": 25,
+    "motionDirectory": "artifacts/characters/carmela-face-polish/motion",
+    "continuousVideos": [
+      {
+        "filename": "carmela-russo-motion.webm",
+        "seconds": 8,
+        "initialState": {
+          "model": "carmela-russo",
+          "clip": "ClinicIdle",
+          "time": 0,
+          "expression": "relieved",
+          "speaking": true,
+          "faceTime": 0,
+          "autoBlink": true,
+          "performanceSeed": 7,
+          "weights": {},
+          "outfit": "day-dress",
+          "palette": "original",
+          "identityVariant": 0,
+          "features": {
+            "lowerFaceSize": -0.6
+          },
+          "skinTone": "original",
+          "hairTone": "original",
+          "eyeTone": "original",
+          "frame": {
+            "eyeY": 1.5195978529812044,
+            "mouthY": 1.4490633373566821,
+            "scale": 1.0000393443114397,
+            "eyeX": 0.0341893451033195
+          },
+          "hairStyle": "soft-side-waves",
+          "hairVolume": 0,
+          "hairWave": 0,
+          "hairBunHeight": 0,
+          "hairPartOffset": 0,
+          "hairEarCoverage": 0.3,
+          "hairMeshes": [
+            {
+              "name": "Carmela_HairStyle_braided_knot_Hair_braided_knot",
+              "visible": false,
+              "material": "Carmela_DarkHair",
+              "alphaTest": 0
+            },
+            {
+              "name": "Carmela_HairStyle_braided_knot_Hair_braided_knot_1",
+              "visible": false,
+              "material": "Carmela_HairPart",
+              "alphaTest": 0
+            },
+            {
+              "name": "Carmela_HairStyle_braided_knot_Hair_braided_knot_2",
+              "visible": false,
+              "material": "Carmela_HairStrands",
+              "alphaTest": 0.35
+            },
+            {
+              "name": "Carmela_HairStyle_center_chignon_Hair_center_chignon",
+              "visible": false,
+              "material": "Carmela_DarkHair",
+              "alphaTest": 0
+            },
+            {
+              "name": "Carmela_HairStyle_center_chignon_Hair_center_chignon_1",
+              "visible": false,
+              "material": "Carmela_HairPart",
+              "alphaTest": 0
+            },
+            {
+              "name": "Carmela_HairStyle_center_chignon_Hair_center_chignon_2",
+              "visible": false,
+              "material": "Carmela_HairStrands",
+              "alphaTest": 0.35
+            },
+            {
+              "name": "Carmela_HairStyle_curled_side_rolls_Hair_curled_side_rolls",
+              "visible": false,
+              "material": "Carmela_CurlyHair",
+              "alphaTest": 0
+            },
+            {
+              "name": "Carmela_HairStyle_curled_side_rolls_Hair_curled_side_rolls_1",
+              "visible": false,
+              "material": "Carmela_HairPart",
+              "alphaTest": 0
+            },
+            {
+              "name": "Carmela_HairStyle_curled_side_rolls_Hair_curled_side_rolls_2",
+              "visible": false,
+              "material": "Carmela_HairStrands",
+              "alphaTest": 0.35
+            },
+            {
+              "name": "Carmela_HairStyle_soft_side_waves_Hair_soft_side_waves",
+              "visible": true,
+              "material": "Carmela_DarkHair",
+              "alphaTest": 0
+            },
+            {
+              "name": "Carmela_HairStyle_soft_side_waves_Hair_soft_side_waves_1",
+              "visible": true,
+              "material": "Carmela_HairPart",
+              "alphaTest": 0
+            },
+            {
+              "name": "Carmela_HairStyle_soft_side_waves_Hair_soft_side_waves_2",
+              "visible": true,
+              "material": "Carmela_HairStrands",
+              "alphaTest": 0.35
+            },
+            {
+              "name": "Carmela_HairStyle_waved_knot_Hair_waved_knot",
+              "visible": false,
+              "material": "Carmela_DarkHair",
+              "alphaTest": 0
+            },
+            {
+              "name": "Carmela_HairStyle_waved_knot_Hair_waved_knot_1",
+              "visible": false,
+              "material": "Carmela_HairPart",
+              "alphaTest": 0
+            },
+            {
+              "name": "Carmela_HairStyle_waved_knot_Hair_waved_knot_2",
+              "visible": false,
+              "material": "Carmela_HairStrands",
+              "alphaTest": 0.35
+            }
+          ],
+          "morphs": [
+            "eyeLookInLeft",
+            "eyeLookOutLeft",
+            "eyeLookUpLeft",
+            "eyeLookDownLeft",
+            "eyeLookInRight",
+            "eyeLookOutRight",
+            "eyeLookUpRight",
+            "eyeLookDownRight",
+            "mouthSmileLeft",
+            "mouthFrownLeft",
+            "mouthStretchLeft",
+            "browDownLeft",
+            "mouthPressLeft",
+            "cheekSquintLeft",
+            "noseSneerLeft",
+            "mouthSmileRight",
+            "mouthFrownRight",
+            "mouthStretchRight",
+            "browDownRight",
+            "mouthPressRight",
+            "cheekSquintRight",
+            "noseSneerRight",
+            "browInnerUp",
+            "jawOpen",
+            "speechOpen",
+            "speechWide",
+            "speechRound",
+            "eyeBlinkLeft",
+            "eyeSquintLeft",
+            "eyeWideLeft",
+            "eyeBlinkRight",
+            "eyeSquintRight",
+            "eyeWideRight"
+          ],
+          "faceMeshes": [
+            "Carmela_Eye_Left",
+            "Carmela_Eye_Right",
+            "Carmela_Face",
+            "Carmela_GumsLower",
+            "Carmela_GumsUpper",
+            "Carmela_HairStyle_braided_knot_Hair_braided_knot",
+            "Carmela_HairStyle_braided_knot_Hair_braided_knot_1",
+            "Carmela_HairStyle_braided_knot_Hair_braided_knot_2",
+            "Carmela_HairStyle_center_chignon_Hair_center_chignon",
+            "Carmela_HairStyle_center_chignon_Hair_center_chignon_1",
+            "Carmela_HairStyle_center_chignon_Hair_center_chignon_2",
+            "Carmela_HairStyle_curled_side_rolls_Hair_curled_side_rolls",
+            "Carmela_HairStyle_curled_side_rolls_Hair_curled_side_rolls_1",
+            "Carmela_HairStyle_curled_side_rolls_Hair_curled_side_rolls_2",
+            "Carmela_HairStyle_soft_side_waves_Hair_soft_side_waves",
+            "Carmela_HairStyle_soft_side_waves_Hair_soft_side_waves_1",
+            "Carmela_HairStyle_soft_side_waves_Hair_soft_side_waves_2",
+            "Carmela_HairStyle_waved_knot_Hair_waved_knot",
+            "Carmela_HairStyle_waved_knot_Hair_waved_knot_1",
+            "Carmela_HairStyle_waved_knot_Hair_waved_knot_2",
+            "Carmela_Lid_Left",
+            "Carmela_Lid_Right",
+            "Carmela_Lips",
+            "Carmela_MouthInterior",
+            "Carmela_TeethLower",
+            "Carmela_TeethUpper",
+            "Carmela_Tongue"
+          ],
+          "head": [
+            0.011163195587400913,
+            1.0022983332683604,
+            0.1732300043049097
+          ],
+          "calls": 20,
+          "triangles": 54328,
+          "appliedWeights": {
+            "mouthSmileLeft": 0.2592,
+            "cheekSquintLeft": 0.45,
+            "mouthSmileRight": 0.24480000000000002,
+            "cheekSquintRight": 0.42,
+            "browInnerUp": 0.12,
+            "eyeSquintLeft": 0.3,
+            "eyeSquintRight": 0.28
+          }
+        }
+      },
+      {
+        "filename": "seamstress-prototype-motion.webm",
+        "seconds": 8,
+        "initialState": {
+          "model": "seamstress-prototype",
+          "clip": "ClinicIdle",
+          "time": 0,
+          "expression": "relieved",
+          "speaking": true,
+          "faceTime": 0,
+          "autoBlink": true,
+          "performanceSeed": 7,
+          "weights": {},
+          "outfit": "day-dress",
+          "palette": "original",
+          "identityVariant": 0,
+          "features": {
+            "lowerFaceSize": -0.6
+          },
+          "skinTone": "original",
+          "hairTone": "original",
+          "eyeTone": "original",
+          "frame": {
+            "eyeY": 1.5168179105680615,
+            "mouthY": 1.4447439456639097,
+            "scale": 0.9637125909965055,
+            "eyeX": 0.03294740606098853
+          },
+          "hairStyle": "soft-side-waves",
+          "hairVolume": 0,
+          "hairWave": 0,
+          "hairBunHeight": 0,
+          "hairPartOffset": 0,
+          "hairEarCoverage": 0.3,
+          "hairMeshes": [
+            {
+              "name": "Carmela_HairStyle_braided_knot_Hair_braided_knot",
+              "visible": false,
+              "material": "Carmela_DarkHair",
+              "alphaTest": 0
+            },
+            {
+              "name": "Carmela_HairStyle_braided_knot_Hair_braided_knot_1",
+              "visible": false,
+              "material": "Carmela_HairPart",
+              "alphaTest": 0
+            },
+            {
+              "name": "Carmela_HairStyle_braided_knot_Hair_braided_knot_2",
+              "visible": false,
+              "material": "Carmela_HairStrands",
+              "alphaTest": 0.35
+            },
+            {
+              "name": "Carmela_HairStyle_center_chignon_Hair_center_chignon",
+              "visible": false,
+              "material": "Carmela_DarkHair",
+              "alphaTest": 0
+            },
+            {
+              "name": "Carmela_HairStyle_center_chignon_Hair_center_chignon_1",
+              "visible": false,
+              "material": "Carmela_HairPart",
+              "alphaTest": 0
+            },
+            {
+              "name": "Carmela_HairStyle_center_chignon_Hair_center_chignon_2",
+              "visible": false,
+              "material": "Carmela_HairStrands",
+              "alphaTest": 0.35
+            },
+            {
+              "name": "Carmela_HairStyle_curled_side_rolls_Hair_curled_side_rolls",
+              "visible": false,
+              "material": "Carmela_CurlyHair",
+              "alphaTest": 0
+            },
+            {
+              "name": "Carmela_HairStyle_curled_side_rolls_Hair_curled_side_rolls_1",
+              "visible": false,
+              "material": "Carmela_HairPart",
+              "alphaTest": 0
+            },
+            {
+              "name": "Carmela_HairStyle_curled_side_rolls_Hair_curled_side_rolls_2",
+              "visible": false,
+              "material": "Carmela_HairStrands",
+              "alphaTest": 0.35
+            },
+            {
+              "name": "Carmela_HairStyle_soft_side_waves_Hair_soft_side_waves",
+              "visible": true,
+              "material": "Carmela_DarkHair",
+              "alphaTest": 0
+            },
+            {
+              "name": "Carmela_HairStyle_soft_side_waves_Hair_soft_side_waves_1",
+              "visible": true,
+              "material": "Carmela_HairPart",
+              "alphaTest": 0
+            },
+            {
+              "name": "Carmela_HairStyle_soft_side_waves_Hair_soft_side_waves_2",
+              "visible": true,
+              "material": "Carmela_HairStrands",
+              "alphaTest": 0.35
+            },
+            {
+              "name": "Carmela_HairStyle_waved_knot_Hair_waved_knot",
+              "visible": false,
+              "material": "Carmela_DarkHair",
+              "alphaTest": 0
+            },
+            {
+              "name": "Carmela_HairStyle_waved_knot_Hair_waved_knot_1",
+              "visible": false,
+              "material": "Carmela_HairPart",
+              "alphaTest": 0
+            },
+            {
+              "name": "Carmela_HairStyle_waved_knot_Hair_waved_knot_2",
+              "visible": false,
+              "material": "Carmela_HairStrands",
+              "alphaTest": 0.35
+            }
+          ],
+          "morphs": [
+            "eyeLookInLeft",
+            "eyeLookOutLeft",
+            "eyeLookUpLeft",
+            "eyeLookDownLeft",
+            "eyeLookInRight",
+            "eyeLookOutRight",
+            "eyeLookUpRight",
+            "eyeLookDownRight",
+            "mouthSmileLeft",
+            "mouthFrownLeft",
+            "mouthStretchLeft",
+            "browDownLeft",
+            "mouthPressLeft",
+            "cheekSquintLeft",
+            "noseSneerLeft",
+            "mouthSmileRight",
+            "mouthFrownRight",
+            "mouthStretchRight",
+            "browDownRight",
+            "mouthPressRight",
+            "cheekSquintRight",
+            "noseSneerRight",
+            "browInnerUp",
+            "jawOpen",
+            "speechOpen",
+            "speechWide",
+            "speechRound",
+            "eyeBlinkLeft",
+            "eyeSquintLeft",
+            "eyeWideLeft",
+            "eyeBlinkRight",
+            "eyeSquintRight",
+            "eyeWideRight"
+          ],
+          "faceMeshes": [
+            "Carmela_Eye_Left",
+            "Carmela_Eye_Right",
+            "Carmela_Face",
+            "Carmela_GumsLower",
+            "Carmela_GumsUpper",
+            "Carmela_HairStyle_braided_knot_Hair_braided_knot",
+            "Carmela_HairStyle_braided_knot_Hair_braided_knot_1",
+            "Carmela_HairStyle_braided_knot_Hair_braided_knot_2",
+            "Carmela_HairStyle_center_chignon_Hair_center_chignon",
+            "Carmela_HairStyle_center_chignon_Hair_center_chignon_1",
+            "Carmela_HairStyle_center_chignon_Hair_center_chignon_2",
+            "Carmela_HairStyle_curled_side_rolls_Hair_curled_side_rolls",
+            "Carmela_HairStyle_curled_side_rolls_Hair_curled_side_rolls_1",
+            "Carmela_HairStyle_curled_side_rolls_Hair_curled_side_rolls_2",
+            "Carmela_HairStyle_soft_side_waves_Hair_soft_side_waves",
+            "Carmela_HairStyle_soft_side_waves_Hair_soft_side_waves_1",
+            "Carmela_HairStyle_soft_side_waves_Hair_soft_side_waves_2",
+            "Carmela_HairStyle_waved_knot_Hair_waved_knot",
+            "Carmela_HairStyle_waved_knot_Hair_waved_knot_1",
+            "Carmela_HairStyle_waved_knot_Hair_waved_knot_2",
+            "Carmela_Lid_Left",
+            "Carmela_Lid_Right",
+            "Carmela_Lips",
+            "Carmela_MouthInterior",
+            "Carmela_TeethLower",
+            "Carmela_TeethUpper",
+            "Carmela_Tongue"
+          ],
+          "head": [
+            0.011163195587400913,
+            1.0022983332683604,
+            0.1732300043049097
+          ],
+          "calls": 20,
+          "triangles": 54739,
+          "appliedWeights": {
+            "mouthSmileLeft": 0.2592,
+            "cheekSquintLeft": 0.45,
+            "mouthSmileRight": 0.24480000000000002,
+            "cheekSquintRight": 0.42,
+            "browInnerUp": 0.12,
+            "eyeSquintLeft": 0.3,
+            "eyeSquintRight": 0.28
+          }
+        }
+      }
+    ],
+    "inspected": [
+      "Both mouth and eye sheets",
+      "Sixteen speech phases per head",
+      "Raw open, round and smile-plus-speech stress poses and profiles",
+      "All twelve curated neutral, speaking, anxious, relieved, blink and standing sheets",
+      "Consecutive video frames around the live blink",
+      "In-game head tilt, speech release, dismissal, reassurance and examination"
+    ]
+  },
+  "geometryAudit": [
+    {
+      "identity": "carmela",
+      "samples": 45,
+      "minLowerFaceStretch": 0.9999,
+      "maxLowerFaceStretch": 1.0001,
+      "maxSleeveEdgeStretch": 1.7473
+    },
+    {
+      "identity": "seamstress",
+      "samples": 45,
+      "minLowerFaceStretch": 0.9999,
+      "maxLowerFaceStretch": 1.0001,
+      "maxSleeveEdgeStretch": 1.7473
+    }
+  ],
+  "exportContract": "artifacts/characters/carmela-face-polish/asset-audit.json",
+  "curatedLooks": "artifacts/characters/carmela-face-polish/curated-looks.json",
+  "gameplay": [
+    {
+      "path": "artifacts/gameplay/carmela-face-accepted",
+      "steps": 45,
+      "status": "complete",
+      "failedSteps": 0,
+      "errors": [],
+      "video": [
+        "artifacts/gameplay/carmela-face-accepted/video/page@69294c4dd52f8b76dfbc7995b3a093d4.webm"
+      ]
+    },
+    {
+      "path": "artifacts/gameplay/carmela-face-alternate",
+      "steps": 13,
+      "status": "complete",
+      "failedSteps": 0,
+      "errors": [],
+      "video": [
+        "artifacts/gameplay/carmela-face-alternate/video/page@76ff866b20bc3b0f7d67972635e27e22.webm"
+      ]
+    }
+  ],
+  "alternateModel": {
+    "preset": "auburn-curls",
+    "actualAsset": "/models/characters/seamstress-prototype.glb?v=20261030-4",
+    "hairStyle": "curled-side-rolls",
+    "strandAlphaTest": 0.35
+  },
+  "performance": {
+    "path": "artifacts/performance/carmela-face-final/results.json",
+    "configuration": "Production preview, Chrome/Metal, 1440x900, quality preset, DPR 1, real timers",
+    "samples": [
+      {
+        "name": "consultation-idle",
+        "frames": 362,
+        "p95": 16.700000000000728,
+        "p99": 16.799999999999272,
+        "max": 16.80000000000291,
+        "over50": 0,
+        "averageDraws": 743.6740331491712,
+        "averageTriangles": 809563.1325966851,
+        "longTasks": []
+      },
+      {
+        "name": "consultation-examination",
+        "frames": 362,
+        "p95": 16.799999999995634,
+        "p99": 16.80000000000291,
+        "max": 16.80000000000291,
+        "over50": 0,
+        "averageDraws": 944,
+        "averageTriangles": 1130196,
+        "longTasks": []
+      }
+    ],
+    "errors": [],
+    "scope": "Two six-second steady-state samples; loading and transitions excluded. The cumulative overlay recorded a 104 ms earlier frame."
+  },
+  "additionalTripoCredits": 0,
+  "limitations": [
+    "Procedural speech, not audio-synchronised phonemes.",
+    "Twelve looks reuse two head bases and one body and clothing rig; they are appearance studies, not new clinical cases.",
+    "New feature combinations still require visual review.",
+    "The live consultation API was not tested by the offline game replays.",
+    "Older lab preset and legacy renderer checks are not clean, as recorded above."
+  ]
+}

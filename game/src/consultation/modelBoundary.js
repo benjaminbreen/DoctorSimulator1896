@@ -28,17 +28,26 @@ export function buildDialogueModelPayload(request, patient) {
     player: { text: request.playerInput, stance: request.stance },
     trust: request.trust,
     elapsedMinutes: request.elapsedMinutes,
+    currentEmotion: request.currentEmotion,
+    conversationRepair: request.conversationRepair,
     knownFacts: request.disclosedFacts.map(factForModel),
     allowedNewFacts: request.allowedDisclosureFacts.map(factForModel),
-    awaitingAnswer: Boolean(request.pendingResponseId),
+    awaitingAnswer: Boolean(request.pendingResponseId) && !request.conversationRepair?.action,
     recentTurns: request.recentTurns.map((turn) => ({
       player: turn.input,
       patient: turn.dialogue,
       register: turn.appraisal?.register || 'neutral',
+      expression: turn.reactionExpression || null,
+      expressionIntensity: turn.expressionIntensity ?? null,
+      gaze: turn.gaze || null,
+      bodyCue: turn.bodyCue || null,
     })),
     output: {
       dialogue: 'string',
       behavior: 'string',
+      expression: 'supported expression',
+      expressionIntensity: 'number from 0 to 1',
+      gaze: 'doctor, away, down, or neutral',
       disclosedNow: 'array of ids drawn only from allowedNewFacts',
       appraisal: 'register, decorumBreach, intent, terminates',
     },
@@ -80,11 +89,11 @@ function periodRecord(patient, state, result) {
 function transcriptForModel(state) {
   const cut = (text, length = 240) => String(text || '').slice(0, length);
   return state.history
-    .filter((event) => ['opening', 'speech', 'examination'].includes(event.kind))
+    .filter((event) => ['opening', 'speech', 'examination', 'discussion'].includes(event.kind))
     .slice(-16)
     .map((event) => {
       if (event.kind === 'opening') return { patient: cut(event.dialogue) };
-      if (event.kind === 'speech') return { doctor: cut(event.input), patient: cut(event.dialogue) };
+      if (['speech', 'discussion'].includes(event.kind)) return { doctor: cut(event.input), patient: cut(event.dialogue) };
       return { examined: event.label, found: cut(event.reply) };
     });
 }
@@ -102,6 +111,7 @@ export function buildJamesModelPayload(patient, state, result) {
       diagnosis: patient.diagnoses.find((item) => item.id === state.diagnosisId)?.label || null,
       treatment: resolveTreatmentPlan(patient, state.treatmentIds)?.treatments.map((item) => item.label).join('; ') || null,
       caseNote: String(state.caseNote || '').slice(0, 600),
+      agreedPlan: state.treatmentAgreement?.summary || null,
       selectedEvidence: (state.caseRecordFactIds || [])
         .map((id) => patient.facts.find((fact) => fact.id === id)?.label)
         .filter(Boolean),

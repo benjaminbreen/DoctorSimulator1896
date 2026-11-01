@@ -85,7 +85,7 @@ function tone({ frequency, duration, gain = 0.2, type = 'sine', when = 0, detune
   oscillator.stop(start + duration + 0.02);
 }
 
-function noise({ duration = 0.04, gain = 0.12, when = 0, highpass = 700 }) {
+function noise({ duration = 0.04, gain = 0.12, when = 0, highpass = 700, lowpass, attack = 0 }) {
   const audio = ensureContext();
   if (!audio || !sfxGain || state.muted) return;
   const start = audio.currentTime + when;
@@ -102,16 +102,37 @@ function noise({ duration = 0.04, gain = 0.12, when = 0, highpass = 700 }) {
   const envelope = audio.createGain();
   filter.type = 'highpass';
   filter.frequency.value = highpass;
-  envelope.gain.setValueAtTime(gain, start);
+  envelope.gain.setValueAtTime(attack ? 0.0001 : gain, start);
+  if (attack) envelope.gain.exponentialRampToValueAtTime(gain, start + attack);
   envelope.gain.exponentialRampToValueAtTime(0.0001, start + duration);
   source.buffer = buffer;
   source.connect(filter);
-  filter.connect(envelope);
+  if (lowpass) {
+    const softener = audio.createBiquadFilter();
+    softener.type = 'lowpass';
+    softener.frequency.value = lowpass;
+    filter.connect(softener);
+    softener.connect(envelope);
+  } else filter.connect(envelope);
   envelope.connect(sfxGain);
   source.start(start);
 }
 
 const EFFECTS = {
+  'cloth-brush': (level) => {
+    noise({ duration: 0.24, gain: 0.045 * level, highpass: 180, lowpass: 1700, attack: 0.035 });
+    noise({ duration: 0.16, gain: 0.025 * level, highpass: 350, lowpass: 2400, when: 0.07, attack: 0.025 });
+  },
+  'shade-rattle': (level) => {
+    noise({ duration: 0.025, gain: 0.055 * level, highpass: 1400, lowpass: 6500 });
+    tone({ frequency: 1240, duration: 0.09, gain: 0.025 * level });
+    tone({ frequency: 1860, duration: 0.055, gain: 0.015 * level, when: 0.045 });
+    noise({ duration: 0.02, gain: 0.025 * level, highpass: 1800, when: 0.09 });
+  },
+  'wood-scrape': (level) => {
+    noise({ duration: 0.22, gain: 0.075 * level, highpass: 95, lowpass: 950, attack: 0.025 });
+    tone({ frequency: 138, duration: 0.12, gain: 0.018 * level, type: 'triangle' });
+  },
   'chronoscope-arm': () => {
     noise({ duration: 0.045, gain: 0.1, highpass: 450 });
     tone({ frequency: 118, duration: 0.09, gain: 0.08, type: 'triangle' });
@@ -143,11 +164,12 @@ const EFFECTS = {
   },
 };
 
-export function playSfx(name) {
+export function playSfx(name, level = 1) {
   const effect = EFFECTS[name];
-  if (!effect || state.muted) return false;
+  const volume = clamp01(level);
+  if (!effect || state.muted || volume === 0) return false;
   void unlockSound();
-  effect();
+  effect(volume);
   return true;
 }
 

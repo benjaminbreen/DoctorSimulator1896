@@ -1,0 +1,18 @@
+{"type":"wait","ms":12000}
+{"type":"click","name":"Continue"}
+{"type":"click","name":"I should ask what happens before, during, and after each attack.","exact":false}
+{"type":"fill","label":"Ask in your own words","value":"You are a liar."}
+{"type":"click","name":"Ask custom question"}
+{"type":"assert","text":"The patient is upset. You can apologize before continuing.","exact":true}
+{"type":"wait","ms":700}
+{"type":"click","name":"I am sorry. That was unkind. Please let me try again.","exact":false}
+{"type":"assert","text":"The patient is upset. You can apologize before continuing.","exact":true,"visible":false}
+{"type":"assert","text":"24 min remaining","exact":true}
+{"type":"wait","ms":700}
+{"type":"click","name":"Ask how closing the shop would affect her family.","exact":false}
+{"type":"assert","text":"19 min remaining","exact":true}
+{"type":"fill","label":"Ask in your own words","value":"You are a fraud."}
+{"type":"click","name":"Ask custom question"}
+{"type":"assert","text":"The patient rises and ends the consultation.","exact":true}
+{"type":"wait","ms":700}
+{"type":"quit"}

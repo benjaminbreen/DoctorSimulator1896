@@ -1,0 +1,9 @@
+{"type":"wait","ms":12000}
+{"type":"click","name":"Continue"}
+{"type":"click","name":"I should ask what happens before, during, and after each attack.","exact":false}
+{"type":"click","name":"Ask how the attacks start, how long they last, and what she feels.","exact":false}
+{"type":"click","name":"Ask what she fears and what she now avoids.","exact":false}
+{"type":"click","name":"It is only nerves. Try to stay calm.","exact":false}
+{"type":"wait","ms":700}
+{"type":"wait","ms":4000}
+{"type":"quit"}

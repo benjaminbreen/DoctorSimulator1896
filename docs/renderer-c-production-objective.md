@@ -2,6 +2,59 @@
 
 Date: 2026-08-08
 
+## October 29 prototype
+
+The [modular patient prototype](modular-patients.md) now replaces Carmela's
+cohort asset with a fitted generated head and body. A second head shares the
+body, clothing and motion contract. This is a working prototype alongside the
+broader objective below; automatic canonical-head fitting did not pass its
+visual comparison and is not used in the game.
+
+The follow-up pass repairs sleeve weights, fits the nape and coiled bun, and
+adds lips, an oral cavity, individual teeth and three speech shapes. Both heads
+share the same verified skeleton. See the modular-patient notes for the current
+122-image review, 728 tests and production performance measurements.
+
+## October 28 playtest assessment
+
+The current patient visuals do not meet the intended quality bar. A full
+Carmela playthrough found both animation errors and asset-quality problems.
+The runtime fix removes accumulating breathing and gaze rotations and avoids
+restarting speaking gestures during record editing. It does not repair the
+flat skin, detached-looking collar, garment fit, or inconsistent art direction.
+Those require work on the exported assets.
+
+The GLB JSON records in the current checkout give this scale comparison:
+
+| Asset | File size | Triangles | Meshes | Materials |
+| --- | ---: | ---: | ---: | ---: |
+| Full women master | 14.0 MiB | 157,569 | 50 | 26 |
+| Lean woman consultation asset | about 6.0 MiB | 44,492 | 11 | 10 |
+| Full men master | 20.6 MiB | 260,605 | 47 | 29 |
+| Lean man consultation asset | 8.5–8.9 MiB | about 139,000 | 10 | 10 |
+| Authored Nora Byrne | 1.3 MiB | 9,809 | 1 | 1 |
+| Authored Samuel Taylor | 3.0 MiB | 21,325 | 1 | 1 |
+
+These are file contents, not draw-call or GPU-memory measurements. Hidden
+wardrobe pieces, morph targets, and shadow passes change the runtime cost.
+The authored Nora model is a useful in-game visual reference: a better surface
+and coherent costume can matter more than a large triangle count.
+
+The next character project should finish one patient as a complete vertical
+slice before expanding the generator: head and skin, fitted period clothing,
+one verified skeleton, seated idle and response clips, restrained expressions,
+and the actual consultation camera. Compare that result with the existing
+authored Nora asset and the current cohort renderer. Keep the simulation and
+semantic cue contract while evaluating the asset and rig approach.
+
+An initial prototype budget could be 20,000–40,000 visible triangles, a small
+material set, and a few shared textures per close patient. These are proposed
+targets to test on the game and mobile hardware, not a settled production
+standard. Inspect idle, speech, distress, examination, and standing in the
+game before multiplying the approach across patients. The previous Renderer C
+decision below describes the existing implementation; it is not evidence that
+the remaining art problems are solved.
+
 ## Decision
 
 Renderer C is the production human system. The current objective is no longer

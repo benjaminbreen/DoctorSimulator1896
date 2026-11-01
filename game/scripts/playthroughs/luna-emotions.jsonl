@@ -1,0 +1,16 @@
+{"type":"wait","ms":12000}
+{"type":"click","name":"Continue"}
+{"type":"click","name":"I should ask what happens before, during, and after each attack.","exact":false}
+{"type":"fill","label":"Ask in your own words","value":"You need not meet my eyes. Look down if that feels easier; I am listening."}
+{"type":"click","name":"Ask custom question"}
+{"type":"wait","ms":700}
+{"type":"fill","label":"Ask in your own words","value":"People like you always make a fuss. Why should I take you seriously?"}
+{"type":"click","name":"Ask custom question"}
+{"type":"wait","ms":700}
+{"type":"fill","label":"Ask in your own words","value":"May we continue?"}
+{"type":"click","name":"Ask custom question"}
+{"type":"wait","ms":700}
+{"type":"fill","label":"Ask in your own words","value":"I spoke cruelly. I am sorry. You deserve to be heard, and I will listen carefully."}
+{"type":"click","name":"Ask custom question"}
+{"type":"wait","ms":700}
+{"type":"quit"}

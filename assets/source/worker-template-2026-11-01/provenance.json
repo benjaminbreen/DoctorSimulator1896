@@ -1,0 +1,77 @@
+{
+  "date": "2026-11-01",
+  "status": "prototype-tested",
+  "mpfbEvaluation": {
+    "version": "2.0.18",
+    "blender": "5.2.2",
+    "bodyRig": "success; native Mixamo, 52 bones",
+    "clothingTested": [
+      "Elvaerwyn elvs_male_shirt_tie_tucked1 (CC-BY)",
+      "Elvaerwyn elvs_male_trouser (CC-BY)",
+      "Margaret Toigo ankle boots (CC0)"
+    ],
+    "decision": "Keep technical proof. Available shirt/trouser detail is too modern and smooth for the requested worker; use the authorized Tripo fallback. No MPFB clothing shipped.",
+    "captures": "artifacts/characters/mpfb-worker",
+    "sources": [
+      "https://github.com/makehumancommunity/mpfb2/releases/tag/v2.0.18",
+      "https://static.makehumancommunity.org/assets/assetpacks/shirts02.html",
+      "https://static.makehumancommunity.org/assets/assetpacks/pants02.html"
+    ]
+  },
+  "reference": {
+    "image": "references/worker-a-pose.png",
+    "generator": "built-in imagegen",
+    "design": "Period-informed 1896 cotton shirt, high-waisted wool trousers, button braces and leather boots; generated interpretation rather than a documented surviving outfit."
+  },
+  "credits": {
+    "startingBalance": 2525,
+    "spentConfirmed": 140,
+    "lastConfirmedBalance": 2385,
+    "operations": [
+      {
+        "operation": "Smart Mesh P2 generation",
+        "credits": 100
+      },
+      {
+        "operation": "Texture generation",
+        "credits": 20
+      },
+      {
+        "operation": "Mixamo humanoid rig",
+        "credits": 20
+      }
+    ]
+  },
+  "tripo": {
+    "id": "4b4ca20d-f17a-4aef-9f8b-b9b934e0e8c6",
+    "quadFaces": 6111,
+    "vertices": 5615,
+    "url": "https://studio.tripo3d.ai/workspace/rigging/4b4ca20d-f17a-4aef-9f8b-b9b934e0e8c6"
+  },
+  "source": "worker-body-mixamo-p2-v1/tripo_convert_5d9ea14d-05f6-4f45-bd2f-908e9c2373ee.fbx",
+  "expressiveHead": "game/public/models/characters/male-lean-template.glb",
+  "output": "game/public/models/characters/male-worker-template.glb",
+  "assembly": "scripts/characters/build-worker.mjs",
+  "scope": "Complete worker shirt, braces, trousers, hands and boots with a reused expressive head. One outfit, bounded face/body and colour variations; not an interchangeable garment library.",
+  "outputBytes": 6452780,
+  "outputSha256": "19b62a835603a205ecc8daecfa731e01d4dc6dd7243250fcd1de9d3902f6e64c",
+  "review": {
+    "lab": "artifacts/characters/worker-template/final-review",
+    "labCaptures": 38,
+    "labErrors": [],
+    "gameplay": "artifacts/gameplay/worker-template-final-20261101",
+    "gameplaySteps": 15,
+    "gameplayErrors": [],
+    "gameTests": 776,
+    "runtimeAndWardrobeTests": 18,
+    "builds": [
+      "game",
+      "character-lab"
+    ],
+    "limitations": [
+      "One complete worker outfit; no modular garment swapping yet.",
+      "Hair, eyelid corners and low-resolution source fingers need further art refinement.",
+      "Extreme combined body and face controls still require visual review."
+    ]
+  }
+}

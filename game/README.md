@@ -20,6 +20,12 @@ npm run game        # from repo root, serves http://127.0.0.1:5175
 npm run game:test   # unit tests (node --test, no build needed)
 ```
 
+For browser playtests, install root dependencies too (`npm ci` from the repo
+root) and fetch the models with `git lfs pull --include='game/public/**' --exclude=''`.
+Run `node game/scripts/gameplay-playtest.mjs --scenario=carmela` from the repo
+root for a persistent session with screenshots after each action. See
+[gameplay testing](../docs/gameplay-testing.md) for controls, replay, and video.
+
 ## Structure
 
 - `src/world/` — one blueprint JSON + one lighting JSON per zone, indexed by

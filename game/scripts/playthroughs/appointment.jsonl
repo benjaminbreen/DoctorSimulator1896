@@ -1,0 +1,7 @@
+{"type":"click","name":"Fast Travel","index":0}
+{"type":"wait","ms":15000}
+{"type":"assert","text":"Appointment due","exact":false}
+{"type":"click","name":"Return to the office"}
+{"type":"wait","ms":3000}
+{"type":"assert","selector":".ghud-travel-menu","visible":false}
+{"type":"assert","selector":".gcon-continue"}

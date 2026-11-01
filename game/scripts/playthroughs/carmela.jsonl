@@ -1,0 +1,8 @@
+{"type":"assert","text":"Mrs. Carmela Russo","exact":true}
+{"type":"wait","ms":12000}
+{"type":"click","name":"Continue"}
+{"type":"click","name":"I should ask what happens before, during, and after each attack.","exact":false}
+{"type":"click","name":"Ask how the attacks start, how long they last, and what she feels.","exact":false}
+{"type":"assert","text":"They started after a man tried to rob the shop three weeks ago.","exact":false}
+{"type":"press","key":"Tab"}
+{"type":"assert","text":"Pattern of the attacks","exact":false}

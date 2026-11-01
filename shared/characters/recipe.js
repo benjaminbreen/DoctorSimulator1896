@@ -52,6 +52,9 @@ export function createCharacterRecipe(input = {}) {
     animation: {
       body: CHARACTER_BODY_CUES.includes(animation.body) ? animation.body : 'clinic-idle',
       expression: CHARACTER_EXPRESSIONS.includes(animation.expression) ? animation.expression : 'neutral',
+      ...(Number.isFinite(animation.expressionIntensity) ? {
+        expressionIntensity: Math.max(0, Math.min(1, animation.expressionIntensity)),
+      } : {}),
       gaze: CHARACTER_GAZES.includes(animation.gaze) ? animation.gaze : 'doctor',
       gesture: CHARACTER_GESTURES.includes(animation.gesture) ? animation.gesture : 'none',
       speaking: Boolean(animation.speaking),

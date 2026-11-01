@@ -6,6 +6,39 @@ you add a model. `scripts/models/convert-pack.mjs` copies the credit out of the
 source file into the pack manifest, and `tests/model-packs.test.js` fails if a
 converted piece has no redistributable licence.
 
+## Modular patient prototype — October 29, 2026
+
+Carmela Russo and the fictional seamstress head were generated in Ben Breen's
+Tripo Pro account from OpenAI-generated fictional reference images. The body
+uses Tripo's Mixamo skeleton preset. Eyelids, structural face variations, the
+lip and mouth rig, teeth, gums, tongue, procedural updos and fibre maps, the seated skirt and apron
+are project-authored adaptations. Tripo's
+[paid-user terms](https://www.tripo3d.ai/terms) and
+[commercial-use guide](https://www.tripo3d.ai/help/privacy-policy/how-to-use-tripo-models-commercially)
+permit use, modification and distribution of paid outputs.
+
+The embedded motions reuse the project's existing Adobe Mixamo downloads.
+Adobe's [Mixamo FAQ](https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html)
+permits royalty-free use in games. These are game characters, not a standalone
+redistribution of the motion library. Detailed source IDs and credit use are
+recorded in `assets/source/carmela-russo-2026-10-29/provenance.json`.
+
+The October 30 hair pass adds a chignon, waved knot and braided knot with live
+grooming controls. These meshes and their mathematical colour and normal maps
+are project-authored. The Museum of the Earth's
+[Carlotta Maury collection](https://www.museumoftheearth.org/daring-to-dig/bio/helen-plummer-new-828dk),
+including a ca. 1895 profile, informed the silhouette. The historical photograph
+is a research reference and is not included in the game build.
+
+The later ear-coverage pass retains those styles and adds soft side waves and
+curled side rolls. Their geometry and strand coverage masks are project-authored.
+The fine-fibre and curl albedos were generated with OpenAI's built-in image
+tool; the normal maps are derived from those images. Source images and exact
+prompts are in `assets/source/carmela-russo-2026-10-29/references/`. The user's
+fashion plate and the University of Louisville's
+[1889–1899 pin-curl portrait](https://digital.library.louisville.edu/concern/images/ulpa_1980_020_0971?locale=en)
+are research references only; neither is shipped as a game texture.
+
 ## What this project may use
 
 *Ghosts of the Machine Age* is a non-commercial educational project, written
@@ -59,6 +92,11 @@ credited tree geometry for distant groves; they reuse the original textures.
 | Old Bed Frame (`old_bed_frame`) | Luca B | CC0-1.0 | [Poly Haven](https://polyhaven.com/a/old_bed_frame) |
 | Vintage Day Bed (`vintage_day_bed`) | Aron Łyczek | CC0-1.0 | [Poly Haven](https://polyhaven.com/a/vintage_day_bed) |
 | Book Encyclopedia Set 01 (`book_encyclopedia_set_01`) | John Malcolm | CC0-1.0 | [Poly Haven](https://polyhaven.com/a/book_encyclopedia_set_01) |
+
+The Victorian Style Sofa's blanket was made double-sided and given one
+restrained subdivision pass on October 31, 2026. The sofa geometry and textures
+retain ryankentpaule's original credit. The editable repair is in
+`scripts/models/repair-sofa-blanket.mjs`; its maximum vertex movement is 12 mm.
 
 The book pack ships as one file holding two dozen books; the converter splits it
 into a model per book (`__Book_3`, `__Book_pack_5`, …) so they can be shelved
@@ -179,6 +217,9 @@ record](https://www.loc.gov/item/sn84031792/1896-06-15/ed-1/).
 
 The CGTrader Victorian interior pack under `game/public/models/victorian/` is a
 purchased asset; its licence terms live with the purchase, not here.
+`Sconce-responsive.glb` is a derivative of its `Sconce.glb`, with the two
+shades separated for contact animation. Rebuild with
+`node scripts/models/build-responsive-sconce.mjs`.
 
 The Pond outline and Gapstow Bridge footprint in `game/src/world/` are traced
 from OpenStreetMap data (© OpenStreetMap contributors, ODbL).
@@ -202,3 +243,39 @@ Wikimedia Commons); Edward Penfield, *Harper's for June* (1890s, Library of
 Congress); Louis Dalrymple, *Just Wobbling!* (Puck cover, April 8, 1896,
 Library of Congress); Currier & Ives, *The Great East River Suspension
 Bridge* (1883, public domain, via Wikimedia Commons).
+
+## New male templates, October 31, 2026
+
+`male-lean-template.glb` and `male-broad-template.glb` use new fictional head and
+body meshes generated in the user's paid Tripo Studio account from project-made
+OpenAI ImageGen references. Source prompts, generation IDs, downloads and credit
+usage are recorded in `assets/source/modular-men-2026-10-31/provenance.json`.
+Blender assembly adds fitted eyes, lids, lips, teeth, expressions, procedural
+hair, facial hair and bounded body controls. Hair fibres reuse the project's
+previously generated Carmela hair textures. Facial-hair clumps use a new
+ImageGen fibre reference saved with its prompt as `references/facial-hair-fibres-v1.*`
+in the same source folder. Motion is retargeted from the
+project's existing Mixamo source clips, credited with the other character
+animations. The references are original fictional designs; the Met and portrait
+records linked in `docs/modular-men.md` informed the period range and are not
+embedded as textures in these models.
+
+The modular male work shirts, wrist joins, apron patterns, straps and their
+cotton/canvas/leather textures are generated by project-authored Blender and
+Python code. Historical photographs linked in `docs/modular-men.md` informed
+the clothing range; their pixels are not included in the shipped assets.
+
+## Complete worker body, November 1, 2026
+
+`male-worker-template.glb` uses a complete clothed worker generated and rigged
+in the user's paid Tripo Studio account from an original built-in ImageGen
+reference. The source geometry includes the shirt sleeves, cuffs, braces,
+trousers, hands and boots. Its fitted expressive head, hair and facial hair
+reuse the lean male template credited above. Motions reuse the existing Mixamo
+sources. The original prompt, generation ID, downloads and 140-credit cost
+are recorded in `assets/source/worker-template-2026-11-01/provenance.json`.
+See `docs/worker-body.md` for the material conversion and neck fitting changes.
+
+The MPFB comparison used CC-BY clothes by Elvaerwyn from Shirts 02 and Pants 02,
+plus Margaret Toigo's CC0 boots. Those comparison clothes are not included in
+the shipped worker asset.

@@ -1,0 +1,196 @@
+{
+  "date": "2026-10-30",
+  "tests": {
+    "passed": 740,
+    "failed": 0
+  },
+  "builds": {
+    "game": "passed; existing large-chunk warning",
+    "characterLab": "passed; existing large-chunk warning"
+  },
+  "assets": [
+    {
+      "id": "carmela-russo",
+      "path": "game/public/models/characters/carmela-russo.glb",
+      "headSource": "head-p2-v1/carmela-head-p2-v1.fbx",
+      "bytes": 8202204,
+      "sha256": "33f005efb925d75b7f19530ecde85cd6a3455ad92e713e233aee680a8b38f79d"
+    },
+    {
+      "id": "seamstress-prototype",
+      "path": "game/public/models/characters/seamstress-prototype.glb",
+      "headSource": "second-head-p2-v1/second-identity-head-p2-v1.fbx",
+      "note": "Fictional reference identity, not a new clinical case.",
+      "bytes": 8052644,
+      "sha256": "5f626e2dd2a36f6bf5bcbd24e0262c776c3a9f0cd7e03e522a1aecf097840604"
+    }
+  ],
+  "additionalTripoCredits": 0,
+  "styles": [
+    "center-chignon",
+    "waved-knot",
+    "braided-knot",
+    "soft-side-waves",
+    "curled-side-rolls"
+  ],
+  "defaultAppearance": {
+    "hairStyle": "soft-side-waves",
+    "hairEarCoverage": 0.3
+  },
+  "hairGallery": {
+    "path": "artifacts/characters/carmela-hair-over-ear/nape-review",
+    "captures": 144,
+    "failures": [],
+    "visiblePrimitives": [
+      3
+    ],
+    "comparison": "artifacts/characters/carmela-hair-over-ear/nape-review/nape-comparison.png",
+    "visualReview": "Style, grooming and cast sheets; both profiles, rear quarter and rear; bent-forward poses and rear views during head tilt on both heads"
+  },
+  "napeRepair": "Removed the upward arch behind the ear. The posterior edge now descends into the nape; horizontal fitting at the intended height avoids the radial-projection centre tail.",
+  "sourceMotionAudit": [
+    {
+      "head": "carmela",
+      "samples": 45,
+      "minLowerFaceStretch": 0.9999,
+      "maxLowerFaceStretch": 1.0001,
+      "maxSleeveEdgeStretch": 1.7473
+    },
+    {
+      "head": "seamstress",
+      "samples": 45,
+      "minLowerFaceStretch": 0.9999,
+      "maxLowerFaceStretch": 1.0001,
+      "maxSleeveEdgeStretch": 1.7473
+    }
+  ],
+  "gameplay": [
+    {
+      "scenario": "carmela",
+      "seed": 4,
+      "continuous": false,
+      "offline": true,
+      "quality": "quality",
+      "output": "/Users/benbreen/Code/DoctorSimulator1896/artifacts/gameplay/carmela-nape-final",
+      "url": "http://127.0.0.1:5187/?playtest=1&seed=4&zone=consulting-office",
+      "steps": 42,
+      "failedSteps": 0,
+      "errors": [],
+      "exitCode": 0,
+      "status": "complete",
+      "verifiedHair": {
+        "styles": [
+          "soft-side-waves"
+        ],
+        "grooming": {
+          "hairVolume": 0,
+          "hairWave": 0,
+          "hairBunHeight": 0,
+          "hairPartOffset": 0,
+          "hairEarCoverage": 0.3
+        },
+        "materials": [
+          {
+            "name": "Carmela_DarkHair",
+            "alphaTest": 0,
+            "transparent": false
+          },
+          {
+            "name": "Carmela_HairPart",
+            "alphaTest": 0,
+            "transparent": false
+          },
+          {
+            "name": "Carmela_HairStrands",
+            "alphaTest": 0.35,
+            "transparent": false
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "carmela",
+      "seed": 4,
+      "continuous": false,
+      "offline": true,
+      "quality": "quality",
+      "output": "/Users/benbreen/Code/DoctorSimulator1896/artifacts/gameplay/carmela-nape-curled",
+      "url": "http://127.0.0.1:5187/?appearanceSeed=11&playtest=1&seed=4&zone=consulting-office",
+      "steps": 10,
+      "failedSteps": 0,
+      "errors": [],
+      "exitCode": 0,
+      "status": "complete",
+      "verifiedHair": {
+        "styles": [
+          "curled-side-rolls"
+        ],
+        "grooming": {
+          "hairVolume": 0.5,
+          "hairWave": 0,
+          "hairBunHeight": 0.6,
+          "hairPartOffset": 0.4,
+          "hairEarCoverage": 0.6
+        },
+        "materials": [
+          {
+            "name": "Carmela_CurlyHair",
+            "alphaTest": 0,
+            "transparent": false
+          },
+          {
+            "name": "Carmela_HairPart",
+            "alphaTest": 0,
+            "transparent": false
+          },
+          {
+            "name": "Carmela_HairStrands",
+            "alphaTest": 0.35,
+            "transparent": false
+          }
+        ]
+      }
+    }
+  ],
+  "performance": {
+    "path": "artifacts/performance/carmela-nape-final",
+    "production": true,
+    "viewport": [
+      1440,
+      900
+    ],
+    "dpr": 1,
+    "quality": "quality",
+    "samples": [
+      {
+        "name": "consultation-idle",
+        "frames": 362,
+        "p95": 16.700000000000728,
+        "p99": 16.799999999999272,
+        "max": 16.80000000000291,
+        "over50": 0,
+        "averageDraws": 732,
+        "averageTriangles": 801489.5
+      },
+      {
+        "name": "consultation-examination",
+        "frames": 362,
+        "p95": 16.700000000004366,
+        "p99": 16.799999999999272,
+        "max": 16.80000000000291,
+        "over50": 0,
+        "averageDraws": 929,
+        "averageTriangles": 1121236
+      }
+    ],
+    "errors": []
+  },
+  "video": "artifacts/gameplay/carmela-nape-final/video/page@c6234f4da0de968a99f9b1f525a4164a.webm",
+  "limitations": [
+    "Five hairstyles are included in the download and consume memory; only the selected style is drawn.",
+    "Curls combine shaped volume and texture detail, not individually simulated strands.",
+    "The period sources inform the art; the supplied fashion plate has no verified date.",
+    "Offline replays test authored fallbacks and outcomes, not the live consultation service.",
+    "Performance samples cover steady-state rendering on this local Chrome/Metal machine and exclude loading."
+  ]
+}

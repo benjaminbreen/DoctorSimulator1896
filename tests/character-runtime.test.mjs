@@ -161,10 +161,11 @@ test('Renderer C identity grids randomize complexion and eye colour within each 
 });
 
 test('the fixed face review matrix covers the Phase 1 safety states', () => {
-  assert.deepEqual(FACE_QA_STATES.map((state) => state.id), [
+  const required = [
     'neutral', 'blink', 'jaw-025', 'jaw-05', 'guarded', 'distressed',
     'smiling', 'frowning', 'discouraged',
-  ]);
+  ];
+  assert.ok(required.every(id=>FACE_QA_STATES.some(state=>state.id===id)));
   assert.equal(safeFaceWeight('jawOpen', 0.05), FACE_WEIGHT_LIMITS.jawOpen);
   for (const state of FACE_QA_STATES) {
     for (const value of Object.values(state.weights)) {

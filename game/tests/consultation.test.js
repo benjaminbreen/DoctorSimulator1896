@@ -306,12 +306,20 @@ test('ending early publishes a closed consultation before reset', () => {
   unsubscribe();
 });
 
-test('a severe decorum breach ends the consultation without letting the LLM set trust directly', () => {
+test('the first insult gives a warning and a repeated insult ends the visit deterministically', () => {
   const state = beginInquiry();
   const input = { stance: 'challenge', text: 'You are a liar.' };
   const response = renderOfflineDialogue(buildDialogueRequest(patient, state, input), patient);
   const next = consultationTransition(state, patient, { type: 'speech-response', input, response });
-  assert.equal(next.stage, 'terminated');
-  assert.equal(next.trust, 5);
-  assert.equal(actorCueForConsultation(next).body, 'stand-up');
+  assert.equal(next.stage, 'inquiry');
+  assert.ok(next.trust < state.trust);
+  assert.equal(next.awaitingApology, true);
+  assert.equal(next.insultCount, 1);
+  assert.equal(actorCueForConsultation(next).expression, 'frowning');
+  const repeated = consultationTransition(next, patient, {
+    type: 'speech-response', input,
+    response: { dialogue: 'A model cannot excuse repeated insults.', appraisal: { register: 'courteous', terminates: false } },
+  });
+  assert.equal(repeated.stage, 'terminated');
+  assert.equal(actorCueForConsultation(repeated).body, 'stand-up');
 });

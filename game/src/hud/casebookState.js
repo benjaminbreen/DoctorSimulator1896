@@ -72,8 +72,8 @@ function observationEntries(state) {
     let entry = null;
     if (event.kind === 'examination' && event.reply) {
       entry = { kind: 'examination', label: event.label || 'Examination', text: event.reply };
-    } else if (event.kind === 'speech' && event.noteSummary) {
-      entry = { kind: 'patient-account', label: 'Patient account', text: event.noteSummary };
+    } else if (['speech', 'discussion', 'return-visit'].includes(event.kind) && event.noteSummary) {
+      entry = { kind: 'patient-account', label: event.kind === 'return-visit' ? 'One-month review (look ahead)' : 'Patient account', text: event.noteSummary };
     }
     if (!entry) continue;
     const key = `${entry.label}:${entry.text}`;
@@ -94,10 +94,10 @@ function selectedEvidence(patient, state) {
 }
 
 function resultSignature(state) {
-  if (state.stage !== 'result') return null;
+  if (!state.result) return null;
   return [
     state.patientId,
-    state.history?.length || 0,
+    state.history?.findIndex(event => event.kind === 'result') ?? 0,
     state.diagnosisId || '',
     (state.treatmentIds || []).join(','),
     state.result?.oneMonth?.band || '',
@@ -107,14 +107,14 @@ function resultSignature(state) {
 function projectVisit(patient, state, stamp, previous, id) {
   const diagnosis = patient.diagnoses.find((item) => item.id === state.diagnosisId);
   const plan = resolveTreatmentPlan(patient, state.treatmentIds);
-  const complete = state.stage === 'result';
+  const complete = Boolean(state.result);
   const closed = state.stage === 'terminated';
   return {
     id,
     startedAt: previous?.startedAt || stamp,
     updatedAt: stamp,
     status: complete ? 'complete' : closed ? 'closed' : 'in-progress',
-    stage: state.stage,
+    stage: complete ? 'result' : state.stage,
     elapsedMinutes: Math.max(0, Number(state.elapsedMinutes) || 0),
     observations: observationEntries(state),
     evidence: selectedEvidence(patient, state),
@@ -125,6 +125,7 @@ function projectVisit(patient, state, stamp, previous, id) {
       description: item.detail || '',
     })) : [],
     caseNote: String(state.caseNote || '').trim(),
+    agreedPlan: state.treatmentAgreement?.summary || null,
     immediateOutcome: complete ? {
       narrative: state.result?.immediate?.narrative || '',
       departureLine: state.result?.immediate?.departureLine || '',
@@ -170,9 +171,12 @@ export function syncConsultationRecord(patient, state, stamp, storage = browserS
   const last = visits.at(-1) || null;
   const signature = resultSignature(state);
   const time = cleanStamp(stamp);
+  // The look-ahead belongs to the signed record, even if passive time moves.
+  // It must not create a second visit or replace the original result.
   const updateLast = Boolean(last && (
     last.status === 'in-progress'
-    || (signature && last.resultSignature === signature && sameStamp(last.updatedAt, time))
+    || (signature && last.resultSignature === signature
+      && (sameStamp(last.updatedAt, time) || Boolean(state.returnVisit)))
   ));
   const visitId = updateLast ? last.id : `visit-${book.nextVisitId++}`;
   const visit = projectVisit(patient, state, time, updateLast ? last : null, visitId);

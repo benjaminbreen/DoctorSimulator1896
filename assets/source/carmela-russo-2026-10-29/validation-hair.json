@@ -1,0 +1,174 @@
+{
+  "date": "2026-10-30",
+  "tests": {
+    "passed": 740,
+    "failed": 0
+  },
+  "builds": {
+    "game": "passed; existing large-chunk warning",
+    "characterLab": "passed; existing large-chunk warning"
+  },
+  "assets": [
+    {
+      "id": "carmela-russo",
+      "path": "game/public/models/characters/carmela-russo.glb",
+      "headSource": "head-p2-v1/carmela-head-p2-v1.fbx",
+      "bytes": 5152892,
+      "sha256": "318a9132fb78649ef454f933721a00b0bbcf6cc71949b2af6da95aec689c1aee"
+    },
+    {
+      "id": "seamstress-prototype",
+      "path": "game/public/models/characters/seamstress-prototype.glb",
+      "headSource": "second-head-p2-v1/second-identity-head-p2-v1.fbx",
+      "note": "Fictional reference identity, not a new clinical case.",
+      "bytes": 5036948,
+      "sha256": "58cbfa3761ea3a8cd69d096acaf7d75d6cc470ee6b01cf1669e655858ac42777"
+    }
+  ],
+  "additionalTripoCredits": 0,
+  "defaultHairStyle": "center-chignon",
+  "hairGallery": {
+    "path": "artifacts/characters/carmela-hair/review",
+    "captures": 80,
+    "failures": [],
+    "visiblePrimitives": [
+      2
+    ],
+    "comparison": "artifacts/characters/carmela-hair/review/comparison.png",
+    "visualReview": "Style, grooming and cast sheets plus representative talking, head-tilt and bent-forward captures on both heads"
+  },
+  "sourceMotionAudit": [
+    {
+      "head": "carmela",
+      "samples": 45,
+      "minLowerFaceStretch": 0.9999,
+      "maxLowerFaceStretch": 1.0001,
+      "maxSleeveEdgeStretch": 1.7473
+    },
+    {
+      "head": "seamstress",
+      "samples": 45,
+      "minLowerFaceStretch": 0.9999,
+      "maxLowerFaceStretch": 1.0001,
+      "maxSleeveEdgeStretch": 1.7473
+    }
+  ],
+  "gameplay": [
+    {
+      "scenario": "carmela",
+      "seed": 4,
+      "continuous": false,
+      "offline": true,
+      "quality": "quality",
+      "output": "/Users/benbreen/Code/DoctorSimulator1896/artifacts/gameplay/carmela-hair-final",
+      "url": "http://127.0.0.1:5187/?playtest=1&seed=4&zone=consulting-office",
+      "steps": 42,
+      "failedSteps": 0,
+      "errors": [],
+      "exitCode": 0,
+      "status": "complete",
+      "verifiedHair": {
+        "styles": [
+          "center-chignon"
+        ],
+        "grooming": {
+          "hairVolume": 0,
+          "hairWave": 0,
+          "hairBunHeight": 0,
+          "hairPartOffset": 0
+        }
+      }
+    },
+    {
+      "scenario": "carmela",
+      "seed": 4,
+      "continuous": false,
+      "offline": true,
+      "quality": "quality",
+      "output": "/Users/benbreen/Code/DoctorSimulator1896/artifacts/gameplay/carmela-hair-waved-final",
+      "url": "http://127.0.0.1:5187/?appearanceSeed=1&playtest=1&seed=4&zone=consulting-office",
+      "steps": 10,
+      "failedSteps": 0,
+      "errors": [],
+      "exitCode": 0,
+      "status": "complete",
+      "verifiedHair": {
+        "styles": [
+          "waved-knot"
+        ],
+        "grooming": {
+          "hairVolume": -0.2,
+          "hairWave": 0.7,
+          "hairBunHeight": 0,
+          "hairPartOffset": 0.4
+        }
+      }
+    },
+    {
+      "scenario": "carmela",
+      "seed": 4,
+      "continuous": false,
+      "offline": true,
+      "quality": "quality",
+      "output": "/Users/benbreen/Code/DoctorSimulator1896/artifacts/gameplay/carmela-hair-braided-final",
+      "url": "http://127.0.0.1:5187/?appearanceSeed=2&playtest=1&seed=4&zone=consulting-office",
+      "steps": 10,
+      "failedSteps": 0,
+      "errors": [],
+      "exitCode": 0,
+      "status": "complete",
+      "verifiedHair": {
+        "styles": [
+          "braided-knot"
+        ],
+        "grooming": {
+          "hairVolume": 0.25,
+          "hairWave": 0,
+          "hairBunHeight": 0.3,
+          "hairPartOffset": 0
+        }
+      }
+    }
+  ],
+  "performance": {
+    "path": "artifacts/performance/carmela-hair-final",
+    "production": true,
+    "viewport": [
+      1440,
+      900
+    ],
+    "dpr": 1,
+    "quality": "quality",
+    "samples": [
+      {
+        "name": "consultation-idle",
+        "frames": 362,
+        "p95": 16.799999999999272,
+        "p99": 16.80000000000291,
+        "max": 16.80000000000291,
+        "over50": 0,
+        "averageDraws": 728.5,
+        "averageTriangles": 782673.5
+      },
+      {
+        "name": "consultation-examination",
+        "frames": 363,
+        "p95": 16.700000000004366,
+        "p99": 16.80000000000291,
+        "max": 16.80000000000291,
+        "over50": 0,
+        "averageDraws": 924,
+        "averageTriangles": 1094356
+      }
+    ],
+    "errors": []
+  },
+  "video": "artifacts/gameplay/carmela-hair-final/video/page@3b010be23ef7929cd8f66d369ad676a9.webm",
+  "limitations": [
+    "The three styles are period-informed prototype updos, not exhaustive period reconstructions.",
+    "Hair uses opaque meshes and fibre maps, without translucent strand edges or hair dynamics.",
+    "All three styles are included in the download and consume memory; only the selected style is drawn.",
+    "Offline replays test authored dialogue and outcomes, not the live consultation service.",
+    "Steady-state performance measurements apply to this local Chrome/Metal machine and exclude loading."
+  ]
+}

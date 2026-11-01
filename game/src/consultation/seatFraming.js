@@ -41,7 +41,7 @@ export function seatFramingForPatient(patientPosition) {
 export function setConsultationSeat(value) {
   framing = value ?? null;
   if (framing) {
-    zoom = DEFAULT_ZOOM;
+    zoom = Number.isFinite(framing.zoom) ? Math.max(0, Math.min(1, framing.zoom)) : DEFAULT_ZOOM;
     examZoom = EXAM_DEFAULT_ZOOM;
   }
   examFraming = framing

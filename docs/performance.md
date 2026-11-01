@@ -1,5 +1,169 @@
 # Runtime performance
 
+## October 30 mouth, eyelid and curated-look pass
+
+The final assets are 8,373,664 bytes for Carmela and 8,228,668 bytes for the
+second head. They include the revised dental arches, gums and tongue, plus
+changing surface normals on the lips and lids. Twelve appearance recipes
+reuse these two assets; they do not add twelve model downloads.
+
+The production preview in Chrome/Metal at 1440 × 900, quality preset and DPR 1
+recorded these six-second samples:
+
+| View | p95 frame interval | Average draw calls | Triangles across passes |
+| --- | ---: | ---: | ---: |
+| Conversation | 16.7 ms | 744 | 809,563 |
+| Examination | 16.8 ms | 944 | 1,130,196 |
+
+Each sample contained 362 frames, no interval over 50 ms, no long tasks and no
+browser errors. These samples exclude loading and transitions; the cumulative
+overlay recorded a 104 ms earlier frame. They establish local steady-state
+performance, not a loading or cross-device guarantee. Results and screenshots
+are in `artifacts/performance/carmela-face-final/`.
+
+## October 30 ear coverage and nape pass
+
+The five-style assets are 8,202,204 bytes for Carmela and 8,052,644 bytes for
+the second head. They include the retained three updos, two ear-covering
+styles, fine-fibre and curl albedos, 512-pixel normal maps and masked strand
+edges. This increases download and memory cost; only one style is rendered.
+Grooming still uses morph weights, with no per-frame mesh rebuilding.
+
+The production preview in Chrome/Metal at 1440 × 900, quality preset and DPR 1
+recorded two six-second samples of the default soft side waves:
+
+| View | p95 frame interval | Average draw calls | Triangles across passes |
+| --- | ---: | ---: | ---: |
+| Conversation | 16.7 ms | 732 | 801,490 |
+| Examination | 16.7 ms | 929 | 1,121,236 |
+
+Both samples contained 362 frames, no interval over 50 ms and no browser errors.
+The material cutout remains active in the game; forcing it opaque was corrected.
+These are local steady-state measurements, excluding download and loading, and
+do not establish performance on other devices. Results and screenshots are in
+`artifacts/performance/carmela-nape-final/`.
+
+## October 30 procedural hairstyles
+
+Carmela's asset is now 5,152,892 bytes and the second head is 5,036,948 bytes.
+Each contains three complete hairstyles and their grooming targets, adding
+about 0.8 MB per head. Hidden styles retain their download and memory cost but
+do not submit draw calls. Grooming uses morph weights without per-frame mesh
+rebuilding. The 65-joint skeleton and nine body clips are unchanged.
+
+The production preview in Chrome/Metal at 1440 × 900, quality preset and DPR 1
+recorded two six-second samples of Carmela's default chignon:
+
+| View | p95 frame interval | Average draw calls | Triangles across passes |
+| --- | ---: | ---: | ---: |
+| Conversation | 16.8 ms | 729 | 782,674 |
+| Examination | 16.7 ms | 924 | 1,094,356 |
+
+The samples contained 362 and 363 frames, no interval over 50 ms and no browser
+errors. This is a steady-state check of the current room on this machine;
+loading and performance on other devices are not established by these samples.
+Results and screenshots are in `artifacts/performance/carmela-hair-final/`.
+
+## October 29 expression and facial-binding pass
+
+Carmela's final asset is 4,321,072 bytes; the second head is 4,326,012 bytes.
+Both retain the shared 65-joint skeleton and nine clips. The fitted-head
+expression profile and corrected chin binding add no new per-frame geometry.
+Instance-owned face and appearance geometry is disposed when an actor leaves.
+
+The production preview in Chrome/Metal at 1440 × 900, quality preset and DPR 1
+recorded 16.7 ms p95 frame intervals for both conversation and examination.
+Each six-second sample contained 362 frames, no interval over 50 ms and no
+browser errors. Conversation averaged 726 draw calls and examination 921.
+Carmela's conversation camera is now closer, so the conversation draw count
+is not a direct comparison with the older framing.
+
+Results and screenshots are in
+`artifacts/performance/carmela-emoting-rig-fixed/`.
+
+## October 29 hair, mouth and sleeve pass
+
+The polished assets are 4,297,432 bytes for Carmela and 4,302,372 for the
+second head. Both keep the same 65-joint skeleton and nine clips. Added lip,
+mouth, tooth and hair geometry increases rendering work slightly.
+
+The production preview in Chrome/Metal at 1440 × 900, quality preset and DPR 1
+recorded two six-second steady-state samples:
+
+| View | p95 frame interval | Average draw calls | Triangles across passes |
+| --- | ---: | ---: | ---: |
+| Conversation | 16.7 ms | 784 | 845,590 |
+| Examination | 16.7 ms | 921 | 1,127,776 |
+
+Neither sample contained a frame over 50 ms or a browser error. Conversation
+adds about 20 calls and 46,000 triangles across passes versus the initial modular
+asset. Both versions stay near 60 FPS on this machine. These samples exclude
+loading and do not establish performance on other devices.
+
+Results are in `artifacts/performance/carmela-polish/`. The full offline case
+replay and recorded video are in `artifacts/gameplay/carmela-polish-accepted/`.
+
+## October 29 modular character pass
+
+The initial modular Carmela asset was 4,154,148 bytes, down from a 24.4 MB Blender
+export. It retains one 65-joint skeleton, nine clips and the facial controls.
+The second head used an identical skeleton and was 4,117,480 bytes.
+
+A production preview in Chrome/Metal at 1440 × 900, quality preset and DPR 1
+recorded two six-second samples after Carmela's entrance:
+
+| View | p95 frame interval | Average draw calls | Triangles across passes |
+| --- | ---: | ---: | ---: |
+| Conversation | 16.7 ms | 764 | 799,460 |
+| Examination | 16.8 ms | 891 | 1,064,241 |
+
+Neither sample contained a frame over 50 ms or a browser error. The previous
+conversation measurement was 791 calls and about 823,000 triangles. Both
+versions ran near 60 FPS here; the new model gives a modest reduction in
+rendering work, not an established speedup across devices. Loading is outside
+these steady-state samples.
+
+Results and screenshots are in `artifacts/performance/carmela-modular-production/`.
+The runner now rejects an empty frame sample, which can occur if a development
+reload destroys its recorder. This measurement used the production preview.
+
+## October 28 consultation pass
+
+Seated conversations now refresh interior shadow maps at 30 Hz. Walking,
+examination mode, and staged loading retain a shadow update on every frame.
+The patient animation and the rest of the rendered scene still run at the
+browser's normal frame rate. This reduces repeated shadow draws without
+lowering screenshot resolution or removing lighting.
+
+A local production comparison used Chrome/Metal, a 1440 × 900 viewport,
+quality preset, DPR 1, the same seeded Carmela case, and six seconds of seated
+conversation after the entrance. The old full-refresh frame submitted 997 draw
+calls; the new run averaged 791, with 586 on cached-shadow frames. Rendered
+triangles across all passes fell from about 1.15 million to 0.82 million per
+frame. The scene's geometry was unchanged. Both runs stayed near 60 FPS and
+had a 16.8 ms p95 frame interval. This is rendering headroom, not evidence of
+a large frame-rate improvement on other hardware.
+
+The production benchmark can now measure the consultation UI and examination
+view with real browser timers:
+
+```sh
+node game/scripts/performance-playtest.mjs --url=http://127.0.0.1:5175 \
+  --consultation --quality=quality --dpr=1 \
+  --output=artifacts/performance/consultation
+```
+
+It keeps the civil clock at the opening time to avoid appointment interruptions,
+starts Carmela through the casebook, waits for her entrance, and records separate
+conversation and examination samples. JSON includes average draw and triangle
+counts as well as frame percentiles. The original park route remains the default.
+
+The same pass fixed accumulation of procedural bone rotations. A constant-clip
+test previously bent the spine by up to 0.982 radians over a minute; restoring
+the clip pose before each procedural update keeps it within 0.012 radians.
+Unchanged clinical events no longer restart the last body gesture when the
+player changes menus or edits the case record.
+
 The September 2026 pass addresses loading and frame spikes, rather than only
 average FPS. The browser benchmark is `game/scripts/performance-playtest.mjs`.
 Run it against a production preview, with no other benchmark browser running:

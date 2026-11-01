@@ -253,6 +253,10 @@ async function convert(pack, file, group = null) {
   // canopy. Those also arrive alpha-blended, which sorts wrong against itself
   // and casts no shadow; a cutout does both correctly.
   for (const material of document.getRoot().listMaterials()) {
+    if (source === 'victorian_style_sofa' && material.getName() === 'blanket') {
+      material.setDoubleSided(true);
+      continue;
+    }
     if (!spec.foliage) {
       material.setDoubleSided(false);
       continue;

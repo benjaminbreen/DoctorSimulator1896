@@ -175,6 +175,13 @@ such.
 
 ### 5. Diagnosis, treatment, and case record
 
+The Carmela prototype adds a short prescription discussion between treatment
+selection and the case record. The player agrees what she will actually do,
+including whether the plan is possible at the shop. The simulation records
+that agreement and uses it in the later outcome. The one-month panel can open
+a playable return-visit preview based on that outcome; it does not advance the
+current appointment or charge another fee.
+
 When the player selects **Consider Treatment**, the three diagnoses most
 relevant to discovered evidence are shown first, with the complete list still
 available. Treatments come from a shared library of eight categories, opened as
@@ -269,8 +276,11 @@ unauthorized fact is rejected.
 Two guards keep the model inside the record. The request schema restricts
 `disclosedNow` to the ids the simulation already authorized, so the model cannot
 name any other fact, and the engine rejects an unauthorized id if one arrives
-anyway. Decorum and termination are never delegated: an insult ends the visit
-before a call is made.
+anyway. Decorum and termination are never delegated: a first insult causes a
+trust penalty and gives the doctor a chance to apologize. Luna may render
+anger or hurt. A second insult in the same visit ends it without a model call.
+Apologies partially repair trust but do not erase the warning or answer a
+pending clinical question.
 
 If the API is unavailable, the three ordinary choices and all deterministic
 gameplay remain usable. A custom question falls back to the offline reply.

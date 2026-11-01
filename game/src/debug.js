@@ -100,6 +100,7 @@ export const gameDebug = {
     };
   },
   room: null,
+  loadedZone: null,
   actors: { requested: [], loaded: [] },
   // Live, existing crowd positions exposed for the screenshot harness. The
   // ordinary game does not read these; Hopper shots use them as composition

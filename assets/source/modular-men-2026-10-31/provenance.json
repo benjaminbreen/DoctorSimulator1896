@@ -1,0 +1,288 @@
+{
+  "date": "2026-10-31",
+  "purpose": "Two new white male character templates with new generated bodies, distinct heads, compatible Mixamo animation and bounded structural controls.",
+  "status": "proportions-pass-reviewed-art-pass-required",
+  "credits": {
+    "startingBalance": 2845,
+    "planningCeiling": 1000,
+    "spentConfirmed": 520,
+    "lastConfirmedBalance": 2325,
+    "operations": [
+      {
+        "operation": "Male A head P2 quad generation",
+        "credits": 100,
+        "asset": "ccd47a3c-a702-4ae2-9f68-f6ee53e0f915"
+      },
+      {
+        "operation": "Male A head texture",
+        "credits": 20,
+        "asset": "ccd47a3c-a702-4ae2-9f68-f6ee53e0f915"
+      },
+      {
+        "operation": "Male B head P2 quad generation",
+        "credits": 100,
+        "asset": "fd8f0918-7c69-41ea-84f3-08c26591becd"
+      },
+      {
+        "operation": "Male B head texture",
+        "credits": 20,
+        "asset": "fd8f0918-7c69-41ea-84f3-08c26591becd"
+      },
+      {
+        "operation": "Male A body P2 quad generation",
+        "credits": 100,
+        "asset": "7054731f-971a-4f1f-9e81-06ab22fac6e8"
+      },
+      {
+        "operation": "Male A body texture",
+        "credits": 20,
+        "asset": "7054731f-971a-4f1f-9e81-06ab22fac6e8"
+      },
+      {
+        "operation": "Male B body P2 quad generation",
+        "credits": 100,
+        "asset": "c9414506-e975-4668-affa-99f2f24fe20a"
+      },
+      {
+        "operation": "Male B body texture",
+        "credits": 20,
+        "asset": "c9414506-e975-4668-affa-99f2f24fe20a"
+      },
+      {
+        "operation": "Male A body Mixamo auto-rig",
+        "credits": 20,
+        "asset": "7054731f-971a-4f1f-9e81-06ab22fac6e8"
+      },
+      {
+        "operation": "Male B body Mixamo auto-rig",
+        "credits": 20,
+        "asset": "c9414506-e975-4668-affa-99f2f24fe20a"
+      }
+    ]
+  },
+  "assets": {
+    "male-a-head": {
+      "tripoId": "ccd47a3c-a702-4ae2-9f68-f6ee53e0f915",
+      "quadTarget": 12000,
+      "faces": 11578,
+      "vertices": 11249,
+      "status": "FBX downloaded",
+      "source": "male-a-head-p2-v1/male-a-head-p2-v1.fbx"
+    },
+    "male-b-head": {
+      "tripoId": "fd8f0918-7c69-41ea-84f3-08c26591becd",
+      "quadTarget": 12000,
+      "faces": 12784,
+      "vertices": 12456,
+      "status": "FBX downloaded",
+      "source": "male-b-head-p2-v1/male-b-head-p2-v1.fbx"
+    },
+    "male-a-body": {
+      "tripoId": "7054731f-971a-4f1f-9e81-06ab22fac6e8",
+      "quadTarget": 18000,
+      "faces": 20796,
+      "vertices": 19171,
+      "status": "Rigged FBX downloaded",
+      "source": "male-a-body-mixamo-p2-v1/tripo_convert_ec971f25-28f2-4659-9edd-49fd07969310.fbx"
+    },
+    "male-b-body": {
+      "tripoId": "c9414506-e975-4668-affa-99f2f24fe20a",
+      "quadTarget": 18000,
+      "faces": 19000,
+      "vertices": 18931,
+      "status": "Rigged FBX downloaded",
+      "source": "male-b-body-mixamo-p2-v1/tripo_convert_d1aa07ed-cef1-4f55-9b8b-5a839f8a1966.fbx"
+    }
+  },
+  "sources": {
+    "suit1890_1895": "https://www.metmuseum.org/art/collection/search/91980",
+    "suit1885_1900": "https://www.metmuseum.org/art/collection/search/103793",
+    "rigging": "https://developers.tripo3d.com/en/docs/animations-rig",
+    "facialHairPortraits": [
+      "https://www.loc.gov/pictures/item/96524269/",
+      "https://americanhistory.si.edu/collections/object/nmah_554537"
+    ]
+  },
+  "historicalUncertainty": "Period-informed fictional clothes based on dated collection examples; not a reconstruction of a particular person or occupation.",
+  "referenceTool": "built-in image_gen",
+  "referenceFiles": "references/*.png and matching prompt files",
+  "plan": [
+    "Generate two new head bases and two new clothed bodies; no Samuel or player body reuse.",
+    "Use compatible Mixamo skeletons, verify weights and retarget nine body clips in Blender.",
+    "Fit eyes, lids, teeth, lips and expressions with measured anchors per head.",
+    "Add belly size, body width and restrained nose/ear/jaw/chin controls.",
+    "Provide hair and colour variation and compare both bases through motion.",
+    "Run source motion audits, screenshots, continuous closeups, gameplay paths and real-timer performance."
+  ],
+  "rejectedReviews": [
+    {
+      "path": "artifacts/characters/modular-men/rejected-neck-carrier",
+      "reason": "Visible neck/collar gap, jagged donor boundary, layered eyelids and misplaced sideburns. Motion checks passed but the visible assembly failed."
+    },
+    {
+      "path": "artifacts/characters/modular-men/anatomy-review",
+      "reason": "User rejected visible wrist UV streaks, neck/collar fit, stiff workwear and eye appearance. Passing motion and browser checks did not establish visual quality."
+    },
+    {
+      "path": "artifacts/characters/modular-men/workwear-motion",
+      "reason": "Direct thigh skinning pulled the apron hem into separate flaps and left intermediate-pose intersections."
+    },
+    {
+      "path": "artifacts/characters/modular-men/workwear-collision",
+      "reason": "Simple leg bounds did not follow the actual trouser and waistband surfaces well enough."
+    },
+    {
+      "path": "artifacts/characters/modular-men/workwear-before-hem-repair",
+      "reason": "The standing apron had an abrupt ledge below the shirt hem."
+    },
+    {
+      "path": "artifacts/characters/modular-men/rejected-waist-clearance",
+      "reason": "Removing the upright contact fit exposed trouser geometry through the apron."
+    }
+  ],
+  "outputs": [
+    {
+      "file": "game/public/models/characters/male-lean-template.glb",
+      "bytes": 10079184,
+      "sha256": "4e752ee389f4280bcf6c0626c6eabf93e1021eff5eb22f192e175fb15f769801"
+    },
+    {
+      "file": "game/public/models/characters/male-broad-template.glb",
+      "bytes": 10148212,
+      "sha256": "b9b936aa07765986d5b6d9b4944dda13f50ce9a1c7da3a22cb1b8f97b1729233"
+    }
+  ],
+  "verification": {
+    "date": "2026-11-01",
+    "assetVersion": "20261031-garments-7",
+    "labReview": "artifacts/characters/modular-men/garment-detail-review",
+    "captures": 12,
+    "browserErrors": [],
+    "workwearMotion": {
+      "directory": "artifacts/characters/modular-men/workwear-proportions",
+      "captures": 28,
+      "browserErrors": []
+    },
+    "fitTiming": {
+      "scope": "Isolated Character Lab, local Chrome, real browser timers; not whole-game FPS.",
+      "results": [
+        {
+          "model": "male-lean-template",
+          "outfit": "work-shirt",
+          "frames": 241,
+          "frameP50": 16.699999999999818,
+          "frameP95": 16.700000000000728,
+          "fitCpuP50": 0,
+          "fitCpuP95": 0
+        },
+        {
+          "model": "male-lean-template",
+          "outfit": "canvas-apron",
+          "frames": 241,
+          "frameP50": 16.699999999999818,
+          "frameP95": 16.700000000000728,
+          "fitCpuP50": 1.699999988079071,
+          "fitCpuP95": 2.200000047683716
+        },
+        {
+          "model": "male-broad-template",
+          "outfit": "work-shirt",
+          "frames": 241,
+          "frameP50": 16.699999999999818,
+          "frameP95": 16.700000000000728,
+          "fitCpuP50": 0,
+          "fitCpuP95": 0
+        },
+        {
+          "model": "male-broad-template",
+          "outfit": "canvas-apron",
+          "frames": 241,
+          "frameP50": 16.69999999999891,
+          "frameP95": 16.700000000000728,
+          "fitCpuP50": 2.5,
+          "fitCpuP95": 2.900000035762787
+        }
+      ]
+    },
+    "motionAuditSamplesPerTemplate": 45,
+    "continuousSkinComponentsPerTemplate": 2,
+    "gameTestsPassed": 776,
+    "characterRuntimeTestsPassed": 9,
+    "productionBuilds": [
+      "game",
+      "character-lab"
+    ],
+    "femaleRegression": {
+      "directory": "artifacts/characters/modular-men/female-regression",
+      "captures": 3,
+      "browserErrors": []
+    },
+    "gameplay": [
+      {
+        "directory": "artifacts/gameplay/modular-men-proportions-canvas",
+        "preset": "lean-rounded",
+        "captures": 15,
+        "browserErrors": [],
+        "assetVersion": "20261031-garments-7"
+      },
+      {
+        "directory": "artifacts/gameplay/modular-men-proportions-leather",
+        "preset": "broad-angular",
+        "captures": 15,
+        "browserErrors": [],
+        "assetVersion": "20261031-garments-7"
+      }
+    ],
+    "visualAcceptance": false,
+    "fitReview": "artifacts/characters/modular-men/garment-review",
+    "fitReviewCaptures": 10,
+    "focusedTestsPassed": 29,
+    "videoReview": {
+      "scope": "Recorded game entrance, turn and sit sequence; 12 sampled frames per template, plus consultation and examination PNGs.",
+      "canvas": "artifacts/characters/modular-men/garment-review/game-motion-canvas.png",
+      "leather": "artifacts/characters/modular-men/garment-review/game-motion-leather.png"
+    }
+  },
+  "repairs": [
+    "Preserve the native throat, fit the neck inside the collar and bake skin onto unique UVs in 3D.",
+    "Keep facial structure rigid above a short neck blend and keep garment collar weights on the chest.",
+    "Remove disconnected hand-weighted cuff fragments; extend each native hand into the sleeve as a continuous weighted mesh.",
+    "Give the new wrist surface its own padded UV atlas and clean residual cuff pigment from the proximal hand.",
+    "Fit the apron to the final fused shirt, include the trouser waist in the seated collision fit and hide covered shirt buttons.",
+    "Use the same bounded body warp on garment layers and keep abdomen controls off the lower legs.",
+    "Adjust seated palm pitch to prevent isolated fingertips appearing through the apron.",
+    "Use actual thigh angle for the apron drape so the sit cue cannot fold it early while the patient is upright.",
+    "Fit the apron against two depth grids of the actual posed trousers and waist, with separate lap and knee-front contacts and matching shadows.",
+    "Remove the obsolete donor normal map from the new eyelids and reduce neutral aperture and sclera brightness.",
+    "Add a torso inspection view, a visible-surface picker and same-pose shadow diagnostics to the review tools.",
+    "Lower the head 12 mm and bound donor neck lean relative to the chest while preserving the head performance.",
+    "Preserve the native upper throat; replace the lower neck below a sloping under-jaw/nape cut and keep its final ring inside the collar.",
+    "Reduce shirt chest depth and sleeve volume, taper the waist and line the narrowed cuff openings.",
+    "Match hand and wrist texture colour to sampled cheek skin before applying the shared appearance palette.",
+    "Replace flat apron ribbons with thick webbing, reinforced tabs and a waist knot with hanging ties.",
+    "Add a rolled apron hem, separate tape textures and edge stitching; reduce the seated knee drop and shape the hem corners.",
+    "Fit the lower apron to the actual trouser waist and continue its standing surface smoothly below the shirt hem.",
+    "Start the seated drape from the whole curved waist and fade lap contact below the bib; interpolate neighbouring depth samples with conservative clearance."
+  ],
+  "limitations": [
+    "The waist and lap folds still look too regular or stiff in some gestures. Further pattern, tension-fold and material work is needed; the experimental offline cloth bake was rejected.",
+    "The broad donor still shows poor formal hip and trouser seams in an unobstructed side view; these need a garment-level rebuild.",
+    "Procedural hair shows repeated fibre flow and needs a dedicated art pass.",
+    "Neutral eyelids and inner corners still look artificial at close range; donor ears and skin transitions remain rough.",
+    "The sofa blanket is smoother and double-sided but its source fold shape remains coarse.",
+    "Structural controls are bounded edits of two donors; arbitrary clothes are not interchangeable between bodies.",
+    "The apron uses a runtime vertex-shader fit; its source mesh alone does not include that correction, and CPU surface picks do not report the displaced contact point.",
+    "These replays verify the affected paths, not every combination of controls and motion. No whole-game performance claim is made."
+  ],
+  "experimentalClothBake": {
+    "shipped": false,
+    "result": "The local cloth tests did not produce usable folds. No simulated drape from those tests is included."
+  },
+  "armReconstructionExperiment": {
+    "accepted": false,
+    "directory": "assets/source/modular-men-2026-10-31/rejected-arm-reconstruction-2026-11-01",
+    "publicAssetsRestored": true,
+    "direction": "Evaluate a complete rigged worker asset and an established anatomical character generator instead of continuing procedural reconstruction.",
+    "note": "Intermediate assembled blends and the lean motion report are archived with the rejected reconstruction. The public assets and runtime have been restored to the previously verified garment pass."
+  }
+}

@@ -1,0 +1,7 @@
+{"type":"move","keys":["KeyA"],"ms":1200}
+{"type":"look","dx":150,"dy":-20}
+{"type":"press","key":"KeyM"}
+{"type":"click","name":"Fast Travel","index":0}
+{"type":"click","name":"Your Consulting Room","exact":false}
+{"type":"assert","selector":".ghud-travel-menu","visible":false}
+{"type":"assert","text":"Consulting Office","exact":true}

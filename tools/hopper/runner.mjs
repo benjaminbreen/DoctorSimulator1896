@@ -19,10 +19,11 @@ export async function reachable(url) {
 export async function ensureGame(port) {
   const url = `http://127.0.0.1:${port}/`;
   if (await reachable(url)) return { url, stop: () => {} };
-  const command = port === 5175
-    ? ['--prefix', 'game', 'run', 'dev']
-    : ['--prefix', 'game', 'run', 'dev', '--', '--port', String(port)];
-  const child = spawn('npm', command, { cwd: REPO, stdio: 'ignore' });
+  // Own Vite directly, so stopping a playtest also stops its listening server.
+  const child = spawn(process.execPath, [
+    path.join(REPO, 'game/node_modules/vite/bin/vite.js'),
+    '--host', '127.0.0.1', '--port', String(port), '--strictPort',
+  ], { cwd: path.join(REPO, 'game'), stdio: 'ignore' });
   for (let index = 0; index < 60; index += 1) {
     await new Promise((resolve) => setTimeout(resolve, 500));
     if (await reachable(url)) return { url, stop: () => child.kill() };
@@ -85,13 +86,12 @@ export async function renderResilient(page, canvas, shot, url, zone) {
 }
 
 export async function ensureZone(page, zone) {
-  if ((await page.evaluate(() => window.__shot.world().zone)) === zone) return;
-  await page.evaluate((nextZone) => window.__game.set('zone', nextZone), zone);
-  await page.waitForTimeout(600);
+  if ((await page.evaluate(() => window.__game.tuning.zone)) !== zone) {
+    await page.evaluate((nextZone) => window.__game.set('zone', nextZone), zone);
+  }
   await page.waitForFunction(
     (nextZone) => window.__shot?.ready && window.__shot.world().zone === nextZone,
     zone,
     { timeout: 90000 },
   );
-  await page.waitForTimeout(1200);
 }

@@ -5,9 +5,10 @@ import {
   normalizeDialogueResponse,
   validateConsultationPatient,
 } from './contract.js';
-import { relationshipEffects, resolveInquiryRule, ruleIsAvailable } from './patientLogic.js';
+import { deterministicAppraisal, relationshipEffects, resolveInquiryRule, ruleIsAvailable } from './patientLogic.js';
 import { resolveAuthoredOutcome, resolveFollowUpOutcome } from './outcomes.js';
 import { resolveTreatment, resolveTreatmentPlan } from './treatments.js';
+import { treatmentDiscussionStep } from './treatmentDiscussion.js';
 
 const SPEECH_MINUTES = 5;
 const EXAMINATION_MINUTES = 3;
@@ -98,8 +99,11 @@ export function eligibleDisclosureIds(patient, state, input) {
 
 export function buildDialogueRequest(patient, state, input) {
   const stance = SPEECH_STANCES.includes(input?.stance) ? input.stance : 'question';
-  const rule = resolveInquiryRule(patient, state, input);
-  const allowedDisclosureIds = eligibleDisclosureIds(patient, state, input);
+  const appraisal = deterministicAppraisal(patient, state, input);
+  const interpersonal = ['insult', 'apology'].includes(appraisal.intent);
+  const rule = interpersonal ? null : resolveInquiryRule(patient, state, input);
+  const allowedDisclosureIds = interpersonal ? [] : eligibleDisclosureIds(patient, state, input);
+  const currentCue = actorCueForConsultation(state, patient);
   return {
     patientId: patient.id,
     playerInput: String(input?.text || '').trim().slice(0, 600),
@@ -107,15 +111,28 @@ export function buildDialogueRequest(patient, state, input) {
     promptId: input?.promptId || null,
     custom: Boolean(input?.custom),
     resolvedRuleId: rule?.id || null,
-    minutes: rule?.minutes ?? SPEECH_MINUTES,
+    appraisal,
+    conversationRepair: {
+      action: interpersonal ? appraisal.intent : null,
+      awaitingApology: Boolean(state.awaitingApology),
+      insultCount: state.insultCount || 0,
+      visitEnds: appraisal.terminates,
+    },
+    minutes: appraisal.intent === 'apology' ? 1 : rule?.minutes ?? SPEECH_MINUTES,
     maxDisclosures: rule?.maxDisclosures ?? 1,
-    // Custom speech always counts as the reply to a waiting patient, even a
-    // non sequitur — the renderer reacts in character rather than the engine
-    // rejecting the turn.
-    responseTo: input?.responseTo || (input?.custom ? state.pendingResponseId : null) || null,
+    // Clinical custom speech answers a waiting patient, even a non sequitur.
+    // An insult or apology leaves that clinical question pending.
+    responseTo: interpersonal ? null
+      : input?.responseTo || (input?.custom ? state.pendingResponseId : null) || null,
     pendingResponseId: state.pendingResponseId || null,
     trust: state.trust,
     elapsedMinutes: state.elapsedMinutes,
+    currentEmotion: {
+      expression: currentCue.expression,
+      expressionIntensity: currentCue.expressionIntensity ?? 1,
+      gaze: currentCue.gaze,
+      bodyCue: currentCue.body,
+    },
     disclosedFacts: state.disclosedFactIds.map((id) => factById(patient, id)).filter(Boolean),
     allowedDisclosureIds,
     allowedDisclosureFacts: allowedDisclosureIds.map((id) => factById(patient, id)).filter(Boolean),
@@ -147,6 +164,8 @@ export function startConsultation(patient) {
     overtimeExtensions: 0,
     trust: patient.initialTrust ?? 50,
     satisfaction: patient.initialSatisfaction ?? 50,
+    insultCount: 0,
+    awaitingApology: false,
     disclosedFactIds,
     observedFactIds: [],
     interpretationIds: [],
@@ -168,7 +187,7 @@ export function consultationTransition(state, patient, action) {
   if (!CONSULTATION_STAGES.includes(state.stage)) return withError(state, `unknown stage ${state.stage}`);
   switch (action?.type) {
     case 'end-early': {
-      const error = requireStage(state, 'opening', 'inquiry', 'decision', 'case-note');
+      const error = requireStage(state, 'opening', 'inquiry', 'decision', 'treatment-discussion', 'case-note');
       return error ? withError(state, error) : record({
         ...state,
         stage: 'terminated',
@@ -256,14 +275,19 @@ export function consultationTransition(state, patient, action) {
       const error = requireStage(state, 'inquiry');
       if (error) return withError(state, error);
       const request = buildDialogueRequest(patient, state, action.input);
+      const interpersonal = ['insult', 'apology'].includes(request.appraisal.intent);
       if (!request.playerInput) return withError(state, 'speech requires text');
-      if (state.pendingResponseId && request.responseTo !== state.pendingResponseId) {
+      if (state.pendingResponseId && request.responseTo !== state.pendingResponseId && !interpersonal) {
         return withError(state, 'respond to the patient before changing the subject');
       }
-      if (consultationTiming(patient, state).deadlineReached && !state.pendingResponseId) {
+      if (consultationTiming(patient, state).deadlineReached && !state.pendingResponseId
+        && !(state.awaitingApology && interpersonal)) {
         return withError(state, 'the appointment has ended; decide, arrange follow-up, or take overtime');
       }
-      const response = normalizeDialogueResponse(action.response);
+      const response = normalizeDialogueResponse({
+        ...action.response,
+        ...(interpersonal ? { appraisal: request.appraisal } : {}),
+      });
       const allowed = new Set(request.allowedDisclosureIds);
       const accepted = response.disclosedNow.filter((id) => allowed.has(id));
       const rejected = response.disclosedNow.filter((id) => !allowed.has(id));
@@ -272,12 +296,15 @@ export function consultationTransition(state, patient, action) {
         ? acceptedFact ? `“${acceptedFact.patientWording || acceptedFact.value}”` : 'The patient waits for you to continue.'
         : response.dialogue;
       const behavior = rejected.length ? 'The patient remains attentive.' : response.behavior;
-      const effects = relationshipEffects(patient, state, action.input);
+      const effects = interpersonal ? {} : relationshipEffects(patient, state, action.input);
       const rule = [...(patient.prompts || []), ...(patient.inquiryIntents || [])]
         .find((candidate) => candidate.id === request.resolvedRuleId);
       const notebookNote = notebookNoteFor(rule, acceptedFact, rejected);
-      const trust = Math.max(0, Math.min(100,
-        trustAfterResponse(state.trust, request.stance, response.appraisal) + (effects.trust || 0),
+      const firstInsult = request.appraisal.intent === 'insult' && !request.appraisal.terminates;
+      // Leave room for the first repair turn even in a visit with low trust.
+      const trust = Math.max(firstInsult ? 1 : 0, Math.min(100,
+        trustAfterResponse(state.trust, request.stance, response.appraisal) + (effects.trust || 0)
+          + (request.appraisal.intent === 'apology' ? 4 : 0),
       ));
       const satisfaction = Math.max(0, Math.min(100, state.satisfaction + (effects.satisfaction || 0)));
       const terminated = response.appraisal.terminates || trust <= 0;
@@ -289,6 +316,9 @@ export function consultationTransition(state, patient, action) {
         stage: terminated ? 'terminated' : state.stage,
         elapsedMinutes: state.elapsedMinutes + request.minutes,
         trust,
+        insultCount: (state.insultCount || 0) + (request.appraisal.intent === 'insult' ? 1 : 0),
+        awaitingApology: request.appraisal.intent === 'insult' ? !terminated
+          : request.appraisal.intent === 'apology' ? false : Boolean(state.awaitingApology),
         satisfaction,
         pendingResponseId,
         disclosedFactIds: addUnique(state.disclosedFactIds, accepted),
@@ -299,10 +329,13 @@ export function consultationTransition(state, patient, action) {
         kind: 'speech', input: request.playerInput, stance: request.stance,
         promptId: request.promptId, custom: request.custom, resolvedRuleId: request.resolvedRuleId,
         minutes: request.minutes, responseTo: request.responseTo,
-        countsAsQuestion: rule?.countsAsQuestion ?? (!request.responseTo && request.stance === 'question'),
+        countsAsQuestion: !interpersonal && (rule?.countsAsQuestion ?? (!request.responseTo && request.stance === 'question')),
         // Authored cues win; a model-chosen cue only fills a turn no rule covers.
-        bodyCue: rule?.bodyCue || response.bodyCue || null,
-        reactionExpression: rule?.reactionExpression || response.reactionExpression || null,
+        bodyCue: rule?.bodyCue || (rejected.length ? null : response.bodyCue) || null,
+        reactionExpression: rule?.reactionExpression || (rejected.length ? null : response.reactionExpression) || null,
+        expressionIntensity: rejected.length ? null
+          : rule ? rule.expressionIntensity ?? null : response.expressionIntensity,
+        gaze: rejected.length ? null : rule ? rule.gaze || null : response.gaze,
         trustDelta: trust - state.trust,
         satisfactionDelta: satisfaction - state.satisfaction,
         dialogue, behavior,
@@ -335,16 +368,54 @@ export function consultationTransition(state, patient, action) {
       if (!resolveTreatment(patient, action.id)) return withError(state, `unknown treatment ${action.id}`);
       const chosen = state.treatmentIds || [];
       if (chosen.includes(action.id)) {
-        return { ...state, treatmentIds: chosen.filter((id) => id !== action.id) };
+        return { ...state, treatmentIds: chosen.filter((id) => id !== action.id), treatmentAgreement: null, discussionStep: null };
       }
       if (chosen.length >= MAX_PLAN_ITEMS) return withError(state, `a plan carries no more than ${MAX_PLAN_ITEMS} treatments`);
-      return { ...state, treatmentIds: [...chosen, action.id] };
+      return { ...state, treatmentIds: [...chosen, action.id], treatmentAgreement: null, discussionStep: null };
     }
     case 'begin-case-note': {
-      const error = requireStage(state, 'decision');
+      const error = requireStage(state, 'decision', 'treatment-discussion');
       if (error) return withError(state, error);
       if (!state.diagnosisId || !(state.treatmentIds?.length > 0)) return withError(state, 'select a diagnosis and at least one treatment first');
+      const step = treatmentDiscussionStep(patient, state);
+      if (step) return record({
+        ...state, stage: 'treatment-discussion', discussionStep: step.id,
+        disclosedFactIds: addUnique(state.disclosedFactIds, step.discloseFactIds),
+      }, { kind: 'discussion', ...step, disclosedNow: step.discloseFactIds || [] });
       return { ...state, stage: 'case-note', caseRecordFactIds: [] };
+    }
+    case 'revise-treatment': {
+      const error = requireStage(state, 'treatment-discussion');
+      return error ? withError(state, error) : {
+        ...state, stage: 'decision', discussionStep: null, treatmentAgreement: null,
+      };
+    }
+    case 'respond-treatment': {
+      const error = requireStage(state, 'treatment-discussion');
+      if (error) return withError(state, error);
+      const step = treatmentDiscussionStep(patient, state);
+      const choice = step?.choices.find(item => item.id === action.id);
+      if (!choice) return withError(state, 'choose a response to the current treatment concern');
+      if (choice.revise) return record({
+        ...state, stage: 'decision', discussionStep: null, treatmentAgreement: null,
+      }, { kind: 'discussion', input: choice.text, dialogue: '“All right. What else can we do?”', reactionExpression: 'guarded', bodyCue: 'sitting-talking' });
+      if (choice.next) {
+        const next = patient.treatmentDiscussion.steps[choice.next];
+        return record({
+          ...state, discussionStep: choice.next,
+          disclosedFactIds: addUnique(state.disclosedFactIds, next.discloseFactIds),
+        }, { kind: 'discussion', input: choice.text, ...next, disclosedNow: next.discloseFactIds || [] });
+      }
+      const agreement = patient.treatmentDiscussion.agreements[choice.agreement];
+      if (!agreement) return withError(state, 'this response has no agreed plan');
+      return record({
+        ...state, treatmentAgreement: { id: choice.agreement, summary: agreement.summary },
+      }, {
+        kind: 'discussion', input: choice.text, dialogue: agreement.dialogue,
+        noteSummary: agreement.summary, noteKey: 'agreed-treatment',
+        reactionExpression: choice.agreement === 'rest-declined' ? 'frowning' : 'guarded',
+        bodyCue: choice.agreement === 'rest-declined' ? 'sitting-disapproval' : 'sitting-talking',
+      });
     }
     case 'select-record-fact': {
       const error = requireStage(state, 'case-note');
@@ -421,6 +492,49 @@ export function consultationTransition(state, patient, action) {
       if (!result) return withError(state, 'follow-up is unavailable for this patient');
       return record({ ...state, stage: 'result', result }, { kind: 'result', deferred: true });
     }
+    case 'begin-return-visit': {
+      const error = requireStage(state, 'result');
+      if (error) return withError(state, error);
+      const visit = state.result?.returnVisit;
+      if (!visit) return withError(state, 'there is no return visit for this result');
+      if (state.returnVisit) return { ...state, stage: 'return-visit' };
+      return record({ ...state, stage: 'return-visit', returnVisit: { asked: [], phase: 'questions', plan: null } }, {
+        kind: 'return-visit', dialogue: visit.opening, reactionExpression: visit.expression, bodyCue: 'sitting-talking',
+      });
+    }
+    case 'ask-return-visit': {
+      const error = requireStage(state, 'return-visit');
+      if (error) return withError(state, error);
+      const question = state.result.returnVisit.questions.find(item => item.id === action.id);
+      if (!question || state.returnVisit.phase !== 'questions' || state.returnVisit.asked.includes(action.id)) {
+        return withError(state, 'choose a question still available in this return visit');
+      }
+      return record({ ...state, returnVisit: { ...state.returnVisit, asked: [...state.returnVisit.asked, action.id] } }, {
+        kind: 'return-visit', input: question.text, dialogue: question.dialogue,
+        observation: question.observation || false, noteSummary: question.dialogue,
+        reactionExpression: state.result.returnVisit.expression, bodyCue: 'sitting-talking',
+      });
+    }
+    case 'discuss-return-plan': {
+      const error = requireStage(state, 'return-visit');
+      if (error) return withError(state, error);
+      if (!state.returnVisit.asked.length || state.returnVisit.phase !== 'questions') return withError(state, 'ask how she is getting on before choosing next steps');
+      return { ...state, returnVisit: { ...state.returnVisit, phase: 'plan' } };
+    }
+    case 'agree-return-plan': {
+      const error = requireStage(state, 'return-visit');
+      if (error) return withError(state, error);
+      const plan = state.result.returnVisit.plans.find(item => item.id === action.id);
+      if (!plan || state.returnVisit.phase !== 'plan') return withError(state, 'choose an available next step');
+      return record({ ...state, returnVisit: { ...state.returnVisit, phase: 'complete', plan: plan.text } }, {
+        kind: 'return-visit', input: plan.text, dialogue: plan.dialogue,
+        noteSummary: `Next steps: ${plan.text}`, reactionExpression: 'guarded', bodyCue: 'sitting-talking',
+      });
+    }
+    case 'end-return-visit': {
+      const error = requireStage(state, 'return-visit');
+      return error ? withError(state, error) : { ...state, stage: 'result' };
+    }
     default:
       return withError(state, `unknown action ${action?.type}`);
   }
@@ -495,16 +609,17 @@ export function createConsultationRuntime(patients, renderDialogue, options = {}
   };
 }
 
-export function actorCueForConsultation(state) {
+export function actorCueForConsultation(state, patient = null) {
   if (!state) return { body: 'clinic-idle', expression: 'neutral', gaze: 'doctor', speaking: false };
   if (state.stage === 'terminated') {
     return { body: 'stand-up', expression: 'distressed', gaze: 'away', speaking: false };
   }
   if (state.stage === 'result') {
-    return { body: 'clinic-idle', expression: 'relieved', gaze: 'doctor', speaking: false };
+    const satisfaction = state.result?.immediate?.satisfaction ?? state.satisfaction ?? 50;
+    return { body: 'clinic-idle', expression: satisfaction >= 70 ? 'relieved' : satisfaction >= 43 ? 'neutral' : 'frowning', gaze: 'doctor', speaking: false };
   }
-  const last = state.history[state.history.length - 1];
-  if (last?.kind === 'speech') {
+  const last = state.history.findLast(event => ['speech', 'examination', 'discussion', 'return-visit'].includes(event.kind));
+  if (['speech', 'discussion', 'return-visit'].includes(last?.kind)) {
     const difficult = ['prying', 'hostile'].includes(last.appraisal?.register);
     const relationshipDelta = (last.trustDelta || 0) + (last.satisfactionDelta || 0);
     const vulnerableBody = ['sitting-distressed', 'sitting-self-soothing', 'sitting-disbelief'].includes(last.bodyCue);
@@ -521,9 +636,8 @@ export function actorCueForConsultation(state) {
     return {
       body,
       expression,
-      // Every spoken response begins by addressing the doctor. Responsive
-      // cohort actors release this gaze when the gesture clip returns to idle.
-      gaze: 'doctor',
+      gaze: last.gaze || 'doctor',
+      ...(last.expressionIntensity != null ? { expressionIntensity: last.expressionIntensity } : {}),
       speaking: true,
     };
   }
@@ -538,5 +652,5 @@ export function actorCueForConsultation(state) {
       speaking: false,
     };
   }
-  return { body: 'clinic-idle', expression: 'neutral', gaze: 'doctor', speaking: false };
+  return { body: 'clinic-idle', expression: patient?.actor?.recipe?.animation?.expression || 'neutral', gaze: 'doctor', speaking: false };
 }

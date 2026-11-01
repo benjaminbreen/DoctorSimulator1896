@@ -25,3 +25,6 @@ game, own package, `npm run game`, port 5175).
   in two files with a one-line note beats a module that exists to hold it.
 - Test the behaviour that matters. Do not add tests to pin down details that
   will change, and do not exhaustively verify a change that is obviously right.
+- For gameplay, UI, or visual changes, play the affected path with
+  `game/scripts/gameplay-playtest.mjs` and inspect its PNG captures. Read
+  `docs/gameplay-testing.md` for the persistent session and replay workflow.

@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useLoader } from '@react-three/fiber';
 import { RigidBody, CuboidCollider, CylinderCollider } from '@react-three/rapier';
+import { useFurnitureSound } from './useFurnitureSound.js';
 import { itemBoxes, boxDensity, rotateOffset } from '../physics/propBodies.js';
 import PropShape from './PropShape.jsx';
 import PropMaterial from './PropMaterial.jsx';
@@ -359,10 +360,14 @@ function ItemCollider({ item }) {
 // takes one collider around the lot, because a cut flower does not need its
 // petals simulated.
 function DynamicItem({ item, material, frozen }) {
+  const bodyRef = useRef(null);
+  const response = useFurnitureSound(bodyRef, item);
   const boxes = itemBoxes(item);
   const parts = item.parts ?? null;
   return (
     <RigidBody
+      ref={bodyRef}
+      userData={{ materialResponse: response }}
       type={frozen ? 'fixed' : 'dynamic'}
       colliders={false}
       position={item.position}

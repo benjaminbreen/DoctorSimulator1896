@@ -113,9 +113,12 @@ export function createWorldClock({
 
   function tick(realSeconds) {
     const elapsed = Math.max(0, Number(realSeconds) || 0);
-    if (paused || elapsed === 0) return 0;
-    const gameSeconds = elapsed * clockRate;
+    if (elapsed === 0 || (paused && !transition)) return 0;
+    // A reminder can pause the world immediately after an action spends time.
+    // Finish winding the dial without spending any more simulation time.
+    const gameSeconds = paused ? 0 : elapsed * clockRate;
     logicalSeconds += gameSeconds;
+    const wasTransitioning = Boolean(transition);
 
     if (transition) {
       transition.elapsed += elapsed;
@@ -131,7 +134,7 @@ export function createWorldClock({
     }
 
     const visualMinute = Math.floor(visualSeconds / SECONDS_PER_MINUTE);
-    if (visualMinute !== lastVisualMinute) {
+    if (visualMinute !== lastVisualMinute || (wasTransitioning && !transition)) {
       lastVisualMinute = visualMinute;
       publish();
     }

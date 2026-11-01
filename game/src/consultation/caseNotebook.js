@@ -1,4 +1,4 @@
-const DIAGNOSIS_STAGES = new Set(['decision', 'case-note', 'result']);
+const DIAGNOSIS_STAGES = new Set(['decision', 'treatment-discussion', 'case-note', 'result', 'return-visit']);
 
 function factMapFor(patient) {
   return new Map(patient.facts.map((fact) => [fact.id, fact]));
@@ -24,12 +24,12 @@ export function buildCaseNotebook(patient, state) {
       latestEntryId = entry.id;
     }
 
-    if (event.kind === 'speech') {
+    if (['speech', 'discussion', 'return-visit'].includes(event.kind)) {
       const noteKey = event.noteKey || event.noteSummary?.trim().toLowerCase();
       if (event.noteSummary && noteKey && !recordedPatientNotes.has(noteKey)) {
         const entry = {
           id: `patient-note-${eventIndex}`,
-          kind: 'Patient account',
+          kind: event.kind === 'return-visit' ? 'One-month review (look ahead)' : 'Patient account',
           text: event.noteSummary,
         };
         observations.push(entry);

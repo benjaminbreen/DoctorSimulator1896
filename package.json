@@ -29,6 +29,11 @@
     "models:texture": "node scripts/models/extract-texture.mjs",
     "models:optimize": "node scripts/models/optimize-packs.mjs",
     "cast:optimize": "node scripts/characters/optimize-authored-cast.mjs",
+    "patients:build": "node scripts/characters/build-modular-patients.mjs",
+    "patients:review": "node scripts/characters/capture-face-lab.mjs --models=carmela-russo,seamstress-prototype --gallery",
+    "patients:variants": "node scripts/characters/capture-identity-studies.mjs",
+    "patients:hair-review": "node scripts/characters/capture-hair-review.mjs",
+    "patients:face-review": "node scripts/characters/capture-face-detail.mjs --cast",
     "characters:ktx2": "node scripts/characters/ktx2-characters.mjs",
     "patient:audit": "node scripts/characters/audit-patients.mjs",
     "mhr:audit": "node scripts/characters/audit-mhr-identity.mjs",
@@ -57,7 +62,9 @@
     "hopper:rate": "python3 tools/hopper/rate.py",
     "hopper:train": "python3 tools/hopper/train_reward.py",
     "hopper:train-pairs": "python3 tools/hopper/train_pairwise.py",
-    "hopper:test": "node --test tools/hopper/space.test.mjs && python3 -m unittest tools/hopper/test_rate.py tools/hopper/test_compare.py tools/hopper/test_pairwise.py"
+    "hopper:test": "node --test tools/hopper/space.test.mjs && python3 -m unittest tools/hopper/test_rate.py tools/hopper/test_compare.py tools/hopper/test_pairwise.py",
+    "men:build": "node scripts/characters/build-modular-men.mjs",
+    "men:review": "node scripts/characters/capture-modular-men.mjs"
   },
   "dependencies": {
     "meshoptimizer": "^1.2.0",

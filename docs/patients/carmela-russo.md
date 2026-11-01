@@ -51,23 +51,30 @@ without exhausting every card.
    its timing.
 5. Cardiac red flags, a focused examination, and the shop's economic stakes
    compete for the remaining time.
-6. Diagnosis and treatment are selected from evidence-ranked short lists. The
-   case record requires two or three supporting findings.
+6. Diagnosis and treatment are selected from evidence-ranked short lists.
+   Before signing, the player discusses the prescription with Carmela. A trial
+   off the wine, a gradual return to the counter, and an initially supported
+   return produce different agreed plans and later accounts.
+7. If complete rest is proposed, she explains why she cannot close the shop.
+   The doctor can change the prescription or record that she declined it.
+   Declined rest is not scored as though she followed it and lost the income.
+8. The one-month result offers a short playable return-visit preview. The player
+   can ask about attacks and work, then record next steps. It keeps the current
+   appointment’s time, fee, and result; it is not a new appointment in the calendar.
 
-The best complete path uses five questions and one examination in exactly
-thirty minutes. Shorter paths remain valid, but leave the player with a less
-secure diagnosis or a plan poorly matched to Carmela's life.
+The focused history uses five questions and one examination in thirty minutes.
+The short prescription discussion is part of closing the visit and adds no
+history-question charge. It can also reveal her practical constraint if the
+doctor did not ask about work earlier. Shorter histories remain valid.
 
 ## Voice
 
-All Carmela dialogue is invented; it is not presented as a quotation from a
-historical person. The prose uses late nineteenth-century vocabulary and
-sentence structure while keeping her voice brisk, exact, and commercially
-minded. Shopkeeping images—an honest account, closing the shutters, who pays the
-grocer—give her an individual idiom without treating ethnicity as phonetic
-decoration. She is observant, Catholic, and open to the idea of presentiment,
-but not generically superstitious. She resents a physician who uses “nerves” as
-a way to stop listening.
+All Carmela dialogue is invented; it is not a quotation from a historical person.
+Use ordinary spoken English, contractions, and concrete details. She wants to
+know what is happening and how she can keep working. Avoid shopkeeping metaphors,
+polished retorts, grand statements, and a repeated “Doctor” in each reply. The
+setting, objects, and treatment vocabulary carry the period. Her speech should
+not sound like a performance of historical fiction.
 
 This is a cautious reconstruction. Published descriptions of Italian New
 Yorkers in the 1890s were usually written by reformers or journalists from
@@ -116,6 +123,12 @@ use, dialogue, clinical measurements, and outcomes are invented connective
 material. The modern term “panic attack” is used only in ground truth and the
 debrief; Carmela and the 1896 physician encounter period descriptions such as
 “nervous palpitation” and “morbid fear.”
+
+The negotiation branches and return-visit accounts are also authored fiction.
+Their recovery and cost values express the teaching simulation’s assumptions;
+the sources do not establish those numerical effects or the specific timelines.
+Combined prescriptions retain the other medicines’ effects and use a broader
+return account rather than promising the single-treatment recovery story.
 
 ## Outcome design
 

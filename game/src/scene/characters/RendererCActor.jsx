@@ -23,6 +23,14 @@ import { getKTX2Loader } from '../ktx2.js';
 import { clearExamAnchors, publishExamAnchors } from '../../consultation/examAnchors.js';
 import { createCostumeShell, findBones as findCostumeBones } from '../../../../shared/characters/costumeShell.js';
 import { rendererCWomenPalette } from '../../../../shared/characters/rendererCWardrobeSurface.js';
+import { createModularFacialHair } from '../../../../shared/characters/modularFacialHair.js';
+import { createModularBody } from '../../../../shared/characters/modularBody.js';
+import { createModularWardrobe } from '../../../../shared/characters/modularWardrobe.js';
+import { createModularIdentity } from '../../../../shared/characters/modularIdentity.js';
+import { createModularAppearance } from '../../../../shared/characters/modularAppearance.js';
+import { createModularVariation } from '../../../../shared/characters/modularVariants.js';
+import { createModularHair } from '../../../../shared/characters/modularHair.js';
+import { MODULAR_CAST_LOOKS } from '../../../../shared/characters/modularCast.js';
 
 const ENTRANCE_WALK_SPEED = 1.05;
 
@@ -54,7 +62,13 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
     loader.setMeshoptDecoder(MeshoptDecoder);
     loader.setKTX2Loader(getKTX2Loader(gl));
   }, [gl]);
-  const bodyPath = patientModelPath(recipe, manifest);
+  const review = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search);
+  const reviewing = ['carmela-russo-1896','samuel-taylor-1896'].includes(recipe.id) && review?.has('playtest');
+  const castLook = reviewing ? MODULAR_CAST_LOOKS.find(preset => preset.id === review.get('appearancePreset')) : null;
+  const reviewSeed = reviewing ? review.get('appearanceSeed') : null;
+  // Bump the review URL when an exported character's geometry changes.
+  const reviewVersion=castLook?.model==='male-worker-template'?'20261101-worker-1':castLook?.cohort==='men'?'20261031-garments-7':'20261030-4';
+  const bodyPath = castLook ? `/models/characters/${castLook.model}.glb?v=${reviewVersion}` : patientModelPath(recipe, manifest);
   const [gltf, motionGltf] = useLoader(GLTFLoader,
     [bodyPath, recipe.asset?.motionPath || bodyPath], configure);
   const clips = useMemo(() => {
@@ -80,6 +94,9 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
   const settledAnimationRef = useRef(null);
   const actor = useMemo(() => {
     const root = cloneSkeleton(gltf.scene);
+    root.userData.patientId = recipe.id;
+    root.userData.assetPath = bodyPath;
+    root.userData.appearancePreset = castLook?.id || null;
     root.rotation.x = Number(recipe.asset?.modelRotationX) || 0;
     root.updateMatrixWorld(true);
     cloneRendererCMaterials(root);
@@ -91,7 +108,8 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
       if (recipe.asset?.opaque) {
         const materials = Array.isArray(object.material) ? object.material : [object.material];
         for (const material of materials) {
-          if (!material) continue;
+          // Keep strand cutouts; forcing them opaque produces solid cards.
+          if (!material || material.alphaTest > 0) continue;
           material.transparent = false;
           material.opacity = 1;
           material.alphaTest = 0;
@@ -128,7 +146,28 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
         hat = null;
       }
     }
-    return { root, mixer, face, motion, hat };
+    const wardrobe = createModularWardrobe(root);
+    const hair = createModularHair(root);
+    const identity = createModularIdentity(root);
+    const look = castLook ? {...recipe.asset,...castLook.look}
+      : reviewSeed !== null ? {...recipe.asset,...createModularVariation(Number(reviewSeed))} : recipe.asset;
+    identity.update(look?.identityVariant, look?.features);
+    const appearance = createModularAppearance(root, identity.frame);
+    appearance.update(look);
+    hair.update(look);
+    createModularBody(root).update(look);
+    createModularFacialHair(root).update(look);
+    const lips = root.getObjectByName('Carmela_Lips');
+    let mouthAnchor = null;
+    if (lips && motion.bones.head) {
+      // These vertices are stored in skin bind space. All fitted lips follow
+      // the head, so one vertex's skin weights also transform their centre.
+      mouthAnchor = new THREE.Box3().setFromBufferAttribute(lips.geometry.attributes.position).getCenter(new THREE.Vector3());
+      if (lips.isSkinnedMesh) lips.applyBoneTransform(0, mouthAnchor);
+      lips.localToWorld(mouthAnchor);
+      motion.bones.head.worldToLocal(mouthAnchor);
+    }
+    return { root, mixer, face, motion, hat, wardrobe, identity, appearance, hair, look, mouthAnchor, mouthPoint:new THREE.Vector3() };
   }, [
     gltf,
     manifest,
@@ -143,6 +182,9 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
     recipe.renderer,
     recipe.restingFace,
     recipe.values,
+    castLook,
+    reviewSeed,
+    bodyPath,
   ]);
 
   const shellDress = recipe.cohort === 'women'
@@ -178,7 +220,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
   const groupRef = useRef(null);
   // Reused world positions for the examination annotation anchors.
   const examAnchorsRef = useRef({
-    head: [0, 0, 0], neck: [0, 0, 0], chest: [0, 0, 0], abdomen: [0, 0, 0],
+    head: [0, 0, 0], mouth:[0,0,0], neck: [0, 0, 0], chest: [0, 0, 0], abdomen: [0, 0, 0],
     leftHand: [0, 0, 0], rightHand: [0, 0, 0],
   });
   useEffect(() => () => clearExamAnchors(), []);
@@ -282,6 +324,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
     if (entranceRef.current) return undefined;
     settledAnimationRef.current = null;
     const responsiveSpokenGesture = recipe.presentation?.performanceStyle === 'responsive-consultation'
+      && !recipe.asset?.clipMap
       && recipe.animation.speaking
       && TRANSIENT_BODY_CUES.has(recipe.animation.body);
     // The dejected source is almost still through the arms, and the ordinary
@@ -320,7 +363,8 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
         settledAnimationRef.current = {
           ...recipe.animation,
           body: 'clinic-idle',
-          gaze: recipe.animation.expression === 'discouraged' ? 'down' : 'away',
+          gaze: recipe.animation.gaze !== 'doctor' ? recipe.animation.gaze
+            : ['discouraged', 'ashamed'].includes(recipe.animation.expression) ? 'down' : 'away',
           speaking: false,
         };
       }
@@ -365,12 +409,14 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
     shellRef.current = null;
     actor.mixer.stopAllAction();
     actor.mixer.uncacheRoot(actor.root);
+    actor.wardrobe.dispose?.();
     // Hat geometry is built per actor, unlike the shared GLB geometry.
     disposePatientHat(actor.hat);
     const materials = new Set();
     const ownedTextures = new Set();
     actor.root.traverse((object) => {
       if (!object.isMesh && !object.isSkinnedMesh) return;
+      if (object.geometry?.userData.modularIdentity || object.geometry?.userData.modularAppearance) object.geometry.dispose();
       const found = Array.isArray(object.material) ? object.material : [object.material];
       for (const material of found) {
         if (!material) continue;
@@ -402,6 +448,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
 
   useFrame((_, delta) => {
     if (paused || !actor.root.visible) return;
+    actor.motion.restorePose();
     const dt = Math.min(delta, 0.1);
     const entrance = entranceRef.current;
     const group = groupRef.current;
@@ -470,6 +517,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
       actor.mixer.update(dt);
       updateShell(dt);
       actor.face.update(dt, recipe.animation);
+      actor.root.userData.performance = recipe.animation;
       return;
     }
     actor.mixer.update(dt);
@@ -477,6 +525,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
     const animation = settledAnimationRef.current || recipe.animation;
     actor.motion.update(dt, animation, gameDebug.camera);
     actor.face.update(delta, animation);
+    actor.root.userData.performance = animation;
     // While the examination reading is up, publish where the annotated body
     // parts actually are, so the leader lines track the pose and the camera.
     if (examinationPresentation()) {
@@ -491,6 +540,11 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
         out[2] = elements[14];
       };
       write(bones.head, buffer.head, 0.06);
+      write(bones.head, buffer.mouth, -.035);
+      if (actor.mouthAnchor && bones.head) {
+        bones.head.localToWorld(actor.mouthPoint.copy(actor.mouthAnchor));
+        actor.mouthPoint.toArray(buffer.mouth);
+      }
       write(bones.neck, buffer.neck, 0.02);
       write(bones.spine2, buffer.chest);
       write(bones.spine ?? bones.spine2, buffer.abdomen);
@@ -498,6 +552,23 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
       write(bones.rightHand, buffer.rightHand);
       publishExamAnchors(buffer);
     }
+  });
+
+  useFrame((_, delta) => {
+    actor.identity.update(actor.look?.identityVariant, actor.look?.features);
+    actor.appearance.update(actor.look);
+    actor.hair.update(actor.look);
+    const entrance = entranceRef.current;
+    const seated = entrance
+      ? entrance.phase === 'sit' && entrance.sitTime / entrance.sitDuration > .65
+      : SHELL_SEATED_CUES.has(recipe.animation.body);
+    actor.wardrobe.update({
+      seated,
+      dt:delta,
+      outfit: actor.look?.outfit,
+      apron: actor.look?.outfit === 'work-apron',
+      palette: actor.look?.palette,
+    });
   });
 
   const { position, rotation, scale } = recipe.placement;

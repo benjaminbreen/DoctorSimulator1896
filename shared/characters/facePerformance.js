@@ -18,6 +18,21 @@ export const FACIAL_GAZE_RECIPES = Object.freeze({
   down: Object.freeze({ eyeLookDownLeft: 0.10, eyeLookDownRight: 0.10 }),
 });
 
+// The fitted head has measured mouth and lid shapes. Its expressions can
+// travel farther than the older cohort meshes without widening their limits.
+export const MODULAR_EXPRESSION_RECIPES = Object.freeze({
+  guarded: { browDownLeft: .55, browDownRight: .50, mouthPressLeft: .38, mouthPressRight: .34, eyeSquintLeft: .18, eyeSquintRight: .15 },
+  distressed: { browInnerUp: .85, browDownLeft: .12, browDownRight: .12, mouthFrownLeft: .65, mouthFrownRight: .60, eyeSquintLeft: .25, eyeSquintRight: .20 },
+  fatigued: { eyeBlinkLeft: .38, eyeBlinkRight: .35, browInnerUp: .22, mouthFrownLeft: .22, mouthFrownRight: .20 },
+  relieved: { mouthSmileLeft: .36, mouthSmileRight: .34, cheekSquintLeft: .45, cheekSquintRight: .42, eyeSquintLeft: .30, eyeSquintRight: .28, browInnerUp: .12 },
+  smiling: { mouthSmileLeft: .62, mouthSmileRight: .58, cheekSquintLeft: .60, cheekSquintRight: .56, eyeSquintLeft: .40, eyeSquintRight: .37, browInnerUp: .16 },
+  frowning: { browDownLeft: .80, browDownRight: .76, mouthFrownLeft: .58, mouthFrownRight: .54, mouthPressLeft: .20, mouthPressRight: .20, eyeSquintLeft: .25, eyeSquintRight: .23 },
+  discouraged: { browInnerUp: .65, mouthFrownLeft: .48, mouthFrownRight: .45, eyeBlinkLeft: .18, eyeBlinkRight: .18 },
+  pained: { browDownLeft: .65, browDownRight: .60, eyeSquintLeft: .80, eyeSquintRight: .75, noseSneerLeft: .40, noseSneerRight: .35, mouthStretchLeft: .35, mouthStretchRight: .30 },
+  anxious: { browInnerUp: .72, browDownLeft: .15, browDownRight: .15, eyeWideLeft: .75, eyeWideRight: .70, mouthPressLeft: .22, mouthPressRight: .22, mouthStretchLeft: .28, mouthStretchRight: .25 },
+  ashamed: { browInnerUp: .48, eyeBlinkLeft: .30, eyeBlinkRight: .28, mouthPressLeft: .40, mouthPressRight: .37, mouthFrownLeft: .20, mouthFrownRight: .18 },
+});
+
 const SPEECH_INCOMPATIBLE = new Set([
   'jawOpen', 'jawLeft', 'jawRight',
 ]);
@@ -26,6 +41,9 @@ export const FACE_WEIGHT_LIMITS = Object.freeze({
   jawOpen: 0.04,
   mouthFunnel: 0.08,
   mouthPucker: 0.08,
+  speechOpen: 0.35,
+  speechWide: 0.35,
+  speechRound: 0.35,
   mouthPressLeft: 0.32,
   mouthPressRight: 0.32,
   mouthFrownLeft: 0.42,
@@ -34,6 +52,16 @@ export const FACE_WEIGHT_LIMITS = Object.freeze({
   mouthSmileRight: 0.52,
   eyeBlinkLeft: 1,
   eyeBlinkRight: 1,
+});
+
+export const MODULAR_FACE_WEIGHT_LIMITS = Object.freeze({
+  ...FACE_WEIGHT_LIMITS,
+  browInnerUp: .9, browDownLeft: .85, browDownRight: .85,
+  eyeWideLeft: .8, eyeWideRight: .8, eyeSquintLeft: .85, eyeSquintRight: .85,
+  cheekSquintLeft: .75, cheekSquintRight: .75,
+  mouthSmileLeft: .85, mouthSmileRight: .85, mouthFrownLeft: .7, mouthFrownRight: .7,
+  mouthPressLeft: .45, mouthPressRight: .45, mouthStretchLeft: .4, mouthStretchRight: .4,
+  noseSneerLeft: .45, noseSneerRight: .45,
 });
 
 export const FACE_QA_STATES = Object.freeze([
@@ -63,36 +91,103 @@ function smoothstep(value) {
   return clamped * clamped * (3 - 2 * clamped);
 }
 
-export function isSpeechIncompatible(name) {
+export function isSpeechIncompatible(name, modular = false) {
   const id = String(name);
   // Keep the emotional corners of the mouth visible while the restrained jaw
   // envelope runs. Other mouth-shape morphs would compete with speech and are
   // therefore suppressed until the patient settles.
   if (id.startsWith('mouthSmile') || id.startsWith('mouthFrown')) return false;
-  return SPEECH_INCOMPATIBLE.has(name) || id.startsWith('mouth');
+  if (modular && id.startsWith('mouthStretch')) return false;
+  return SPEECH_INCOMPATIBLE.has(name) || id.startsWith('mouth') || id.startsWith('speech');
 }
 
-export function safeFaceWeight(name, value) {
-  const limit = FACE_WEIGHT_LIMITS[name] ?? 0.35;
+export function expressionFaceWeights(expression, modular = false, speaking = false) {
+  const recipe = (modular ? MODULAR_EXPRESSION_RECIPES : FACIAL_EXPRESSION_RECIPES)[expression] || {};
+  if (!speaking) return recipe;
+  return Object.fromEntries(Object.entries(recipe)
+    .filter(([name]) => !isSpeechIncompatible(name, modular))
+    .map(([name, value]) => [name, modular && name.startsWith('mouth') ? value * (name.startsWith('mouthSmile') ? .72 : .82) : value]));
+}
+
+export function safeFaceWeight(name, value, modular = false) {
+  const limit = (modular ? MODULAR_FACE_WEIGHT_LIMITS : FACE_WEIGHT_LIMITS)[name] ?? 0.35;
   return Math.max(0, Math.min(limit, Number(value) || 0));
 }
 
-export function speechJawWeight(elapsed, appearanceSeed = 1) {
+function speechPulse(elapsed, appearanceSeed) {
   const offset = Math.abs(Math.trunc(Number(appearanceSeed) || 1)) % SPEECH_PULSES.length;
   const ordered = SPEECH_PULSES.map((_, index) => SPEECH_PULSES[(index + offset) % SPEECH_PULSES.length]);
   const period = ordered.reduce((sum, pulse) => sum + pulse.duration, 0);
   let local = ((Math.max(0, Number(elapsed) || 0) % period) + period) % period;
-  for (const pulse of ordered) {
+  for (const [index, pulse] of ordered.entries()) {
     if (local > pulse.duration) {
       local -= pulse.duration;
       continue;
     }
-    if (local >= pulse.active) return 0;
+    if (local >= pulse.active) return { weight: 0, index: (index+offset) % ordered.length };
     const phase = local / pulse.active;
     const envelope = phase < 0.32
       ? smoothstep(phase / 0.32)
       : smoothstep((1 - phase) / 0.68);
-    return Math.min(FACE_WEIGHT_LIMITS.jawOpen, pulse.amplitude * envelope);
+    return { weight: Math.min(FACE_WEIGHT_LIMITS.jawOpen, pulse.amplitude * envelope), index: (index+offset) % ordered.length };
   }
-  return 0;
+  return { weight: 0, index: 0 };
+}
+
+export function speechJawWeight(elapsed, appearanceSeed = 1) {
+  return speechPulse(elapsed, appearanceSeed).weight;
+}
+
+export function speechFaceWeights(elapsed, appearanceSeed = 1) {
+  const { weight, index } = speechPulse(elapsed, appearanceSeed);
+  const local = Math.max(0, Number(elapsed) || 0) % 7.1;
+  const phrase = [[0,2.1],[2.6,4.4],[5.0,6.2]].find(([start,end]) => local >= start && local < end);
+  const envelope = phrase ? smoothstep((local-phrase[0])/.10)*smoothstep((phrase[1]-local)/.14) : 0;
+  const amount = weight / FACE_WEIGHT_LIMITS.jawOpen*envelope;
+  return {
+    speechOpen: amount*.31,
+    speechWide: amount*([.18, 0, .08, .12][index]),
+    speechRound: amount*([0, .23, .06, 0][index]),
+  };
+}
+
+export function blinkFaceWeights(elapsed, seed = 1) {
+  const intervals = [3.7,5.1,4.4,6.0];
+  const offset = Math.abs(Math.trunc(Number(seed) || 1)) % intervals.length;
+  let local = Math.max(0, Number(elapsed) || 0) % intervals.reduce((a,b) => a+b, 0);
+  for (let i=0;i<intervals.length;i++) {
+    const interval = intervals[(i+offset)%intervals.length];
+    if (local >= interval) { local -= interval; continue; }
+    const phase = local-(interval-.20);
+    const amount = delay => {
+      const t = phase-delay;
+      if (t < 0 || t > .20) return 0;
+      if (t < .05) return smoothstep(t/.05);
+      if (t < .085) return 1;
+      return smoothstep((.20-t)/.115);
+    };
+    return {eyeBlinkLeft:amount(0),eyeBlinkRight:amount(.005)};
+  }
+  return {eyeBlinkLeft:0,eyeBlinkRight:0};
+}
+
+export function blinkEyelids(weights, blink) {
+  const result = {};
+  for (const side of ['Left','Right']) {
+    const amount = blink['eyeBlink'+side] || 0;
+    result['eyeBlink'+side] = 1-(1-(weights['eyeBlink'+side] || 0))*(1-amount);
+    // A wide-eye expression must yield while the lids close completely.
+    for (const name of ['eyeWide','eyeSquint']) result[name+side] = (weights[name+side] || 0)*(1-amount);
+  }
+  return result;
+}
+
+export function idleGazeWeights(elapsed, seed = 1, gaze = 'doctor', speaking = false) {
+  if (gaze !== 'doctor') return {};
+  const period = 9.3+(Math.abs(Number(seed)||1)%7)*.17;
+  const local = Math.max(0,elapsed)%period;
+  const amount = smoothstep((local-3.1)/.20)*smoothstep((4.6-local)/.35)*(speaking ? .10 : .16);
+  if (amount <= 0) return {};
+  const right = (Math.floor(Math.max(0,elapsed)/period)+Math.abs(Math.trunc(Number(seed)||1)))%2;
+  return right ? {eyeLookOutLeft:amount,eyeLookInRight:amount} : {eyeLookInLeft:amount,eyeLookOutRight:amount};
 }

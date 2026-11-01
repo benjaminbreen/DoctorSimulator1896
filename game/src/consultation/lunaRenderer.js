@@ -7,16 +7,21 @@ const ROUTE = '/api/consult';
 const TIMEOUT_MS = 10000;
 
 // The model only ever supplies wording, a performance cue, and a reading of
-// the doctor's manner. Decorum and termination stay deterministic so an
-// insult cannot be talked away.
+// the doctor's manner. The simulation owns insult warnings, repair and exits.
 function merge(offline, reply, maxDisclosures) {
   return {
     dialogue: reply.dialogue,
-    behavior: reply.behavior || offline.behavior,
+    behavior: typeof reply.behavior === 'string' ? reply.behavior : offline.behavior,
     disclosedNow: (reply.disclosedNow || []).slice(0, maxDisclosures),
     reactionExpression: reply.expression || null,
+    expressionIntensity: reply.expressionIntensity,
+    gaze: reply.gaze || null,
     bodyCue: reply.bodyCue || null,
-    appraisal: { ...offline.appraisal, register: reply.register || offline.appraisal.register },
+    appraisal: {
+      ...offline.appraisal,
+      register: ['insult', 'apology'].includes(offline.appraisal.intent)
+        ? offline.appraisal.register : reply.register || offline.appraisal.register,
+    },
   };
 }
 
@@ -47,7 +52,14 @@ async function askModel(request, patient, offline) {
 export function renderLunaDialogue(request, patient) {
   const offline = renderOfflineDialogue(request, patient);
   if (!request.custom || request.resolvedRuleId || offline.appraisal.terminates) return offline;
-  return askModel(request, patient, offline);
+  const emotion = ['insult', 'apology'].includes(offline.appraisal.intent) ? null : request.currentEmotion;
+  return askModel(request, patient, emotion ? {
+    ...offline,
+    reactionExpression: emotion.expression,
+    expressionIntensity: emotion.expressionIntensity,
+    gaze: emotion.gaze,
+    bodyCue: emotion.bodyCue === 'clinic-idle' ? 'sitting-talking' : emotion.bodyCue,
+  } : offline);
 }
 
 // James reads the whole visit and writes in his own hand. Any failure returns

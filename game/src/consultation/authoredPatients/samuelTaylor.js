@@ -1,4 +1,5 @@
 import { generatePatient, patientToRendererCRecipe } from '../../../../shared/patients/index.js';
+import { MODULAR_CAST_LOOKS } from '../../../../shared/characters/modularCast.js';
 import { createActorInstance } from '../../world/characters/actors.js';
 
 const id = 'samuel-taylor-1896';
@@ -64,6 +65,22 @@ const recipe = {
   ...generatedRecipe,
   values: { ...generatedRecipe.values, skinTone: '#afa59b' },
 };
+
+// Review new templates without changing Samuel's authored identity or case.
+const reviewParams = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search);
+const reviewLook = reviewParams?.has('playtest') ? MODULAR_CAST_LOOKS.find(p => p.cohort === 'men' && p.id === reviewParams.get('appearancePreset')) : null;
+if (reviewLook) {
+  recipe.asset = { ...recipe.asset, ...reviewLook.look, path: `/models/characters/${reviewLook.model}.glb?v=${reviewLook.model==='male-worker-template'?'20261101-worker-1':'20261031-garments-7'}`,
+    motionClips: ['ClinicIdle','StandingIdle','Walk','SitDown','StandUp','SittingTalking','SittingDisbelief','SittingDisapproval','SittingSelfSoothing'],
+    clipMap: { 'clinic-idle':'ClinicIdle','standing-idle':'StandingIdle',walk:'Walk','sit-down':'SitDown','stand-up':'StandUp',
+      'sitting-talking':'SittingTalking','sitting-disbelief':'SittingDisbelief','sitting-disapproval':'SittingDisapproval',
+      'sitting-distressed':'SittingSelfSoothing','sitting-self-soothing':'SittingSelfSoothing' },
+  };
+  recipe.placement = { ...recipe.placement, position:[.45,.05,-1.7], scale:1 };
+  recipe.restingFace = {};
+  recipe.presentation.hat = null;
+  recipe.presentation.consultationZoom = .10;
+}
 
 // Enter by the waiting-room door (south wall, consulting-office blueprint).
 // The renderer skips the walk until this asset carries Walk and SitDown clips.

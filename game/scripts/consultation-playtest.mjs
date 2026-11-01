@@ -60,6 +60,15 @@ function chooseDecision(state, diagnosisId, treatmentId, factIds) {
   state = consultationTransition(state, patient, { type: 'select-diagnosis', id: diagnosisId });
   state = consultationTransition(state, patient, { type: 'select-treatment', id: treatmentId });
   state = consultationTransition(state, patient, { type: 'begin-case-note' });
+  if (state.stage === 'treatment-discussion') {
+    if (treatmentId === 'drug-stop-tonic') {
+      state = consultationTransition(state, patient, { type: 'respond-treatment', id: 'work' });
+      state = consultationTransition(state, patient, { type: 'respond-treatment', id: 'gradual' });
+    } else {
+      state = consultationTransition(state, patient, { type: 'respond-treatment', id: treatmentId === 'rest-cure-home' ? 'insist' : 'review' });
+    }
+    state = consultationTransition(state, patient, { type: 'begin-case-note' });
+  }
   for (const id of factIds) state = consultationTransition(state, patient, { type: 'select-record-fact', id });
   return consultationTransition(state, patient, { type: 'submit-case-note' });
 }

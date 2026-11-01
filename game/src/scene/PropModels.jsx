@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame, useLoader, useThree } from '@react-three/fiber';
 import { GLTFLoader } from './modelLoader.js';
@@ -9,6 +9,8 @@ import { sharePackTextures } from './packTextures.js';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import { modelUrl, modelSize } from '../world/modelPacks.js';
 import { applyWind } from './foliageWind.js';
+import ResponsiveSconce from './ResponsiveSconce.jsx';
+import { useFurnitureSound } from './useFurnitureSound.js';
 
 // Grass bends much further for its size than a tree does.
 const GROUND_SWAY = 0.12;
@@ -29,6 +31,8 @@ function repairOpacity(material) {
 // multi-material model is several meshes, and one instanced mesh per part
 // cannot be driven by a single body. There are only a handful per room.
 function LooseProp({ item, gltf }) {
+  const bodyRef = useRef(null);
+  const response = useFurnitureSound(bodyRef, item);
   const object = useMemo(() => {
     const clone = gltf.scene.clone(true);
     clone.traverse((node) => {
@@ -44,6 +48,8 @@ function LooseProp({ item, gltf }) {
   const boxes = itemBoxes(item);
   return (
     <RigidBody
+      ref={bodyRef}
+      userData={{ materialResponse: response }}
       type="dynamic"
       colliders={false}
       position={item.position}
@@ -126,7 +132,7 @@ export default function PropModels({ items }) {
 
     for (const url of urls) {
       const gltf = byUrl.get(url);
-      const placements = items.filter((item) => urlFor(item) === url && !item.dynamic);
+      const placements = items.filter((item) => urlFor(item) === url && !item.dynamic && item.model !== 'Sconce');
       if (!gltf || placements.length === 0) continue;
 
       // Flatten the model into world-space geometry per material, so each
@@ -157,8 +163,8 @@ export default function PropModels({ items }) {
         const material = repairOpacity(
           Array.isArray(part.material) ? part.material[0].clone() : part.material.clone(),
         );
-        // Side comes from the GLB: the converter already culls backfaces on
-        // everything except foliage, whose leaf cards need both.
+        // Keep the asset's side setting: thin cloth and leaf cards need both
+        // sides, while solid furniture can cull its interior faces.
         // Cutout foliage has to write depth to shadow itself correctly.
         if (material.alphaTest > 0) material.depthWrite = true;
         const depth = windy
@@ -239,6 +245,9 @@ export default function PropModels({ items }) {
           <primitive key={index} object={mesh} />
         ))}
       </group>
+      {items.filter((item) => item.model === 'Sconce').map((item) => (
+        <ResponsiveSconce key={item.id} item={item} gltf={byUrl.get(urlFor(item))} />
+      ))}
       {loose.map((item) => {
         const gltf = byUrl.get(urlFor(item));
         return gltf ? <LooseProp key={item.id} item={item} gltf={gltf} /> : null;

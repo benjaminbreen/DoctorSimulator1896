@@ -1638,6 +1638,11 @@
 .gcon-time.is-overtime { color: #c9a3ed; border-color: rgba(152, 92, 201, .6); }
 .gcon-time.is-overtime .gcon-time-track i { background: linear-gradient(90deg, #63368f, #ae73dc); }
 .gcon-time.is-preview { border-style: dashed; }
+.gcon-time-forecast { margin: 6px 0 0; color: var(--gc-cream); font-size: 10px; line-height: 1.4; }
+.gcon-response-prompt {
+  margin: 0 0 12px; padding: 8px 12px; border-left: 2px solid var(--gc-gold);
+  color: var(--gc-gold); background: rgba(211, 174, 91, .08); font-size: 13px;
+}
 
 .gcon-action-cost { position: absolute; right: 9px; top: 7px; color: rgba(214, 178, 103, .72); font: 9px/1 Georgia, serif; letter-spacing: .08em; text-transform: uppercase; }
 .gcon-empty-state { grid-column: 1 / -1; margin: 18px; color: rgba(235, 224, 197, .66); text-align: center; font-style: italic; }
@@ -1981,6 +1986,12 @@
    contents of whichever is opened. Big objects, one price, no hairlines. */
 
 .gcon-shelf { display: block; }
+.gcon-shelf-search { display: grid; gap: 5px; margin-bottom: 14px; font-size: 12px; }
+.gcon-shelf-search input {
+  width: 100%; box-sizing: border-box; padding: 9px 12px; border: 1px solid var(--gc-line);
+  border-radius: 4px; background: rgba(255, 249, 229, .9); color: #302416; font: inherit;
+}
+.gcon-shelf-search input:focus-visible { outline: 2px solid var(--gc-gold); outline-offset: 2px; }
 
 .gcon-shelf-grid {
   display: grid;
@@ -2896,4 +2907,21 @@
   .gcon-james-page { animation: none; }
   .gcon-james-dots::after { animation: none; }
   .gcon-sign:hover:not(:disabled) { transform: none; }
+}
+
+.gcon-plan-summary {
+  color: inherit;
+  font-size: .95rem;
+  line-height: 1.5;
+  margin: 12px 0;
+}
+
+.gcon-return-start {
+  color: inherit;
+  font: inherit;
+  padding: 10px 16px;
+  margin: 0 0 16px;
+  border: 1px solid currentColor;
+  background: transparent;
+  cursor: pointer;
 }

@@ -1,10 +1,10 @@
-import { CHARACTER_BODY_CUES, CHARACTER_EXPRESSIONS } from '../../../shared/characters/recipe.js';
+import { CHARACTER_BODY_CUES, CHARACTER_EXPRESSIONS, CHARACTER_GAZES } from '../../../shared/characters/recipe.js';
 import { TREATMENT_LIBRARY } from './treatments.js';
 
 const TREATMENT_IDS = new Set(TREATMENT_LIBRARY.map((item) => item.id));
 
 export const CONSULTATION_STAGES = Object.freeze([
-  'opening', 'inquiry', 'decision', 'case-note', 'result', 'terminated',
+  'opening', 'inquiry', 'decision', 'treatment-discussion', 'case-note', 'result', 'return-visit', 'terminated',
 ]);
 
 export const CONSULTATION_MODES = Object.freeze(['patient', 'examination']);
@@ -94,6 +94,9 @@ export function normalizeDialogueResponse(response = {}) {
       ? response.reactionExpression
       : null,
     bodyCue: CHARACTER_BODY_CUES.includes(response.bodyCue) ? response.bodyCue : null,
+    expressionIntensity: Number.isFinite(response.expressionIntensity)
+      ? Math.max(0, Math.min(1, response.expressionIntensity)) : null,
+    gaze: CHARACTER_GAZES.includes(response.gaze) ? response.gaze : null,
     appraisal: {
       register,
       decorumBreach: Math.max(0, Math.min(3, Math.trunc(Number(appraisal.decorumBreach) || 0))),

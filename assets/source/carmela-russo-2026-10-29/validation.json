@@ -1,0 +1,92 @@
+{
+  "date": "2026-10-29",
+  "tests": {
+    "passed": 726,
+    "failed": 0
+  },
+  "builds": {
+    "game": "passed; existing large-chunk warning",
+    "characterLab": "passed; existing large-chunk warning"
+  },
+  "gallery": {
+    "path": "artifacts/characters/carmela-prototype/verified-review",
+    "captures": 98,
+    "failures": []
+  },
+  "gameplay": {
+    "scenario": "carmela",
+    "seed": 4,
+    "continuous": false,
+    "offline": true,
+    "quality": "quality",
+    "output": "/Users/benbreen/Code/DoctorSimulator1896/artifacts/gameplay/carmela-modular-complete",
+    "url": "http://127.0.0.1:5175/?playtest=1&seed=4&zone=consulting-office",
+    "steps": 36,
+    "failedSteps": 0,
+    "errors": [],
+    "exitCode": 0,
+    "status": "complete"
+  },
+  "performance": {
+    "path": "artifacts/performance/carmela-modular-production",
+    "viewport": [
+      1440,
+      900
+    ],
+    "dpr": 1,
+    "quality": "quality",
+    "production": true,
+    "samples": [
+      {
+        "name": "consultation-idle",
+        "frames": 362,
+        "p50": 16.700000000000728,
+        "p95": 16.700000000000728,
+        "p99": 16.80000000000291,
+        "max": 16.80000000000291,
+        "over50": 0,
+        "averageDraws": 763.9226519337017,
+        "averageTriangles": 799460.2099447513
+      },
+      {
+        "name": "consultation-examination",
+        "frames": 362,
+        "p50": 16.69999999999709,
+        "p95": 16.799999999995634,
+        "p99": 16.80000000000291,
+        "max": 16.80000000000291,
+        "over50": 0,
+        "averageDraws": 891,
+        "averageTriangles": 1064241
+      }
+    ],
+    "errors": []
+  },
+  "headProportionRevision": {
+    "scale": 0.88,
+    "gallery": {
+      "path": "artifacts/characters/head-proportions-2026-10-29/after",
+      "captures": 98,
+      "failures": []
+    },
+    "gameplay": {
+      "scenario": "carmela",
+      "seed": 4,
+      "continuous": false,
+      "offline": true,
+      "quality": "quality",
+      "output": "/Users/benbreen/Code/DoctorSimulator1896/artifacts/gameplay/carmela-head-proportions",
+      "url": "http://127.0.0.1:5175/?playtest=1&seed=4&zone=consulting-office",
+      "steps": 36,
+      "failedSteps": 0,
+      "errors": [],
+      "exitCode": 0,
+      "status": "complete"
+    },
+    "builds": {
+      "game": "passed",
+      "characterLab": "passed"
+    },
+    "note": "The performance record above predates this geometry-only size adjustment."
+  }
+}

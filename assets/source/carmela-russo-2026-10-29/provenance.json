@@ -1,0 +1,346 @@
+{
+  "date": "2026-10-29",
+  "purpose": "Carmela and a second fictional head sharing one body, rig, wardrobe and animation contract.",
+  "account": {
+    "membership": "Tripo Pro, confirmed in the account menu",
+    "generationPrivacy": "Private"
+  },
+  "credits": {
+    "startingBalance": 3200,
+    "experimentCeiling": 1000,
+    "spent": 355,
+    "remainingBalance": 2845,
+    "operations": [
+      {
+        "operation": "Carmela P2 head batch",
+        "balanceDelta": -100,
+        "asset": "62409f87-bc54-4fa8-bd9c-7be3166140c9"
+      },
+      {
+        "operation": "Carmela head texture",
+        "balanceDelta": -20
+      },
+      {
+        "operation": "P2 body batch",
+        "balanceDelta": -75,
+        "note": "Four requested; three body outputs appeared. This is the observed balance delta, not an inferred per-model price.",
+        "asset": "b16dd756-5b76-41cb-bd6a-92409b699f4b"
+      },
+      {
+        "operation": "Body texture",
+        "balanceDelta": -20
+      },
+      {
+        "operation": "Body Mixamo-preset auto-rig",
+        "balanceDelta": -20
+      },
+      {
+        "operation": "Second P2 head",
+        "balanceDelta": -100,
+        "asset": "873709f4-2124-4604-b5f0-74cd93c80618"
+      },
+      {
+        "operation": "Second head texture",
+        "balanceDelta": -20
+      }
+    ]
+  },
+  "exports": {
+    "format": "FBX",
+    "preset": "Blender",
+    "textures": "4K source; maximum 2K in the web assets",
+    "bodySkeleton": "Mixamo"
+  },
+  "tools": {
+    "blender": "5.2.2 LTS, arm64, downloaded from mirror.blender.org",
+    "sha256": "dc4125399b8bfefe283cc1624d6cfc7809d1cac20ace51072127eb371f31f210",
+    "tripo": "P2.0 Smart Mesh, quad topology",
+    "imageReferences": "OpenAI image generation"
+  },
+  "assets": [
+    {
+      "id": "carmela-russo",
+      "path": "game/public/models/characters/carmela-russo.glb",
+      "headSource": "head-p2-v1/carmela-head-p2-v1.fbx",
+      "bytes": 8373664,
+      "sha256": "42f366ab4bfa34eaf8b1cb50a55591ca367929087d926da1b07f3f2b733a8671"
+    },
+    {
+      "id": "seamstress-prototype",
+      "path": "game/public/models/characters/seamstress-prototype.glb",
+      "headSource": "second-head-p2-v1/second-identity-head-p2-v1.fbx",
+      "note": "Fictional reference identity, not a new clinical case.",
+      "bytes": 8228668,
+      "sha256": "9d802ef91d2a25d69ea126dfc249bf72dcc1effd075a61498511ed1b6b4c2a8a"
+    }
+  ],
+  "referenceBriefs": {
+    "references/head-front.png": "Condensed brief: neutral bald 46-year-old Sicilian-born shopkeeper; olive skin, broad cheeks, strong subtly convex nose, brown eyes and grey brows; front skull, neck and shoulders; even grey background; no makeup, hair or jewelry.",
+    "references/body-front.png": "Condensed edit brief: preserve the head reference; full-body A pose, sturdy average build, dark hair with grey temples in a low bun; plum-brown high-neck wool day dress, fitted buttoned bodice, modest puff sleeves, integrated ivory collar, long skirt and black ankle boots.",
+    "references/head-profile.png": "Condensed edit brief: preserve the same bald identity in a left profile under neutral light."
+  },
+  "exactPrompts": {
+    "references/second-identity-front.png": "A single straight-on orthographic character reference for a realistic historical game: a fictional 31-year-old Irish-born New York seamstress in 1896. BALD head for mesh construction, bare neck and the tops of shoulders only. Slim elongated oval face, narrow jaw, prominent straight nose with a slightly broad tip, thin naturally shaped lips held closed, light grey-green eyes, auburn eyebrows, fair ruddy skin with restrained freckles, subtly tired lower eyelids. Thoughtful, calm neutral expression, no smile, no frown. Strongly distinct from a broad-cheeked middle-aged Mediterranean shopkeeper. Authentic adult anatomy, natural asymmetry and skin detail. Neither beauty photography nor glamour. Face exactly forward, eyes level and looking straight ahead, ears visible, lips together, symmetrical framing. Entire skull visible with generous margin; no hair, no hat, no jewelry, no clothing, no makeup. Flat evenly lit neutral grey background, soft frontal diffuse light, minimal shadow and no dramatic highlights. Production-quality realistic game character reference, no text, no labels, no collage.",
+    "references/hair-strands.png": "A seamless repeating PBR BASE COLOR texture tile of fine natural human hair strands, viewed very close and perfectly flat. Hair is very dark chestnut brown with about twenty percent fine silver-grey strands, suitable for a sober 46-year-old woman's neatly combed 1896 low bun hairstyle. Dense parallel strands run VERTICALLY from the top edge to bottom edge. Delicate naturally varying strand width and color; convincingly photographic fine detail, NOT a painted illustration. Soft brown-grey color variation, subtle tiny flyaway fibers, zero black gaps, full coverage. Even diffuse light, NO baked directional highlights or shadows, NO glossy white stripe. Seamless left-to-right and top-to-bottom. This is a square texture only: no head, no face, no hairstyle silhouette, no scalp, no border, no text."
+  },
+  "sources": {
+    "tripoRights": "https://www.tripo3d.ai/terms",
+    "tripoRightsGuide": "https://www.tripo3d.ai/help/privacy-policy/how-to-use-tripo-models-commercially",
+    "mixamo": "https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html",
+    "dress1895": "https://www.metmuseum.org/art/collection/search/92343",
+    "dress1894_1896": "https://www.metmuseum.org/art/collection/search/157291",
+    "shirtwaist1896_1898": "https://www.metmuseum.org/art/collection/search/109506",
+    "hair1895": "https://www.museumoftheearth.org/daring-to-dig/bio/helen-plummer-new-828dk",
+    "pinCurls1890s": "https://digital.library.louisville.edu/concern/images/ulpa_1980_020_0971?locale=en",
+    "hairCardTechnique": "https://humgen3d.com/docs/process/haircards"
+  },
+  "historicalUncertainty": "The dress and hairstyles use period examples as art references, not a documented outfit or coiffure of a particular Sicilian immigrant shopkeeper. The supplied fashion plate directs the side coverage but its exact date is unverified. University of Louisville item ULPA 1980_020_0971 is catalogued to 1889\u20131899; the ca. 1895 Carlotta Maury profile is another reference. No historical photograph or fashion-plate pixels are in the game textures.",
+  "limitations": [
+    "Appearance recipes from two head bases are not separately authored personalities. Strong feature combinations require visual review.",
+    "Speech is a timed procedural pattern, not audio-synchronised phonemes.",
+    "The seated skirt uses an authored carrier, not cloth simulation.",
+    "Hair uses shaped opaque masses with alpha-masked fine strands; it has no strand simulation."
+  ],
+  "rejectedExperiment": "The MPFB canonical-head fit did not preserve likeness or lid quality. Its comparison source is retained as a rejected study and is not used by the game or normal rebuild.",
+  "inputHashes": [
+    {
+      "file": "head-p2-v1/carmela-head-p2-v1.fbx",
+      "sha256": "d46ab39c19d8698d7c8bc425c7550ee5c2b1a4f25bf533244e329b47003b03ea"
+    },
+    {
+      "file": "body-p2-v1/tripo_convert_8f1d0749-19c0-483f-8d6c-85ad12730b46.fbx",
+      "sha256": "a31d0ecf1e07fee3d70d4789f5bfd9f7bd6d8f802014496ae407ce08b92853a8"
+    },
+    {
+      "file": "second-head-p2-v1/second-identity-head-p2-v1.fbx",
+      "sha256": "9fdf07b83eb75f32436fde9e875ca59c367e3b589962f5ddb816f4b1f54296c1"
+    },
+    {
+      "file": "references/head-front.png",
+      "sha256": "a0d8003549bd9e475875b34c9f62b029e70c9721f0e4a9c5f20fc75f77d23723"
+    },
+    {
+      "file": "references/body-front.png",
+      "sha256": "53879b9e6a4d86f510519a8a2581d955852db1bd65b6180118d2437ba7911933"
+    },
+    {
+      "file": "references/second-identity-front.png",
+      "sha256": "a5cc2b3851cf92979e26fb3fac3b3072ab8b42671eb82f12d3d08292be14bd82"
+    },
+    {
+      "file": "references/hair-strands.png",
+      "sha256": "e09e6c83399e1e13cfb38ceb7879d74f3590f9137d8fcad7ecd49c80d2d37c6e"
+    },
+    {
+      "file": "references/hair-flow.png",
+      "sha256": "90528c682090c8c511a0e3533a8be3c354f6056ca659a52ae3a86fe81bc885c2"
+    },
+    {
+      "file": "references/hair-flow-normal.png",
+      "sha256": "7e8971e1941aa7500dd7288f6221420dd8233ad8cef04d13ce2bfd28c25183ae"
+    },
+    {
+      "file": "references/hair-fibres-v2.png",
+      "sha256": "6cd721e868a4efae39766fe68f31d4b90f68fa8e5aca55c5834063bbd0555bac"
+    },
+    {
+      "file": "references/hair-fibres-normal.png",
+      "sha256": "a277bee4bc1280a094e597c4fbfff13149b2477a03abcf7841a1e5249b177276"
+    },
+    {
+      "file": "references/hair-curls-v1.png",
+      "sha256": "78b8f20040188341aae50cc6ff99d7920eb87efef0ce008d8c401a31d11ff5d6"
+    },
+    {
+      "file": "references/hair-curls-normal.png",
+      "sha256": "7f667f5d39998b754ebf48e4bd3340e12ff4892786cce74bf4131b0794d0c318"
+    },
+    {
+      "file": "references/hair-edge-alpha.png",
+      "sha256": "7f9f4062751a809c2cfb1e9e42adedd13284243b83ae52d517cc93bb1bd2adde"
+    }
+  ],
+  "sharedSkeleton": {
+    "verified": true,
+    "joints": 65
+  },
+  "rejectedStudy": "artifacts/characters/carmela-prototype/rejected-canonical-source",
+  "headProportions": {
+    "scale": 0.88,
+    "pivot": [
+      0,
+      0,
+      1.4
+    ],
+    "lowerNeckBlend": [
+      1.39,
+      1.45
+    ],
+    "note": "User-requested 12% head reduction, applied to all head parts and shape keys; body and skeleton unchanged."
+  },
+  "artPass": {
+    "additionalTripoCredits": 0,
+    "speechTargets": [
+      "speechOpen",
+      "speechWide",
+      "speechRound"
+    ],
+    "mouth": "Fitted lip ring, oral cavity and individual teeth",
+    "hair": "Five interchangeable updos; the two added styles cover the ears and continue into a lower nape. Fine-fibre and curl albedos replace the mathematical strand image.",
+    "sleeves": "Preserve arm weights when refitting the lower bodice",
+    "neck": "Lower neck bound to shoulders and tapered into the collar"
+  },
+  "latestValidation": "validation-face-polish.json",
+  "identityStudies": {
+    "additionalTripoCredits": 0,
+    "headBases": 2,
+    "featureControls": 14,
+    "comparison": "artifacts/characters/identity-studies/lower-face-final",
+    "notes": "Instance-owned regional geometry edits with expression transport; shared texture colour treatments; seeded appearance recipes. Whole lower-face size replaces the rejected jaw-only study."
+  },
+  "emotionPass": {
+    "additionalTripoCredits": 0,
+    "profile": "Fitted-head expressions with separate limits; legacy faces retain their limits.",
+    "sourceRepairs": [
+      "Eyelid outside edges follow brows and cheeks",
+      "Oral cavity follows mouth shapes",
+      "Receding tooth arches",
+      "Chin and jaw follow the head; blending is confined to the neck"
+    ],
+    "integration": "Default Carmela appearance, authored reactions, speech release, gaze release and closer conversation framing.",
+    "validation": "validation-emotions.json"
+  },
+  "hairPass": {
+    "date": "2026-10-30",
+    "additionalTripoCredits": 0,
+    "generator": "scripts/characters/carmela_hair.py",
+    "runtime": "shared/characters/modularHair.js",
+    "styles": [
+      "center-chignon",
+      "waved-knot",
+      "braided-knot"
+    ],
+    "controls": [
+      "hairVolume",
+      "hairWave",
+      "hairBunHeight",
+      "hairPartOffset"
+    ],
+    "fit": "Both head bases; rigid Head binding; structural identity transport; one visible style at a time",
+    "materials": "Opaque swept surfaces and knots with authored fibre colour and normal maps; scalp part closes between the raised banks",
+    "textures": [
+      {
+        "file": "references/hair-flow.png",
+        "sha256": "90528c682090c8c511a0e3533a8be3c354f6056ca659a52ae3a86fe81bc885c2",
+        "bytes": 39844,
+        "origin": "Project-authored mathematical fibres, seed 1896; 512 by 512 pixels"
+      },
+      {
+        "file": "references/hair-flow-normal.png",
+        "sha256": "7e8971e1941aa7500dd7288f6221420dd8233ad8cef04d13ce2bfd28c25183ae",
+        "bytes": 28960,
+        "origin": "Project-authored mathematical fibres, seed 1896; 512 by 512 pixels"
+      }
+    ],
+    "retiredTexture": "references/hair-strands.png remains as an archived experiment and is no longer embedded in hair",
+    "referencePhoto": "artifacts/characters/carmela-hair/references/maury-ca1895.jpg; research only, not shipped",
+    "validation": "validation-hair.json"
+  },
+  "earCoveragePass": {
+    "date": "2026-10-30",
+    "additionalTripoCredits": 0,
+    "retainedStyles": [
+      "center-chignon",
+      "waved-knot",
+      "braided-knot"
+    ],
+    "addedStyles": [
+      "soft-side-waves",
+      "curled-side-rolls"
+    ],
+    "controls": [
+      "hairVolume",
+      "hairWave",
+      "hairBunHeight",
+      "hairPartOffset",
+      "hairEarCoverage"
+    ],
+    "default": {
+      "hairStyle": "soft-side-waves",
+      "hairEarCoverage": 0.3
+    },
+    "geometry": "Continuous shaped banks, fitted ear coverage, rear knots and overlapping masked fine strands; curls use a shaped mass and a dedicated texture rather than the rejected wire-like pieces.",
+    "napeRepair": "Removed the upward arch behind the ear. The posterior edge now descends into the nape; horizontal fitting at the intended height avoids the radial-projection centre tail.",
+    "rendering": "Strand material is two-sided MASK with cutoff 0.35. The game preserves this cutout when forcing skin opaque. Greying is an even treatment that preserves fibre detail, rather than thresholding curl highlights into white patches.",
+    "textureGeneration": {
+      "tool": "Built-in image_gen",
+      "sources": [
+        {
+          "file": "references/hair-fibres-v2.png",
+          "bytes": 2336473,
+          "sha256": "6cd721e868a4efae39766fe68f31d4b90f68fa8e5aca55c5834063bbd0555bac"
+        },
+        {
+          "file": "references/hair-fibres-normal.png",
+          "bytes": 399483,
+          "sha256": "a277bee4bc1280a094e597c4fbfff13149b2477a03abcf7841a1e5249b177276"
+        },
+        {
+          "file": "references/hair-curls-v1.png",
+          "bytes": 3487618,
+          "sha256": "78b8f20040188341aae50cc6ff99d7920eb87efef0ce008d8c401a31d11ff5d6"
+        },
+        {
+          "file": "references/hair-curls-normal.png",
+          "bytes": 485902,
+          "sha256": "7f667f5d39998b754ebf48e4bd3340e12ff4892786cce74bf4131b0794d0c318"
+        },
+        {
+          "file": "references/hair-edge-alpha.png",
+          "bytes": 469771,
+          "sha256": "7f9f4062751a809c2cfb1e9e42adedd13284243b83ae52d517cc93bb1bd2adde"
+        }
+      ],
+      "prompts": {
+        "references/hair-fibres-v2.prompt.txt": "Tool: built-in image_gen, 2026-10-30\nOutput: hair-fibres-v2.png\n\nUse case: photorealistic-natural. Asset type: seamless PBR base-colour texture for realistic game hair. Generate one square 2048 by 2048 macro texture tile, completely filled edge to edge by dense, naturally irregular fine human hair fibres, all running vertically top to bottom. Natural medium-dark warm brown hair. Several hundred very fine individual strands with varied widths, subtle individual brown values, tiny natural deviations and soft smaller groupings. The material should look like actual fine combed human hair under perfectly even diffuse flat cross-polarised illumination. This will be UV mapped around sculpted 1890s waved updos, so do NOT draw an actual hairstyle, face, head, curl silhouette, scalp, braid, background or objects. NO glossy bright stripe, NO directional studio highlights, NO painted broad grooves, NO wood grain, NO thick locks, NO text, NO borders. Seamless tiling on all four edges, consistent average colour across the whole image, all hair parallel and fully opaque. This is the albedo only: all lighting and highlights will be supplied by the renderer.\n\nThe returned asset is 1254 by 1254 pixels. The normal map is derived at 512\npixels; the strand coverage map is project-authored at 1024 pixels. No\nhistorical photograph or user-supplied fashion illustration is in the maps.\n",
+        "references/hair-curls-v1.prompt.txt": "Tool: built-in image_gen, 2026-10-30\nOutput: hair-curls-v1.png\n\nUse case: photorealistic-natural. Asset type: tileable PBR albedo texture for the sculpted mass of a realistic late nineteenth-century woman's curly updo in a game. A square macro photograph filled edge to edge with dense natural dark warm brown wavy-curly human hair. About eight to twelve loose S-shaped and softly coiled locks across the width, each made of many extremely fine individual fibres. The coils overlap irregularly into a coherent mass of natural hair; subtle brown variations and fine flyaway hairs. Soft waves with some tighter small curls, not dreadlocks, not tubes, not a woven pattern. This is the diffuse base-colour texture only: flat even cross-polarised illumination, restrained soft occlusion between locks, no glossy bright stripes or dramatic highlights, no shadows from external objects. Seamless on all four edges. No head, scalp, face, hat, body, props, background, labels, border or text. Natural slightly imperfect strands, photographic surface detail. Keep overall dark-brown value consistent across the tile. This texture will wrap around curved 3D hair clumps and will be tinted to different hair colours.\n\nThe returned asset is 1254 by 1254 pixels. The normal map is derived at 512\npixels. No historical photograph or user-supplied fashion illustration is\nincluded in the maps.\n"
+      },
+      "albedoSize": [
+        1254,
+        1254
+      ],
+      "normalSize": [
+        512,
+        512
+      ],
+      "coverageSize": [
+        1024,
+        1024
+      ]
+    },
+    "referencePlate": "artifacts/characters/carmela-hair-over-ear/references/user-fashion-plate.png; research only",
+    "fastReview": "npm run patients:build -- --assemble-only --identity=carmela; npm run patients:hair-review -- --quick --styles=soft-side-waves,curled-side-rolls",
+    "validation": "validation-ear-coverage.json"
+  },
+  "facePolishPass": {
+    "date": "2026-10-30",
+    "additionalTripoCredits": 0,
+    "mouth": "Rounded rectangular tooth crowns, receding roots and lower arch, lower jaw recession, muted gums and tongue; lip depth follows the actual vertex height instead of texture sampling height.",
+    "rejectedIterations": [
+      "Isolated ellipsoid teeth.",
+      "Forward lower tooth roots visible beneath the lower lip.",
+      "Lip depth sampled at texture height, leaving a projecting lower-lip shelf.",
+      "Dropped lid morph normals, causing nearly black closed lids."
+    ],
+    "eyes": "Complete closing seam, held closure, slower reopening, wide and squint weights yield to automatic blinks. Preserve posed lid and lip normals through optimisation and identity edits.",
+    "performance": "Speech starts at each cue, includes syllable rests and phrase pauses; smaller relief smiles keep cheeks and lids; small glances preserve authored away/down directions.",
+    "looks": {
+      "registry": "shared/characters/modularCast.js",
+      "count": 12,
+      "headBases": 2,
+      "controls": "Complete bounded face, colour, hair, grooming and outfit recipes; Face Lab Start from look menu; playtest appearancePreset selects the actual model."
+    },
+    "wardrobeRepair": "Standing apron fitted from outside the dress folds and bound to interpolated dress weights. Rays from inside and rigid hip binding hid it within the skirt.",
+    "validation": "validation-face-polish.json"
+  }
+}

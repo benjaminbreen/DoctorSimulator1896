@@ -137,9 +137,10 @@ export function installShotHarness(runtime) {
   if (typeof window === 'undefined') return;
 
   const api = {
-    // True once the canvas has mounted and a room is derived.
+    // A camera exists before assets finish loading, and can survive travel.
     get ready() {
-      return Boolean(gameDebug.room && gameDebug.camera);
+      return Boolean(gameDebug.room && gameDebug.camera && gameDebug.stats.boot.complete
+        && gameDebug.loadedZone === runtime.values.zone);
     },
 
     // The tuning schema is the single zone registry visible to the running
@@ -296,7 +297,8 @@ export function installShotHarness(runtime) {
       const feet = project(camera, [p[0], p[1], p[2]]);
       const head = project(camera, [p[0], p[1] + FIGURE_HEIGHT, p[2]]);
       const onScreen =
-        feet.inFront && head.x > -0.15 && head.x < 1.15 && (head.y < 1.1 || feet.y > -0.1);
+        feet.inFront && head.inFront && head.x > -0.15 && head.x < 1.15
+        && head.y < 1.1 && feet.y > -0.1;
       const eye = camera.position;
       const distance = Math.hypot(p[0] - eye.x, p[1] - eye.y, p[2] - eye.z);
       const visible = Boolean(woman || trackedPerson || gameDebug.player.visible !== false);

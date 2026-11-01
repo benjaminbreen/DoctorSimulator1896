@@ -42,3 +42,10 @@ assets-local/
 
 # Local performance captures and browser traces.
 artifacts/performance/
+artifacts/gameplay/
+artifacts/characters/
+artifacts/models/
+
+# Character assembly caches and rejected experiments remain local.
+assets/source/**/*-assembled.blend
+assets/source/**/rejected-*/

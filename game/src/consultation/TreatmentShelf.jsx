@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { TREATMENT_CATEGORIES, resolveTreatment, treatmentsInCategory } from './treatments.js';
+import { TREATMENT_CATEGORIES, resolveTreatment, searchTreatments, treatmentsInCategory } from './treatments.js';
 
 // What a patient of this standing can meet without the fee becoming the problem.
 const AFFORDABLE_CENTS = 400;
@@ -29,14 +29,16 @@ function Tile({ icon, name, note, badge, dear, chosen, style, onClick, onPreview
 export default function TreatmentShelf({ patient, state, runtime }) {
   const [categoryId, setCategoryId] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [query, setQuery] = useState('');
+  const searching = query.trim().length > 0;
   const chosen = state.treatmentIds || [];
   const category = TREATMENT_CATEGORIES.find((item) => item.id === categoryId) || null;
 
   const items = useMemo(() => (
-    category && !category.custom
+    searching ? searchTreatments(patient, query) : category
       ? treatmentsInCategory(category.id).map((base) => resolveTreatment(patient, base.id))
       : []
-  ), [category, patient]);
+  ), [category, patient, query, searching]);
 
   const chosenTreatments = useMemo(
     () => chosen.map((id) => resolveTreatment(patient, id)).filter(Boolean),
@@ -47,16 +49,21 @@ export default function TreatmentShelf({ patient, state, runtime }) {
 
   return (
     <div className="gcon-shelf">
-      {!category && (
+      <label className="gcon-shelf-search">
+        <span>Find a treatment</span>
+        <input type="search" aria-label="Search treatments" placeholder="Name, substance, or regimen…"
+          value={query} onChange={(event) => setQuery(event.target.value)} />
+      </label>
+      {!category && !searching && (
         <>
           <p className="gcon-eyebrow">Course of Treatment</p>
           <div className="gcon-shelf-grid">
-            {TREATMENT_CATEGORIES.map((item) => (
+            {TREATMENT_CATEGORIES.filter((item) => !item.custom).map((item) => (
               <Tile
                 key={item.id}
                 icon={item.icon}
                 name={item.label}
-                note={item.custom ? 'Write it' : `${treatmentsInCategory(item.id).length} available`}
+                note={`${treatmentsInCategory(item.id).length} available`}
                 onClick={() => { setCategoryId(item.id); setPreview(null); }}
               />
             ))}
@@ -64,29 +71,19 @@ export default function TreatmentShelf({ patient, state, runtime }) {
         </>
       )}
 
-      {category && (
+      {(category || searching) && (
         <>
           <div className="gcon-shelf-head">
-            <button type="button" className="gcon-shelf-back" onClick={() => setCategoryId(null)}>
+            <button type="button" className="gcon-shelf-back" onClick={() => { setCategoryId(null); setQuery(''); }}>
               ← All treatments
             </button>
-            <h3>{category.label}</h3>
+            <h3>{searching ? `${items.length} matching treatment${items.length === 1 ? '' : 's'}` : category.label}</h3>
           </div>
-          {category.custom ? (
-            <div className="gcon-shelf-custom">
-              <textarea
-                rows={3}
-                placeholder="A substance, a regimen, a combination of your own devising…"
-                disabled
-              />
-              <p>Reading a written prescription is not yet wired up. Choose from the cabinet for now.</p>
-            </div>
-          ) : (
-            <div className="gcon-shelf-grid">
+          <div className="gcon-shelf-grid">
               {items.map((item) => (
                 <Tile
                   key={item.id}
-                  icon={item.icon || category.icon}
+                  icon={item.icon || TREATMENT_CATEGORIES.find((entry) => entry.id === item.categoryId)?.icon}
                   name={item.label}
                   badge={money(item.feeCents)}
                   dear={item.feeCents > AFFORDABLE_CENTS}
@@ -95,8 +92,8 @@ export default function TreatmentShelf({ patient, state, runtime }) {
                   onPreview={() => setPreview(item)}
                 />
               ))}
-            </div>
-          )}
+          </div>
+          {searching && !items.length && <p className="gcon-empty-state" role="status">No treatments match. Try a shorter name or browse the cabinet.</p>}
         </>
       )}
 

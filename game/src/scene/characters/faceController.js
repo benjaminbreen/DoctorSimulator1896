@@ -1,10 +1,12 @@
 import {
   FACE_WEIGHT_LIMITS,
-  FACIAL_EXPRESSION_RECIPES,
+  expressionFaceWeights,
   FACIAL_GAZE_RECIPES,
   isSpeechIncompatible,
   safeFaceWeight,
   speechJawWeight,
+  speechFaceWeights,
+  blinkFaceWeights, blinkEyelids, idleGazeWeights,
 } from '../../../../shared/characters/facePerformance.js';
 
 export { FACE_WEIGHT_LIMITS, speechJawWeight };
@@ -31,14 +33,16 @@ function add(weights, recipe, scale = 1, excluded = null) {
 
 export function createFaceController(root, recipe) {
   const bindings = collectBindings(root);
+  const modular = bindings.has('speechOpen');
   const written = new Set();
   // Expression morphs ease between cues so a face changes like a face, not a
   // mask. Blinks and the speech jaw stay immediate.
   const smoothed = new Map();
   let elapsed = 0;
+  let speechElapsed = 0, wasSpeaking = false;
   const blinkPeriod = 4.2 + (Math.abs(Number(recipe.appearanceSeed) || 1) % 23) / 10;
 
-  const immediate = (name) => name.startsWith('eyeBlink') || name.startsWith('jaw');
+  const immediate = (name) => name.startsWith('eyeBlink') || name.startsWith('jaw') || name.startsWith('speech');
 
   function write(weights, delta) {
     const blend = 1 - Math.exp(-6 * Math.max(0, Math.min(0.1, delta)));
@@ -55,33 +59,46 @@ export function createFaceController(root, recipe) {
         weights.set(name, next);
       }
     }
+    if (modular) {
+      const eyelids = blinkEyelids(Object.fromEntries(weights),blinkFaceWeights(elapsed,recipe.appearanceSeed));
+      for (const [name,value] of Object.entries(eyelids)) weights.set(name,value);
+    }
     for (const name of written) {
       if (weights.has(name)) continue;
       for (const binding of bindings.get(name) || []) binding.object.morphTargetInfluences[binding.index] = 0;
     }
     written.clear();
     for (const [name, value] of weights) {
-      const safeValue = safeFaceWeight(name, value);
+      const safeValue = safeFaceWeight(name, value, modular);
       for (const binding of bindings.get(name) || []) binding.object.morphTargetInfluences[binding.index] = safeValue;
       written.add(name);
     }
   }
 
   function update(delta, animation = recipe.animation) {
-    elapsed += Math.max(0, Math.min(0.1, Number(delta) || 0));
-    const excluded = animation.speaking ? { has: isSpeechIncompatible } : null;
+    const dt = Math.max(0, Math.min(0.1, Number(delta) || 0));
+    elapsed += dt;
+    if (!wasSpeaking || !animation.speaking) speechElapsed = 0;
+    if (animation.speaking) speechElapsed += dt;
+    wasSpeaking = Boolean(animation.speaking);
+    const excluded = animation.speaking ? { has: name => isSpeechIncompatible(name, modular) } : null;
     const weights = new Map(Object.entries(recipe.restingFace || {})
       .filter(([name, value]) => Number(value) > 0 && !excluded?.has(name)));
-    add(weights, FACIAL_EXPRESSION_RECIPES[animation.expression], 1, excluded);
+    const intensity = Number.isFinite(animation.expressionIntensity)
+      ? Math.max(0, Math.min(1, animation.expressionIntensity)) : 1;
+    add(weights, expressionFaceWeights(animation.expression, modular, animation.speaking), intensity);
     add(weights, FACIAL_GAZE_RECIPES[animation.gaze]);
+    if (modular) add(weights,idleGazeWeights(elapsed,recipe.appearanceSeed,animation.gaze,animation.speaking));
 
     const blinkTime = elapsed % blinkPeriod;
-    if (blinkTime < 0.16) {
+    if (!modular && blinkTime < 0.16) {
       const amount = Math.sin((blinkTime / 0.16) * Math.PI) * 0.92;
       add(weights, { eyeBlinkLeft: amount, eyeBlinkRight: amount });
     }
     if (animation.speaking) {
-      add(weights, { jawOpen: speechJawWeight(elapsed, recipe.appearanceSeed) });
+      add(weights, bindings.has('speechOpen')
+        ? speechFaceWeights(speechElapsed, recipe.appearanceSeed)
+        : { jawOpen: speechJawWeight(elapsed, recipe.appearanceSeed) });
     }
     write(weights, Number(delta) || 0);
   }

@@ -45,6 +45,29 @@ defines them as such.
 
 ## Dynamic patient answers
 
+Carmela now discusses the prescription before the case note. Select a treatment,
+choose **Discuss the plan**, respond to her concern, and then write the record.
+The coca-wine discussion supports a trial off the wine, a gradual return to the
+counter, or a short period of help before returning. These agreements change
+the immediate account, recovery, household cost, and later patient dialogue.
+Complete rest can be declined or the prescription revised. Conflicting advice
+to stop and continue the wine must be corrected.
+
+In her one-month result, **Talk to Carmela one month later** opens a playable
+return-visit preview. Ask about attacks or work, discuss next steps, then return
+to the report. The review records only what was asked and agreed. It adds no
+appointment minutes, fee, or second completed visit to the casebook.
+
+Replay `carmela-negotiation.jsonl` and `carmela-tonic-trial.jsonl` with
+`--scenario=carmela`. Add `--offline` for authored dialogue and the fallback
+James letter. The ordinary `carmela-full.jsonl` and emotion replay also include
+the prescription discussion.
+
+Carmela’s wording and the shared fallback replies use shorter, plainer speech.
+The live prompt asks for ordinary English and contractions, without metaphors,
+speeches, forced wit, or invented gestures. James receives the actual treatment
+discussion and agreed plan along with the earlier consultation transcript.
+
 A custom question that matches no authored rule is answered by GPT-5.6 Luna at
 zero reasoning effort, through the server-side route in `api/consult.mjs`.
 Authored prompts and custom questions that match an authored intent stay
@@ -64,6 +87,82 @@ design; add `-H 'origin: http://127.0.0.1:5175'` to test it by hand.
 
 If the route fails, times out, or is unconfigured, the custom question falls
 back to the offline reply and play continues.
+
+Check the live service with the dev server running:
+
+```sh
+node game/scripts/check-luna.mjs
+node game/scripts/check-luna.mjs --emotions
+```
+
+The first command makes one real request and fails if the route fails; it
+does not accept the game's offline fallback as success. The second makes
+three requests in sequence: kindness, contempt, and an apology, printing the
+dialogue, expression, and body cue. It passes the replies as conversation
+history for a fictional test patient with no case facts, without running
+appointment time, trust, or outcomes. Use `--url=URL`
+to check a different server. These commands use the server's key.
+
+On failure, the route returns the upstream status and a safe error code.
+`401` with `invalid_api_key` means the configured key was rejected. Put a valid
+key in the repo-root `.env.local` and restart the server. An existing
+`OPENAI_API_KEY` in the server's launch environment takes precedence over the
+file, so replace or unset that variable if it is stale.
+
+## Expressions and posture
+
+The live reply already includes `expression` and `bodyCue` alongside dialogue
+and a written behavior. The route constrains them to the renderer's supported
+faces and seated gestures. The consultation stores those cues, and the actor
+blends its facial morphs and plays the seated gesture. An authored rule's cues
+take precedence; generated cues fill turns with no authored match.
+
+For a live experiment, type a custom question in **Ask in your own words**.
+A contemptuous remark without an authored match can produce `frowning` with
+`sitting-disapproval`, for example; the exact selection is generated. The
+literal insults `idiot`, `liar`, and `fraud` trigger a deterministic warning
+and trust loss. The first can receive a live angry or hurt response; a second
+ends the visit without a model call. The warning offers a one-minute apology
+choice, and custom apologies also work. An apology partially restores trust
+but leaves the warning on record. Neither an insult nor an apology discloses
+clinical facts or answers a pending clinical question. The apology remains
+available if the insult uses the last appointment minutes. Cues describe
+visible performance, not a new clinical fact.
+
+Live replies also return `expressionIntensity` from 0 to 1 and `gaze`
+(`doctor`, `away`, `down`, or `neutral`). Intensity scales the existing
+expression recipe before its safety limits and smoothing; it does not scale
+speech, blinking, gaze, or identity morphs. Missing intensity keeps the
+renderer’s existing full-strength behavior.
+
+Each request includes `currentEmotion`, derived from the latest consultation
+cue, plus expression, intensity, gaze, and body cues in recent speech history.
+Luna is prompted to carry hurt or fear through neutral questions and soften
+reactions gradually when appropriate. This is presentation continuity, not a
+new clinical or relationship score. An unmatched custom question whose API
+call fails retains the preceding emotional cue while using offline wording.
+Rejected disclosures also discard that response’s performance cues.
+
+The renderer keeps downcast or averted eye cues when a seated gesture settles
+and releases procedural head tracking for those directions. Authored replies
+keep their own cues and reset intensity to the renderer default. The facial
+recipes, rig, and morph limits are unchanged by this integration.
+
+Replay the live performance path and inspect its PNGs and `performances`:
+
+```sh
+node game/scripts/gameplay-playtest.mjs --scenario=carmela \
+  --replay=game/scripts/playthroughs/luna-emotions.jsonl
+```
+
+This uses the real API for downcast listening, contempt, a neutral follow-up,
+and apology. Cue choices vary by generation; unit tests check the contract and
+continuity without depending on a particular generated expression.
+
+`game/scripts/playthroughs/insult-apology.jsonl` checks the first-insult warning,
+the apology choice, continuing the interview, and the second-insult exit.
+Run it with `--scenario=carmela`; add `--offline` to check the same path using
+fallback reactions without depending on the API.
 
 ## Automated checks
 
@@ -128,7 +227,8 @@ The tests cover:
 - Carmela's immediate approval diverging from one-month health;
 - state-based authored prompt selection;
 - custom inquiry finding unlisted but eligible evidence;
-- authored rules and insults answering offline without a model call;
+- authored rules and repeat-insult exits answering offline without a model call;
+- first-insult reactions and apologies preserving a chance to repair trust;
 - a failed or unreachable dialogue route falling back to the offline reply;
 - the route rejecting cross-origin callers, non-dialogue payloads, and a client
   over the rate limit;
@@ -138,6 +238,15 @@ The tests cover:
 - immediate satisfaction diverging from one-month health.
 
 ## In-game playtest
+
+For a persistent browser session with screenshots, run
+`node game/scripts/gameplay-playtest.mjs --scenario=carmela` from the repo root.
+See [gameplay testing](gameplay-testing.md) for paused inspection and recorded
+UI replays. The headless engine runner above does not exercise this UI.
+The full route is `game/scripts/playthroughs/carmela-full.jsonl`; run it with
+`--scenario=carmela --offline --replay=game/scripts/playthroughs/carmela-full.jsonl`.
+It covers the required response, examination, treatment search, evidence record,
+fee, one-month result, and return to the park.
 
 The production consultation view is mounted in the consulting office. For a
 direct test URL use `?zone=consulting-office`. The raw engine panel is available
@@ -155,8 +264,9 @@ For Nora, test these paths:
 4. Try to proceed without inquiry, without a diagnosis, without a treatment,
    and without two selected findings. Each attempt should be rejected without losing
    state.
-5. Use insulting text and confirm that the patient ends the consultation and
-   begins to stand.
+5. Use insulting text and confirm that the patient reacts with anger or hurt
+   and offers an apology choice. Apologize and continue; a second insult in
+   the same visit should end the consultation and begin the standing motion.
 6. Choose spirit control and continued communications. Confirm that immediate
    acceptance and later health move in different directions.
 7. Watch the character during speech and examination. The body and facial cue

@@ -1,0 +1,92 @@
+{
+  "date": "2026-10-29",
+  "tests": {
+    "passed": 728,
+    "failed": 0
+  },
+  "builds": {
+    "game": "passed; existing large-chunk warning",
+    "characterLab": "passed; existing large-chunk warning"
+  },
+  "assets": [
+    {
+      "id": "carmela-russo",
+      "path": "game/public/models/characters/carmela-russo.glb",
+      "headSource": "head-p2-v1/carmela-head-p2-v1.fbx",
+      "bytes": 4297432,
+      "sha256": "1df384329fe93eb368774d0d777cad5cc33c781c60fb0b37ac3cc2909beaee96"
+    },
+    {
+      "id": "seamstress-prototype",
+      "path": "game/public/models/characters/seamstress-prototype.glb",
+      "headSource": "second-head-p2-v1/second-identity-head-p2-v1.fbx",
+      "note": "Fictional reference identity, not a new clinical case.",
+      "bytes": 4302372,
+      "sha256": "0d528cf809bb4f7f0eaf8cd995a822c874b4ac8e6769baf6c81b504acf55fda3"
+    }
+  ],
+  "sharedSkeleton": {
+    "verified": true,
+    "joints": 65
+  },
+  "motionAudit": {
+    "samples": 90,
+    "maxSleeveEdgeStretch": 1.7473,
+    "beforeStanding": 11.77
+  },
+  "gallery": {
+    "path": "artifacts/characters/carmela-polish/accepted-review",
+    "captures": 122,
+    "failures": []
+  },
+  "gameplay": {
+    "scenario": "carmela",
+    "seed": 4,
+    "continuous": false,
+    "offline": true,
+    "quality": "quality",
+    "output": "/Users/benbreen/Code/DoctorSimulator1896/artifacts/gameplay/carmela-polish-accepted",
+    "url": "http://127.0.0.1:5175/?playtest=1&seed=4&zone=consulting-office",
+    "steps": 36,
+    "failedSteps": 0,
+    "errors": [],
+    "exitCode": 0,
+    "status": "complete"
+  },
+  "video": "artifacts/gameplay/carmela-polish-accepted/video/page@21bd74901fc875c72747825e2bcf1b4f.webm",
+  "comparison": "artifacts/characters/carmela-polish/polish-comparison.png",
+  "performance": {
+    "path": "artifacts/performance/carmela-polish",
+    "production": true,
+    "viewport": [
+      1440,
+      900
+    ],
+    "dpr": 1,
+    "quality": "quality",
+    "samples": [
+      {
+        "name": "consultation-idle",
+        "frames": 362,
+        "p95": 16.700000000000728,
+        "p99": 16.799999999999272,
+        "max": 16.80000000000291,
+        "over50": 0,
+        "averageDraws": 784,
+        "averageTriangles": 845589.5
+      },
+      {
+        "name": "consultation-examination",
+        "frames": 362,
+        "p95": 16.700000000004366,
+        "p99": 16.80000000000291,
+        "max": 16.80000000000291,
+        "over50": 0,
+        "averageDraws": 921,
+        "averageTriangles": 1127776
+      }
+    ],
+    "errors": []
+  },
+  "workshopScreenshot": "artifacts/characters/carmela-polish/workshop.png"
+}

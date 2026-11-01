@@ -49,6 +49,13 @@ function finish(state, diagnosisId, treatmentId) {
   state = consultationTransition(state, patient, { type: 'select-diagnosis', id: diagnosisId });
   state = consultationTransition(state, patient, { type: 'select-treatment', id: treatmentId });
   state = consultationTransition(state, patient, { type: 'begin-case-note' });
+  if (treatmentId === 'drug-stop-tonic') {
+    state = consultationTransition(state, patient, { type: 'respond-treatment', id: 'work' });
+    state = consultationTransition(state, patient, { type: 'respond-treatment', id: 'gradual' });
+  } else {
+    state = consultationTransition(state, patient, { type: 'respond-treatment', id: treatmentId === 'rest-cure-home' ? 'insist' : 'review' });
+  }
+  state = consultationTransition(state, patient, { type: 'begin-case-note' });
   for (const id of ['carmela-episode-pattern', 'carmela-coca-wine', 'carmela-cardiac-exam']) {
     state = consultationTransition(state, patient, { type: 'select-record-fact', id });
   }
@@ -87,7 +94,7 @@ test('the mid-consultation attack demands a response before another action', () 
   state = ask(state, 'carmela-ask-calamity');
   assert.equal(state.pendingResponseId, 'carmela-attack-question');
   assert.deepEqual(actorCueForConsultation(state), {
-    body: 'sitting-distressed', expression: 'discouraged', gaze: 'doctor', speaking: true,
+    body: 'sitting-distressed', expression: 'anxious', gaze: 'doctor', speaking: true,
   });
   assert.deepEqual(availableDialoguePrompts(patient, state).map((item) => item.id), [
     'carmela-response-steady', 'carmela-response-dismiss', 'carmela-response-omen',
@@ -98,8 +105,24 @@ test('the mid-consultation attack demands a response before another action', () 
   state = ask(state, 'carmela-response-steady');
   assert.equal(state.pendingResponseId, null);
   assert.deepEqual(actorCueForConsultation(state), {
-    body: 'sitting-talking', expression: 'smiling', gaze: 'doctor', speaking: true,
+    body: 'sitting-talking', expression: 'relieved', gaze: 'doctor', speaking: true,
   });
+});
+
+test('Carmela enters guarded and keeps her last reaction while the doctor writes', () => {
+  const opening = startConsultation(patient);
+  assert.equal(actorCueForConsultation(opening, patient).expression, 'guarded');
+  let state = ask(ask(begin(), 'carmela-ask-pattern'), 'carmela-ask-calamity');
+  state = ask(state, 'carmela-response-dismiss');
+  const before = actorCueForConsultation(state, patient);
+  const writing = { ...state, history: [...state.history, { kind: 'case-note', text: 'Attack after the bell.' }] };
+  assert.deepEqual(actorCueForConsultation(writing, patient), before);
+});
+
+test('the departure face follows the patient experience, even when the treatment is harmful', () => {
+  const state = { ...begin(), stage: 'result', result: { immediate: { satisfaction: 85 }, oneMonth: { recovery: -20 } } };
+  assert.equal(actorCueForConsultation(state).expression, 'relieved');
+  assert.equal(actorCueForConsultation({ ...state, result: { immediate: { satisfaction: 20 } } }).expression, 'frowning');
 });
 
 test('the focused Carmela route exactly fills the appointment without becoming a checklist', () => {
@@ -132,7 +155,7 @@ test('a flattering supernatural path feels good immediately but worsens Carmela 
   assert.ok(focused.result.oneMonth.recovery > 0);
   assert.ok(warning.result.immediate.satisfaction > focused.result.immediate.satisfaction);
   assert.ok(warning.result.oneMonth.recovery < 0);
-  assert.match(warning.result.oneMonth.narrative, /sphere of danger has widened/);
+  assert.match(warning.result.oneMonth.narrative, /avoids the street and church/);
 });
 
 test('dismissal and economically impossible rest can reduce Carmela’s fee', () => {

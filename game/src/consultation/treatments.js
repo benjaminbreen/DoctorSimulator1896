@@ -351,6 +351,14 @@ export function resolveTreatment(patient, id) {
   };
 }
 
+export function searchTreatments(patient, query) {
+  const terms = String(query).trim().toLowerCase().split(/\s+/).filter(Boolean);
+  return TREATMENT_LIBRARY.map((item) => resolveTreatment(patient, item.id)).filter((item) => {
+    const text = `${item.label} ${item.detail}`.toLowerCase();
+    return terms.every((term) => text.includes(term));
+  });
+}
+
 export function resolveTreatmentPlan(patient, ids) {
   const treatments = (ids || []).map((id) => resolveTreatment(patient, id)).filter(Boolean);
   if (!treatments.length) return null;

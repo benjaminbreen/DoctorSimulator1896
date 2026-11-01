@@ -1,4 +1,5 @@
 import { resolveTreatmentPlan } from './treatments.js';
+import { applyTreatmentAgreement, agreedTreatment, treatmentReturnVisit } from './treatmentDiscussion.js';
 
 function clamp(value, minimum, maximum) {
   return Math.max(minimum, Math.min(maximum, value));
@@ -50,23 +51,22 @@ function interpretationScore(patient, state) {
 function jamesLetter(patient, scores, model) {
   const address = model.james?.address || 'My dear Doctor';
   const name = patient.profile.identity.displayName;
-  const them = patient.profile.identity.sex === 'female' ? 'her' : patient.profile.identity.sex === 'male' ? 'him' : 'them';
   const looking = {
-    strong: `You looked at ${name} before you theorized about ${them}, which is rarer than it should be.`,
-    mixed: `You saw something of ${name}, though you left more on the table than you carried off.`,
-    poor: `You theorized about ${name} more than you looked at ${them}, which is the common vice.`,
+    strong: `Your record gives a useful account of ${name}’s symptoms.`,
+    mixed: `You recorded some useful details about ${name}, but important questions remain.`,
+    poor: `There is too little recorded evidence about ${name} to support a firm conclusion.`,
   }[scorePhrase(scores.observation)];
   const judging = {
-    strong: 'Your reasoning followed the evidence rather than dragging it along behind.',
-    mixed: 'Your reasoning was sound in parts and hopeful in others; the two should not be neighbors.',
-    poor: 'Your conclusion arrived well before your evidence did, and never waited for it.',
+    strong: 'The diagnosis fits the findings you recorded.',
+    mixed: 'The diagnosis is plausible, though some alternatives need more attention.',
+    poor: 'I cannot see enough evidence for the diagnosis.',
   }[scorePhrase(scores.diagnosis)];
   const treating = {
-    strong: 'The treatment was honest work.',
-    mixed: 'The treatment I would call harmless, which is not the same as useful.',
-    poor: 'The treatment I would not have inflicted on a man I liked.',
+    strong: 'The plan addresses the main problems described in the record.',
+    mixed: 'The plan may help in part; I would want to review its effects.',
+    poor: 'I would reconsider this treatment and see the patient again.',
   }[scorePhrase(scores.treatment)];
-  return `${address}, ${looking} ${judging} ${treating} Write to me when the case turns. Wm. James`;
+  return `${address}, ${looking} ${judging} ${treating} Please let me know how the patient gets on. Wm. James`;
 }
 
 function consultationCounts(state) {
@@ -129,7 +129,8 @@ export function resolveAuthoredOutcome(patient, state, noteCoverage) {
   const model = patient.outcomeModel;
   if (!model) return null;
   const diagnosis = patient.diagnoses.find((item) => item.id === state.diagnosisId);
-  const plan = resolveTreatmentPlan(patient, state.treatmentIds);
+  const selectedPlan = resolveTreatmentPlan(patient, state.treatmentIds);
+  const plan = selectedPlan && applyTreatmentAgreement(patient, state, selectedPlan);
   if (!plan) return null;
   const knownFactIds = [...new Set([...state.disclosedFactIds, ...state.observedFactIds])];
   const evidenceRatio = ratioFor(model.evidenceFactIds, knownFactIds);
@@ -160,7 +161,7 @@ export function resolveAuthoredOutcome(patient, state, noteCoverage) {
   const immediateDetail = plan.evaluation.immediateText;
   // Say plainly what was prescribed; the authored prose never names it.
   const labels = plan.treatments.map((item) => item.label.toLowerCase());
-  const prescribedLine = `You prescribe ${labels.length > 1
+  const prescribedLine = `Your prescription: ${labels.length > 1
     ? `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`
     : labels[0]}.`;
   const monthLead = plan.evaluation.monthText || model.monthNarratives[outcomeBand];
@@ -187,7 +188,7 @@ export function resolveAuthoredOutcome(patient, state, noteCoverage) {
       band: experienceBand,
       // Chronological: what you prescribed, how it lands, how the patient leaves.
       narrative: [prescribedLine, immediateDetail, immediateLead].filter(Boolean).join(' '),
-      departureLine: departureLine(model, experienceBand),
+      departureLine: agreedTreatment(patient, state)?.dialogue || departureLine(model, experienceBand),
       paymentCents: payment,
       paymentLabel: payment === model.fee.full ? 'Fee paid in full' : 'Reduced fee paid',
       wordOfMouth: experienceBand === 'high' ? 'Likely recommendation' : experienceBand === 'middle' ? 'No clear recommendation' : 'Likely complaint',
@@ -207,6 +208,8 @@ export function resolveAuthoredOutcome(patient, state, noteCoverage) {
     },
     modernDebrief: `${model.modernDebrief} ${plan.evaluation.modernText}`.trim(),
   };
+  result.agreedPlan = state.treatmentAgreement?.summary || null;
+  result.returnVisit = treatmentReturnVisit(patient, state, result);
   return attachSummary(result, state);
 }
 

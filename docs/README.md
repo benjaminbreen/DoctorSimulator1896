@@ -10,6 +10,10 @@ Read these files in this order:
 
 Implementation references:
 
+- [modular-patients.md](modular-patients.md) — the Carmela prototype, shared
+  body rig, wardrobe variants, rebuild and visual review commands.
+- [gameplay-testing.md](gameplay-testing.md) — persistent browser play,
+  screenshots, recorded UI replays, and video.
 - [consultation-testing.md](consultation-testing.md) — current consultation
   tests and known gaps.
 - [engine-architecture.md](engine-architecture.md) — reusable engine rules.

@@ -52,7 +52,11 @@ export function availableDialoguePrompts(patient, state, limit = 3) {
     return !stale || prompt.useAfterDisclosure;
   });
 
-  const selected = [];
+  const selected = state.awaitingApology ? [{
+    id: 'apologize', text: 'I am sorry. That was unkind. Please let me try again.',
+    stance: 'reassure', minutes: 1,
+  }] : [];
+  if (selected.length >= limit) return selected;
   const usedRoles = new Set();
   const ranked = available
     .map((prompt, index) => ({ prompt, index, priority: Number(prompt.priority) || 0 }))
@@ -118,8 +122,13 @@ export function classifyCustomThought(patient, text) {
 
 export function deterministicAppraisal(patient, state, input = {}) {
   const text = String(input.text || '').toLowerCase();
-  if (['idiot', 'liar', 'fraud'].some((term) => text.includes(term))) {
-    return { register: 'hostile', decorumBreach: 3, intent: 'insult', terminates: true };
+  const apology = /\b(?:i am sorry|i'm sorry|i’m sorry|i apolog(?:ize|ise)|my apologies|(?:please )?forgive me|accept my apology)\b|^\s*sorry\b/.test(text);
+  const freshInsult = /\byou(?: are|'re|’re)\s+(?:(?:an?|still|just|such)\s+)*(?:idiot|liar|fraud)\b/.test(text);
+  if (state.awaitingApology && apology && !freshInsult) {
+    return { register: 'courteous', decorumBreach: 0, intent: 'apology', terminates: false };
+  }
+  if (/\b(?:idiot|liar|fraud)\b/.test(text)) {
+    return { register: 'hostile', decorumBreach: 1, intent: 'insult', terminates: (state.insultCount || 0) >= 1 };
   }
   const rule = resolveInquiryRule(patient, state, input);
   if (rule?.appraisal) return { terminates: false, ...rule.appraisal };

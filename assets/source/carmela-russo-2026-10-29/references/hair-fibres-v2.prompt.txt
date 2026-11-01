@@ -1,0 +1,8 @@
+Tool: built-in image_gen, 2026-10-30
+Output: hair-fibres-v2.png
+
+Use case: photorealistic-natural. Asset type: seamless PBR base-colour texture for realistic game hair. Generate one square 2048 by 2048 macro texture tile, completely filled edge to edge by dense, naturally irregular fine human hair fibres, all running vertically top to bottom. Natural medium-dark warm brown hair. Several hundred very fine individual strands with varied widths, subtle individual brown values, tiny natural deviations and soft smaller groupings. The material should look like actual fine combed human hair under perfectly even diffuse flat cross-polarised illumination. This will be UV mapped around sculpted 1890s waved updos, so do NOT draw an actual hairstyle, face, head, curl silhouette, scalp, braid, background or objects. NO glossy bright stripe, NO directional studio highlights, NO painted broad grooves, NO wood grain, NO thick locks, NO text, NO borders. Seamless tiling on all four edges, consistent average colour across the whole image, all hair parallel and fully opaque. This is the albedo only: all lighting and highlights will be supplied by the renderer.
+
+The returned asset is 1254 by 1254 pixels. The normal map is derived at 512
+pixels; the strand coverage map is project-authored at 1024 pixels. No
+historical photograph or user-supplied fashion illustration is in the maps.

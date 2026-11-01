@@ -344,6 +344,13 @@ export default function GameHud({
     }
   }), []);
   useEffect(() => subscribeHudOverlayRequests(setOverlay), []);
+  // Appointments can start a visit while travel or another overlay is open.
+  useEffect(() => {
+    if (quiet) setOverlay(null);
+  }, [quiet]);
+  useEffect(() => runtime.onChange((id) => {
+    if (id === 'zone') setOverlay(null);
+  }), [runtime]);
 
   // Escape in the plain world view opens settings. Any open overlay's own
   // capture-phase handler consumes Escape first, so this only fires when

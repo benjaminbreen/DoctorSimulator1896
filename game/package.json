@@ -11,6 +11,7 @@
     "playtest:samuel": "node scripts/consultation-playtest.mjs --patient=samuel",
     "playtest:carmela": "node scripts/consultation-playtest.mjs --patient=carmela",
     "playtest:chapuys": "node scripts/consultation-playtest.mjs --patient=chapuys",
+    "playtest:game": "node scripts/gameplay-playtest.mjs",
     "events:proof": "node scripts/event-proof.mjs",
     "test": "node --test 'tests/*.test.js'"
   },

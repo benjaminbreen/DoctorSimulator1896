@@ -114,11 +114,13 @@ function damp(current, target, lambda, dt) {
 
 export function createPatientMotion(root, recipe) {
   const bones = {};
+  const pose = [];
   // Finger segments per hand, with their distance from the knuckle: a fine
   // tremor is most visible at the fingertips.
   const fingers = { right: [], left: [] };
   root.traverse((object) => {
     if (!object.isBone) return;
+    pose.push({ bone: object, quaternion: object.quaternion.clone() });
     const name = object.name.toLowerCase().replace(/^mixamorig:?/, '');
     for (const [key, suffix] of Object.entries(BONE_SUFFIXES)) {
       if (name === suffix) bones[key] = object;
@@ -128,6 +130,12 @@ export function createPatientMotion(root, recipe) {
   });
 
   const rng = makeRng((recipe?.identitySeed ?? 1) * 7919);
+  let posed = false;
+  const restorePose = () => {
+    if (!posed) return;
+    for (const entry of pose) entry.bone.quaternion.copy(entry.quaternion);
+    posed = false;
+  };
   const state = {
     time: 0,
     // Gaze: 1 engages the target, 0 follows the clip. The target is the
@@ -146,6 +154,10 @@ export function createPatientMotion(root, recipe) {
 
   const update = (dt, animation, camera) => {
     if (!camera || dt <= 0) return;
+    // Three skips writing unchanged animation tracks. Remove our last offsets
+    // before the mixer runs, then save its new pose before adding this frame's.
+    for (const entry of pose) entry.quaternion.copy(entry.bone.quaternion);
+    posed = true;
     state.time += dt;
 
     const gesture = GESTURES[animation.gesture] || null;
@@ -164,6 +176,11 @@ export function createPatientMotion(root, recipe) {
       state.gazeAtHand = presenting && gesture?.watchHand && rng() < 0.65;
       const holdRange = state.gazeTarget === 1 ? [2.5, 6] : [1.5, 4];
       state.nextGazeShift = state.time + holdRange[0] + rng() * (holdRange[1] - holdRange[0]);
+    }
+    // A directed gaze must not be pulled back toward the doctor by speech.
+    if (['away', 'down', 'neutral'].includes(animation.gaze) && !presenting) {
+      state.gazeTarget = 0;
+      state.gazeAtHand = false;
     }
     state.gazeWeight = damp(state.gazeWeight, state.gazeTarget, 2.2, dt);
 
@@ -295,5 +312,5 @@ export function createPatientMotion(root, recipe) {
     }
   };
 
-  return { update, bones };
+  return { update, restorePose, bones };
 }

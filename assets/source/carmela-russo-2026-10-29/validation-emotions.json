@@ -1,0 +1,104 @@
+{
+  "date": "2026-10-29",
+  "tests": {
+    "passed": 735,
+    "failed": 0
+  },
+  "builds": {
+    "game": "passed; existing large-chunk warning",
+    "characterLab": "passed; existing large-chunk warning"
+  },
+  "assets": [
+    {
+      "id": "carmela-russo",
+      "path": "game/public/models/characters/carmela-russo.glb",
+      "headSource": "head-p2-v1/carmela-head-p2-v1.fbx",
+      "bytes": 4321072,
+      "sha256": "18f5a1953c79a472b1ff68a2aed7e3b6f01a637fa4089cd66af05e95e3402b3f"
+    },
+    {
+      "id": "seamstress-prototype",
+      "path": "game/public/models/characters/seamstress-prototype.glb",
+      "headSource": "second-head-p2-v1/second-identity-head-p2-v1.fbx",
+      "note": "Fictional reference identity, not a new clinical case.",
+      "bytes": 4326012,
+      "sha256": "86c8deee119685b9784bba8809e4eea4bf83b4bccd4b0f10fe1db27637bd166a"
+    }
+  ],
+  "additionalTripoCredits": 0,
+  "defaultAppearance": {
+    "lowerFaceSize": -0.6,
+    "restingFace": {},
+    "profile": "fitted-head expressions",
+    "consultationZoom": 0.12
+  },
+  "emotionGallery": {
+    "path": "artifacts/characters/carmela-emotions/rig-fixed",
+    "captures": 25,
+    "failures": [],
+    "frozenPoseVerified": true
+  },
+  "chinMotion": {
+    "path": "artifacts/characters/carmela-chin/rebound",
+    "captures": 12,
+    "comparison": "artifacts/characters/carmela-chin/rebound/comparison.png",
+    "cause": "Chin vertices were weighted to the neck and shoulders; head pitch stretched the lower face.",
+    "correction": "Rigid head binding above the neck transition; separate facial parts follow the head.",
+    "samples": 90,
+    "previousMaxEdgeStretch": 2.4682,
+    "minEdgeStretch": 0.9999,
+    "maxEdgeStretch": 1.0001
+  },
+  "gameplay": {
+    "scenario": "carmela",
+    "seed": 4,
+    "continuous": false,
+    "offline": true,
+    "quality": "quality",
+    "output": "/Users/benbreen/Code/DoctorSimulator1896/artifacts/gameplay/carmela-emoting-rig-fixed",
+    "url": "http://127.0.0.1:5187/?playtest=1&seed=4&zone=consulting-office",
+    "steps": 42,
+    "failedSteps": 0,
+    "errors": [],
+    "exitCode": 0,
+    "status": "complete"
+  },
+  "performance": {
+    "path": "artifacts/performance/carmela-emoting-rig-fixed",
+    "production": true,
+    "viewport": [
+      1440,
+      900
+    ],
+    "dpr": 1,
+    "quality": "quality",
+    "samples": [
+      {
+        "name": "consultation-idle",
+        "frames": 362,
+        "p95": 16.700000000000728,
+        "p99": 16.799999999999272,
+        "max": 16.80000000000291,
+        "over50": 0,
+        "averageDraws": 726.2541436464088,
+        "averageTriangles": 808627.6933701658
+      },
+      {
+        "name": "consultation-examination",
+        "frames": 362,
+        "p95": 16.700000000004366,
+        "p99": 16.80000000000291,
+        "max": 16.80000000000291,
+        "over50": 0,
+        "averageDraws": 921,
+        "averageTriangles": 1127776
+      }
+    ],
+    "errors": []
+  },
+  "video": "artifacts/gameplay/carmela-emoting-rig-fixed/video/page@016143f8e1b23c518eedfc560affcf69.webm",
+  "limitations": [
+    "Speech is procedural animation without recorded audio or audio-synchronised phonemes.",
+    "Offline replays verify authored dialogue and outcomes; they do not test the live consultation API."
+  ]
+}

@@ -1,0 +1,23 @@
+{"type":"click","name":"Hide controls"}
+{"type":"move","keys":["KeyS"],"ms":1200}
+{"type":"move","keys":["KeyA"],"ms":1800}
+{"type":"look","dx":600,"dy":-20}
+{"type":"look","dx":600,"dy":0}
+{"type":"look","dx":296,"dy":0}
+{"type":"move","keys":["KeyW"],"ms":400}
+{"type":"move","keys":["KeyW"],"ms":160}
+{"type":"move","keys":["KeyW"],"ms":360}
+{"type":"move","keys":["KeyS"],"ms":300}
+{"type":"move","keys":["KeyS"],"ms":500}
+{"type":"wait","ms":2200}
+{"type":"move","keys":["KeyS"],"ms":1150}
+{"type":"look","dx":600,"dy":0}
+{"type":"look","dx":148,"dy":0}
+{"type":"move","keys":["KeyW"],"ms":100}
+{"type":"move","keys":["Space"],"ms":200}
+{"type":"wait","ms":80}
+{"type":"wait","ms":2200}
+{"type":"move","keys":["KeyS"],"ms":850}
+{"type":"move","keys":["KeyD"],"ms":1100}
+{"type":"move","keys":["KeyD"],"ms":400}
+{"type":"wait","ms":1000}

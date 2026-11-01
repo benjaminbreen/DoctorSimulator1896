@@ -6,23 +6,40 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { MeshoptDecoder } from 'meshoptimizer';
+import { createModularFacialHair, MODULAR_SIDEBURNS, MODULAR_MOUSTACHES } from '../../shared/characters/modularFacialHair.js';
+import { createModularBody, MODULAR_BODY_CONTROLS } from '../../shared/characters/modularBody.js';
+import { createModularWardrobe } from '../../shared/characters/modularWardrobe.js';
+import { createModularIdentity, MODULAR_IDENTITIES, MODULAR_FEATURES, MODULAR_FACE_STUDIES, MODULAR_NOSE_STUDIES } from '../../shared/characters/modularIdentity.js';
+import { createModularAppearance, MODULAR_SKIN_TONES, MODULAR_HAIR_TONES, MODULAR_EYE_TONES } from '../../shared/characters/modularAppearance.js';
+import { createModularVariation } from '../../shared/characters/modularVariants.js';
+import { MODULAR_CAST_LOOKS } from '../../shared/characters/modularCast.js';
+import { createModularHair, MODULAR_HAIR_STYLES, MODULAR_HAIR_CONTROLS } from '../../shared/characters/modularHair.js';
 import {
   FACIAL_EXPRESSION_RECIPES,
+  expressionFaceWeights,
   FACIAL_GAZE_RECIPES,
   safeFaceWeight,
   speechJawWeight,
+  speechFaceWeights,
+  blinkFaceWeights, blinkEyelids, idleGazeWeights,
 } from '../../shared/characters/facePerformance.js';
 
 // Switching characters reloads the page: a dev tool has no state worth
 // preserving, and it keeps the loader single-path.
 const CHARACTERS = [
+  { id: 'carmela-russo', label: 'Carmela Russo', path: '/models/characters/carmela-russo.glb', headOffset: 0.10, headDistance: .72 },
+  { id: 'seamstress-prototype', label: 'Seamstress prototype', path: '/models/characters/seamstress-prototype.glb', headOffset: .10, headDistance: .72 },
+  { id: 'male-lean-template', label: 'Male — lean template', path: '/models/characters/male-lean-template.glb', headOffset: .05, headDistance: .72 },
+  { id: 'male-broad-template', label: 'Male — broad template', path: '/models/characters/male-broad-template.glb', headOffset: .05, headDistance: .72 },
+  { id: 'male-worker-template', label: 'Male — complete worker', path: '/models/characters/male-worker-template.glb', headOffset: .05, headDistance: .72, outfit: 'work-shirt' },
   { id: 'samuel-taylor', label: 'Samuel Taylor', path: '/models/samuel-taylor.glb' },
   { id: 'wine-merchant', label: 'Wine merchant', path: '/models/wine-merchant.glb' },
 ];
 const requested = new URLSearchParams(window.location.search).get('model');
 const CHARACTER = CHARACTERS.find((entry) => entry.id === requested) || CHARACTERS[0];
-const MODEL = CHARACTER.path;
+const MODEL = CHARACTER.path+(CHARACTER.id === 'male-worker-template' ? '?v=20261101-worker-1' : CHARACTER.id.startsWith('male-')?'?v=20261031-garments-7':'');
 document.querySelector('#panel h1').textContent = `Face Lab — ${CHARACTER.label}`;
+document.title = `Face Lab — ${CHARACTER.label}`;
 
 const stage = document.getElementById('stage');
 const hud = document.getElementById('hud');
@@ -34,11 +51,11 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 stage.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color('#211a12');
+scene.background = new THREE.Color('#20242a');
 const camera = new THREE.PerspectiveCamera(34, 1, 0.01, 20);
 const orbit = new OrbitControls(camera, renderer.domElement);
-scene.add(new THREE.HemisphereLight('#e8dcc4', '#3a2f20', 1.1));
-const key = new THREE.DirectionalLight('#fff2dd', 2.2);
+scene.add(new THREE.HemisphereLight('#e5eef7', '#34383d', 1.1));
+const key = new THREE.DirectionalLight('#fff9f2', 2.0);
 key.position.set(0.6, 1.2, 1.4);
 scene.add(key);
 
@@ -58,7 +75,19 @@ const state = {
   autoBlink: true,
   clip: 'ClinicIdle',
   raw: {},
+  paused: false,
+  outfit: CHARACTER.outfit || (CHARACTER.id.startsWith('male-') ? 'tailored-clothes' : 'day-dress'),
+  palette: 'original',
+  identityVariant: 0, sideburns:'short-sideburns', moustache:'none', bellySize: 0, waistWidth: 0,
+  hairStyle: CHARACTER.id.startsWith('male-') ? 'short-side-part' : 'soft-side-waves', hairVolume: 0, hairWave: 0, hairBunHeight: 0, hairPartOffset: 0, hairEarCoverage: .3,
+  performanceSeed: 7,
+  // Keep the initial Carmela preview aligned with her authored game asset.
+  features: CHARACTER.id === 'carmela-russo' ? { lowerFaceSize: -.6 } : {}, skinTone: 'original', hairTone: 'original', eyeTone: 'original',
 };
+const variationSeed = new URLSearchParams(location.search).get('variantSeed');
+if (variationSeed !== null) Object.assign(state, createModularVariation(Number(variationSeed),CHARACTER.id.startsWith('male-')));
+const selectedCast = MODULAR_CAST_LOOKS.find(preset => preset.id === new URLSearchParams(location.search).get('preset') && preset.model === CHARACTER.id);
+if (selectedCast) Object.assign(state,{...selectedCast.look,features:{...selectedCast.look.features}});
 
 const loader = new GLTFLoader()
   .setMeshoptDecoder(MeshoptDecoder)
@@ -66,27 +95,36 @@ const loader = new GLTFLoader()
 
 const gltf = await loader.loadAsync(MODEL);
 scene.add(gltf.scene);
+const wardrobe = createModularWardrobe(gltf.scene);
+const bodyShape = createModularBody(gltf.scene);
+const facialHair = createModularFacialHair(gltf.scene);
+const hair = createModularHair(gltf.scene);
+const identity = createModularIdentity(gltf.scene);
+const appearance = createModularAppearance(gltf.scene, identity.frame);
+hair.update(state);
 const mixer = new THREE.AnimationMixer(gltf.scene);
 let action = mixer.clipAction(gltf.animations.find((clip) => clip.name === state.clip));
 action.play();
 
-let faceMesh = null;
+const faceMeshes = [];
 gltf.scene.traverse((object) => {
-  if (object.isSkinnedMesh && object.morphTargetDictionary && !faceMesh) faceMesh = object;
+  // One review figure can move far outside its first sampled skin bounds.
+  if (object.isSkinnedMesh) object.frustumCulled = false;
+  if (object.isSkinnedMesh && object.morphTargetDictionary) faceMeshes.push(object);
 });
-const morphNames = Object.keys(faceMesh.morphTargetDictionary);
+const morphNames = [...new Set(faceMeshes.flatMap((mesh) => Object.keys(mesh.morphTargetDictionary)))].filter((name) => !name.startsWith('rc_'));
 for (const name of morphNames) state.raw[name] = 0;
 
 let head = null;
 gltf.scene.traverse((object) => { if (object.name === 'mixamorigHead' && !head) head = object; });
 
-function frameHead() {
+function frameHead(sample = true) {
   // Sample the pose first: the seated idle carries the head well below the
   // bind pose.
-  mixer.update(1 / 30);
+  if (sample) mixer.update(1 / 30);
   gltf.scene.updateMatrixWorld(true);
-  const target = head.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0.04, 0));
-  camera.position.copy(target).add(new THREE.Vector3(0.1, 0.03, 0.5));
+  const target = head.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, CHARACTER.headOffset ?? 0.04, 0));
+  camera.position.copy(target).add(new THREE.Vector3(0.08, 0.03, CHARACTER.headDistance ?? .5));
   orbit.target.copy(target);
   orbit.update();
 }
@@ -105,6 +143,7 @@ function check(label, value, onChange) {
   wrap.className = 'check';
   const box = document.createElement('input');
   box.type = 'checkbox';
+  box.dataset.control = label;
   box.checked = value;
   box.addEventListener('change', () => onChange(box.checked));
   wrap.append(box, label);
@@ -128,6 +167,168 @@ characterSelect.addEventListener('change', () => {
 });
 characterRow.append(characterLabel, characterSelect);
 controlsHost.append(characterRow);
+if (identity.available) {
+  const row = document.createElement('label'); row.className = 'row'; row.textContent = 'Start from look';
+  const select = document.createElement('select'); select.name = 'castPreset';
+  const custom = document.createElement('option'); custom.value = ''; custom.textContent = 'Custom'; select.append(custom);
+  for (const preset of MODULAR_CAST_LOOKS) {
+    const option = document.createElement('option'); option.value = preset.id; option.textContent = preset.label;
+    option.selected = preset.id === selectedCast?.id; select.append(option);
+  }
+  select.addEventListener('change',() => {
+    const preset = MODULAR_CAST_LOOKS.find(entry => entry.id === select.value);
+    if (!preset) return;
+    if (preset.model !== CHARACTER.id) { location.search = '?model='+preset.model+'&preset='+preset.id; return; }
+    Object.assign(state,{...preset.look,features:{...preset.look.features}}); syncAppearanceControls();
+  });
+  row.append(select); controlsHost.append(row);
+}
+const featureInputs = new Map();
+const hairInputs = new Map();
+const studySelects = [];
+function syncAppearanceControls() {
+  for (const name of ['identityVariant', 'outfit', 'palette', 'skinTone', 'hairTone', 'eyeTone', 'hairStyle','sideburns','moustache']) {
+    const select = controlsHost.querySelector(`select[name="${name}"]`);
+    if (select) select.value = state[name];
+  }
+  for (const [name, { input, output }] of featureInputs) {
+    input.value = state.features[name] || 0;
+    output.value = Number(input.value).toFixed(2);
+  }
+  for (const [name, { input, output }] of hairInputs) {
+    input.value = state[name] || 0;
+    output.value = Number(input.value).toFixed(2);
+  }
+  for (const { select, studies, nose } of studySelects) {
+    const names = Object.keys(MODULAR_FEATURES).filter((name) => name.startsWith('nose') === nose);
+    select.value = studies.findIndex((study) => names.every((name) => (state.features[name] || 0) === (study.features[name] || 0)));
+  }
+}
+if (identity.available) {
+  const row = document.createElement('label');
+  row.className = 'row';
+  row.textContent = 'Base proportions';
+  const select = document.createElement('select');
+  select.name = 'identityVariant';
+  MODULAR_IDENTITIES.forEach((name, index) => {
+    const option = document.createElement('option');
+    option.value = index;
+    option.textContent = name;
+    select.append(option);
+  });
+  select.addEventListener('change', () => { state.identityVariant = Number(select.value); });
+  row.append(select);
+  controlsHost.append(row);
+  if (identity.frame) {
+    for (const [label, studies, nose] of [['Face study', MODULAR_FACE_STUDIES, false], ['Nose study', MODULAR_NOSE_STUDIES, true]]) {
+      const row = document.createElement('label'); row.className = 'row'; row.textContent = label;
+      const select = document.createElement('select'); select.name = nose ? 'noseStudy' : 'faceStudy';
+      for (const [index, study] of studies.entries()) {
+        const option = document.createElement('option'); option.value = index; option.textContent = study.name; select.append(option);
+      }
+      const custom = document.createElement('option'); custom.value = -1; custom.textContent = 'Custom'; select.append(custom);
+      select.addEventListener('change', () => {
+        const study = studies[Number(select.value)]; if (!study) return;
+        for (const name of Object.keys(MODULAR_FEATURES)) if (name.startsWith('nose') === nose) delete state.features[name];
+        Object.assign(state.features, study.features);
+        syncAppearanceControls();
+      });
+      row.append(select); controlsHost.append(row); studySelects.push({ select, studies, nose });
+    }
+    const details = document.createElement('details');
+    const summary = document.createElement('summary'); summary.textContent = 'Feature controls'; details.append(summary);
+    for (const [name, label] of Object.entries(MODULAR_FEATURES)) {
+      const row = document.createElement('label'); row.className = 'row'; row.textContent = label;
+      const input = document.createElement('input'); input.type = 'range'; input.min = -1; input.max = 1; input.step = .05; input.value = 0; input.name = name;
+      const output = document.createElement('output'); output.value = '0.00';
+      input.addEventListener('input', () => { state.features[name] = Number(input.value); syncAppearanceControls(); });
+      featureInputs.set(name, { input, output }); row.append(input, output); details.append(row);
+    }
+    controlsHost.append(details);
+  }
+}
+
+if (appearance.available) {
+  for (const [name, label, choices] of [['skinTone', 'Skin tone', MODULAR_SKIN_TONES], ['hairTone', 'Hair colour', MODULAR_HAIR_TONES], ['eyeTone', 'Eye colour', MODULAR_EYE_TONES]]) {
+    const row = document.createElement('label'); row.className = 'row'; row.textContent = label;
+    const select = document.createElement('select'); select.name = name;
+    for (const [value, entry] of Object.entries(choices)) {
+      const option = document.createElement('option'); option.value = value; option.textContent = entry.label; select.append(option);
+    }
+    select.addEventListener('change', () => { state[name] = select.value; }); row.append(select); controlsHost.append(row);
+  }
+  const row = document.createElement('div'); row.className = 'btnrow';
+  const seed = document.createElement('input'); seed.type = 'number'; seed.min = 1; seed.value = variationSeed === null ? 1 : Number(variationSeed); seed.setAttribute('aria-label', 'Variation seed'); seed.style.width = '65px';
+  const applySeed = () => { Object.assign(state, createModularVariation(Number(seed.value),CHARACTER.id.startsWith('male-'))); syncAppearanceControls(); };
+  row.append(seed, button('Apply seed', applySeed), button('New variation', () => { seed.value = Number(seed.value)+1; applySeed(); }));
+  controlsHost.append(row);
+  controlsHost.append(button('Save character recipe', () => {
+    const url=URL.createObjectURL(new Blob([JSON.stringify(characterRecipe(),null,2)],{type:'application/json'}));
+    const link=document.createElement('a');link.href=url;link.download=CHARACTER.id+'-recipe.json';link.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }));
+}
+
+if (hair.available) {
+  const row = document.createElement('label'); row.className = 'row'; row.textContent = 'Hairstyle';
+  const select = document.createElement('select'); select.name = 'hairStyle';
+  for (const id of hair.styles) {
+    const option = document.createElement('option'); option.value = id; option.textContent = MODULAR_HAIR_STYLES[id]; select.append(option);
+  }
+  select.addEventListener('change', () => { state.hairStyle = select.value; });
+  row.append(select); controlsHost.append(row);
+  const details = document.createElement('details');
+  const summary = document.createElement('summary'); summary.textContent = 'Hair grooming'; details.append(summary);
+  for (const [name, control] of Object.entries(MODULAR_HAIR_CONTROLS).filter(([name])=>hair.controls.includes(name))) {
+    const row = document.createElement('label'); row.className = 'row'; row.textContent = control.label;
+    const input = document.createElement('input'); input.type = 'range'; input.name = name;
+    input.min = control.min; input.max = control.max; input.step = .05; input.value = 0;
+    const output = document.createElement('output'); output.value = '0.00';
+    input.addEventListener('input', () => { state[name] = Number(input.value); output.value = Number(input.value).toFixed(2); });
+    hairInputs.set(name, { input, output }); row.append(input, output); details.append(row);
+  }
+  controlsHost.append(details);
+}
+
+if (facialHair.available) {
+  for (const [name, choices] of [['sideburns',MODULAR_SIDEBURNS],['moustache',MODULAR_MOUSTACHES]]) {
+    const row=document.createElement('label'); row.className='row'; row.textContent=name==='sideburns'?'Sideburns':'Moustache';
+    const select=document.createElement('select'); select.name=name;
+    for(const [id,label] of Object.entries(choices)){const option=document.createElement('option');option.value=id;option.textContent=label;select.append(option);}
+    select.addEventListener('change',()=>{state[name]=select.value;});row.append(select);controlsHost.append(row);
+  }
+}
+if (bodyShape.available) {
+  const details = document.createElement('details'); details.open = true;
+  const summary = document.createElement('summary'); summary.textContent = 'Body proportions'; details.append(summary);
+  for (const [name,label] of Object.entries(MODULAR_BODY_CONTROLS)) {
+    const row = document.createElement('label'); row.className = 'row'; row.textContent = label;
+    const input = document.createElement('input'); input.type = 'range'; input.min = -1; input.max = 1; input.step = .05; input.value = state[name]; input.name = name;
+    const output = document.createElement('output'); output.value = Number(input.value).toFixed(2);
+    input.addEventListener('input', () => { state[name] = Number(input.value); output.value = Number(input.value).toFixed(2); });
+    hairInputs.set(name,{input,output}); row.append(input,output); details.append(row);
+  }
+  controlsHost.append(details);
+}
+
+if (wardrobe.available) {
+  for (const [name, choices] of [['outfit', wardrobe.outfits], ['palette', ['original', 'navy', 'forest', 'taupe']]]) {
+    const row = document.createElement('label');
+    row.className = 'row';
+    row.textContent = name === 'outfit' ? 'Outfit' : 'Fabric';
+    const select = document.createElement('select');
+    select.name = name;
+    for (const value of choices) {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = value.replaceAll('-', ' ');
+      select.append(option);
+    }
+    select.addEventListener('change', () => { state[name] = select.value; });
+    row.append(select);
+    controlsHost.append(row);
+  }
+}
 
 const modeRow = document.createElement('div');
 modeRow.className = 'btnrow';
@@ -158,6 +359,21 @@ for (const name of ['neutral', ...Object.keys(FACIAL_EXPRESSION_RECIPES)]) {
 performanceSection.append(expressionRow);
 performanceSection.append(check('Speaking', state.speaking, (value) => { state.speaking = value; }));
 performanceSection.append(check('Auto blink', state.autoBlink, (value) => { state.autoBlink = value; }));
+performanceSection.append(check('Pause motion', state.paused, (value) => { state.paused = value; }));
+const viewRow = document.createElement('div');
+viewRow.className = 'btnrow';
+function frameBody() {
+  camera.position.set(0.35, 1.05, CHARACTER.id.startsWith('male-') ? 3.7 : 3.1);
+  orbit.target.set(0, 0.78, 0);
+  orbit.update();
+}
+function frameTorso() {
+  gltf.scene.updateMatrixWorld(true);
+  const target=head.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0,-.30,0));
+  camera.position.copy(target).add(new THREE.Vector3(.10,.02,1.9));orbit.target.copy(target);orbit.update();
+}
+viewRow.append(button('Face', frameHead), button('Torso', frameTorso), button('Whole figure', frameBody));
+performanceSection.append(viewRow);
 controlsHost.append(performanceSection);
 
 const rawSection = document.createElement('div');
@@ -233,18 +449,34 @@ const clock = new THREE.Clock();
 
 function drive(delta) {
   elapsed += delta;
-  const influences = faceMesh.morphTargetInfluences;
-  const dictionary = faceMesh.morphTargetDictionary;
+  identity.update(state.identityVariant, state.features);
+  appearance.update(state);
+  hair.update(state);
+  bodyShape.update(state);
+  facialHair.update(state);
+  const seated = state.clip === 'ClinicIdle' || state.clip.startsWith('Sitting')
+    || (state.clip === 'SitDown' && action.time / action.getClip().duration > .65)
+    || (state.clip === 'StandUp' && action.time / action.getClip().duration < .35);
+  wardrobe.update({ seated, apron: state.outfit === 'work-apron', outfit:state.outfit, palette: state.palette, dt:delta });
   if (state.mode === 'raw') {
-    for (const name of morphNames) influences[dictionary[name]] = state.raw[name];
+    for (const mesh of faceMeshes) {
+      for (const [name, index] of Object.entries(mesh.morphTargetDictionary)) {
+        if (name.startsWith('rc_')) continue;
+        mesh.morphTargetInfluences[index] = state.raw[name] || 0;
+      }
+    }
     return;
   }
   const weights = {};
-  for (const [name, value] of Object.entries(FACIAL_EXPRESSION_RECIPES[state.expression] || {})) {
+  const modular = morphNames.includes('speechOpen') && !state.legacyExpressions;
+  for (const [name, value] of Object.entries(expressionFaceWeights(state.expression, modular, state.speaking))) {
     weights[name] = value;
   }
   for (const [name, value] of Object.entries(FACIAL_GAZE_RECIPES.none || {})) weights[name] = value;
-  if (state.autoBlink) {
+  if (modular) Object.assign(weights,idleGazeWeights(elapsed,state.performanceSeed,'doctor',state.speaking));
+  if (state.autoBlink && modular) {
+    Object.assign(weights,blinkEyelids(weights,blinkFaceWeights(elapsed,state.performanceSeed)));
+  } else if (state.autoBlink) {
     const blinkTime = elapsed % 4.6;
     if (blinkTime < 0.16) {
       const amount = Math.sin((blinkTime / 0.16) * Math.PI) * 0.92;
@@ -252,18 +484,139 @@ function drive(delta) {
       weights.eyeBlinkRight = Math.min(1, (weights.eyeBlinkRight || 0) + amount);
     }
   }
-  if (state.speaking) weights.jawOpen = Math.min(1, (weights.jawOpen || 0) + speechJawWeight(elapsed, 7));
-  for (const name of morphNames) {
-    influences[dictionary[name]] = weights[name] ? safeFaceWeight(name, weights[name]) : 0;
+  if (state.speaking) Object.assign(weights, morphNames.includes('speechOpen')
+    ? speechFaceWeights(elapsed, state.performanceSeed)
+    : { jawOpen: speechJawWeight(elapsed, state.performanceSeed) });
+  for (const mesh of faceMeshes) {
+    for (const [name, index] of Object.entries(mesh.morphTargetDictionary)) {
+      if (name.startsWith('rc_')) continue;
+      mesh.morphTargetInfluences[index] = weights[name] ? safeFaceWeight(name, weights[name], modular) : 0;
+    }
   }
 }
 
+// The capture runner uses the same meshes, clips, and controls as this page.
+// Freeze a precise pose so review time cannot change a comparison image.
+let surfaceVisibility=null;
+let surfaceSelection=null;
+function characterRecipe() {
+  const keys=['identityVariant','features','skinTone','hairTone','eyeTone','outfit','palette','hairStyle',
+    'hairVolume','hairWave','hairBunHeight','hairPartOffset','hairEarCoverage','sideburns','moustache','bellySize','waistWidth'];
+  return {model:CHARACTER.id,look:structuredClone(Object.fromEntries(keys.map(key=>[key,state[key]])))};
+}
+
+window.__faceLab = {
+  recipe:characterRecipe,
+  pickSurface(x,y) {
+    const rect=renderer.domElement.getBoundingClientRect();
+    const ray=new THREE.Raycaster();ray.setFromCamera(new THREE.Vector2((x-rect.left)/rect.width*2-1,1-(y-rect.top)/rect.height*2),camera);
+    const hit=ray.intersectObject(gltf.scene,true).find(({object})=>{for(let p=object;p;p=p.parent)if(!p.visible)return false;return true;});
+    return hit?{mesh:hit.object.name,face:hit.faceIndex,point:hit.point.toArray(),material:hit.object.material.name}:null;
+  },
+  inspectShading(mode = 'normal') {
+    gltf.scene.traverse(mesh => {
+      if (!mesh.isMesh) return;
+      if (mode === 'original' && !mesh.userData.reviewMaterial) return;
+      if (!mesh.userData.reviewMaterial) mesh.userData.reviewMaterial = mesh.material;
+      const original = mesh.userData.reviewMaterial;
+      if (mesh.material !== original) mesh.material.dispose();
+      mesh.material = mode === 'original' ? original : mode === 'texture'
+        ? new THREE.MeshBasicMaterial({ map: original.map, color: original.color, side: THREE.DoubleSide })
+        : mode === 'front' ? Object.assign(original.clone(), { side: THREE.FrontSide })
+        : new THREE.MeshNormalMaterial({ side: THREE.DoubleSide });
+      if (mode === 'original') delete mesh.userData.reviewMaterial;
+    });
+    renderer.render(scene, camera);
+  },
+  inspectSurfaces(only=null) {
+    const meshes=[];gltf.scene.traverse(mesh=>{if(mesh.isMesh)meshes.push(mesh);});
+    if(!surfaceVisibility)surfaceVisibility=new Map(meshes.map(mesh=>[mesh,mesh.visible]));
+    surfaceSelection=only;
+    for(const mesh of meshes)mesh.visible=surfaceVisibility.get(mesh)&&(!only||only.some(name=>mesh.name.startsWith(name)));
+    renderer.render(scene,camera);
+    return meshes.map(mesh=>({name:mesh.name,visible:mesh.visible,material:(Array.isArray(mesh.material)?mesh.material:[mesh.material]).map(m=>m.name)}));
+  },
+  show({ clip = 'ClinicIdle', time = 0, weights = {}, expression = null, speaking = false, faceTime = 1, legacyExpressions = false, view = 'face', angle = 0, outfit = CHARACTER.outfit || (CHARACTER.id.startsWith('male-') ? 'tailored-clothes' : 'day-dress'), palette = 'original', identityVariant = 0, features = {}, skinTone = 'original', hairTone = 'original', eyeTone = 'original', hairStyle = CHARACTER.id.startsWith('male-') ? 'short-side-part' : 'soft-side-waves', hairVolume = 0, hairWave = 0, hairBunHeight = 0, hairPartOffset = 0, hairEarCoverage = .3, autoBlink = false, performanceSeed = 7, bellySize = 0, waistWidth = 0, sideburns = 'short-sideburns', moustache = 'none' } = {}) {
+    window.__faceLab.inspectShading('original');
+    if(surfaceVisibility){for(const [mesh,visible] of surfaceVisibility)mesh.visible=visible;surfaceVisibility=null;surfaceSelection=null;}
+    const selected = gltf.animations.find((entry) => entry.name === clip);
+    if (!selected) throw new Error(`Unknown body clip: ${clip}`);
+    mixer.stopAllAction();
+    action = mixer.clipAction(selected).reset().play();
+    action.time = Math.max(0, Math.min(selected.duration, time));
+    state.clip = clip;
+    for (const child of clipRow.children) child.classList.toggle('active', child.textContent === clip);
+    state.outfit = outfit;
+    state.palette = palette;
+    state.identityVariant = identityVariant;
+    state.features = { ...features }; state.skinTone = skinTone; state.hairTone = hairTone; state.eyeTone = eyeTone;
+    Object.assign(state, { sideburns, moustache, bellySize, waistWidth, hairStyle, hairVolume, hairWave, hairBunHeight, hairPartOffset, hairEarCoverage });
+    syncAppearanceControls();
+    for (const name of ['outfit', 'palette', 'identityVariant']) {
+      const select = document.querySelector(`select[name="${name}"]`);
+      if (select) select.value = state[name];
+    }
+    mixer.update(0);
+    state.paused = true;
+    state.autoBlink = autoBlink;
+    state.performanceSeed = performanceSeed;
+    state.legacyExpressions = legacyExpressions;
+    state.speaking = expression !== null && speaking;
+    setMode('raw');
+    zeroAll();
+    for (const [name, value] of Object.entries(weights)) {
+      if (!morphNames.includes(name)) throw new Error(`Missing morph: ${name}`);
+      state.raw[name] = Math.max(0, Math.min(1, value));
+      const slider = rawSection.querySelector(`input[data-morph="${name}"]`);
+      if (slider) { slider.value = state.raw[name]; slider.nextElementSibling.value = state.raw[name].toFixed(2); }
+    }
+    if (expression !== null) {
+      state.expression = expression;
+      elapsed = faceTime;
+      setMode('performance');
+    }
+    for (const child of expressionRow.children) child.classList.toggle('active', child.textContent === expression);
+    for (const [label, checked] of [['Speaking', state.speaking], ['Auto blink', autoBlink], ['Pause motion', true]]) {
+      controlsHost.querySelector(`input[data-control="${label}"]`).checked = checked;
+    }
+    drive(0);
+    gltf.scene.updateMatrixWorld(true);
+    if (view === 'body') frameBody();
+    else if (view === 'torso') frameTorso();
+    else frameHead(false);
+    camera.position.sub(orbit.target).applyAxisAngle(new THREE.Vector3(0, 1, 0), angle).add(orbit.target);
+    orbit.update();
+    renderer.render(scene, camera);
+    const apronMesh=gltf.scene.getObjectByName('Patient_WorkApronStanding');
+    return {
+      apronDrape:apronMesh?.morphTargetInfluences?.[apronMesh.morphTargetDictionary?.rc_workSeated]??null,
+      apronFit:apronMesh?.material.userData.workLegFit??null,
+      sideburns, moustache, bellySize, waistWidth, bodyAvailable: bodyShape.available,
+      model: CHARACTER.id, clip, time: action.time, expression, speaking, faceTime, autoBlink, performanceSeed, weights: { ...weights }, outfit, palette, identityVariant, features: { ...features }, skinTone, hairTone, eyeTone, frame: identity.frame,
+      hairStyle, hairVolume, hairWave, hairBunHeight, hairPartOffset, hairEarCoverage,
+      hairMeshes: faceMeshes.filter(mesh => mesh.name.startsWith('Carmela_HairStyle_')).map(mesh => ({ name: mesh.name, visible: mesh.visible, material: mesh.material.name, alphaTest: mesh.material.alphaTest })),
+      morphs: morphNames, faceMeshes: faceMeshes.map((mesh) => mesh.name),
+      head: head.getWorldPosition(new THREE.Vector3()).toArray(),
+      calls: renderer.info.render.calls, triangles: renderer.info.render.triangles,
+      appliedWeights: Object.fromEntries(morphNames.map(name => {
+        const mesh = faceMeshes.find(mesh => mesh.morphTargetDictionary[name] !== undefined);
+        return [name, mesh.morphTargetInfluences[mesh.morphTargetDictionary[name]]];
+      }).filter(([, value]) => value > .0001)),
+    };
+  },
+};
+
 resize();
+syncAppearanceControls();
 frameHead();
 renderer.setAnimationLoop(() => {
   const delta = Math.min(clock.getDelta(), 0.1);
-  mixer.update(delta);
-  drive(delta);
-  hud.textContent = `${state.mode} · ${state.expression}${state.speaking ? ' · speaking' : ''}\n${state.clip}`;
+  if (!state.paused) mixer.update(delta);
+  drive(state.paused ? 0 : delta);
+  const expression = state.mode === 'raw'
+    ? Object.entries(state.raw).filter(([, value]) => value > 0).map(([name, value]) => `${name} ${value.toFixed(2)}`).join(', ') || 'neutral'
+    : state.expression;
+  hud.textContent = `${state.mode} · ${expression}${state.speaking ? ' · speaking' : ''}\n${state.clip}`;
+  if(surfaceVisibility)for(const [mesh,visible] of surfaceVisibility)mesh.visible=visible&&(!surfaceSelection||surfaceSelection.some(name=>mesh.name.startsWith(name)));
   renderer.render(scene, camera);
 });

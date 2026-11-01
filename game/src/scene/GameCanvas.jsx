@@ -537,6 +537,11 @@ function SceneContents({
   useEffect(() => {
     gameDebug.zoneLabel = blueprint.label;
     gameDebug.room = room;
+    gameDebug.loadedZone = values.zone;
+    return () => {
+      gameDebug.room = null;
+      gameDebug.loadedZone = null;
+    };
   }, [blueprint, room]);
 
   return (

@@ -45,6 +45,21 @@ test('action time is logical immediately and catches up visually', () => {
   assert.equal(clock.getSnapshot().visual.totalMinutes, clock.getSnapshot().logical.totalMinutes);
 });
 
+test('an appointment pause lets the dial finish an already-spent time jump', () => {
+  const clock = createWorldClock();
+  clock.subscribe((state) => {
+    if (state.logical.hours >= 9.75) clock.setPaused(true);
+  });
+  clock.advanceMinutes(40, { duration: 1 });
+  const spent = clock.getSnapshot().logical.totalMinutes;
+  assert.equal(clock.tick(1), 0);
+  assert.equal(clock.getSnapshot().paused, true);
+  assert.equal(clock.getSnapshot().transitioning, false);
+  assert.equal(clock.getSnapshot().visual.totalMinutes, spent);
+  clock.tick(60);
+  assert.equal(clock.getSnapshot().logical.totalMinutes, spent);
+});
+
 test('passing midnight advances the date and solar day', () => {
   const clock = createWorldClock({
     start: { year: 1896, month: 6, date: 15, hour: 23, minute: 50 },

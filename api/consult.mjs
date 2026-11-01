@@ -5,6 +5,7 @@
 const MODEL = 'gpt-5.6-luna';
 const ENDPOINT = 'https://api.openai.com/v1/responses';
 const REGISTERS = ['neutral', 'courteous', 'clinical', 'prying', 'hostile'];
+const GAZES = ['doctor', 'away', 'down', 'neutral'];
 // Keep in sync with CHARACTER_EXPRESSIONS and CHARACTER_BODY_CUES in
 // shared/characters/recipe.js. Body cues are the seated subset only: a
 // generated reply never stands the patient up or walks her out.
@@ -31,14 +32,19 @@ The simulation owns every fact. You own only the wording.
 - If the question reaches nothing in either list, answer in character without new information: say you cannot say, ask what the physician means, or repeat something already known. Never invent a symptom, a diagnosis, a treatment, a date, a place, or another person.
 - Never mention a fact from allowedNewFacts without listing its id.
 - If awaitingAnswer is true, you asked the physician a question in your last turn. React in character to whether this reply answers it; if it changes the subject, you may note that before responding.
+- conversationRepair is decided by the simulation. When action is insult and visitEnds is false, react with anger or hurt in your own voice. You are staying to give the physician a chance to apologize; do not announce that you are leaving or that the visit is over. When action is apology, acknowledge it briefly; lingering hurt can show in the expression and gaze without being announced. Neither action discloses clinical facts. A second insult ends the visit through the simulation, not your choice.
 
-Write dialogue in the first person inside curly quotes, one to three sentences, in the patient's own voice as described. Ordinary period speech, not modern clinical language and not costume-drama diction. You do not know modern medicine.
+Write dialogue in the first person inside curly quotes, usually one or two short sentences. Use ordinary spoken English and contractions. Answer the question directly, with the practical details the patient would care about. A patient may hesitate, correct themselves, or say they do not know. Avoid polished retorts, speeches, metaphors, moral lessons, and neat closing lines. Do not repeatedly say Doctor, plainly, I shall, or I thank you. Do not perform an accent. Emotions usually show through the performance cues and the reply itself, without the patient explaining their emotional state. For style, an unclear question might get "What do you mean?" and an apology "All right. Can we go on?" Adapt to the context instead of repeating these examples. The setting and supplied facts establish the period; you do not need ornate language. You do not know modern medicine.
 
-Write behavior as one short third-person sentence describing what the physician can see you do. No quotes, no thoughts, no account of your illness.
+Write behavior as one short third-person sentence only when there is a distinct visible action; otherwise use an empty string. No quotes, no thoughts, no account of your illness. Do not invent a gesture for every reply.
 
 Set register by judging the physician's question, not your own reply: courteous if it is kind or reassuring, clinical if it is a plain professional question, prying if it is intrusive or accusing, hostile if it is contemptuous, neutral if none of these fit.
 
-Set expression to the face the physician sees while you give this reply, and bodyCue to your seated bearing. Choose by how the reply feels to say. They are manners, not symptoms: never use them to signal a disease the words do not state.`;
+Set expression to the face the physician sees while you give this reply, and bodyCue to your seated bearing. They are manners, not symptoms: never use them to signal a disease the words do not state.
+
+Set expressionIntensity from 0 (no emotional expression) to 1 (the full expression). Use about 0.3 for a slight reaction, 0.6 for a clear one, and 0.9 for a strong one. Set gaze to doctor for direct engagement, away for avoidance or displeasure, down for embarrassment or dejection, or neutral for an unfocused resting gaze. Keep behavior consistent with these cues.
+
+currentEmotion is your visible emotional state before this turn; recentTurns include earlier performances. Continue from that state rather than resetting with each question. A neutral question need not erase hurt or fear. Reassurance or an apology may soften a reaction gradually without earning an immediate smile. Change expression or intensity when the doctor's words or the supplied patient facts justify it. Patient voice and trust should shape the reaction. Do not invent memories or facts to explain it. These performance cues never change disclosure, scores, or whether the visit ends.`;
 
 // Fixed window per client. The Vercel WAF rule is the real limit; this covers
 // local dev and repeated hits on one warm instance.
@@ -82,7 +88,7 @@ function isDialoguePayload(body) {
 
 const JAMES_SYSTEM = `You are William James of Harvard, writing in 1896 a short private letter to a young New York physician whose case record you have just read. The record contains the whole visit: what the doctor asked, in his own words, what the patient answered, what was examined and found, the diagnosis, the prescription, and how it went a month on.
 
-Write as James: blunt, warm, funny where the record earns it, plain about what was botched. Quote or closely paraphrase at least one thing the doctor actually said or did — the letter must read as if you sat in the corner of that consulting room. Praise what deserves praise in one clause, not a paragraph. If the treatment was quackery or the questioning timid, say so without cruelty. One digression of a single clause is allowed; no more.
+Write as James in a short, direct private letter. Comment on at least one specific thing the doctor said or did and the plan the patient actually agreed to. Explain what was useful or missed in ordinary language. Keep praise brief. Avoid forced wit, metaphors, aphorisms, theatrical rebukes, and a moral at the end. Do not invent a distinctive voice by making every sentence clever.
 
 Hard rules: no numbers, grades, or scores of any kind. No facts beyond the record: never name a person, relation, symptom, or event the record does not contain. No medical knowledge unavailable in 1896. 60 to 120 words between salutation and signature — stop early rather than run long. Open "My dear Doctor," and sign "Wm. James".`;
 
@@ -108,6 +114,8 @@ function replySchema(allowedIds) {
     behavior: { type: 'string' },
     register: { type: 'string', enum: REGISTERS },
     expression: { type: 'string', enum: EXPRESSIONS },
+    expressionIntensity: { type: 'number', minimum: 0, maximum: 1 },
+    gaze: { type: 'string', enum: GAZES },
     bodyCue: { type: 'string', enum: BODY_CUES },
   };
   if (allowedIds.length > 0) {
@@ -189,6 +197,9 @@ export async function POST(request) {
       behavior: String(reply.behavior || '').trim(),
       register: REGISTERS.includes(reply.register) ? reply.register : 'neutral',
       expression: EXPRESSIONS.includes(reply.expression) ? reply.expression : 'neutral',
+      expressionIntensity: Number.isFinite(reply.expressionIntensity)
+        ? Math.max(0, Math.min(1, reply.expressionIntensity)) : 1,
+      gaze: GAZES.includes(reply.gaze) ? reply.gaze : 'doctor',
       bodyCue: BODY_CUES.includes(reply.bodyCue) ? reply.bodyCue : 'sitting-talking',
       disclosedNow: Array.isArray(reply.disclosedNow)
         ? reply.disclosedNow.filter((id) => allowedIds.includes(id))
@@ -196,7 +207,11 @@ export async function POST(request) {
     }, 200);
   } catch (error) {
     console.error(`consult failed: ${error.message}`);
-    return json({ error: 'dialogue service failed' }, 502);
+    return json({
+      error: 'dialogue service failed',
+      upstreamStatus: error.cause?.status ?? null,
+      upstreamCode: error.cause?.code ?? null,
+    }, 502);
   }
 }
 
@@ -221,7 +236,16 @@ async function callModel(apiKey, { instructions, input, schemaName, schema, maxT
     });
     if (!upstream.ok) {
       const detail = await upstream.text();
-      throw new Error(`upstream ${upstream.status}: ${detail.slice(0, 500)}`);
+      let code = null;
+      try {
+        const value = JSON.parse(detail)?.error?.code;
+        if (typeof value === 'string' && /^[a-z0-9_]{1,80}$/.test(value)) code = value;
+      } catch {}
+      // Return only status and a bounded error code to the browser. Provider
+      // messages can contain account details and stay in the server log.
+      throw new Error(`upstream ${upstream.status}: ${detail.slice(0, 500)}`, {
+        cause: { status: upstream.status, code },
+      });
     }
     return JSON.parse(replyText(await upstream.json()));
   } finally {

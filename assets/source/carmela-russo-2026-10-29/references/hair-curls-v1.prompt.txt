@@ -1,0 +1,8 @@
+Tool: built-in image_gen, 2026-10-30
+Output: hair-curls-v1.png
+
+Use case: photorealistic-natural. Asset type: tileable PBR albedo texture for the sculpted mass of a realistic late nineteenth-century woman's curly updo in a game. A square macro photograph filled edge to edge with dense natural dark warm brown wavy-curly human hair. About eight to twelve loose S-shaped and softly coiled locks across the width, each made of many extremely fine individual fibres. The coils overlap irregularly into a coherent mass of natural hair; subtle brown variations and fine flyaway hairs. Soft waves with some tighter small curls, not dreadlocks, not tubes, not a woven pattern. This is the diffuse base-colour texture only: flat even cross-polarised illumination, restrained soft occlusion between locks, no glossy bright stripes or dramatic highlights, no shadows from external objects. Seamless on all four edges. No head, scalp, face, hat, body, props, background, labels, border or text. Natural slightly imperfect strands, photographic surface detail. Keep overall dark-brown value consistent across the tile. This texture will wrap around curved 3D hair clumps and will be tinted to different hair colours.
+
+The returned asset is 1254 by 1254 pixels. The normal map is derived at 512
+pixels. No historical photograph or user-supplied fashion illustration is
+included in the maps.

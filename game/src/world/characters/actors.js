@@ -13,7 +13,12 @@ export function updateActorCue(actor, cue = {}) {
   if (!actor) return actor;
   const normalized = createCharacterRecipe({
     ...actor.recipe,
-    animation: { ...actor.recipe.animation, ...cue },
+    animation: {
+      ...actor.recipe.animation,
+      // A new authored expression should not inherit the last model intensity.
+      ...(cue.expression !== undefined ? { expressionIntensity: cue.expressionIntensity } : {}),
+      ...cue,
+    },
   });
   return {
     ...actor,

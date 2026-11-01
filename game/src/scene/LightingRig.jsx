@@ -1,9 +1,11 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { damp, degToRad } from '../movement/mathUtils.js';
 import { portalDimming } from '../world/windowDressing.js';
 import { examinationFocus, examinationPresentation } from '../consultation/examPresentation.js';
+import { consultationSeatFraming } from '../consultation/seatFraming.js';
+import { gameDebug } from '../debug.js';
 
 // Sun offset outside a window: the hole normal rotated by azimuth, tilted up
 // by elevation.
@@ -50,6 +52,17 @@ export default function LightingRig({
   dressing,
   maxShadowMapSize = Infinity,
 }) {
+  const gl = useThree((state) => state.gl);
+  const shadowElapsed = useRef(0);
+  useEffect(() => {
+    const previous = gl.shadowMap.autoUpdate;
+    gl.shadowMap.autoUpdate = false;
+    gl.shadowMap.needsUpdate = true;
+    return () => {
+      gl.shadowMap.autoUpdate = previous;
+      gl.shadowMap.needsUpdate = true;
+    };
+  }, [gl]);
   const ambientRef = useRef();
   const hemisphereRef = useRef();
   const portalRefs = useRef([]);
@@ -94,6 +107,14 @@ export default function LightingRig({
   const spotTargets = useMemo(() => gaslights.map(() => new THREE.Object3D()), [gaslights]);
 
   useFrame((state, delta) => {
+    // Seated conversation needs fresh shadows at 30 Hz, not every 60 Hz paint.
+    // Walking, examinations, and loading keep full-rate shadow updates.
+    shadowElapsed.current += delta;
+    const seated = consultationSeatFraming() && !examinationPresentation();
+    if (!seated || !gameDebug.stats.boot.complete || shadowElapsed.current + 0.0001 >= 1 / 30) {
+      gl.shadowMap.needsUpdate = true;
+      shadowElapsed.current = seated ? shadowElapsed.current % (1 / 30) : 0;
+    }
     const values = runtime.values;
     const time = state.clock.elapsedTime;
     const exam = examBlend.current = damp(
