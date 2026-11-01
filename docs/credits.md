@@ -289,3 +289,10 @@ museum objects, newspaper fashion pages and uniform records are linked with
 scope and uncertainty in `docs/headwear.md`; their images are not distributed
 in the game. Character bodies, hair and Mixamo motion sources retain the
 credits listed above.
+
+The hat material refinement reuses the project's original neutral fabric source
+images in `assets/source/renderer-c/fabrics`. `scripts/materials/bake_headwear.py`
+combines those sources with project-authored herringbone, weave, straw braid,
+velvet pile, leather grain and feather fields. It bakes separate albedo, normal
+and occlusion/roughness maps into `textures/headwear` in both apps. Museum
+reference images remain reference-only and are not part of these textures.

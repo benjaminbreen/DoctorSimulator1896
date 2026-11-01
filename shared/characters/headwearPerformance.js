@@ -134,7 +134,8 @@ export function createHeadwear(root,initialLook={}){
     const size=new THREE.Vector3(fit.radiusX/HAT_DESIGN_RADIUS*1.07,scale,fit.radiusZ/HAT_DESIGN_RADIUS*1.07);
     const height=hat.userData.crownHeight*size.y;
     const lowCap=['cap','peaked'].includes(definition.form);
-    let bandY=(lowCap?fit.skullTop+.007*scale:fit.topY)-height*.78;
+    // A taller crown must not lower the opening into the brow.
+    let bandY=Math.max((lowCap?fit.skullTop+.007*scale:fit.topY)-height*.78,fit.skullTop-fit.radiusZ*.65);
     const rotation=new THREE.Quaternion().setFromEuler(new THREE.Euler((definition.tilt||0)+(Number(next.hatTilt)||0)*.15,0,0));
     const inverse=new THREE.Matrix4().compose(new THREE.Vector3(),rotation,size).invert(),roof=crownRoof(hat.getObjectByName('PatientHat_Crown').geometry);
     const point=new THREE.Vector3();
@@ -201,7 +202,7 @@ export function createHeadwear(root,initialLook={}){
     const rootQuaternion=root.parent?.getWorldQuaternion(new THREE.Quaternion())||new THREE.Quaternion();
     const up=UP.clone().applyQuaternion(rootQuaternion),forward=FORWARD.clone().applyQuaternion(rootQuaternion),right=RIGHT.clone().applyQuaternion(rootQuaternion);
     const handSide=look.hatHand==='right'?'right':'left',mirror=handSide==='right'?1:-1;
-    const unit=(size.x+size.y+size.z)/3,gripLocal=new THREE.Vector3(...hat.userData.gripPoint).multiply(size);gripLocal.x*=mirror;
+    const unit=(size.x+size.y+size.z)/3,gripLocal=new THREE.Vector3(...hat.userData.gripPoints[handSide]).multiply(size);
     const worldPosition=wornPosition.clone(),worldQuaternion=wornQuaternion.clone();
     reachError=0;gripError=0;
     if(lift>0){

@@ -15,6 +15,7 @@ import {
 import { createFaceController } from './faceController.js';
 import { createPatientMotion } from './patientMotion.js';
 import {createHeadwear} from '../../../../shared/characters/headwearPerformance.js';
+import {HEADWEAR_TEXTURE_URLS,configureHeadwearTextures} from '../../../../shared/characters/headwearMaterials.js';
 import { gameDebug } from '../../debug.js';
 import { examinationPresentation } from '../../consultation/examPresentation.js';
 import { getKTX2Loader } from '../ktx2.js';
@@ -69,6 +70,8 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
   const bodyPath = castLook ? `/models/characters/${castLook.model}.glb?v=${reviewVersion}` : patientModelPath(recipe, manifest);
   const [gltf, motionGltf] = useLoader(GLTFLoader,
     [bodyPath, recipe.asset?.motionPath || bodyPath], configure);
+  const hatTextures=useLoader(THREE.TextureLoader,HEADWEAR_TEXTURE_URLS);
+  configureHeadwearTextures(hatTextures);
   const clips = useMemo(() => {
     let merged = gltf.animations;
     if (recipe.asset?.motionPath) {

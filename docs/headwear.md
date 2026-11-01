@@ -27,10 +27,12 @@ The range does not restrict manual style selection.
 
 `headwearGeometry.js` builds fabric crowns, curved brims and bound rims,
 lining, sweatbands, cap seams, ribbon strips, flowers and feather vanes.
-Typed-array textures supply woven cloth, straw, velvet-like relief, feather
-barbs and mourning netting. These textures are shared across hats. Geometry
-and materials are disposed when the look changes; shared textures remain
-cached. The catalogue's ordinary settings stay below 12,000 triangles per hat.
+Baked material maps supply woven cloth, braided straw, velvet pile, ribbon
+ribs, leather and feather barbs. A small repeating mask supplies mourning
+netting. These textures are shared across hats. Geometry and materials are
+disposed when the look changes; shared textures remain cached. The catalogue's
+ordinary settings stay below 16,000 triangles per hat; extreme controls stay
+under the 18,000-triangle test budget.
 
 `headwearPerformance.js` measures visible head-weighted vertices in the bind
 frame, including the chosen hair. It excludes hidden hairstyles and facial
@@ -58,6 +60,48 @@ Nora, soft felt hat for Ferdinand and the existing mourning-bonnet choice for
 Wilhelmina. Review presets can override these looks. Samuel's old one-piece
 asset has a fused cap, so it receives no second hat. His new worker/template
 review appearances have separate removable caps and hats.
+
+## Material and proportion pass
+
+The follow-up pass replaces the 128px generated fabric noise with nine baked
+material sets: felt, herringbone wool, linen, straw braid, circular straw braid,
+grosgrain, silk, velvet and leather. Albedo is 512–1024px; tangent normals are
+512px; packed occlusion/roughness maps are 256px. Normal and roughness channels
+are linear data, independent of the albedo. Normals are renormalized after
+resampling and stored losslessly with modest quantization. The complete
+library, including a 512×1024 feather cutout, is about 2.7 MiB on disk.
+
+The bakes reuse the project's original neutral fabric sources, with explicit
+weave, braid, grain and pile fields. They contain no directional scene light.
+The colours remain controllable. UVs follow material scale: planar cloth on
+brims and flat crowns, lengths around curved walls, and a separate spiral map
+for straw brims. Wider procedural brims retain their full texture coverage.
+Velvet and felt use cloth sheen; silk and grosgrain use a directional response.
+
+Construction details now include stitched panel seams and bands, thicker
+brims with undersides, bound edges, a fitted leather sweatband and silk lining.
+The flat cap slopes forward; panel caps have fuller wedges; the top hat has a
+flared crown; picture hats have a lower crown and a shaped brim. The plain work
+bonnet has a gathered edge and rolled cloth brim. Flowers are smaller and
+layered; feather vanes curve in two planes and use baked barbs with soft edges.
+
+The pass also fixes reversed cap normals that put the lining outside the wool,
+an inner band clipping through bonnet gathers, and tall crowns lowering the
+brim into the brows. Grip points for both hands are sampled from the actual
+curved brim. These cases have regression tests.
+
+Rebuild the maps with:
+
+```sh
+python3 scripts/materials/bake_headwear.py
+```
+
+The script requires Pillow and NumPy, writes the same WebP files to both apps,
+and records the material list and total bytes in `textures/headwear/manifest.json`.
+Both apps await the maps before preparing the character. Map identity, channel
+values, unit normals and the file-size budget are checked by the hat tests.
+These are shared surface bakes, not a separate lightmap for every procedural
+hat or a replacement for cloth simulation.
 
 ## Historical references and uncertainty
 
@@ -115,6 +159,12 @@ Those checks caught and fixed Nora's asset-axis alignment, Wilhelmina's mismatch
 casebook name and a null-asset actor crash. Samuel's fused cap is excluded from
 the removable-hat controls. Captures live under `artifacts/characters/headwear/`
 and `artifacts/gameplay/headwear-*`; these generated files are ignored by Git.
+
+The material pass passed both builds, 790 game tests and 18 runtime/wardrobe
+tests. Its final review includes 70 poses, live lab videos, a 15-step worker
+consultation, Carmela's 45-step consultation with a picture hat, and a five-step
+work-bonnet motion check. Final replays had no failed actions or browser errors.
+The reviewed captures are in `artifacts/characters/headwear/refined-review`.
 
 The system has no general cloth collision solver, soft cap compression or
 explicit animated hatpin object. Bonnet ribbons use controlled curves; net and

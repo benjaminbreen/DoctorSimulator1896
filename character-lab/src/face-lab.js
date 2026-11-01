@@ -15,6 +15,7 @@ import { createModularVariation } from '../../shared/characters/modularVariants.
 import { MODULAR_CAST_LOOKS } from '../../shared/characters/modularCast.js';
 import { HEADWEAR_STYLES, HEADWEAR_COLORS, headwearVariation } from '../../shared/characters/headwearGeometry.js';
 import { createHeadwear } from '../../shared/characters/headwearPerformance.js';
+import { loadHeadwearTextures } from '../../shared/characters/headwearMaterials.js';
 import { createModularHair, MODULAR_HAIR_STYLES, MODULAR_HAIR_CONTROLS } from '../../shared/characters/modularHair.js';
 import {
   FACIAL_EXPRESSION_RECIPES,
@@ -98,7 +99,7 @@ const loader = new GLTFLoader()
   .setMeshoptDecoder(MeshoptDecoder)
   .setKTX2Loader(new KTX2Loader().setTranscoderPath('/basis/').detectSupport(renderer));
 
-const gltf = await loader.loadAsync(MODEL);
+const [gltf] = await Promise.all([loader.loadAsync(MODEL),loadHeadwearTextures()]);
 scene.add(gltf.scene);
 const wardrobe = createModularWardrobe(gltf.scene);
 const bodyShape = createModularBody(gltf.scene);
