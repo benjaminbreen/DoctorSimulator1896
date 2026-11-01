@@ -23,6 +23,9 @@ permits royalty-free use in games. These are game characters, not a standalone
 redistribution of the motion library. Detailed source IDs and credit use are
 recorded in `assets/source/carmela-russo-2026-10-29/provenance.json`.
 
+The November 1 eyelashes are project-authored procedural geometry, fitted to
+the moving eyelids at runtime. They use no additional third-party assets.
+
 The October 30 hair pass adds a chignon, waved knot and braided knot with live
 grooming controls. These meshes and their mathematical colour and normal maps
 are project-authored. The Museum of the Earth's

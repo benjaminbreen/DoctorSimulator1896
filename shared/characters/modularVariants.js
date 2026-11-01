@@ -1,3 +1,4 @@
+import {eyelashVariation} from './modularEyelashes.js';
 import { MODULAR_FACE_STUDIES, MODULAR_NOSE_STUDIES } from './modularIdentity.js';
 import { MODULAR_HAIR_STYLES } from './modularHair.js';
 import { headwearVariation } from './headwearGeometry.js';
@@ -13,6 +14,7 @@ export function createModularVariation(seed = 1, male = false) {
   const nose = pick(MODULAR_NOSE_STUDIES);
   return {
     seed, identityVariant: 0,
+    ...eyelashVariation(seed,male),
     ...headwearVariation(seed,male?'men':'women',['working','middle','affluent'][Math.abs(Math.trunc(Number(seed)||1))%3]),
     ...(male ? {bellySize:pick([-.5,0,.3,.7]),waistWidth:pick([-.3,0,.3]),sideburns:pick(['none','short-sideburns','long-sideburns','mutton-chops']),moustache:pick(['none','neat-moustache','full-moustache','handlebar-moustache'])} : {}),
     features: { ...face.features, ...nose.features, earProminence: pick([-.2, 0, .3, .6]) },

@@ -1,6 +1,7 @@
+import {eyelashVariation} from './modularEyelashes.js';
 // Appearance studies only; these records contain no clinical facts or roles.
 export const MODULAR_CAST_LOOKS = [
-  { id:'carmela', label:'Carmela', model:'carmela-russo', look:{ features:{lowerFaceSize:-.6}, hairStyle:'soft-side-waves', hairEarCoverage:.3 } },
+  { id:'carmela', label:'Carmela', model:'carmela-russo', look:{ lashProminence:3,features:{lowerFaceSize:-.6}, hairStyle:'soft-side-waves', hairEarCoverage:.3 } },
   { id:'auburn-low-knot', label:'Auburn low knot', model:'carmela-russo', look:{ features:{lowerFaceSize:-.72,chinLength:-.15,jawSoftness:.35,cheekFullness:.15,noseWidth:-.35,noseBridge:-.25,noseTipLift:.12}, hairStyle:'center-chignon',hairTone:'auburn',skinTone:'fairWarm',eyeTone:'hazel',palette:'forest',hairBunHeight:-.2 } },
   { id:'silver-waves', label:'Silver waves', model:'carmela-russo', look:{ features:{lowerFaceSize:-.45,cheekFullness:-.12,chinProjection:.1,noseLength:.25,noseBridge:.35,browProminence:-.15},hairStyle:'waved-knot',hairTone:'silver',skinTone:'rose',eyeTone:'gray',palette:'taupe',hairVolume:.25,hairBunHeight:.3 } },
   { id:'chestnut-braid', label:'Chestnut braid', model:'carmela-russo', look:{ features:{lowerFaceSize:-.6,jawWidth:.12,cheekFullness:.4,noseWidth:.45,noseBridge:-.15,noseLength:-.2},hairStyle:'braided-knot',hairTone:'chestnut',skinTone:'golden',eyeTone:'green',palette:'navy',outfit:'work-apron',hairPartOffset:-.25 } },
@@ -24,9 +25,10 @@ export const MODULAR_CAST_LOOKS = [
   { id:'lean-angular', label:'Lean — angular jaw', cohort:'men', model:'male-lean-template', look:{features:{jawWidth:.35,chinWidth:.2,cheekFullness:-.35,noseBridge:.25,earProminence:-.15},sideburns:'mutton-chops',moustache:'neat-moustache',hairStyle:'receding-sweep',hairTone:'black',eyeTone:'brown',skinTone:'fairWarm',waistWidth:.2,outfit:'tailored-clothes'} },
   { id:'broad-fine', label:'Broad — fine nose', cohort:'men', model:'male-broad-template', look:{features:{eyeSpacing:-.25,noseWidth:-.5,noseProjection:-.2,noseBridge:-.4,lowerFaceSize:-.25,earProminence:-.2},sideburns:'long-sideburns',moustache:'handlebar-moustache',hairStyle:'short-side-part',hairTone:'chestnut',eyeTone:'green',skinTone:'fairWarm',bellySize:.2,outfit:'work-shirt'} },
   { id:'broad-angular', label:'Broad — angular jaw', cohort:'men', model:'male-broad-template', look:{features:{jawWidth:.3,chinWidth:.25,cheekFullness:-.3,noseLength:.2,noseBridge:.3},hairStyle:'receding-sweep',hairTone:'black',eyeTone:'gray',skinTone:'fairCool',bellySize:-.6,waistWidth:-.3,palette:'forest',outfit:'leather-apron'} },
-  { id:'worker-base', label:'Worker — cotton shirt and braces', cohort:'men', model:'male-worker-template', look:{hairStyle:'short-side-part',hairTone:'chestnut',outfit:'work-shirt'} },
+  { id:'worker-base', label:'Worker — cotton shirt and braces', cohort:'men', model:'male-worker-template', look:{lashProminence:2,hairStyle:'short-side-part',hairTone:'chestnut',outfit:'work-shirt'} },
   { id:'worker-silver', label:'Worker — silver whiskers', cohort:'men', model:'male-worker-template', look:{features:{lowerFaceSize:-.15,noseBridge:.35,noseLength:.2,earProminence:.3},hairStyle:'receding-sweep',hairTone:'mixedGray',sideburns:'mutton-chops',moustache:'full-moustache',eyeTone:'hazel',skinTone:'fairWarm',bellySize:.65,waistWidth:.2,palette:'navy',outfit:'work-shirt'} },
-].map(preset => ({...preset, look:{
+].map((preset,index) => ({...preset, look:{
+  ...eyelashVariation(1896+index*31,preset.cohort==='men'),
   ...({
     carmela:{hatStyle:'work-bonnet',hatColor:'brown',hatWear:.4},
     'auburn-low-knot':{hatStyle:'plain-straw',hatColor:'straw'},

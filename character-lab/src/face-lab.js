@@ -16,6 +16,7 @@ import { MODULAR_CAST_LOOKS } from '../../shared/characters/modularCast.js';
 import { HEADWEAR_STYLES, HEADWEAR_COLORS, headwearVariation } from '../../shared/characters/headwearGeometry.js';
 import { createHeadwear } from '../../shared/characters/headwearPerformance.js';
 import { loadHeadwearTextures } from '../../shared/characters/headwearMaterials.js';
+import { createModularEyelashes,EYELASH_LEVELS,EYELASH_TONES } from '../../shared/characters/modularEyelashes.js';
 import { createModularHair, MODULAR_HAIR_STYLES, MODULAR_HAIR_CONTROLS } from '../../shared/characters/modularHair.js';
 import {
   FACIAL_EXPRESSION_RECIPES,
@@ -85,6 +86,7 @@ const state = {
   identityVariant: 0, sideburns:'short-sideburns', moustache:'none', bellySize: 0, waistWidth: 0,
   hairStyle: CHARACTER.id.startsWith('male-') ? 'short-side-part' : 'soft-side-waves', hairVolume: 0, hairWave: 0, hairBunHeight: 0, hairPartOffset: 0, hairEarCoverage: .3,
   performanceSeed: 7,
+  lashProminence:maleCharacter?2:3,lashSeed:7,lashTone:'auto',
   hatStyle:'none',hatHand:'left',hatSeed:1896,hatColor:null,hatBandColor:'black',hatCrownHeight:0,hatBrimWidth:0,hatTilt:0,hatDecoration:null,hatWear:0,
   // Keep the initial Carmela preview aligned with her authored game asset.
   features: CHARACTER.id === 'carmela-russo' ? { lowerFaceSize: -.6 } : {}, skinTone: 'original', hairTone: 'original', eyeTone: 'original',
@@ -124,6 +126,7 @@ for (const name of morphNames) state.raw[name] = 0;
 let head = null;
 gltf.scene.traverse((object) => { if (object.name === 'mixamorigHead' && !head) head = object; });
 const headwear = createHeadwear(gltf.scene,state);
+const eyelashes=createModularEyelashes(gltf.scene,{cohort:maleCharacter?'men':'women',seed:7});
 
 function frameHead(sample = true) {
   // Sample the pose first: the seated idle carries the head well below the
@@ -226,7 +229,7 @@ function syncAppearanceControls() {
   for(const name of ['hatStyle','hatHand','hatColor','hatBandColor','hatCrownHeight','hatBrimWidth','hatTilt','hatDecoration','hatWear']){
     const input=controlsHost.querySelector(`[name="${name}"]`);if(input)input.value=state[name]??(name==='hatDecoration'?HEADWEAR_STYLES[state.hatStyle]?.trim??0:name==='hatColor'?'':0);
   }
-  for (const name of ['identityVariant', 'outfit', 'palette', 'skinTone', 'hairTone', 'eyeTone', 'hairStyle','sideburns','moustache']) {
+  for (const name of ['identityVariant', 'outfit', 'palette', 'skinTone', 'hairTone', 'eyeTone', 'hairStyle','sideburns','moustache','lashProminence','lashTone']) {
     const select = controlsHost.querySelector(`select[name="${name}"]`);
     if (select) select.value = state[name];
   }
@@ -284,6 +287,15 @@ if (identity.available) {
       featureInputs.set(name, { input, output }); row.append(input, output); details.append(row);
     }
     controlsHost.append(details);
+  }
+}
+
+if(eyelashes.available){
+  for(const [name,label,choices]of [['lashProminence','Eyelashes',EYELASH_LEVELS.map((d,i)=>[i,d.label])],['lashTone','Lash colour',Object.entries(EYELASH_TONES)]]){
+    const row=document.createElement('label');row.className='row';row.textContent=label;
+    const select=document.createElement('select');select.name=name;
+    for(const [value,text]of choices){const option=document.createElement('option');option.value=value;option.textContent=text;select.append(option);}
+    select.addEventListener('change',()=>{state[name]=name==='lashProminence'?Number(select.value):select.value;});row.append(select);controlsHost.append(row);
   }
 }
 
@@ -495,6 +507,7 @@ function drive(delta) {
   headwear.updateLook(state);
   bodyShape.update(state);
   facialHair.update(state);
+  eyelashes.updateLook(state);
   const seated = state.clip === 'ClinicIdle' || state.clip.startsWith('Sitting')
     || (state.clip === 'SitDown' && action.time / action.getClip().duration > .65)
     || (state.clip === 'StandUp' && action.time / action.getClip().duration < .35);
@@ -544,11 +557,13 @@ function characterRecipe() {
   const keys=['identityVariant','features','skinTone','hairTone','eyeTone','outfit','palette','hairStyle',
     'hairVolume','hairWave','hairBunHeight','hairPartOffset','hairEarCoverage','sideburns','moustache','bellySize','waistWidth'];
   keys.push('hatStyle','hatHand','hatSeed','hatColor','hatBandColor','hatCrownHeight','hatBrimWidth','hatTilt','hatDecoration','hatWear');
+  keys.push('lashProminence','lashSeed','lashTone');
   return {model:CHARACTER.id,look:structuredClone(Object.fromEntries(keys.map(key=>[key,state[key]])))};
 }
 
 window.__faceLab = {
   recipe:characterRecipe,
+  eyelashes:()=>eyelashes.describe(),
   headwear(action,progress){
     if(action){if(progress===undefined)headwear.request(action==='replace'||action==='worn');else{headwear.restorePose();headwear.sample(action,progress);renderer.render(scene,camera);}}
     return headwear.describe();
@@ -582,7 +597,7 @@ window.__faceLab = {
     renderer.render(scene,camera);
     return meshes.map(mesh=>({name:mesh.name,visible:mesh.visible,material:(Array.isArray(mesh.material)?mesh.material:[mesh.material]).map(m=>m.name)}));
   },
-  show({ clip = 'ClinicIdle', time = 0, weights = {}, expression = null, speaking = false, faceTime = 1, legacyExpressions = false, view = 'face', angle = 0, outfit = CHARACTER.outfit || (CHARACTER.id.startsWith('male-') ? 'tailored-clothes' : 'day-dress'), palette = 'original', identityVariant = 0, features = {}, skinTone = 'original', hairTone = 'original', eyeTone = 'original', hairStyle = CHARACTER.id.startsWith('male-') ? 'short-side-part' : 'soft-side-waves', hairVolume = 0, hairWave = 0, hairBunHeight = 0, hairPartOffset = 0, hairEarCoverage = .3, autoBlink = false, performanceSeed = 7, bellySize = 0, waistWidth = 0, sideburns = 'short-sideburns', moustache = 'none', headwearAction = 'worn', hatProgress = 0, ...headwearLook } = {}) {
+  show({ clip = 'ClinicIdle', time = 0, weights = {}, expression = null, speaking = false, faceTime = 1, legacyExpressions = false, view = 'face', angle = 0, outfit = CHARACTER.outfit || (CHARACTER.id.startsWith('male-') ? 'tailored-clothes' : 'day-dress'), palette = 'original', identityVariant = 0, features = {}, skinTone = 'original', hairTone = 'original', eyeTone = 'original', hairStyle = CHARACTER.id.startsWith('male-') ? 'short-side-part' : 'soft-side-waves', hairVolume = 0, hairWave = 0, hairBunHeight = 0, hairPartOffset = 0, hairEarCoverage = .3, autoBlink = false, performanceSeed = 7, bellySize = 0, waistWidth = 0, sideburns = 'short-sideburns', moustache = 'none', lashProminence = maleCharacter?2:3, lashSeed = 7, lashTone = 'auto', headwearAction = 'worn', hatProgress = 0, ...headwearLook } = {}) {
     headwear.restorePose();
     window.__faceLab.inspectShading('original');
     if(surfaceVisibility){for(const [mesh,visible] of surfaceVisibility)mesh.visible=visible;surfaceVisibility=null;surfaceSelection=null;}
@@ -598,7 +613,7 @@ window.__faceLab = {
     state.identityVariant = identityVariant;
     state.features = { ...features }; state.skinTone = skinTone; state.hairTone = hairTone; state.eyeTone = eyeTone;
     Object.assign(state, { sideburns, moustache, bellySize, waistWidth, hairStyle, hairVolume, hairWave, hairBunHeight, hairPartOffset, hairEarCoverage });
-    Object.assign(state,{hatStyle:'none',hatHand:'left',hatColor:null,hatBandColor:'black',hatCrownHeight:0,hatBrimWidth:0,hatTilt:0,hatDecoration:null,hatWear:0,...headwearLook});
+    Object.assign(state,{lashProminence,lashSeed,lashTone,hatStyle:'none',hatHand:'left',hatColor:null,hatBandColor:'black',hatCrownHeight:0,hatBrimWidth:0,hatTilt:0,hatDecoration:null,hatWear:0,...headwearLook});
     syncAppearanceControls();
     for (const name of ['outfit', 'palette', 'identityVariant']) {
       const select = document.querySelector(`select[name="${name}"]`);
@@ -635,10 +650,11 @@ window.__faceLab = {
     else frameHead(false);
     camera.position.sub(orbit.target).applyAxisAngle(new THREE.Vector3(0, 1, 0), angle).add(orbit.target);
     orbit.update();
+    eyelashes.update(camera,renderer.domElement.height);
     renderer.render(scene, camera);
     const apronMesh=gltf.scene.getObjectByName('Patient_WorkApronStanding');
     return {
-      headwear:headwear.describe(),
+      headwear:headwear.describe(),eyelashes:eyelashes.describe(),
       apronDrape:apronMesh?.morphTargetInfluences?.[apronMesh.morphTargetDictionary?.rc_workSeated]??null,
       apronFit:apronMesh?.material.userData.workLegFit??null,
       sideburns, moustache, bellySize, waistWidth, bodyAvailable: bodyShape.available,
@@ -665,6 +681,7 @@ renderer.setAnimationLoop(() => {
   if (!state.paused) mixer.update(delta);
   drive(state.paused ? 0 : delta);
   headwear.update(delta);
+  eyelashes.update(camera,renderer.domElement.height);
   const expression = state.mode === 'raw'
     ? Object.entries(state.raw).filter(([, value]) => value > 0).map(([name, value]) => `${name} ${value.toFixed(2)}`).join(', ') || 'neutral'
     : state.expression;

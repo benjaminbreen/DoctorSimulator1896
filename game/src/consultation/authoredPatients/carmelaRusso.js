@@ -44,6 +44,7 @@ const recipe = patientToRendererCRecipe(profile, {
     opaque: true,
     features: { lowerFaceSize: -.6 },
     hairStyle: 'soft-side-waves',
+    lashProminence: 3,
     hairEarCoverage: .3,
     clipMap: {
       'clinic-idle': 'ClinicIdle',

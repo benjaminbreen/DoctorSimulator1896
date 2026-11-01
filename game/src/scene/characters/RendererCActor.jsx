@@ -16,6 +16,7 @@ import { createFaceController } from './faceController.js';
 import { createPatientMotion } from './patientMotion.js';
 import {createHeadwear} from '../../../../shared/characters/headwearPerformance.js';
 import {HEADWEAR_TEXTURE_URLS,configureHeadwearTextures} from '../../../../shared/characters/headwearMaterials.js';
+import {createModularEyelashes} from '../../../../shared/characters/modularEyelashes.js';
 import { gameDebug } from '../../debug.js';
 import { examinationPresentation } from '../../consultation/examPresentation.js';
 import { getKTX2Loader } from '../ktx2.js';
@@ -138,6 +139,8 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
     // The original Samuel mesh includes its cap as part of the head.
     if(bodyPath.split('?')[0]==='/models/characters/samuel-taylor.glb')hatLook.hatStyle='none';
     const headwear=createHeadwear(root,hatLook);
+    const eyelashes=createModularEyelashes(root,{cohort:recipe.cohort,seed:recipe.appearanceSeed});
+    eyelashes.updateLook(look);
     const lips = root.getObjectByName('Carmela_Lips');
     let mouthAnchor = null;
     if (lips && motion.bones.head) {
@@ -148,7 +151,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
       lips.localToWorld(mouthAnchor);
       motion.bones.head.worldToLocal(mouthAnchor);
     }
-    return { root, mixer, face, motion, headwear, hatLook, hatClock:0, hatAutomatic:false, wardrobe, identity, appearance, hair, look, mouthAnchor, mouthPoint:new THREE.Vector3() };
+    return { root, mixer, face, motion, headwear, eyelashes, hatLook, hatClock:0, hatAutomatic:false, wardrobe, identity, appearance, hair, look, mouthAnchor, mouthPoint:new THREE.Vector3() };
   }, [
     gltf,
     manifest,
@@ -393,6 +396,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
     actor.wardrobe.dispose?.();
     // Hat geometry is built per actor, unlike the shared GLB geometry.
     actor.headwear.dispose();
+    actor.eyelashes.dispose();
     const materials = new Set();
     const ownedTextures = new Set();
     actor.root.traverse((object) => {
@@ -500,6 +504,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
       updateShell(dt);
       actor.face.update(dt, recipe.animation);
       actor.headwear.update(dt);
+      actor.eyelashes.update(camera,gl.domElement.height);actor.root.userData.eyelashes=actor.eyelashes.describe();
       actor.root.userData.headwear=actor.headwear.describe();
       actor.root.userData.performance = recipe.animation;
       return;
@@ -519,6 +524,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
       if(recipe.presentation?.hat?.removeInside ?? (recipe.cohort==='men'))actor.headwear.request(false);
     }
     actor.headwear.update(dt,{followHand:animation.gesture==='extend-both-arms'});
+    actor.eyelashes.update(camera,gl.domElement.height);actor.root.userData.eyelashes=actor.eyelashes.describe();
     actor.root.userData.headwear=actor.headwear.describe();
     actor.root.userData.performance = animation;
     // While the examination reading is up, publish where the annotated body
