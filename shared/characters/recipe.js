@@ -13,7 +13,7 @@ export const CHARACTER_EXPRESSIONS = Object.freeze([
 export const CHARACTER_GAZES = Object.freeze(['doctor', 'away', 'down', 'neutral']);
 // Procedural overlays, not clips: applied by the renderer on top of the
 // current body cue.
-export const CHARACTER_GESTURES = Object.freeze(['none', 'present-wrist', 'extend-both-arms']);
+export const CHARACTER_GESTURES = Object.freeze(['none', 'present-wrist', 'extend-both-arms', 'remove-hat', 'put-on-hat']);
 
 export const BODY_CUE_CLIPS = Object.freeze({
   'clinic-idle': 'ClinicIdle',

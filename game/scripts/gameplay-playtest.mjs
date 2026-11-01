@@ -210,7 +210,7 @@ async function capture(command, failure = null) {
           if (style && name.startsWith('rc_hair')) grooming[name.slice(3)] = value;
         }
       });
-      performances.push({ id: root.userData.patientId, assetPath: root.userData.assetPath, appearancePreset: root.userData.appearancePreset, ...root.userData.performance, weights, bodyShape, hair: { facialHair: [...facialHair], styles: [...hairstyles], grooming, materials: [...hairMaterials.values()] } });
+      performances.push({ id: root.userData.patientId, assetPath: root.userData.assetPath, appearancePreset: root.userData.appearancePreset, ...root.userData.performance, headwear:root.userData.headwear||null, weights, bodyShape, hair: { facialHair: [...facialHair], styles: [...hairstyles], grooming, materials: [...hairMaterials.values()] } });
     });
     return {
       url: location.href,

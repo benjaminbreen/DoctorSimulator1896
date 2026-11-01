@@ -91,6 +91,7 @@ recipe.presentation.entrance = { from: [2.4, 0, 4.55] };
 // Her recorded sign: a fine tremor in both hands, displayed at rest.
 recipe.presentation.tremor = 0.6;
 
+recipe.presentation.hat = {style:'plain-straw',color:'straw',band:'navy'};
 const actor = createActorInstance({ id, recipe });
 
 const facts = Object.freeze([

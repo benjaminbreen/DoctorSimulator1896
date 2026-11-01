@@ -13,6 +13,11 @@ const profile = Object.freeze({
   ...base,
   identity: Object.freeze({
     ...base.identity,
+    givenName: 'Wilhelmina',
+    familyName: 'Otten',
+    title: 'Mrs.',
+    displayName: 'Mrs. Otten',
+    fullName: 'Mrs. Wilhelmina Otten',
     age: 67,
     birthYear: 1829,
     language: 'English',

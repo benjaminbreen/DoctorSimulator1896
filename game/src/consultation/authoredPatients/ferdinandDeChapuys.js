@@ -80,6 +80,7 @@ const recipe = patientToRendererCRecipe(profile, {
 // Keeping the door anchor makes a later animation upgrade data-only.
 recipe.presentation.entrance = { from: [2.4, 0, 4.55] };
 
+recipe.presentation.hat = {style:'homburg',color:'charcoal',band:'black'};
 const actor = createActorInstance({ id, recipe });
 
 const facts = Object.freeze([

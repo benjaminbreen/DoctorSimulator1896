@@ -69,6 +69,7 @@ recipe.presentation.entrance = { from: [2.4, 0, 4.55] };
 recipe.presentation.consultationZoom = .12;
 // Worn workaday wool: the wrinkle layer at moderate strength.
 recipe.presentation.clothingWrinkles = 0.7;
+recipe.presentation.hat = {style:'work-bonnet',color:'brown',band:'brown'};
 
 const actor = createActorInstance({ id, recipe });
 

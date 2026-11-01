@@ -13,6 +13,8 @@ import { createModularIdentity, MODULAR_IDENTITIES, MODULAR_FEATURES, MODULAR_FA
 import { createModularAppearance, MODULAR_SKIN_TONES, MODULAR_HAIR_TONES, MODULAR_EYE_TONES } from '../../shared/characters/modularAppearance.js';
 import { createModularVariation } from '../../shared/characters/modularVariants.js';
 import { MODULAR_CAST_LOOKS } from '../../shared/characters/modularCast.js';
+import { HEADWEAR_STYLES, HEADWEAR_COLORS, headwearVariation } from '../../shared/characters/headwearGeometry.js';
+import { createHeadwear } from '../../shared/characters/headwearPerformance.js';
 import { createModularHair, MODULAR_HAIR_STYLES, MODULAR_HAIR_CONTROLS } from '../../shared/characters/modularHair.js';
 import {
   FACIAL_EXPRESSION_RECIPES,
@@ -32,11 +34,12 @@ const CHARACTERS = [
   { id: 'male-lean-template', label: 'Male — lean template', path: '/models/characters/male-lean-template.glb', headOffset: .05, headDistance: .72 },
   { id: 'male-broad-template', label: 'Male — broad template', path: '/models/characters/male-broad-template.glb', headOffset: .05, headDistance: .72 },
   { id: 'male-worker-template', label: 'Male — complete worker', path: '/models/characters/male-worker-template.glb', headOffset: .05, headDistance: .72, outfit: 'work-shirt' },
-  { id: 'samuel-taylor', label: 'Samuel Taylor', path: '/models/samuel-taylor.glb' },
+  { id: 'samuel-taylor', label: 'Samuel Taylor', path: '/models/samuel-taylor.glb', bakedHat:true },
   { id: 'wine-merchant', label: 'Wine merchant', path: '/models/wine-merchant.glb' },
 ];
 const requested = new URLSearchParams(window.location.search).get('model');
 const CHARACTER = CHARACTERS.find((entry) => entry.id === requested) || CHARACTERS[0];
+const maleCharacter = CHARACTER.id.startsWith('male-') || ['samuel-taylor','wine-merchant'].includes(CHARACTER.id);
 const MODEL = CHARACTER.path+(CHARACTER.id === 'male-worker-template' ? '?v=20261101-worker-1' : CHARACTER.id.startsWith('male-')?'?v=20261031-garments-7':'');
 document.querySelector('#panel h1').textContent = `Face Lab — ${CHARACTER.label}`;
 document.title = `Face Lab — ${CHARACTER.label}`;
@@ -81,6 +84,7 @@ const state = {
   identityVariant: 0, sideburns:'short-sideburns', moustache:'none', bellySize: 0, waistWidth: 0,
   hairStyle: CHARACTER.id.startsWith('male-') ? 'short-side-part' : 'soft-side-waves', hairVolume: 0, hairWave: 0, hairBunHeight: 0, hairPartOffset: 0, hairEarCoverage: .3,
   performanceSeed: 7,
+  hatStyle:'none',hatHand:'left',hatSeed:1896,hatColor:null,hatBandColor:'black',hatCrownHeight:0,hatBrimWidth:0,hatTilt:0,hatDecoration:null,hatWear:0,
   // Keep the initial Carmela preview aligned with her authored game asset.
   features: CHARACTER.id === 'carmela-russo' ? { lowerFaceSize: -.6 } : {}, skinTone: 'original', hairTone: 'original', eyeTone: 'original',
 };
@@ -88,6 +92,7 @@ const variationSeed = new URLSearchParams(location.search).get('variantSeed');
 if (variationSeed !== null) Object.assign(state, createModularVariation(Number(variationSeed),CHARACTER.id.startsWith('male-')));
 const selectedCast = MODULAR_CAST_LOOKS.find(preset => preset.id === new URLSearchParams(location.search).get('preset') && preset.model === CHARACTER.id);
 if (selectedCast) Object.assign(state,{...selectedCast.look,features:{...selectedCast.look.features}});
+if (CHARACTER.bakedHat) state.hatStyle='none';
 
 const loader = new GLTFLoader()
   .setMeshoptDecoder(MeshoptDecoder)
@@ -117,14 +122,15 @@ for (const name of morphNames) state.raw[name] = 0;
 
 let head = null;
 gltf.scene.traverse((object) => { if (object.name === 'mixamorigHead' && !head) head = object; });
+const headwear = createHeadwear(gltf.scene,state);
 
 function frameHead(sample = true) {
   // Sample the pose first: the seated idle carries the head well below the
   // bind pose.
   if (sample) mixer.update(1 / 30);
   gltf.scene.updateMatrixWorld(true);
-  const target = head.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, CHARACTER.headOffset ?? 0.04, 0));
-  camera.position.copy(target).add(new THREE.Vector3(0.08, 0.03, CHARACTER.headDistance ?? .5));
+  const target = head.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, (CHARACTER.headOffset ?? 0.04)+(headwear.hat ? .07 : 0), 0));
+  camera.position.copy(target).add(new THREE.Vector3(0.08, 0.03, headwear.hat?1.05:CHARACTER.headDistance ?? .5));
   orbit.target.copy(target);
   orbit.update();
 }
@@ -167,6 +173,35 @@ characterSelect.addEventListener('change', () => {
 });
 characterRow.append(characterLabel, characterSelect);
 controlsHost.append(characterRow);
+const hatDetails=document.createElement('details');hatDetails.open=true;
+const hatSummary=document.createElement('summary');hatSummary.textContent='Hats';hatDetails.append(hatSummary);
+function hatSelect(name,label,entries,onChange){
+  const row=document.createElement('label');row.className='row';row.textContent=label;
+  const select=document.createElement('select');select.name=name;
+  for(const [value,text] of entries){const option=document.createElement('option');option.value=value;option.textContent=text;select.append(option);}
+  select.value=state[name]??(name==='hatClass'?'working':'');select.addEventListener('change',()=>onChange(select.value));row.append(select);hatDetails.append(row);return select;
+}
+hatSelect('hatStyle','Style',[['none','No hat'],...Object.entries(HEADWEAR_STYLES).map(([id,d])=>[id,d.label])],id=>{
+  state.hatStyle=id;state.hatColor=null;state.hatDecoration=HEADWEAR_STYLES[id]?.trim??0;
+  headwear.updateLook(state);headwear.update(0);syncAppearanceControls();frameTorso();
+});
+let hatClass='working';
+hatSelect('hatHand','Holding hand',[['left','Left'],['right','Right']],value=>{state.hatHand=value;});
+hatSelect('hatClass','Variation range',[['working','Working / plain'],['middle','Middle / everyday'],['affluent','Affluent / dress']],value=>{hatClass=value;});
+for(const [name,label] of [['hatColor','Hat colour'],['hatBandColor','Ribbon colour']])hatSelect(name,label,[...(name==='hatColor'?[['','Style default']]:[]),...Object.keys(HEADWEAR_COLORS).map(id=>[id,id])],value=>{state[name]=value||null;});
+for(const [name,label,min] of [['hatCrownHeight','Crown height',-1],['hatBrimWidth','Brim width',-1],['hatTilt','Forward tilt',-1],['hatDecoration','Trimming',0],['hatWear','Wear',0]]){
+  const row=document.createElement('label');row.className='row';row.textContent=label;
+  const input=document.createElement('input');input.type='range';input.min=min;input.max=1;input.step=.01;input.name=name;input.value=state[name]??0;
+  input.addEventListener('input',()=>{state[name]=Number(input.value);});row.append(input);hatDetails.append(row);
+}
+const hatButtons=document.createElement('div');hatButtons.className='btnrow';
+hatButtons.append(button('Vary hat',()=>{Object.assign(state,headwearVariation(++state.hatSeed,maleCharacter?'men':'women',hatClass));headwear.updateLook(state);headwear.update(0);syncAppearanceControls();frameTorso();}),
+  button('Take hat off',()=>headwear.request(false)),button('Put hat on',()=>headwear.request(true)));
+hatDetails.append(hatButtons);controlsHost.append(hatDetails);
+if(CHARACTER.bakedHat){
+  for(const control of hatDetails.querySelectorAll('input,select,button'))control.disabled=true;
+  const note=document.createElement('p');note.textContent='This older model has a built-in cap. Choose Male — complete worker to use removable hats.';hatDetails.append(note);
+}
 if (identity.available) {
   const row = document.createElement('label'); row.className = 'row'; row.textContent = 'Start from look';
   const select = document.createElement('select'); select.name = 'castPreset';
@@ -187,6 +222,9 @@ const featureInputs = new Map();
 const hairInputs = new Map();
 const studySelects = [];
 function syncAppearanceControls() {
+  for(const name of ['hatStyle','hatHand','hatColor','hatBandColor','hatCrownHeight','hatBrimWidth','hatTilt','hatDecoration','hatWear']){
+    const input=controlsHost.querySelector(`[name="${name}"]`);if(input)input.value=state[name]??(name==='hatDecoration'?HEADWEAR_STYLES[state.hatStyle]?.trim??0:name==='hatColor'?'':0);
+  }
   for (const name of ['identityVariant', 'outfit', 'palette', 'skinTone', 'hairTone', 'eyeTone', 'hairStyle','sideburns','moustache']) {
     const select = controlsHost.querySelector(`select[name="${name}"]`);
     if (select) select.value = state[name];
@@ -363,14 +401,14 @@ performanceSection.append(check('Pause motion', state.paused, (value) => { state
 const viewRow = document.createElement('div');
 viewRow.className = 'btnrow';
 function frameBody() {
-  camera.position.set(0.35, 1.05, CHARACTER.id.startsWith('male-') ? 3.7 : 3.1);
-  orbit.target.set(0, 0.78, 0);
+  camera.position.set(0.35, 1.05, headwear.hat?4.1:CHARACTER.id.startsWith('male-') ? 3.7 : 3.1);
+  orbit.target.set(0, headwear.hat ? .9 : .78, 0);
   orbit.update();
 }
 function frameTorso() {
   gltf.scene.updateMatrixWorld(true);
   const target=head.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0,-.30,0));
-  camera.position.copy(target).add(new THREE.Vector3(.10,.02,1.9));orbit.target.copy(target);orbit.update();
+  camera.position.copy(target).add(new THREE.Vector3(.10,.02,headwear.hat?2.8:1.9));orbit.target.copy(target);orbit.update();
 }
 viewRow.append(button('Face', frameHead), button('Torso', frameTorso), button('Whole figure', frameBody));
 performanceSection.append(viewRow);
@@ -452,6 +490,8 @@ function drive(delta) {
   identity.update(state.identityVariant, state.features);
   appearance.update(state);
   hair.update(state);
+  if(CHARACTER.bakedHat)state.hatStyle='none';
+  headwear.updateLook(state);
   bodyShape.update(state);
   facialHair.update(state);
   const seated = state.clip === 'ClinicIdle' || state.clip.startsWith('Sitting')
@@ -502,11 +542,16 @@ let surfaceSelection=null;
 function characterRecipe() {
   const keys=['identityVariant','features','skinTone','hairTone','eyeTone','outfit','palette','hairStyle',
     'hairVolume','hairWave','hairBunHeight','hairPartOffset','hairEarCoverage','sideburns','moustache','bellySize','waistWidth'];
+  keys.push('hatStyle','hatHand','hatSeed','hatColor','hatBandColor','hatCrownHeight','hatBrimWidth','hatTilt','hatDecoration','hatWear');
   return {model:CHARACTER.id,look:structuredClone(Object.fromEntries(keys.map(key=>[key,state[key]])))};
 }
 
 window.__faceLab = {
   recipe:characterRecipe,
+  headwear(action,progress){
+    if(action){if(progress===undefined)headwear.request(action==='replace'||action==='worn');else{headwear.restorePose();headwear.sample(action,progress);renderer.render(scene,camera);}}
+    return headwear.describe();
+  },
   pickSurface(x,y) {
     const rect=renderer.domElement.getBoundingClientRect();
     const ray=new THREE.Raycaster();ray.setFromCamera(new THREE.Vector2((x-rect.left)/rect.width*2-1,1-(y-rect.top)/rect.height*2),camera);
@@ -536,7 +581,8 @@ window.__faceLab = {
     renderer.render(scene,camera);
     return meshes.map(mesh=>({name:mesh.name,visible:mesh.visible,material:(Array.isArray(mesh.material)?mesh.material:[mesh.material]).map(m=>m.name)}));
   },
-  show({ clip = 'ClinicIdle', time = 0, weights = {}, expression = null, speaking = false, faceTime = 1, legacyExpressions = false, view = 'face', angle = 0, outfit = CHARACTER.outfit || (CHARACTER.id.startsWith('male-') ? 'tailored-clothes' : 'day-dress'), palette = 'original', identityVariant = 0, features = {}, skinTone = 'original', hairTone = 'original', eyeTone = 'original', hairStyle = CHARACTER.id.startsWith('male-') ? 'short-side-part' : 'soft-side-waves', hairVolume = 0, hairWave = 0, hairBunHeight = 0, hairPartOffset = 0, hairEarCoverage = .3, autoBlink = false, performanceSeed = 7, bellySize = 0, waistWidth = 0, sideburns = 'short-sideburns', moustache = 'none' } = {}) {
+  show({ clip = 'ClinicIdle', time = 0, weights = {}, expression = null, speaking = false, faceTime = 1, legacyExpressions = false, view = 'face', angle = 0, outfit = CHARACTER.outfit || (CHARACTER.id.startsWith('male-') ? 'tailored-clothes' : 'day-dress'), palette = 'original', identityVariant = 0, features = {}, skinTone = 'original', hairTone = 'original', eyeTone = 'original', hairStyle = CHARACTER.id.startsWith('male-') ? 'short-side-part' : 'soft-side-waves', hairVolume = 0, hairWave = 0, hairBunHeight = 0, hairPartOffset = 0, hairEarCoverage = .3, autoBlink = false, performanceSeed = 7, bellySize = 0, waistWidth = 0, sideburns = 'short-sideburns', moustache = 'none', headwearAction = 'worn', hatProgress = 0, ...headwearLook } = {}) {
+    headwear.restorePose();
     window.__faceLab.inspectShading('original');
     if(surfaceVisibility){for(const [mesh,visible] of surfaceVisibility)mesh.visible=visible;surfaceVisibility=null;surfaceSelection=null;}
     const selected = gltf.animations.find((entry) => entry.name === clip);
@@ -551,6 +597,7 @@ window.__faceLab = {
     state.identityVariant = identityVariant;
     state.features = { ...features }; state.skinTone = skinTone; state.hairTone = hairTone; state.eyeTone = eyeTone;
     Object.assign(state, { sideburns, moustache, bellySize, waistWidth, hairStyle, hairVolume, hairWave, hairBunHeight, hairPartOffset, hairEarCoverage });
+    Object.assign(state,{hatStyle:'none',hatHand:'left',hatColor:null,hatBandColor:'black',hatCrownHeight:0,hatBrimWidth:0,hatTilt:0,hatDecoration:null,hatWear:0,...headwearLook});
     syncAppearanceControls();
     for (const name of ['outfit', 'palette', 'identityVariant']) {
       const select = document.querySelector(`select[name="${name}"]`);
@@ -580,6 +627,7 @@ window.__faceLab = {
       controlsHost.querySelector(`input[data-control="${label}"]`).checked = checked;
     }
     drive(0);
+    headwear.sample(headwearAction,hatProgress);
     gltf.scene.updateMatrixWorld(true);
     if (view === 'body') frameBody();
     else if (view === 'torso') frameTorso();
@@ -589,6 +637,7 @@ window.__faceLab = {
     renderer.render(scene, camera);
     const apronMesh=gltf.scene.getObjectByName('Patient_WorkApronStanding');
     return {
+      headwear:headwear.describe(),
       apronDrape:apronMesh?.morphTargetInfluences?.[apronMesh.morphTargetDictionary?.rc_workSeated]??null,
       apronFit:apronMesh?.material.userData.workLegFit??null,
       sideburns, moustache, bellySize, waistWidth, bodyAvailable: bodyShape.available,
@@ -611,8 +660,10 @@ syncAppearanceControls();
 frameHead();
 renderer.setAnimationLoop(() => {
   const delta = Math.min(clock.getDelta(), 0.1);
+  headwear.restorePose();
   if (!state.paused) mixer.update(delta);
   drive(state.paused ? 0 : delta);
+  headwear.update(delta);
   const expression = state.mode === 'raw'
     ? Object.entries(state.raw).filter(([, value]) => value > 0).map(([name, value]) => `${name} ${value.toFixed(2)}`).join(', ') || 'neutral'
     : state.expression;

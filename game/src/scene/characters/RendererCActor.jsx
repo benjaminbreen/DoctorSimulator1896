@@ -14,9 +14,7 @@ import {
 } from './rendererCController.js';
 import { createFaceController } from './faceController.js';
 import { createPatientMotion } from './patientMotion.js';
-import {
-  buildPatientHat, disposePatientHat, fitPatientHat, HAT_DESIGN_RADIUS,
-} from './patientHat.js';
+import {createHeadwear} from '../../../../shared/characters/headwearPerformance.js';
 import { gameDebug } from '../../debug.js';
 import { examinationPresentation } from '../../consultation/examPresentation.js';
 import { getKTX2Loader } from '../ktx2.js';
@@ -122,41 +120,21 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
     const mixer = new THREE.AnimationMixer(root);
     const face = createFaceController(root, recipe);
     const motion = createPatientMotion(root, recipe);
-    // A caller keeps her hat on: parent it to the head bone so it rides
-    // every clip and procedural motion. The fit is measured from the actual
-    // skull-and-hair vertices, so it clears any cohort, age, or coiffure.
-    let hat = null;
-    if (recipe.presentation?.hat && motion.bones.head) {
-      hat = buildPatientHat(recipe.presentation.hat);
-      const fit = fitPatientHat(root, motion.bones.head);
-      if (fit) {
-        const head = motion.bones.head;
-        // Size and place in root space (metres, +Y up at bind pose), then
-        // express as head-bone local so the hat rides the animation. The
-        // inverse world quaternion keeps the hat upright whatever the
-        // bind-pose bone axes do; bone world scale is divided back out.
-        const worldScale = head.getWorldScale(new THREE.Vector3());
-        const boneScale = (worldScale.x + worldScale.y + worldScale.z) / 3 || 1;
-        hat.scale.setScalar(((fit.radius * 1.14) / HAT_DESIGN_RADIUS) / boneScale);
-        hat.quaternion.copy(head.getWorldQuaternion(new THREE.Quaternion()).invert());
-        const crown = new THREE.Vector3(fit.centerX, fit.topY - fit.radius * 0.18, fit.centerZ);
-        hat.position.copy(head.worldToLocal(crown));
-        head.add(hat);
-      } else {
-        hat = null;
-      }
-    }
     const wardrobe = createModularWardrobe(root);
     const hair = createModularHair(root);
     const identity = createModularIdentity(root);
     const look = castLook ? {...recipe.asset,...castLook.look}
-      : reviewSeed !== null ? {...recipe.asset,...createModularVariation(Number(reviewSeed))} : recipe.asset;
+      : reviewSeed !== null ? {...recipe.asset,...createModularVariation(Number(reviewSeed),recipe.cohort==='men')} : recipe.asset||{};
     identity.update(look?.identityVariant, look?.features);
     const appearance = createModularAppearance(root, identity.frame);
     appearance.update(look);
     hair.update(look);
     createModularBody(root).update(look);
     createModularFacialHair(root).update(look);
+    const hatLook={hatStyle:recipe.presentation?.hat?.style||'none',hatColor:recipe.presentation?.hat?.color,hatBandColor:recipe.presentation?.hat?.band,...look};
+    // The original Samuel mesh includes its cap as part of the head.
+    if(bodyPath.split('?')[0]==='/models/characters/samuel-taylor.glb')hatLook.hatStyle='none';
+    const headwear=createHeadwear(root,hatLook);
     const lips = root.getObjectByName('Carmela_Lips');
     let mouthAnchor = null;
     if (lips && motion.bones.head) {
@@ -167,7 +145,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
       lips.localToWorld(mouthAnchor);
       motion.bones.head.worldToLocal(mouthAnchor);
     }
-    return { root, mixer, face, motion, hat, wardrobe, identity, appearance, hair, look, mouthAnchor, mouthPoint:new THREE.Vector3() };
+    return { root, mixer, face, motion, headwear, hatLook, hatClock:0, hatAutomatic:false, wardrobe, identity, appearance, hair, look, mouthAnchor, mouthPoint:new THREE.Vector3() };
   }, [
     gltf,
     manifest,
@@ -411,7 +389,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
     actor.mixer.uncacheRoot(actor.root);
     actor.wardrobe.dispose?.();
     // Hat geometry is built per actor, unlike the shared GLB geometry.
-    disposePatientHat(actor.hat);
+    actor.headwear.dispose();
     const materials = new Set();
     const ownedTextures = new Set();
     actor.root.traverse((object) => {
@@ -448,6 +426,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
 
   useFrame((_, delta) => {
     if (paused || !actor.root.visible) return;
+    actor.headwear.restorePose();
     actor.motion.restorePose();
     const dt = Math.min(delta, 0.1);
     const entrance = entranceRef.current;
@@ -517,6 +496,8 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
       actor.mixer.update(dt);
       updateShell(dt);
       actor.face.update(dt, recipe.animation);
+      actor.headwear.update(dt);
+      actor.root.userData.headwear=actor.headwear.describe();
       actor.root.userData.performance = recipe.animation;
       return;
     }
@@ -525,6 +506,17 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
     const animation = settledAnimationRef.current || recipe.animation;
     actor.motion.update(dt, animation, gameDebug.camera);
     actor.face.update(delta, animation);
+    actor.hatClock+=dt;
+    const hatDemo=review?.has('playtest')&&review.get('hatDemo')==='1';
+    if(hatDemo)actor.headwear.request(actor.hatClock<1 || actor.hatClock>=7&&actor.hatClock<13);
+    else if(animation.gesture==='remove-hat')actor.headwear.request(false);
+    else if(animation.gesture==='put-on-hat'||animation.body==='stand-up')actor.headwear.request(true);
+    else if(!actor.hatAutomatic&&actor.headwear.hat){
+      actor.hatAutomatic=true;
+      if(recipe.presentation?.hat?.removeInside ?? (recipe.cohort==='men'))actor.headwear.request(false);
+    }
+    actor.headwear.update(dt,{followHand:animation.gesture==='extend-both-arms'});
+    actor.root.userData.headwear=actor.headwear.describe();
     actor.root.userData.performance = animation;
     // While the examination reading is up, publish where the annotated body
     // parts actually are, so the leader lines track the pose and the camera.

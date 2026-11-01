@@ -22,6 +22,10 @@ import {
 
 const patient = NORA_BYRNE;
 
+test('authored casebook names match the people named in their consultations',()=>{
+  for(const entry of AUTHORED_PATIENT_POOL)assert.equal(entry.profile.identity.fullName,entry.label);
+});
+
 function begin() {
   return consultationTransition(startConsultation(patient), patient, { type: 'begin-inquiry' });
 }
