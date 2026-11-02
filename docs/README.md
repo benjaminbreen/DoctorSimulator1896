@@ -16,6 +16,8 @@ Implementation references:
   screenshots, recorded UI replays, and video.
 - [consultation-testing.md](consultation-testing.md) — current consultation
   tests and known gaps.
+- [case-cards.md](case-cards.md) — corpus-based procedural patients: plan,
+  sources, tools, and draft cards.
 - [engine-architecture.md](engine-architecture.md) — reusable engine rules.
 - [engine-reuse.md](engine-reuse.md) — modules that may be copied from the
   Darwin game.

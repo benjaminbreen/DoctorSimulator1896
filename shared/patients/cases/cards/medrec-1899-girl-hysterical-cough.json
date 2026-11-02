@@ -1,0 +1,81 @@
+{
+  "id": "medrec-1899-girl-hysterical-cough",
+  "status": "draft",
+  "source": {
+    "citation": "Unidentified author, article on nervous and reflex cough, Medical Record 56 (August 5, 1899): 189. Author and title to confirm from the page image.",
+    "year": 1899,
+    "place": null,
+    "corpusSourceId": "journals-medical:3c60fbb9977a",
+    "passageIds": [
+      3742792,
+      3742793
+    ]
+  },
+  "inferred": [
+    "setting"
+  ],
+  "setting": "private-practice",
+  "reported": {
+    "label": "Miss M. H.",
+    "age": 15,
+    "sex": "female",
+    "occupation": null,
+    "nativity": null,
+    "maritalStatus": "single",
+    "familyHistory": "Family history somewhat neurotic."
+  },
+  "presentation": {
+    "complaints": [
+      "three months of a strange cough about once a minute, like the bleating of a sheep"
+    ],
+    "course": "Seen February 10, 1897, after three months of the cough. Referred by her physician, whose treatment had failed.",
+    "priorTreatment": "Unspecified treatment by the referring physician, without effect."
+  },
+  "findings": [
+    "large for her age",
+    "glottis almost closed during a paroxysm (laryngoscope), from spasm rather than paralysis",
+    "no expectoration; general health unimpaired",
+    "little control by will; never occurs during sleep"
+  ],
+  "periodDiagnosis": "hysterical glottic spasm (nervous cough)",
+  "treatments": [],
+  "outcome": "The cough faded gradually after a year and a half; other hysterical signs remained.",
+  "quotes": [
+    "It sounded more like the bleating of a sheep than any- thing else",
+    "the cough never occurred during sleep"
+  ],
+  "modernReading": {
+    "text": "Functional (psychogenic or habit) cough, or possibly a vocal tic. It stops in sleep and has no lung cause; it usually settles with time and calm handling.",
+    "confidence": "moderate"
+  },
+  "conditionTags": [
+    "functional-cough",
+    "hysteria"
+  ],
+  "fields": {
+    "fixed": [
+      "repetitive odd cough without chest disease",
+      "absent in sleep",
+      "general health good"
+    ],
+    "constrained": [
+      {
+        "field": "age",
+        "rule": "10–25"
+      },
+      {
+        "field": "disclosure",
+        "rule": "a parent usually tells the history"
+      }
+    ],
+    "free": [
+      "name",
+      "sex",
+      "class",
+      "household",
+      "residence",
+      "what the family fears it is"
+    ]
+  },
+  "notes": "The doctor needs a throat or chest examination to rule out disease. Fear of consumption would be a natural worry for the family."
+}

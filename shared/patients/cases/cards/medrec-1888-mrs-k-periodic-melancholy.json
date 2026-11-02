@@ -1,0 +1,85 @@
+{
+  "id": "medrec-1888-mrs-k-periodic-melancholy",
+  "status": "draft",
+  "source": {
+    "citation": "Unidentified author (New York Polyclinic), article on sulfonal, Case IX, Medical Record 33 (1888): 416. Author and title to confirm from the page image.",
+    "year": 1888,
+    "place": null,
+    "corpusSourceId": "journals-medical:99c75576b218",
+    "passageIds": [
+      3603070,
+      3603071
+    ]
+  },
+  "inferred": [
+    "setting"
+  ],
+  "setting": "private-practice",
+  "reported": {
+    "label": "Mrs. K.",
+    "age": 55,
+    "sex": "female",
+    "occupation": null,
+    "nativity": null,
+    "maritalStatus": "married (thirty years)",
+    "familyHistory": "One epileptic attack in early childhood."
+  },
+  "presentation": {
+    "complaints": [
+      "a spell of melancholy in which she cannot sleep at all",
+      "restless and afraid she will go insane",
+      "weary of life"
+    ],
+    "course": "Spells of melancholy about every two years for twenty-three years, each lasting about fourteen days. Made one suicide attempt in a spell a few years ago. Now in another spell.",
+    "priorTreatment": null
+  },
+  "findings": [
+    "no hallucinations or delusions",
+    "depressed, uneasy, slow in thought",
+    "tells her story reluctantly"
+  ],
+  "periodDiagnosis": "periodical melancholia",
+  "treatments": [
+    {
+      "treatment": "sulfonal 2.0 g, which she took only after persuasion",
+      "response": "slept three hours; a second dose gave seven hours, then a dizzy, heavy head the next morning"
+    }
+  ],
+  "outcome": "Not reported beyond the first nights.",
+  "quotes": [
+    "is averse to taking drugs, as they are all poi- sonous",
+    "has made one suicidal attempt during one of these spells a few years ago"
+  ],
+  "modernReading": {
+    "text": "Recurrent major depression, possibly within a bipolar pattern, with a past suicide attempt. The present episode carries real risk, and asking about it is the key clinical act.",
+    "confidence": "moderate"
+  },
+  "conditionTags": [
+    "melancholia"
+  ],
+  "fields": {
+    "fixed": [
+      "regular short spells of severe depression and total sleeplessness",
+      "a past suicide attempt",
+      "distrust of drugs"
+    ],
+    "constrained": [
+      {
+        "field": "age",
+        "rule": "35–65"
+      },
+      {
+        "field": "disclosure",
+        "rule": "the suicide attempt is told only if asked kindly and directly"
+      }
+    ],
+    "free": [
+      "name",
+      "sex",
+      "household",
+      "residence",
+      "occupation"
+    ]
+  },
+  "notes": "Several children and a long marriage give the doctor people to involve in her safety."
+}

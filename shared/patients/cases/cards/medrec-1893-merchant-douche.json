@@ -1,0 +1,88 @@
+{
+  "id": "medrec-1893-merchant-douche",
+  "status": "draft",
+  "source": {
+    "citation": "Unidentified author, article on douche treatment, Case II, Medical Record 43 (January 21, 1893): 72–73. Author and title to confirm from the page image.",
+    "year": 1893,
+    "place": null,
+    "corpusSourceId": "journals-medical:000b3d5aa4c1",
+    "passageIds": [
+      3653677,
+      3653678
+    ]
+  },
+  "inferred": [
+    "setting"
+  ],
+  "setting": "private-practice",
+  "reported": {
+    "label": "Mr. B.",
+    "age": 52,
+    "sex": "male",
+    "occupation": "merchant",
+    "nativity": "from Chicago",
+    "maritalStatus": null,
+    "familyHistory": null
+  },
+  "presentation": {
+    "complaints": [
+      "marked insomnia",
+      "unable to apply his mind to business"
+    ],
+    "course": "Treated three years earlier in Paris with douches prescribed by Charcot and stayed well. Broke down again after a crisis in his business and trouble in his family.",
+    "priorTreatment": "Four months of douches in Paris, with lasting benefit until the relapse."
+  },
+  "findings": [
+    "not at first strong enough for the cold, high-pressure douche he asked for"
+  ],
+  "periodDiagnosis": "cerebral neurasthenia",
+  "treatments": [
+    {
+      "treatment": "preparatory warm douche ending with cold water to the spine, and massage",
+      "response": "made him fit for the stronger treatment"
+    },
+    {
+      "treatment": "cold column douche at 50°F and two atmospheres along the spine and to the feet, then a cold sheet rub, for six weeks",
+      "response": "insomnia gone, appetite improved; returned to business and stayed well"
+    }
+  ],
+  "outcome": "Recovered and returned to business.",
+  "quotes": [
+    "until a crisis in his busi- ness and family troubles caused him to again break down",
+    "His insomnia disappeared, and his appetite steadily improved."
+  ],
+  "modernReading": {
+    "text": "Probably a depressive or stress-related episode set off by business and family crises, with insomnia and poor concentration. The ritual, structure, and expectation of a treatment that had worked before may explain much of the response.",
+    "confidence": "low"
+  },
+  "conditionTags": [
+    "neurasthenia",
+    "insomnia"
+  ],
+  "fields": {
+    "fixed": [
+      "relapse after a business and family crisis",
+      "insomnia and inability to concentrate",
+      "prior good response to the same treatment",
+      "patient asks for a specific treatment"
+    ],
+    "constrained": [
+      {
+        "field": "class",
+        "rule": "elite or affluent; has travelled to Europe for treatment"
+      },
+      {
+        "field": "age",
+        "rule": "40–65"
+      }
+    ],
+    "free": [
+      "name",
+      "sex",
+      "origin city",
+      "nature of the crisis",
+      "household"
+    ]
+  },
+  "notes": "Useful for a patient who arrives with a fixed idea of the treatment he wants, and whose belief in it matters."
+}

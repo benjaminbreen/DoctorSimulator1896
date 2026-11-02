@@ -1,0 +1,110 @@
+{
+  "id": "putnam-1895-telegrapher-cramp",
+  "status": "draft",
+  "source": {
+    "citation": "James W. Putnam, \"Two Cases of Writer's Cramp,\" Journal of Nervous and Mental Disease 22 (1895): 696–699.",
+    "year": 1895,
+    "place": "Buffalo, New York",
+    "corpusSourceId": "journals-medical:f6ad95082fe3",
+    "passageIds": [
+      3978602,
+      3978603,
+      3978604,
+      3978605,
+      3978606,
+      3978607,
+      3978608,
+      3978609,
+      3978610
+    ]
+  },
+  "inferred": [
+    "setting"
+  ],
+  "setting": "private-practice",
+  "reported": {
+    "label": "T. D. F.",
+    "age": 30,
+    "sex": "male",
+    "occupation": "railroad telegraph operator",
+    "nativity": null,
+    "maritalStatus": null,
+    "familyHistory": "Both parents nervous; father a heavy tobacco user from boyhood and drank freely; brothers and sisters all nervous."
+  },
+  "presentation": {
+    "complaints": [
+      "telegraph sending grew weak; dot-initial characters failed while dash-initial ones did not",
+      "had to grip the pen hard to keep the hand from scattering; wrist pain and cramp",
+      "head pulled to the right and eyes rolled up whenever he wrote, then whenever he watched anyone write",
+      "the same cramp with spreading butter or stropping a razor, and at night when he thought of writing"
+    ],
+    "course": "Began telegraphing at 22. Sending failed from 1886; unable to write with the right hand by 1887; the left hand then failed too. Gave up writing and dictation by 1889. Consulted Putnam in 1892.",
+    "priorTreatment": "Prolonged rest, various drugs, and several months of electricity, without benefit."
+  },
+  "findings": [
+    "no anaesthesia and no tenderness along the nerve trunks; some tenderness at Erb's point",
+    "no hysterical stigmata; conjunctivae and pharynx sensitive; reflexes normal",
+    "on writing two letters: rigid right arm, spasm of the left sternocleidomastoid and trapezius turning the head right, eyes rolled up",
+    "writing with the left hand produces only slight head turning",
+    "eyes examined by an oculist: normal vision and muscle balance",
+    "no pain or spasm if he writes while looking out of the window"
+  ],
+  "periodDiagnosis": "writer's and telegrapher's cramp, with symptoms judged psychic in nature",
+  "treatments": [
+    {
+      "treatment": "hypnotic suggestion three times a week for a month",
+      "response": "neck spasm eased when writing in the doctor's office, but returned in full away from it"
+    },
+    {
+      "treatment": "galvanism, rhythmic gymnastics, and atropine injections into the neck muscles",
+      "response": "some improvement; could sign his name in the office"
+    },
+    {
+      "treatment": "told he would recover in a year if he did not attempt writing until then",
+      "response": "kept to it; resumed writing in April 1893 and by 1894 worked eight to ten hours a day without cramp"
+    }
+  ],
+  "outcome": "Recovered after about two and a half years without writing, followed by a gradual return to work.",
+  "quotes": [
+    "If he looked out of the wiijdow, however, he could write without any pain",
+    "so clearly psychic in their nature that suggestive treatment was instituted"
+  ],
+  "modernReading": {
+    "text": "Task-specific focal dystonia (writer's cramp) with cervical involvement. The spread to watching others write and to thinking about writing suggests a large functional component. The long rest and graded return fit the course of either.",
+    "confidence": "moderate"
+  },
+  "conditionTags": [
+    "occupational-cramp",
+    "functional-movement"
+  ],
+  "fields": {
+    "fixed": [
+      "task-triggered cramp of the hand spreading to neck and eyes",
+      "normal reflexes and sensation",
+      "relief when not looking at the writing",
+      "failure of rest, drugs, and electricity"
+    ],
+    "constrained": [
+      {
+        "field": "occupation",
+        "rule": "work dominated by one repeated fine hand task: telegrapher, clerk, copyist, stenographer, engraver, dentist, compositor"
+      },
+      {
+        "field": "age",
+        "rule": "25–55, with at least five years in the trade"
+      },
+      {
+        "field": "class",
+        "rule": "comfortable or sponsored; losing the trade means losing the income"
+      }
+    ],
+    "free": [
+      "name",
+      "sex if the trade allows",
+      "family history",
+      "household",
+      "residence"
+    ]
+  },
+  "notes": "The same article's second case (a dentist, Dr. H.) could become its own card."
+}

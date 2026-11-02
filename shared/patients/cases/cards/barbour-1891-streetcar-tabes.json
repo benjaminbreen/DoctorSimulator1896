@@ -1,0 +1,84 @@
+{
+  "id": "barbour-1891-streetcar-tabes",
+  "status": "draft",
+  "source": {
+    "citation": "John Ford Barbour, article on cerebro-spinal concussion, Journal of Nervous and Mental Disease 18 (1891): 147–148. Title to confirm from the page image.",
+    "year": 1891,
+    "place": null,
+    "corpusSourceId": "journals-medical:ed57a7ec801a",
+    "passageIds": [
+      3967609,
+      3967610
+    ]
+  },
+  "inferred": [
+    "setting (City Hospital; the author saw her there)"
+  ],
+  "setting": "hospital",
+  "reported": {
+    "label": "Susan Taylor",
+    "age": 35,
+    "sex": "female",
+    "occupation": null,
+    "nativity": null,
+    "maritalStatus": null,
+    "familyHistory": "Neurotic temperament."
+  },
+  "presentation": {
+    "complaints": [
+      "pain in the back, and pain all over the body",
+      "weak knees; legs tire easily",
+      "vague pains in the trunk and legs"
+    ],
+    "course": "Her dress caught as she left a street car, and she fell on her lower back. She felt little at first; months later the spinal symptoms began and grew steadily worse.",
+    "priorTreatment": null
+  },
+  "findings": [
+    "no deformity of the back; pain wherever touched",
+    "recorded at first as \"very hysterical (?)\"",
+    "later: loss of knee reflex, pupils that do not react to light, girdle pain, lightning pains",
+    "a spastic element; double vision in her last weeks"
+  ],
+  "periodDiagnosis": "at first taken for hysteria or spinal concussion; finally locomotor ataxia",
+  "treatments": [],
+  "outcome": "Died in hospital.",
+  "quotes": [
+    "She was leav- ing a street car at the time of the accident",
+    "Locomotor ataxia as the result of trauma is, I believe, very rare."
+  ],
+  "modernReading": {
+    "text": "Tabes dorsalis (late syphilis of the spinal cord), which the fall did not cause. Early tabes was often mistaken for hysteria or injury. Absent knee jerks and pupils that do not react to light were known tests in 1896.",
+    "confidence": "moderate"
+  },
+  "conditionTags": [
+    "tabes-dorsalis",
+    "railway-spine"
+  ],
+  "fields": {
+    "fixed": [
+      "an accident the patient blames",
+      "vague pains and weak legs months later",
+      "absent knee reflexes and unreactive pupils for a doctor who checks"
+    ],
+    "constrained": [
+      {
+        "field": "age",
+        "rule": "30–55"
+      },
+      {
+        "field": "disclosure",
+        "rule": "the past infection is unknown to the patient or not admitted"
+      }
+    ],
+    "free": [
+      "name",
+      "sex",
+      "occupation",
+      "class",
+      "the kind of accident",
+      "household",
+      "residence"
+    ]
+  },
+  "notes": "A case where the obvious story (the accident) is wrong. Only an examination finds the cause."
+}

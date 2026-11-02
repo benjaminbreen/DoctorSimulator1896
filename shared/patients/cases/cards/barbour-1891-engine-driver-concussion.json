@@ -1,0 +1,92 @@
+{
+  "id": "barbour-1891-engine-driver-concussion",
+  "status": "draft",
+  "source": {
+    "citation": "John Ford Barbour, article on cerebro-spinal concussion, Journal of Nervous and Mental Disease 18 (1891): 147–148. Title to confirm from the page image.",
+    "year": 1891,
+    "place": null,
+    "corpusSourceId": "journals-medical:ed57a7ec801a",
+    "passageIds": [
+      3967610,
+      3967611,
+      3967612,
+      3967613
+    ]
+  },
+  "inferred": [
+    "setting"
+  ],
+  "setting": "private-practice",
+  "reported": {
+    "label": "Edward F.",
+    "age": 30,
+    "sex": "male",
+    "occupation": "railway engine-driver",
+    "nativity": null,
+    "maritalStatus": "married",
+    "familyHistory": null
+  },
+  "presentation": {
+    "complaints": [
+      "pain in the abdominal muscles, worse after eating and in damp weather",
+      "poor sleep and appetite, constipation",
+      "weak and tired; walks like an old man",
+      "low spirits; loss of business ability"
+    ],
+    "course": "Struck in the stomach by an air-brake handle in a railway accident in September 1888; off work six months. In February 1890 thrown through the cab window in a collision and pinned for four hours; broken fibula. Has lost 24 pounds since.",
+    "priorTreatment": null
+  },
+  "findings": [
+    "emaciated",
+    "pupils dilated and unequal; the left reacts only slightly to light",
+    "left knee reflex nearly absent",
+    "slow, slurred speech that drops the ends of words",
+    "reads the Bible almost constantly",
+    "very temperate"
+  ],
+  "periodDiagnosis": "cerebro-spinal concussion (railway injury)",
+  "treatments": [
+    {
+      "treatment": "sulfonal, with local and general electrization, for about three months",
+      "response": "gained five pounds, sleeps without a hypnotic, walks more briskly, able to do light work"
+    }
+  ],
+  "outcome": "Improved; able to pursue a light occupation.",
+  "quotes": [
+    "Being born under an unlucky star, he was in a collision",
+    "walks like an old man"
+  ],
+  "modernReading": {
+    "text": "Uncertain. The author reads it as injury to the nervous system. Unequal, sluggish pupils, a failing knee reflex, slurred speech, and a change in character would also raise general paresis (late syphilis) or a head injury. His improvement argues somewhat against paresis.",
+    "confidence": "low"
+  },
+  "conditionTags": [
+    "railway-spine",
+    "traumatic-neurosis"
+  ],
+  "fields": {
+    "fixed": [
+      "a serious railway accident",
+      "weight loss, poor sleep, weakness, low spirits",
+      "unequal pupils and one weak knee reflex"
+    ],
+    "constrained": [
+      {
+        "field": "occupation",
+        "rule": "railway work: engineer, fireman, brakeman, conductor; or a passenger"
+      },
+      {
+        "field": "sex",
+        "rule": "male for railway trades"
+      }
+    ],
+    "free": [
+      "name",
+      "age 25–55",
+      "household",
+      "residence",
+      "whether a lawsuit is pending"
+    ]
+  },
+  "notes": "The same article describes engine-drivers woken by an electric gong and a woman awarded $10,000 damages. Litigation is a natural complication for a procedural version."
+}

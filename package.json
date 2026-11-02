@@ -13,6 +13,8 @@
     "character:generate": "make character",
     "character:validate": "node scripts/characters/validate-preset.mjs",
     "patient:test": "node --test tests/patient-generator.test.mjs",
+    "cases:test": "node --test tests/case-cards.test.mjs",
+    "cases:check": "python3 scripts/cases/find_cases.py check",
     "character-runtime:test": "node --test tests/character-runtime.test.mjs",
     "hair:test": "node --test tests/hair-geometry.test.mjs",
     "renderer:test": "node --test tests/renderer-variants.test.mjs",

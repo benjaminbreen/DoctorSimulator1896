@@ -92,6 +92,45 @@ Write as James in a short, direct private letter. Comment on at least one specif
 
 Hard rules: no numbers, grades, or scores of any kind. No facts beyond the record: never name a person, relation, symptom, or event the record does not contain. No medical knowledge unavailable in 1896. 60 to 120 words between salutation and signature — stop early rather than run long. Open "My dear Doctor," and sign "Wm. James".`;
 
+const VOICE_SYSTEM = `You reword the lines of one patient in a New York consulting room in 1896, so each patient sounds like a particular person rather than a template.
+
+You receive the patient's description and a list of lines, each with an id and a draft text. The draft says what the line must contain; it is not wording to keep. Return every line, with the same id, written fresh in this person's voice: their age, trade, class, origin, and manner. Do not copy the draft's phrasing. Ids beginning "choice:" are the physician's options, not the patient's: reword those plainly, keep the same meaning and stance, and keep any quotation marks around spoken words.
+
+Rules. Keep every fact in each line exactly: the same symptoms, times, numbers, names, places, drugs, and events. Add no new facts, people, places, or history. Do not move a fact from one line to another. Plain English of 1896: ordinary words, short sentences. No stage directions unless the draft has one. No dialect spelling. Keep each line within about a third of the draft's length.
+
+Make the patient's lines sound like this one person, not a stock patient: choose their words, rhythm, and what they dwell on from who they are. A clerk, a society woman, and a dock porter should not sound alike. Keep the physician's lines plain and neutral.`;
+
+const MAX_VOICE_LINES = 60;
+
+function isVoicePayload(body) {
+  return body?.task === 'render-patient-voice'
+    && body.schemaVersion === 1
+    && typeof body.patient?.style === 'string'
+    && Array.isArray(body.lines)
+    && body.lines.length > 0
+    && body.lines.length <= MAX_VOICE_LINES
+    && body.lines.every((line) => typeof line?.id === 'string' && typeof line.text === 'string');
+}
+
+function voiceSchema(ids) {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['lines'],
+    properties: {
+      lines: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['id', 'text'],
+          properties: { id: { type: 'string', enum: ids }, text: { type: 'string' } },
+        },
+      },
+    },
+  };
+}
+
 function isJamesPayload(body) {
   return body?.task === 'render-william-james-assessment'
     && body.schemaVersion === 1
@@ -178,6 +217,29 @@ export async function POST(request) {
     }
   }
 
+  if (isVoicePayload(payload)) {
+    const ids = payload.lines.map((line) => line.id);
+    try {
+      const reply = await callModel(apiKey, {
+        instructions: VOICE_SYSTEM,
+        input: JSON.stringify({ patient: payload.patient, lines: payload.lines }),
+        schemaName: 'patient_voice',
+        schema: voiceSchema(ids),
+        maxTokens: 2400,
+        // A whole patient takes longer than one reply. The client asks ahead
+        // of the visit, so the wait is not seen.
+        timeoutMs: 18000,
+      });
+      const lines = (reply.lines || [])
+        .filter((line) => ids.includes(line.id) && typeof line.text === 'string')
+        .map((line) => ({ id: line.id, text: line.text.trim().slice(0, 400) }));
+      return json({ lines }, 200);
+    } catch (error) {
+      console.error(`patient voice failed: ${error.message}`);
+      return json({ error: 'voice service failed' }, 502);
+    }
+  }
+
   if (!isDialoguePayload(payload)) return json({ error: 'invalid payload' }, 400);
 
   const allowedIds = (payload.allowedNewFacts || []).map((fact) => String(fact.id));
@@ -215,9 +277,9 @@ export async function POST(request) {
   }
 }
 
-async function callModel(apiKey, { instructions, input, schemaName, schema, maxTokens }) {
+async function callModel(apiKey, { instructions, input, schemaName, schema, maxTokens, timeoutMs = UPSTREAM_TIMEOUT_MS }) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const upstream = await fetch(ENDPOINT, {
       method: 'POST',

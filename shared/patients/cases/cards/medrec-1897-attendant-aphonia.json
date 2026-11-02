@@ -1,0 +1,83 @@
+{
+  "id": "medrec-1897-attendant-aphonia",
+  "status": "draft",
+  "source": {
+    "citation": "Unidentified author, article on hysterical aphonia, Medical Record 52 (1897): 87. Author and title to confirm from the page image.",
+    "year": 1897,
+    "place": null,
+    "corpusSourceId": "journals-medical:cd34c9fd89fd",
+    "passageIds": [
+      3714018,
+      3714019
+    ]
+  },
+  "inferred": [
+    "setting"
+  ],
+  "setting": "private-practice",
+  "reported": {
+    "label": "Miss A. A.",
+    "age": 29,
+    "sex": "female",
+    "occupation": "attendant in a hospital for the insane",
+    "nativity": null,
+    "maritalStatus": "single",
+    "familyHistory": null
+  },
+  "presentation": {
+    "complaints": [
+      "woke one morning able only to whisper"
+    ],
+    "course": "No strain, illness, or upset beforehand; slept well. Two similar attacks years before, both of which ended by themselves. She kept working throughout.",
+    "priorTreatment": null
+  },
+  "findings": [
+    "nervous temperament, very competent, good general health",
+    "no other hysterical stigmata"
+  ],
+  "periodDiagnosis": "pure hysterical aphonia",
+  "treatments": [
+    {
+      "treatment": "declined treatment",
+      "response": "voice returned suddenly and for good after five weeks"
+    }
+  ],
+  "outcome": "Full spontaneous recovery after five weeks.",
+  "quotes": [
+    "on rising one morning after sleeping well and feeling in her usual health, she found she could only whisper",
+    "the attack lasted five weeks without mitigation, when it suddenly and permanently disappeared"
+  ],
+  "modernReading": {
+    "text": "Functional (psychogenic) dysphonia. The voice is lost without damage to the larynx and often returns suddenly. A doctor should still rule out a laryngeal or nerve cause.",
+    "confidence": "moderate"
+  },
+  "conditionTags": [
+    "functional-aphonia",
+    "hysteria"
+  ],
+  "fields": {
+    "fixed": [
+      "sudden whisper-only voice on waking",
+      "otherwise well and working",
+      "earlier attacks that ended by themselves"
+    ],
+    "constrained": [
+      {
+        "field": "age",
+        "rule": "16–45"
+      },
+      {
+        "field": "occupation",
+        "rule": "a job she keeps doing in a whisper: attendant, nurse, clerk, shop assistant, servant"
+      }
+    ],
+    "free": [
+      "name",
+      "sex",
+      "household",
+      "residence",
+      "whether anything troubled her beforehand"
+    ]
+  },
+  "notes": "A case where heavy treatment is not needed and may do harm. The same article has a young man mute for nine years after his father spoke sharply to him, and a woman with whispered voice and wider hysterical signs after an accident."
+}

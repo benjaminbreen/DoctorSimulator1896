@@ -1,0 +1,85 @@
+{
+  "id": "turin-1896-epilepsy-drowning-fright",
+  "status": "draft",
+  "source": {
+    "citation": "Periscope summary of a report to a medical society in Turin (Dr. Antonio [surname unclear in OCR]) on Flechsig's opium-bromide method in ten cases of epilepsy, Case 3, Journal of Nervous and Mental Disease 23 (1896): 345.",
+    "year": 1896,
+    "place": "Turin, Italy (reported in an American journal)",
+    "corpusSourceId": "journals-medical:990e111a0cb1",
+    "passageIds": [
+      3980383,
+      3980384
+    ]
+  },
+  "inferred": [],
+  "setting": "hospital",
+  "reported": {
+    "label": "a man",
+    "age": 28,
+    "sex": "male",
+    "occupation": null,
+    "nativity": null,
+    "maritalStatus": null,
+    "familyHistory": null
+  },
+  "presentation": {
+    "complaints": [
+      "general convulsive attacks at irregular intervals",
+      "sometimes followed by days of mania"
+    ],
+    "course": "Epileptic for five years, since a fright from nearly drowning.",
+    "priorTreatment": null
+  },
+  "findings": [
+    "intelligence medium"
+  ],
+  "periodDiagnosis": "epilepsy following fright",
+  "treatments": [
+    {
+      "treatment": "opium from January 20, 1895, increased to 50 centigrams a day",
+      "response": "continued until bromides were substituted"
+    },
+    {
+      "treatment": "bromides from March 9, 1895",
+      "response": "no further attacks noted to the end of July"
+    }
+  ],
+  "outcome": "Free of attacks for about four months at the time of the report.",
+  "quotes": [
+    "has been an epileptic for five years, following fright from danger of drowning",
+    "the bromides were sub- stituted, and no further attacks were noted"
+  ],
+  "modernReading": {
+    "text": "Epilepsy. Fright was a common period explanation; the near-drowning could instead have injured the brain through lack of oxygen, or be coincidence. Bromides do reduce seizures but cause dullness and skin eruptions in long use.",
+    "confidence": "moderate"
+  },
+  "conditionTags": [
+    "epilepsy"
+  ],
+  "fields": {
+    "fixed": [
+      "recurrent generalised seizures",
+      "an event the patient or family blames for them"
+    ],
+    "constrained": [
+      {
+        "field": "age",
+        "rule": "15–45"
+      },
+      {
+        "field": "occupation",
+        "rule": "one where a seizure is dangerous or costs the job raises the stakes"
+      }
+    ],
+    "free": [
+      "name",
+      "sex",
+      "occupation",
+      "origin",
+      "household",
+      "residence",
+      "the frightening event"
+    ]
+  },
+  "notes": "Not a New York case. An American epilepsy case should replace or join it."
+}

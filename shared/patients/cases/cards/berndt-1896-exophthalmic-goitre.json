@@ -1,0 +1,91 @@
+{
+  "id": "berndt-1896-exophthalmic-goitre",
+  "status": "draft",
+  "source": {
+    "citation": "Unsigned review of Berndt, Archiv für klinische Chirurgie (1896), no. 4, in Medical Record 50 (August 8, 1896): 198–199. Second of Berndt's two cases.",
+    "year": 1896,
+    "place": "Germany (reported in a New York journal)",
+    "corpusSourceId": "journals-medical:2100b2b06c2c",
+    "passageIds": [
+      3701175,
+      3701176,
+      3701177
+    ]
+  },
+  "inferred": [
+    "setting"
+  ],
+  "setting": "hospital",
+  "reported": {
+    "label": "a married woman",
+    "age": 58,
+    "sex": "female",
+    "occupation": null,
+    "nativity": null,
+    "maritalStatus": "married",
+    "familyHistory": null
+  },
+  "presentation": {
+    "complaints": [
+      "palpitation of the heart",
+      "sleeplessness, fear, restlessness",
+      "breathlessness and sweating",
+      "swelling of the neck; eyes protruding"
+    ],
+    "course": "Palpitation began at 25 after hard work. Always irritable. Neck swelling appeared about two years later, then darkened skin and protruding eyes. Ten years of medical treatment without benefit.",
+    "priorTreatment": "Ten years of unspecified medical treatment, without effect."
+  },
+  "findings": [
+    "both thyroid lobes enlarged, the left more; a nodule behind the breastbone",
+    "pigmented skin; protruding eyes"
+  ],
+  "periodDiagnosis": "exophthalmic goitre (Graves' or Basedow's disease), then often called a neurosis",
+  "treatments": [
+    {
+      "treatment": "partial thyroidectomy",
+      "response": "greatly improved; the operation was cut short by heart failure, and she died of pneumonia after influenza a year later"
+    }
+  ],
+  "outcome": "Improved after surgery; died a year later of pneumonia.",
+  "quotes": [
+    "palpitation of the heart developed at the age of twenty-five years in the train of hard work",
+    "Berndt looks upon exophthalmic goitre as a reflex neurosis"
+  ],
+  "modernReading": {
+    "text": "Graves' disease (hyperthyroidism). The fear, sleeplessness, palpitation, and irritability come from excess thyroid hormone, not from nerves. A doctor in 1896 could find the goitre, the eyes, and a rapid pulse.",
+    "confidence": "high"
+  },
+  "conditionTags": [
+    "exophthalmic-goitre"
+  ],
+  "fields": {
+    "fixed": [
+      "palpitation, fear, sleeplessness, sweating, irritability",
+      "neck swelling",
+      "rapid pulse"
+    ],
+    "constrained": [
+      {
+        "field": "sex",
+        "rule": "mostly female (Oppenheimer, JNMD 22 (1895): 216, passage 3977283, estimates about twelve women to one man)"
+      },
+      {
+        "field": "age",
+        "rule": "20–50 at onset"
+      },
+      {
+        "field": "eyes",
+        "rule": "protrusion may be absent early; the seed decides"
+      }
+    ],
+    "free": [
+      "name",
+      "occupation",
+      "class",
+      "household",
+      "residence",
+      "what the patient blames"
+    ]
+  },
+  "notes": "Valuable because it looks like a nervous complaint and is not. A New York or American case of the same condition would be a better source; this one is a German report reviewed in the Medical Record."
+}

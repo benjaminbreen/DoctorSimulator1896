@@ -1,0 +1,90 @@
+{
+  "id": "medrec-1888-merchant-insomnia",
+  "status": "draft",
+  "source": {
+    "citation": "Unidentified author (New York Polyclinic), article on sulfonal, Case II, Medical Record 33 (1888): 416. Author and title to confirm from the page image.",
+    "year": 1888,
+    "place": null,
+    "corpusSourceId": "journals-medical:99c75576b218",
+    "passageIds": [
+      3603067,
+      3603068
+    ]
+  },
+  "inferred": [
+    "setting",
+    "periodDiagnosis (neurasthenia is implied, not stated)"
+  ],
+  "setting": "private-practice",
+  "reported": {
+    "label": "A. S.",
+    "age": 41,
+    "sex": "male",
+    "occupation": "merchant",
+    "nativity": "from Texas",
+    "maritalStatus": "married",
+    "familyHistory": null
+  },
+  "presentation": {
+    "complaints": [
+      "has not slept well for many years",
+      "never more than three hours' sleep a night"
+    ],
+    "course": "Years of excessively hard work. His wife confirms the sleeplessness.",
+    "priorTreatment": null
+  },
+  "findings": [
+    "man of good habits: no alcohol, tobacco, or sexual excess"
+  ],
+  "periodDiagnosis": "insomnia from overwork (implicitly neurasthenic)",
+  "treatments": [
+    {
+      "treatment": "sulfonal 2.0 g at bedtime on five successive nights",
+      "response": "slept at least eight hours each night; 'better than in five years'"
+    },
+    {
+      "treatment": "sent South with powders to take only if absolutely necessary",
+      "response": null
+    }
+  ],
+  "outcome": "Good short-term response; long-term course not reported.",
+  "quotes": [
+    "has not been sleeping well for many years ; never more than three hours' sleep ; statement corrobo- rated by his wife",
+    "reports that he has slept better than in five years"
+  ],
+  "modernReading": {
+    "text": "Chronic insomnia sustained by overwork and habit. Sulfonal, a new hypnotic in 1888, works at first but can accumulate and cause dependence and toxicity with regular use.",
+    "confidence": "moderate"
+  },
+  "conditionTags": [
+    "insomnia",
+    "neurasthenia"
+  ],
+  "fields": {
+    "fixed": [
+      "long-standing short sleep",
+      "years of overwork",
+      "no drink or tobacco",
+      "good response to a new hypnotic"
+    ],
+    "constrained": [
+      {
+        "field": "class",
+        "rule": "affluent or comfortable; can afford a new and costly drug and a trip away"
+      },
+      {
+        "field": "occupation",
+        "rule": "brain-work or business with long hours: merchant, broker, clerk, editor, lawyer"
+      }
+    ],
+    "free": [
+      "name",
+      "sex",
+      "age 30–60",
+      "household",
+      "residence",
+      "spouse who confirms the history"
+    ]
+  },
+  "notes": "The article notes sulfonal cost about 25 cents a dose, so it was prescribed mainly in private practice. The same article has Case III (a manufacturer who stops the drug for fear of habit) and Case VI (Miss F., 35, long neurasthenic, already taking chloral and morphine)."
+}

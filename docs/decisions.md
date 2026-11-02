@@ -58,6 +58,24 @@ earlier consultation proposals.
 - A future patient role uses the same patient and outcome model from the other side
   of the consultation.
 
+## Corpus-based procedural patients (2026-11-02)
+
+Supersedes the module-only procedural design in `patient-system.md` where they
+conflict. The plan and first results are in [case-cards.md](case-cards.md).
+
+- Procedural patients are built from case cards: structured, cited extracts of
+  real published cases from 1885–1900, reviewed by Ben before use.
+- A deterministic, seeded assembler combines a condition (from the cards) with a
+  persona that fits it. The result is a normal consultation record and is the
+  ground truth. The model never adds facts.
+- The model may write a patient's wording once, when the patient is created.
+  That wording is saved with the game. Templates replace it offline.
+- The model may word the three dialogue choices each turn, from topics the
+  engine has chosen. For now it words them once, in the same voice pass.
+- The model may score a treatment that is not in the library, but only within
+  ranges set by the patient's condition.
+- The five authored patients remain as anchor and tutorial cases.
+
 ## Consultation interface
 
 - The current playable perspective is the doctor role in consultation view.
@@ -89,8 +107,9 @@ earlier consultation proposals.
 - Renderer C is the final character system.
 - It uses two shared consultation masters, one per sex, with approved identity
   anchors and deterministic appearance recipes.
-- Procedural patients use the shared masters. Authored anchor patients may use a
-  dedicated model and rig, but they must use the same semantic animation cues
+- Procedural patients use the modular templates, with a look chosen from their
+  profile (`shared/characters/profileLook.js`). Authored anchor patients may use
+  a dedicated model and rig, but they must use the same semantic animation cues
   and character recipe contract. Nora Byrne is the reference implementation.
 - Technical wardrobe examples prove the system; they are not verified 1896 costume
   references.

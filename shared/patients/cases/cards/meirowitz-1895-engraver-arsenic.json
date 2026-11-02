@@ -1,0 +1,96 @@
+{
+  "id": "meirowitz-1895-engraver-arsenic",
+  "status": "draft",
+  "source": {
+    "citation": "Philip Meirowitz, \"A Case of Acute Poisoning by Arsenic with Subsequent Multiple Neuritis,\" Journal of Nervous and Mental Disease 22 (1895): 178–180. Read at the New York Neurological Society, January 8, 1895.",
+    "year": 1895,
+    "place": "New York (Dr. Hammond's clinic)",
+    "corpusSourceId": "journals-medical:f6ad95082fe3",
+    "passageIds": [
+      3977169,
+      3977170,
+      3977171,
+      3977172,
+      3977173,
+      3977174,
+      3977175,
+      3977176
+    ]
+  },
+  "inferred": [
+    "setting"
+  ],
+  "setting": "dispensary",
+  "reported": {
+    "label": "J. W.",
+    "age": 19,
+    "sex": "male",
+    "occupation": "steel engraver; taxidermy as a pastime",
+    "nativity": null,
+    "maritalStatus": null,
+    "familyHistory": null
+  },
+  "presentation": {
+    "complaints": [
+      "burning pains in the legs and swollen feet, weeks after a poisoning",
+      "cannot walk without crutches",
+      "weak, wasted hands with tingling"
+    ],
+    "course": "Took arsenic by mistake from a Bromo-Seltzer bottle he had refilled with arsenic he used for taxidermy. Days of vomiting, thirst, fainting, deafness, delirium. Three weeks later, burning leg pain; two months later, could no longer walk. Seen at the clinic about six months after the poisoning.",
+    "priorTreatment": "Iron as an antidote (not retained), morphine injections, poultices; eleven days at New York Hospital."
+  },
+  "findings": [
+    "high-stepping, stamping gait; feet droop, cold and blue",
+    "tender feet, legs, and thighs; twitching calf muscles; wasted lower legs",
+    "absent ankle, knee, and cremasteric reflexes",
+    "loss of touch and temperature sense in the feet, reduced in the lower legs",
+    "wasted small hand muscles with reaction of degeneration; absent arm reflexes",
+    "bladder, bowel, and mind unaffected"
+  ],
+  "periodDiagnosis": "multiple neuritis following acute arsenical poisoning",
+  "treatments": [
+    {
+      "treatment": "static and induced electricity; strychnine sulphate one-twelfth grain three times daily",
+      "response": "improving; better use of hands and feet"
+    }
+  ],
+  "outcome": "Improving under treatment at the time of the report.",
+  "quotes": [
+    "He filled an empty \"bromo-selzer\" bottle with ar- senic",
+    "He walks decidedly better with the shoes on than oft."
+  ],
+  "modernReading": {
+    "text": "Arsenic-induced peripheral neuropathy, sensory and motor, after a single large ingestion. Slow partial recovery over months to years is usual.",
+    "confidence": "high"
+  },
+  "conditionTags": [
+    "arsenic-poisoning",
+    "peripheral-neuritis"
+  ],
+  "fields": {
+    "fixed": [
+      "one large accidental arsenic dose months earlier",
+      "acute illness then delayed burning leg pain",
+      "foot-drop, wasting, absent reflexes, stocking sensory loss"
+    ],
+    "constrained": [
+      {
+        "field": "route",
+        "rule": "accidental: household arsenic kept for rats, taxidermy, flypaper, or a mislabelled bottle"
+      },
+      {
+        "field": "age",
+        "rule": "any adult"
+      }
+    ],
+    "free": [
+      "name",
+      "sex",
+      "occupation",
+      "household",
+      "residence",
+      "who kept the arsenic and why"
+    ]
+  },
+  "notes": "A chronic version (arsenical wallpaper or Fowler's solution) would need its own card."
+}

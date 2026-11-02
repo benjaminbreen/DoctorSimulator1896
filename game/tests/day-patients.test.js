@@ -10,10 +10,10 @@ import { validateConsultationPatient } from '../src/consultation/contract.js';
 import { consultationTransition, startConsultation, buildDialogueRequest } from '../src/consultation/engine.js';
 import { renderOfflineDialogue } from '../src/consultation/offlineRenderer.js';
 
-test('day one draws three from the authored pool; later days roll procedural casts', () => {
+test('every day, including day one, rolls a procedural cast', () => {
   const day1 = createConsultationPatients({ daySeed: 77, dayIndex: 0, count: 3 });
   assert.equal(day1.length, 3);
-  assert.ok(day1.every((patient) => AUTHORED_PATIENT_POOL.includes(patient)));
+  assert.ok(day1.every((patient) => patient.contentStatus === 'procedural' && patient.id.startsWith('day0-')));
   const day2 = createConsultationPatients({ daySeed: 77, dayIndex: 2 });
   const day3 = createConsultationPatients({ daySeed: 78, dayIndex: 3 });
   assert.equal(day2.length, 4);
@@ -29,14 +29,14 @@ test('every patient eligible for day one satisfies the authored contract', () =>
   }
 });
 
-test('the authored day-one draw is deterministic and can include Chapuys', () => {
-  const first = createConsultationPatients({ daySeed: 42, dayIndex: 0, count: 3 });
-  const again = createConsultationPatients({ daySeed: 42, dayIndex: 0, count: 3 });
+test('the authored playtest draw is deterministic and can include Chapuys', () => {
+  const first = createConsultationPatients({ daySeed: 42, dayIndex: 0, count: 3, authored: true });
+  const again = createConsultationPatients({ daySeed: 42, dayIndex: 0, count: 3, authored: true });
   assert.deepEqual(first.map((patient) => patient.id), again.map((patient) => patient.id));
 
   const seen = new Set();
   for (let daySeed = 1; daySeed <= 40; daySeed += 1) {
-    for (const patient of createConsultationPatients({ daySeed, dayIndex: 0, count: 3 })) seen.add(patient);
+    for (const patient of createConsultationPatients({ daySeed, dayIndex: 0, count: 3, authored: true })) seen.add(patient);
   }
   assert.ok(seen.has(FERDINAND_DE_CHAPUYS));
   assert.equal(seen.size, AUTHORED_PATIENT_POOL.length);

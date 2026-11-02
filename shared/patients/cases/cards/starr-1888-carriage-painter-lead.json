@@ -1,0 +1,94 @@
+{
+  "id": "starr-1888-carriage-painter-lead",
+  "status": "draft",
+  "source": {
+    "citation": "M. Allen Starr, \"Clinic on Nervous Diseases, Held at the Vanderbilt Clinic, March 24, 1888: Lead Paralysis,\" Journal of Nervous and Mental Disease 15 (1888): 452–454.",
+    "year": 1888,
+    "place": "New York (Vanderbilt Clinic)",
+    "corpusSourceId": "journals-medical:5513ffca2bf9",
+    "passageIds": [
+      3961607,
+      3961608,
+      3961609,
+      3961610,
+      3961611,
+      3961612,
+      3961613
+    ]
+  },
+  "inferred": [
+    "reported.age (stated as about thirty)"
+  ],
+  "setting": "dispensary",
+  "reported": {
+    "label": "a carriage-painter",
+    "age": 30,
+    "sex": "male",
+    "occupation": "carriage-painter working indoors with varnish",
+    "nativity": null,
+    "maritalStatus": null,
+    "familyHistory": null
+  },
+  "presentation": {
+    "complaints": [
+      "weakness beginning in the shoulder; cannot lift the arm",
+      "cannot straighten the fingers",
+      "colic before the paralysis began"
+    ],
+    "course": "Seven weeks; somewhat better than at the start. No pain, numbness, or tingling.",
+    "priorTreatment": null
+  },
+  "findings": [
+    "well nourished but anaemic and pale",
+    "right arm cannot be abducted; left only partly; scapular rotation normal, so the deltoid is at fault",
+    "drop-wrist, worse on the right",
+    "marked tremor with the arms held out",
+    "grip seems weak, but is strong once the wrist is held extended",
+    "reaction of degeneration in the right deltoid, partial on the left; biceps normal"
+  ],
+  "periodDiagnosis": "lead paralysis (lead palsy)",
+  "treatments": [],
+  "outcome": null,
+  "quotes": [
+    "painters who work within buildings, and especially those who work in close rooms, are more liable to develop lead poisoning",
+    "distinctly one of lead palsy"
+  ],
+  "modernReading": {
+    "text": "Lead neuropathy, mainly motor, affecting the radial-nerve muscles and the deltoids, after occupational exposure to lead paint. Anaemia and colic fit the same cause.",
+    "confidence": "high"
+  },
+  "conditionTags": [
+    "lead-poisoning"
+  ],
+  "fields": {
+    "fixed": [
+      "prior colic",
+      "painless motor weakness without numbness",
+      "wrist-drop and deltoid weakness",
+      "pallor and tremor",
+      "indoor lead exposure"
+    ],
+    "constrained": [
+      {
+        "field": "occupation",
+        "rule": "indoor lead exposure: house or carriage painter, varnisher, type founder, stereotyper, white-lead worker, file cutter"
+      },
+      {
+        "field": "sex",
+        "rule": "male for these trades in 1896"
+      },
+      {
+        "field": "class",
+        "rule": "comfortable or sponsored"
+      }
+    ],
+    "free": [
+      "name",
+      "age 20–60",
+      "nativity",
+      "household",
+      "residence"
+    ]
+  },
+  "notes": "Teaching-clinic demonstration. The excerpt gives no treatment or outcome; the condition table must supply them. Samuel Taylor draws on the same condition."
+}

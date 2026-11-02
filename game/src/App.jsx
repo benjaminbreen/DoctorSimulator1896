@@ -25,6 +25,8 @@ import { createActorRuntime } from './world/characters/actors.js';
 import { phase1Cast } from './content/clinic1896/phase1Cast.js';
 import { actorCueForConsultation, createConsultationRuntime } from './consultation/engine.js';
 import { renderLunaDialogue } from './consultation/lunaRenderer.js';
+import { cachedPatientVoice, requestPatientVoice } from './consultation/patientVoice.js';
+import { voiceCasePatient } from './consultation/casePatients.js';
 import { setConsultationMode, setGamePaused } from './input/uiMode.js';
 import { setExaminationPresentation } from './consultation/examPresentation.js';
 import { seatFramingForPatient, setConsultationSeat } from './consultation/seatFraming.js';
@@ -133,7 +135,7 @@ export default function App() {
   const daySeed = (getRunSeed() ^ Math.imul(dayIndex, 0x85ebca6b) ^ Math.imul(castNonce, 0x27d4eb2f)) >>> 0;
   const consultationPatients = useMemo(
     () => createConsultationPatients(dayIndex === 0 && castNonce === 0
-      ? { daySeed, dayIndex: 0, count: 3 }
+      ? { daySeed, dayIndex: 0, count: 3, authored: Boolean(pageParams?.has('playtest')) }
       : { daySeed, dayIndex: castNonce ? `${dayIndex}r${castNonce}` : dayIndex, count: 4, referral }),
     [daySeed, dayIndex, castNonce, referral],
   );
@@ -148,9 +150,15 @@ export default function App() {
       onAdvanceMinutes: (minutes) => worldClock.advanceMinutes(minutes * 2, {
         reason: 'consultation',
       }),
+      preparePatient: (patient) => voiceCasePatient(patient, cachedPatientVoice(patient)),
     }),
     [consultationPatients, worldClock],
   );
+  // Ask for each procedural patient's voice as soon as the day is set, so it
+  // is usually ready by the visit. Offline, the templates are used.
+  useEffect(() => {
+    for (const patient of consultationPatients) requestPatientVoice(patient);
+  }, [consultationPatients]);
   const [actors, setActors] = useState(() => actorRuntime.get());
   const [zone, setZone] = useState(runtime.values.zone);
   const [parkReady, setParkReady] = useState(false);

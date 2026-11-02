@@ -64,7 +64,9 @@ function textForSex(value, sex) {
 function clinicalPresentation(random, context) {
   const candidates = PRESENTATIONS.filter((presentation) => context.age >= presentation.ageRange[0]
     && context.age <= presentation.ageRange[1] && (!presentation.requires || presentation.requires(context)));
-  const source = random.weighted(candidates);
+  // No table entry covers young teenagers. Case patients replace this
+  // presentation anyway, so any entry will do for them.
+  const source = random.weighted(candidates.length ? candidates : PRESENTATIONS);
   const severity = Number(random.between(0.38, 0.84).toFixed(2));
   return {
     id: source.id,
@@ -93,8 +95,12 @@ export function generatePatient(options = {}) {
 
   const sampledSex = identityRandom.chance(0.5) ? 'female' : 'male';
   const sex = options.sex === 'female' || options.sex === 'male' ? options.sex : sampledSex;
-  const age = ageForPatient(identityRandom);
-  const socialClass = socialRandom.weighted(CLINIC_CLASSES);
+  // Case conditions narrow the persona (a lead palsy needs a lead trade).
+  const age = options.ageRange
+    ? identityRandom.integer(options.ageRange[0], options.ageRange[1])
+    : ageForPatient(identityRandom);
+  const classes = CLINIC_CLASSES.filter((item) => !options.classIds || options.classIds.includes(item.id));
+  const socialClass = socialRandom.weighted(classes.length ? classes : CLINIC_CLASSES);
   const origin = identityRandom.weighted(ORIGIN_PROFILES, (profile) => profile.cityWeight * profile.access[socialClass.id]);
   const generation = pickPairs(identityRandom, origin.generations);
   const arrivalAge = generation === 0
@@ -107,10 +113,13 @@ export function generatePatient(options = {}) {
   };
   const givenName = identityRandom.pick(sex === 'male' ? origin.maleGivenNames : origin.givenNames);
   const familyName = identityRandom.pick(origin.surnames);
-  const maritalStatus = pickPairs(socialRandom, maritalWeightsForAge(age));
+  const maritalStatus = options.maritalStatus || pickPairs(socialRandom, maritalWeightsForAge(age));
   const title = sex === 'male' ? 'Mr.' : maritalStatus === 'single' ? 'Miss' : 'Mrs.';
   const household = householdFor(socialRandom, age, maritalStatus, socialClass, sex);
-  const occupation = selectOccupation(socialRandom, socialClass, age, maritalStatus, sex);
+  const fitting = (options.occupations || []).filter((item) => !item.sexes || item.sexes.includes(sex));
+  const occupation = fitting.length
+    ? socialRandom.weighted(fitting, (item) => item.weight ?? 1)
+    : selectOccupation(socialRandom, socialClass, age, maritalStatus, sex);
   const payer = pickPairs(socialRandom, socialClass.payer);
   const referralSource = textForSex(socialRandom.pick(REFERRAL_SOURCES[payer]), sex);
   const presentation = clinicalPresentation(clinicalRandom, { age, maritalStatus, socialClass: socialClass.id, sex });
@@ -118,7 +127,7 @@ export function generatePatient(options = {}) {
 
   const householdPosition = sex === 'female' && occupation.id === 'household'
     ? household.spouseOccupation
-      ? `${household.spouseDeceased ? 'widow' : 'wife'} of a ${household.spouseOccupation}`
+      ? `${household.spouseDeceased ? 'widow' : 'wife'} of ${/^[aeiou]/i.test(household.spouseOccupation) ? 'an' : 'a'} ${household.spouseOccupation}`
       : 'woman of independent household'
     : occupation.label;
 

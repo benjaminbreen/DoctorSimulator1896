@@ -1,0 +1,82 @@
+{
+  "id": "medrec-1888-miss-f-neurasthenia-hypnotics",
+  "status": "draft",
+  "source": {
+    "citation": "Unidentified author (New York Polyclinic), article on sulfonal, Case VI, Medical Record 33 (1888): 416. Author and title to confirm from the page image.",
+    "year": 1888,
+    "place": null,
+    "corpusSourceId": "journals-medical:99c75576b218",
+    "passageIds": [
+      3603069,
+      3603070
+    ]
+  },
+  "inferred": [
+    "setting"
+  ],
+  "setting": "private-practice",
+  "reported": {
+    "label": "Miss F.",
+    "age": 35,
+    "sex": "female",
+    "occupation": null,
+    "nativity": null,
+    "maritalStatus": "single",
+    "familyHistory": null
+  },
+  "presentation": {
+    "complaints": [
+      "attacks of neuralgic pain all through the body, worst at night",
+      "sleeplessness"
+    ],
+    "course": "Under treatment for several years for many neurasthenic and hysterical symptoms. Still sleepless while away in the mountains.",
+    "priorTreatment": "Frequent chloral, morphine, and other narcotics, with little success."
+  },
+  "findings": [],
+  "periodDiagnosis": "neurasthenia with hysterical symptoms",
+  "treatments": [
+    {
+      "treatment": "sulfonal 2.0 g at night",
+      "response": "slept five hours for three nights, then the drug lost its effect entirely"
+    }
+  ],
+  "outcome": "No lasting benefit reported.",
+  "quotes": [
+    "under treat- ment for several years for all sorts of neurasthenic and hysterical symptoms",
+    "after that, drug lost its effects entirely"
+  ],
+  "modernReading": {
+    "text": "Chronic widespread pain and insomnia, with tolerance to several sedatives. The cause cannot be known from this record; a modern doctor would think of chronic pain, depression, and dependence on hypnotics and opiates.",
+    "confidence": "low"
+  },
+  "conditionTags": [
+    "neurasthenia",
+    "chloral-habit",
+    "morphine-habit"
+  ],
+  "fields": {
+    "fixed": [
+      "years of neurasthenic complaints",
+      "night-time pains and sleeplessness",
+      "has tried chloral and morphine; new drugs work briefly"
+    ],
+    "constrained": [
+      {
+        "field": "class",
+        "rule": "comfortable or better; has been to the mountains for her health"
+      },
+      {
+        "field": "disclosure",
+        "rule": "she may be more interested in a new drug than in other advice"
+      }
+    ],
+    "free": [
+      "name",
+      "sex",
+      "age 25–55",
+      "household",
+      "residence"
+    ]
+  },
+  "notes": "A patient who has seen many doctors. A useful contrast with the merchant on the same page, whom the same drug helped."
+}

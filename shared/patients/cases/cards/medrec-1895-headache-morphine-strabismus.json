@@ -1,0 +1,86 @@
+{
+  "id": "medrec-1895-headache-morphine-strabismus",
+  "status": "draft",
+  "source": {
+    "citation": "Discussion of a paper on morphine, Medical Record 48 (1895): 709. The speaker is not named in the excerpt; Dr. Walker closed the discussion. To confirm from the page image.",
+    "year": 1895,
+    "place": null,
+    "corpusSourceId": "journals-medical:52f5be3c322a",
+    "passageIds": [
+      3690837,
+      3690838
+    ]
+  },
+  "inferred": [
+    "setting"
+  ],
+  "setting": "private-practice",
+  "reported": {
+    "label": "a woman",
+    "age": null,
+    "sex": "female",
+    "occupation": null,
+    "nativity": null,
+    "maritalStatus": null,
+    "familyHistory": null
+  },
+  "presentation": {
+    "complaints": [
+      "severe headache about once a month, for years"
+    ],
+    "course": "For years her physician relieved each attack with a single hypodermic injection of morphine.",
+    "priorTreatment": "A monthly morphine injection."
+  },
+  "findings": [
+    "very slight strabismus"
+  ],
+  "periodDiagnosis": "habitual (periodic) headache",
+  "treatments": [
+    {
+      "treatment": "single hypodermic injection of morphine at each attack",
+      "response": "relief each time"
+    },
+    {
+      "treatment": "operation for very slight strabismus",
+      "response": "headaches ceased, and no more morphine was needed"
+    }
+  ],
+  "outcome": "Headaches ceased after the eye operation.",
+  "quotes": [
+    "he was in the habit of giving her relief with a single hypodermic injection of morphine",
+    "from that time the headaches had ceased"
+  ],
+  "modernReading": {
+    "text": "Migraine, probably menstrual. Many doctors then blamed headaches on eye-muscle imbalance and operated; the remission may be coincidence or expectation. Regular morphine for headache risks dependence and more frequent headaches.",
+    "confidence": "low"
+  },
+  "conditionTags": [
+    "migraine",
+    "iatrogenic-drug-habit"
+  ],
+  "fields": {
+    "fixed": [
+      "periodic disabling headache over years",
+      "relief only from morphine so far"
+    ],
+    "constrained": [
+      {
+        "field": "sex",
+        "rule": "mostly female"
+      },
+      {
+        "field": "age",
+        "rule": "18–50"
+      }
+    ],
+    "free": [
+      "name",
+      "occupation",
+      "class",
+      "household",
+      "residence",
+      "whether she asks for the injection"
+    ]
+  },
+  "notes": "The doctor in the discussion admits it seemed cruel to refuse an injection that worked. A good test of whether the player keeps giving morphine."
+}

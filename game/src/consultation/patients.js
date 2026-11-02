@@ -3,7 +3,7 @@ import { SAMUEL_TAYLOR } from './authoredPatients/samuelTaylor.js';
 import { CARMELA_RUSSO } from './authoredPatients/carmelaRusso.js';
 import { WILHELMINA_OTTEN } from './authoredPatients/wilhelminaOtten.js';
 import { FERDINAND_DE_CHAPUYS } from './authoredPatients/ferdinandDeChapuys.js';
-import { createDayPatients } from './technicalPatients.js';
+import { createCaseDayPatients } from './casePatients.js';
 import { createRandom } from '../../../shared/patients/index.js';
 
 export { NORA_BYRNE } from './authoredPatients/noraByrne.js';
@@ -27,11 +27,11 @@ function createAuthoredDay({ daySeed = 1896, count = 3 } = {}) {
   return Object.freeze(selected);
 }
 
-// Day one draws three people from the authored pool. Later days (or a rerolled
-// morning list) are procedural citizens generated from the day seed.
+// Every day is rolled from the case-card condition table. The authored pool
+// is kept for playtest runs, whose recorded replays expect those patients.
 export function createConsultationPatients(day = null) {
-  if (!day || day.dayIndex === 0) return createAuthoredDay(day || undefined);
-  return createDayPatients(day);
+  if (day?.authored) return createAuthoredDay(day);
+  return createCaseDayPatients(day || { dayIndex: 0, count: 3 });
 }
 
 export const CONSULTATION_PATIENTS = createConsultationPatients();

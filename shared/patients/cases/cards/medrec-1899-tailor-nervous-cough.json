@@ -1,0 +1,82 @@
+{
+  "id": "medrec-1899-tailor-nervous-cough",
+  "status": "draft",
+  "source": {
+    "citation": "Unidentified author, article on nervous and reflex cough, Medical Record 56 (August 5, 1899): 189–190. Author and title to confirm from the page image.",
+    "year": 1899,
+    "place": null,
+    "corpusSourceId": "journals-medical:3c60fbb9977a",
+    "passageIds": [
+      3742793,
+      3742794
+    ]
+  },
+  "inferred": [
+    "setting"
+  ],
+  "setting": "private-practice",
+  "reported": {
+    "label": "D. B.",
+    "age": 16,
+    "sex": "male",
+    "occupation": "tailor",
+    "nativity": "Hebrew (Jewish)",
+    "maritalStatus": null,
+    "familyHistory": null
+  },
+  "presentation": {
+    "complaints": [
+      "a persistent hacking cough at regular intervals, lasting a few seconds"
+    ],
+    "course": "Duration not stated.",
+    "priorTreatment": "Remedies of various kinds, without effect."
+  },
+  "findings": [
+    "no physical signs, no expectoration, no constitutional symptoms",
+    "several competent examiners found nothing in the respiratory tract",
+    "an occasional, inconstant bruit below the left collarbone; no sign of aneurism"
+  ],
+  "periodDiagnosis": "nervous cough of central origin (possibly anaemic)",
+  "treatments": [
+    {
+      "treatment": "remedies of various kinds",
+      "response": "without avail"
+    }
+  ],
+  "outcome": "Unresolved; the author admits the cause was not clear.",
+  "quotes": [
+    "Hebrew, tailor, aged sixteen years",
+    "If not a neurosis, I have so far failed to find the cause."
+  ],
+  "modernReading": {
+    "text": "Probably a habit cough or vocal tic. Anaemia, which the author suggests, would not explain it. Long hours in a dusty sweatshop are worth asking about.",
+    "confidence": "low"
+  },
+  "conditionTags": [
+    "functional-cough"
+  ],
+  "fields": {
+    "fixed": [
+      "regular hacking cough with no chest findings",
+      "failed remedies"
+    ],
+    "constrained": [
+      {
+        "field": "occupation",
+        "rule": "needle trades or similar indoor work"
+      },
+      {
+        "field": "class",
+        "rule": "sponsored or comfortable; wages matter to the family"
+      }
+    ],
+    "free": [
+      "name",
+      "age 12–25",
+      "origin (immigrant or child of immigrants)",
+      "household",
+      "residence"
+    ]
+  },
+  "notes": "One of very few cards so far with a named immigrant group. The author's uncertainty is part of the case."
+}

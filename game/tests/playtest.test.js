@@ -13,8 +13,8 @@ test('a playtest URL repeats the cast without changing ordinary sessions', () =>
     assert.equal(runSeedFromSearch(`?playtest=1&seed=${seed}`), null);
   }
   const seed = runSeedFromSearch('?playtest=1&seed=4');
-  const first = createConsultationPatients({ daySeed: seed, dayIndex: 0 });
-  const second = createConsultationPatients({ daySeed: seed, dayIndex: 0 });
+  const first = createConsultationPatients({ daySeed: seed, dayIndex: 0, authored: true });
+  const second = createConsultationPatients({ daySeed: seed, dayIndex: 0, authored: true });
   assert.deepEqual(first.map((patient) => patient.id), second.map((patient) => patient.id));
   assert.ok(first.some((patient) => patient.id === 'carmela-russo-1896'));
 });

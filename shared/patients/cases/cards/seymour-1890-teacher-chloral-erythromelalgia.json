@@ -1,0 +1,87 @@
+{
+  "id": "seymour-1890-teacher-chloral-erythromelalgia",
+  "status": "draft",
+  "source": {
+    "citation": "C. Seymour, \"Erythromelalgia,\" Medical Record 37 (1890): 656. First name and place to confirm from the page image.",
+    "year": 1890,
+    "place": null,
+    "corpusSourceId": "journals-medical:51464f88e526",
+    "passageIds": [
+      3622134,
+      3622135,
+      3622136
+    ]
+  },
+  "inferred": [
+    "setting"
+  ],
+  "setting": "private-practice",
+  "reported": {
+    "label": "Miss A. B.",
+    "age": 45,
+    "sex": "female",
+    "occupation": "schoolteacher of many years",
+    "nativity": null,
+    "maritalStatus": "single",
+    "familyHistory": "Mother a nervous invalid; otherwise good."
+  },
+  "presentation": {
+    "complaints": [
+      "sudden burning pain in the ball of the left foot when walking, spreading to the top of the foot and the leg",
+      "cannot stand or let the foot hang down; at ease only with the foot raised",
+      "the foot swells and turns a mottled red when the pain comes"
+    ],
+    "course": "Seven years ago gave up teaching for two years with neurasthenia from overwork. Used chloral for insomnia then, and has slept with chloral or sulfonal for five years since, even after returning to work. The foot pain began eighteen months ago on a walk.",
+    "priorTreatment": "Self-continued chloral and sulfonal for sleep."
+  },
+  "findings": [
+    "well developed and well nourished; fair, florid complexion",
+    "no hysterical constitution, in the author's view",
+    "during pain the foot is swollen and mottled red, with little tenderness to pressure"
+  ],
+  "periodDiagnosis": "erythromelalgia (Weir Mitchell's vasomotor neurosis), in a former neurasthenic with a chloral habit",
+  "treatments": [],
+  "outcome": null,
+  "quotes": [
+    "her health became im- paired from excessive mental application, and she had to relinquish work for two years, wrestling with neurasthenia",
+    "For five years she has slept either with chloral or its recent congener, sulfonal."
+  ],
+  "modernReading": {
+    "text": "Erythromelalgia, a real disorder of small vessels and nerves, sometimes linked to blood disorders or small-fibre neuropathy. The long hypnotic use is a separate dependence problem a doctor should notice.",
+    "confidence": "moderate"
+  },
+  "conditionTags": [
+    "erythromelalgia",
+    "chloral-habit",
+    "neurasthenia"
+  ],
+  "fields": {
+    "fixed": [
+      "burning, red, swollen foot brought on by standing or warmth and eased by raising it",
+      "years of nightly chloral or sulfonal begun during a breakdown"
+    ],
+    "constrained": [
+      {
+        "field": "occupation",
+        "rule": "brain-work with a past breakdown from overwork: teacher, governess, clerk, writer"
+      },
+      {
+        "field": "class",
+        "rule": "comfortable or affluent; can buy hypnotics regularly"
+      },
+      {
+        "field": "disclosure",
+        "rule": "the patient does not volunteer the hypnotic habit; she presents only the foot"
+      }
+    ],
+    "free": [
+      "name",
+      "sex",
+      "age 30–60",
+      "family history",
+      "household",
+      "residence"
+    ]
+  },
+  "notes": "Two problems in one patient: the complaint she brings and the habit she does not mention. Treatment and outcome are later in the article and not yet read."
+}

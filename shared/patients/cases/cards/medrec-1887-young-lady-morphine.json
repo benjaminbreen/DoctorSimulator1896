@@ -1,0 +1,88 @@
+{
+  "id": "medrec-1887-young-lady-morphine",
+  "status": "draft",
+  "source": {
+    "citation": "Unidentified correspondent, letter on opium and morphine habits, Medical Record 31–32 (1887): 595. Author to confirm from the page image.",
+    "year": 1887,
+    "place": null,
+    "corpusSourceId": "journals-medical:c88c51bc74a4",
+    "passageIds": [
+      3592492,
+      3592493,
+      3592494
+    ]
+  },
+  "inferred": [
+    "setting",
+    "reported.age (described only as a young lady)"
+  ],
+  "setting": "private-practice",
+  "reported": {
+    "label": "a young lady",
+    "age": null,
+    "sex": "female",
+    "occupation": null,
+    "nativity": null,
+    "maritalStatus": "single",
+    "familyHistory": "Family well-to-do."
+  },
+  "presentation": {
+    "complaints": [
+      "seven years of eating morphine, ten to twenty grains a day",
+      "every specific cure her family bought has failed"
+    ],
+    "course": "Given morphine powders, to be taken as needed, during several months of pleurisy on the right side. The habit grew and has lasted seven years.",
+    "priorTreatment": "Many advertised \"specifics\" for the opium habit, paid for by her family, without effect."
+  },
+  "findings": [],
+  "periodDiagnosis": "opium or morphine habit begun under medical prescription",
+  "treatments": [
+    {
+      "treatment": "gained her confidence; good hygiene, useful occupation, iron tonics and a full diet; phosphorus, nux vomica, cannabis, digitalis; bromides for sleep",
+      "response": "supported the withdrawal"
+    },
+    {
+      "treatment": "morphine given daily without her knowing the dose, reduced by a quarter to half a grain every other day; she was never allowed to refill her own bottles",
+      "response": "cured in six months; no morphine and no craving six months later"
+    }
+  ],
+  "outcome": "Free of morphine at least six months after a six-month taper.",
+  "quotes": [
+    "Morphine powders were pre- scribed by her physicians, to be used pro re nata.",
+    "in six months my little patient was cured"
+  ],
+  "modernReading": {
+    "text": "Opioid dependence that began with a prescription for pleuritic pain. A slow taper with the patient's cooperation is still a reasonable approach; the concealed dosing would now be thought unethical.",
+    "confidence": "high"
+  },
+  "conditionTags": [
+    "morphine-habit",
+    "iatrogenic-drug-habit"
+  ],
+  "fields": {
+    "fixed": [
+      "habit began with a doctor's morphine prescription for a painful illness",
+      "years of daily use at a high dose",
+      "failed patent cures"
+    ],
+    "constrained": [
+      {
+        "field": "class",
+        "rule": "comfortable or better; the family can pay for cures and a doctor"
+      },
+      {
+        "field": "disclosure",
+        "rule": "the family may raise the habit before the patient does"
+      }
+    ],
+    "free": [
+      "name",
+      "sex",
+      "age 18–50",
+      "the original painful illness",
+      "household",
+      "residence"
+    ]
+  },
+  "notes": "The same letter describes opium smoking and morphine injection among Chinese and white smokers in a \"Chinatown\"; the city is not named in the excerpt."
+}

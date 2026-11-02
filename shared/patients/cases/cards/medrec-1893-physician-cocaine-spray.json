@@ -1,0 +1,84 @@
+{
+  "id": "medrec-1893-physician-cocaine-spray",
+  "status": "draft",
+  "source": {
+    "citation": "Unidentified author, review of seventeen cases of cocaine taking, Medical Record 43 (1893): 34, summarising a case reported by Ring. Author, title, and Ring's original report to confirm.",
+    "year": 1893,
+    "place": "United States (secondary summary)",
+    "corpusSourceId": "journals-medical:000b3d5aa4c1",
+    "passageIds": [
+      3653388,
+      3653389,
+      3653390
+    ]
+  },
+  "inferred": [],
+  "setting": "unknown",
+  "reported": {
+    "label": "Physician (Ring's case)",
+    "age": 25,
+    "sex": "male",
+    "occupation": "physician",
+    "nativity": null,
+    "maritalStatus": null,
+    "familyHistory": null
+  },
+  "presentation": {
+    "complaints": [
+      "growing sleeplessness and loss of appetite",
+      "unsteady nerves and a staggering gait",
+      "listless, with no interest in work or friends"
+    ],
+    "course": "Began a 4 per cent cocaine spray nightly for nasopharyngeal disease. After a month the effect lessened and he increased it. By the fourth month he used it more often, then four or five times before bed and once in the day.",
+    "priorTreatment": null
+  },
+  "findings": [
+    "raised temperature and a quick heart"
+  ],
+  "periodDiagnosis": "cocaine habit (\"the cocaine disease\")",
+  "treatments": [
+    {
+      "treatment": "stopped on his own once he saw the drug had become a necessity",
+      "response": null
+    }
+  ],
+  "outcome": "Quit; later course not reported in the summary.",
+  "quotes": [
+    "using spray, four per cent, solution, nightly",
+    "becoming listless, no interest in work or friends"
+  ],
+  "modernReading": {
+    "text": "Cocaine use disorder that began with a medical nasal spray. Tolerance, escalating dose, insomnia, weight loss, and a racing heart fit; the gait disturbance is less typical.",
+    "confidence": "moderate"
+  },
+  "conditionTags": [
+    "cocaine-habit",
+    "iatrogenic-drug-habit"
+  ],
+  "fields": {
+    "fixed": [
+      "began with a cocaine spray or snuff for catarrh or hay fever",
+      "rising dose and frequency",
+      "insomnia, poor appetite, listlessness, quick pulse"
+    ],
+    "constrained": [
+      {
+        "field": "class",
+        "rule": "comfortable or better; access to a physician's prescription or a druggist's catarrh cure"
+      },
+      {
+        "field": "disclosure",
+        "rule": "the patient hides or plays down the spray at first"
+      }
+    ],
+    "free": [
+      "name",
+      "sex",
+      "age 20–55",
+      "occupation",
+      "household",
+      "residence"
+    ]
+  },
+  "notes": "The same review quotes Atwood's case of a physician who became loud and boastful on cocaine snuff prescribed for a cold, and a case of three years' use for catarrh that recovered with massage and tonics in six weeks."
+}

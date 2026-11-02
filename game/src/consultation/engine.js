@@ -558,8 +558,12 @@ export function createConsultationRuntime(patients, renderDialogue, options = {}
     patients: () => [...patientMap.values()],
     get: () => state,
     start(patientId) {
-      const patient = patientMap.get(patientId);
-      if (!patient) throw new Error(`Unknown patient ${patientId}`);
+      const listed = patientMap.get(patientId);
+      if (!listed) throw new Error(`Unknown patient ${patientId}`);
+      // A late voice pass may replace the patient's wording, but only here,
+      // before the visit begins, so no visit changes wording halfway.
+      const patient = options.preparePatient?.(listed) || listed;
+      patientMap.set(patientId, patient);
       state = startConsultation(patient);
       publish();
       return state;
