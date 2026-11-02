@@ -66,6 +66,7 @@ reference.hide_set(True)
 face.data.calc_loop_triangles()
 triangles = [(tuple(t.vertices), tuple(t.loops)) for t in face.data.loop_triangles]
 points = [v.co.copy() for v in face.data.vertices]
+source_normals = [v.normal.copy() for v in face.data.vertices]
 surface = BVHTree.FromPolygons(points, [t[0] for t in triangles], all_triangles=True)
 source_uvs = [v.uv.copy() for v in face.data.uv_layers.active.data]
 
@@ -77,6 +78,14 @@ def sample(x, z):
     uvs = [source_uvs[i] for i in triangle[1]]
     uv = barycentric_transform(hit[0], *[points[i] for i in triangle[0]], *[Vector((v.x, v.y, 0)) for v in uvs])
     return hit[0].y, (uv.x, uv.y)
+
+def sample_normal(x, z):
+    hit = surface.ray_cast(Vector((x, -2, z)), Vector((0, 1, 0)))
+    if hit[0] is None:
+        hit = surface.find_nearest(Vector((x, -.32, z)))
+    ids = triangles[hit[2]][0]
+    return barycentric_transform(hit[0], *[points[i] for i in ids],
+                                 *[source_normals[i] for i in ids]).normalized()
 
 # Remove the painted eye surfaces. The fitted lid covers the irregular edge
 # left by the donor's quad grid, while the eyeball supplies the visible iris.
@@ -128,7 +137,7 @@ else:
             vertex.co.y = .03 + (vertex.co.y-.03)*scale
 bm.to_mesh(face.data)
 bm.free()
-carmela_mouth.prepare(face, mouth_x, mouth_z)
+mouth_border=carmela_mouth.prepare(face, mouth_x, mouth_z, fit_seam=args.identity.startswith('male-'))
 face.shape_key_add(name='Basis', from_mix=False).value = 0
 
 def gaussian(co, center, widths):
@@ -406,7 +415,9 @@ for sign, side in [(1, 'Left'), (-1, 'Right')]:
     for vertex, a, b in zip(wide.data, vertices, closed):
         vertex.co = Vector(a).lerp(Vector(b), -.25)
 
-carmela_mouth.build(face, sample, donor_image, mouth_x, mouth_z, expression_functions, args.output)
+carmela_mouth.build(face, sample, donor_image, mouth_x, mouth_z, expression_functions, args.output,
+                    fit_seam=args.identity.startswith('male-'),corner_band=.040 if args.identity=='male-b' else .014,
+                    boundary_indices=mouth_border, sample_normal=sample_normal)
 
 for polygon in face.data.polygons:
     polygon.use_smooth = True

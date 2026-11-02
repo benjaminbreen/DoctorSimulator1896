@@ -207,3 +207,43 @@ so an API workflow must select the current humanoid model explicitly.
 These tools still require visual checks of the untouched body through the
 actual walk, sit and talking motions before fitting the expressive head.
 Keep head controls and colour variation independent of the body/outfit asset.
+
+## Mouth seam correction, November 1, 2026
+
+The generated opening crossed the lower lip because its height was below the
+painted join. Its UVs also sampled a different height from the actual vertices.
+The male mouth builder now measures and smooths the donor's lip line, uses the
+same projected coordinates for geometry and texture, and closes the neutral
+margin. The inner rim meets the external upper/lower lip surfaces instead of
+following a ray into the donor's recessed mouth crease. Teeth and the cavity
+are positioned behind that rim. A projected, triangulated join meets the actual
+outward skin boundary without moving its surrounding face triangles. The broad
+donor's separate inward mouth wall is excluded when selecting that boundary.
+The patch transfers smooth donor normals; generated pose-normal deltas are
+omitted on these male lips because they introduce bands around the join.
+Both male templates and the complete worker
+use the correction, retaining their rig, facial controls and nine motions.
+
+Face Lab has a **Mouth** camera button. The `mouth-fit` inspection shader marks
+teeth red so closed-mouth exposure is measurable. To capture neutral, speech,
+smile, frown, press, rounded/wide speech, profiles and changed face proportions:
+
+```sh
+node scripts/characters/capture-mouth-review.mjs \
+  --url=http://127.0.0.1:5186 --motion
+```
+
+This writes close-ups, three motion recordings and closed-mouth tooth masks.
+Use `--before=DIR` with copies of the three original GLBs for a matching
+before/after comparison. The sampler is enabled for the modular male donors
+through `fit_seam` in `carmela_mouth.build`.
+
+The accepted review is `artifacts/characters/mouth-seams/final-accepted`:
+45 poses, 12 closed-mouth masks with no exposed tooth pixels, and three live
+speech recordings. The outer lip/face boundary remains joined through every
+captured pose. Rig joints, facial controls and all nine motion clips survive.
+The three `artifacts/gameplay/mouth-*-final` consultation/examination replays
+each completed 15 steps without failed actions or browser errors; their PNGs
+were inspected. Both production builds, 801 game tests and nine character
+runtime tests passed. This review covers the listed poses and face controls,
+not every possible extreme combination.

@@ -43,7 +43,7 @@ const CHARACTERS = [
 const requested = new URLSearchParams(window.location.search).get('model');
 const CHARACTER = CHARACTERS.find((entry) => entry.id === requested) || CHARACTERS[0];
 const maleCharacter = CHARACTER.id.startsWith('male-') || ['samuel-taylor','wine-merchant'].includes(CHARACTER.id);
-const MODEL = CHARACTER.path+(CHARACTER.id.startsWith('male-')?'?v=20261101-eye-fit-1':'');
+const MODEL = CHARACTER.path+(CHARACTER.id.startsWith('male-')?'?v=20261101-mouth-fit-1':'');
 document.querySelector('#panel h1').textContent = `Face Lab — ${CHARACTER.label}`;
 document.title = `Face Lab — ${CHARACTER.label}`;
 
@@ -451,7 +451,13 @@ function frameAccessories(){
   const target=head.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0,-.075,.035));
   camera.position.copy(target).add(new THREE.Vector3(.06,.01,.65));orbit.target.copy(target);orbit.update();
 }
-viewRow.append(button('Face', frameHead), button('Accessories',frameAccessories), button('Torso', frameTorso), button('Whole figure', frameBody));
+function frameMouth(){
+  gltf.scene.updateMatrixWorld(true);
+  const lips=gltf.scene.getObjectByName('Carmela_Lips');if(!lips)return;
+  const target=new THREE.Box3().setFromObject(lips,true).getCenter(new THREE.Vector3());
+  camera.position.copy(target).add(new THREE.Vector3(.01,.005,.24));orbit.target.copy(target);orbit.update();
+}
+viewRow.append(button('Face', frameHead), button('Mouth',frameMouth), button('Accessories',frameAccessories), button('Torso', frameTorso), button('Whole figure', frameBody));
 performanceSection.append(viewRow);
 controlsHost.append(performanceSection);
 
@@ -595,6 +601,43 @@ window.__faceLab = {
   recipe:characterRecipe,
   eyelashes:()=>eyelashes.describe(),
   accessories:()=>accessories.describe(),
+  mouthFit(){
+    gltf.scene.updateMatrixWorld(true);
+    const lips=gltf.scene.getObjectByName('Carmela_Lips'),face=gltf.scene.getObjectByName('Carmela_Face');
+    const points=mesh=>Array.from({length:mesh.geometry.attributes.position.count},(_,i)=>mesh.getVertexPosition(i,new THREE.Vector3()).applyMatrix4(mesh.matrixWorld));
+    const lp=points(lips),fp=points(face),index=lips.geometry.index,edges=new Map();
+    for(let i=0;i<index.count;i+=3)for(const [a,b]of [[0,1],[1,2],[2,0]]){
+      const pair=[index.getX(i+a),index.getX(i+b)].sort((a,b)=>a-b),key=pair.join('/');
+      edges.set(key,(edges.get(key)||0)+1);
+    }
+    const adjacency=new Map();
+    for(const [key,count]of edges)if(count===1){
+      const [a,b]=key.split('/').map(Number);
+      for(const [x,y]of [[a,b],[b,a]]){
+        if(!adjacency.has(x))adjacency.set(x,[]);
+        adjacency.get(x).push(y);
+      }
+    }
+    const seen=new Set(),loops=[];
+    for(const start of adjacency.keys()){
+      if(seen.has(start))continue;
+      const stack=[start],loop=[];
+      while(stack.length){
+        const id=stack.pop();if(seen.has(id))continue;
+        seen.add(id);loop.push(id);
+        stack.push(...adjacency.get(id).filter(i=>!seen.has(i)));
+      }
+      const box=new THREE.Box3().setFromPoints(loop.map(i=>lp[i]));
+      let gap=0;
+      for(const id of loop){
+        let nearest=Infinity;
+        for(const p of fp)nearest=Math.min(nearest,p.distanceTo(lp[id]));
+        gap=Math.max(gap,nearest);
+      }
+      loops.push({vertices:loop.length,height:box.max.y-box.min.y,maxGap:gap});
+    }
+    return loops;
+  },
   headwear(action,progress){
     if(action){if(progress===undefined)headwear.request(action==='replace'||action==='worn');else{headwear.restorePose();headwear.sample(action,progress);renderer.render(scene,camera);}}
     return headwear.describe();
@@ -612,7 +655,9 @@ window.__faceLab = {
       if (!mesh.userData.reviewMaterial) mesh.userData.reviewMaterial = mesh.material;
       const original = mesh.userData.reviewMaterial;
       if (mesh.material !== original) mesh.material.dispose();
-      mesh.material = mode === 'eye-fit'
+      mesh.material = mode === 'mouth-fit'
+        ? new THREE.MeshBasicMaterial({color:mesh.name.startsWith('Carmela_Teeth')?'#ff0000':'#404040',side:THREE.DoubleSide})
+        : mode === 'eye-fit'
         ? new THREE.MeshBasicMaterial({color:mesh.name.startsWith('Carmela_Eye_')?'#ff0000':mesh.name.startsWith('Carmela_Lid_')?'#375b9b':'#242424',side:THREE.DoubleSide})
         : mode === 'original' ? original : mode === 'texture'
         ? new THREE.MeshBasicMaterial({ map: original.map, color: original.color, side: THREE.DoubleSide })
@@ -679,6 +724,7 @@ window.__faceLab = {
     headwear.sample(headwearAction,hatProgress);
     gltf.scene.updateMatrixWorld(true);
     if (view === 'body') frameBody();
+    else if(view==='mouth')frameMouth();
     else if(view==='accessories')frameAccessories();
     else if (view === 'torso') frameTorso();
     else frameHead(false);
