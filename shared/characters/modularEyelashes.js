@@ -4,9 +4,9 @@ import {MODULAR_HAIR_TONES} from './modularAppearance.js';
 export const EYELASH_LEVELS=[
   {label:'Minimal',upper:14,lower:4,length:.0028,width:.00007,curl:.16},
   {label:'Light',upper:22,lower:7,length:.0040,width:.00008,curl:.22},
-  {label:'Natural',upper:30,lower:10,length:.0054,width:.00010,curl:.28},
-  {label:'Full',upper:39,lower:13,length:.0067,width:.00012,curl:.34},
-  {label:'Prominent',upper:48,lower:16,length:.0080,width:.00014,curl:.40},
+  {label:'Natural',upper:32,lower:11,length:.0058,width:.00013,curl:.28},
+  {label:'Full',upper:42,lower:14,length:.0072,width:.00018,curl:.34},
+  {label:'Prominent',upper:56,lower:18,length:.0090,width:.00023,curl:.40},
 ];
 export const EYELASH_TONES={auto:'Follow hair',black:'Soft black',brown:'Brown',fair:'Fair',gray:'Grey'};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -58,9 +58,9 @@ export function createModularEyelashes(root,{cohort='women',seed=1}={}){
     const rimSet=new Set(rim),outside=rim.map(id=>[...neighbors[id]].filter(n=>!rimSet.has(n)).sort((a,b)=>
       point(source,a,matrix).distanceToSquared(point(source,id,matrix))-point(source,b,matrix).distanceToSquared(point(source,id,matrix)))[0]);
     if(outside.some(i=>i===undefined))return;
-    const tangent=point(source,rim[2],matrix).sub(point(source,rim[0],matrix));
-    const out=point(source,outside[1],matrix).sub(point(source,rim[1],matrix));
-    const normalSign=tangent.cross(out).dot(forward)<0?-1:1;
+    const horizontal=point(source,rim[0],matrix).sub(point(source,rim[rim.length/2],matrix));
+    const vertical=point(source,outside[rim.length/4],matrix).sub(point(source,outside[rim.length*3/4],matrix));
+    const normalSign=horizontal.cross(vertical).dot(forward)<0?-1:1;
     const material=new THREE.MeshStandardMaterial({color:'#241a14',roughness:.9,metalness:0,side:THREE.DoubleSide,transparent:true,depthWrite:false});
     material.forceSinglePass=true;
     material.onBeforeCompile=shader=>{
@@ -102,7 +102,7 @@ export function createModularEyelashes(root,{cohort='women',seed=1}={}){
       part.material.color.copy(color);triangles+=indices.length/3;
     }
   }
-  const matrix=new THREE.Matrix4(),rootInverse=new THREE.Matrix4(),a=new THREE.Vector3(),b=new THREE.Vector3(),tangent=new THREE.Vector3(),outside=new THREE.Vector3(),normal=new THREE.Vector3(),direction=new THREE.Vector3(),across=new THREE.Vector3(),tip=new THREE.Vector3(),anchor=new THREE.Vector3(),cameraPosition=new THREE.Vector3(),worldPoint=new THREE.Vector3(),rootScale=new THREE.Vector3();
+  const matrix=new THREE.Matrix4(),rootInverse=new THREE.Matrix4(),a=new THREE.Vector3(),b=new THREE.Vector3(),tangent=new THREE.Vector3(),outside=new THREE.Vector3(),normal=new THREE.Vector3(),vertical=new THREE.Vector3(),direction=new THREE.Vector3(),across=new THREE.Vector3(),tip=new THREE.Vector3(),anchor=new THREE.Vector3(),cameraPosition=new THREE.Vector3(),worldPoint=new THREE.Vector3(),rootScale=new THREE.Vector3();
   function update(camera=null,pixelHeight=900){
     if(!parts.length)return;
     root.updateWorldMatrix(true,true);rootInverse.copy(root.matrixWorld).invert();root.getWorldScale(rootScale);camera?.getWorldPosition(cameraPosition);
@@ -111,22 +111,28 @@ export function createModularEyelashes(root,{cohort='women',seed=1}={}){
       for(let i=0;i<part.rim.length;i++){point(part.source,part.rim[i],matrix,part.points[i]);point(part.source,part.outside[i],matrix,part.outer[i]);}
       const blinkName='eyeBlink'+part.source.name.split('_').at(-1),blink=part.source.morphTargetInfluences?.[part.source.morphTargetDictionary?.[blinkName]]||0;
       const attr=part.mesh.geometry.attributes.position,n=part.rim.length,unit=part.points[0].distanceTo(part.points[n/2])/.033;
+      // A rolled lid's local normal can point into the socket. Use the eye's
+      // moving front plane so lashes grow clear of the skin on every head.
+      normal.copy(part.points[0]).sub(part.points[n/2]);vertical.copy(part.outer[n/4]).sub(part.outer[n*3/4]);
+      normal.cross(vertical).normalize().multiplyScalar(part.normalSign);
       const coverage=part.mesh.geometry.attributes.lashCoverage;
       worldPoint.copy(part.points[0]).applyMatrix4(root.matrixWorld);
       const pixel=camera?.isPerspectiveCamera?2*worldPoint.distanceTo(cameraPosition)*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))/Math.max(1,pixelHeight)/rootScale.y:0;
       for(const [index,strand]of part.strands.entries()){
         const value=(strand.upper?strand.fraction:1+strand.fraction)*n/2,i=Math.floor(value)%n,j=(i+1)%n,t=value-Math.floor(value);
         a.lerpVectors(part.points[i],part.points[j],t);b.lerpVectors(part.outer[i],part.outer[j],t);
-        tangent.copy(part.points[(j+1)%n]).sub(part.points[(i-1+n)%n]).normalize();outside.copy(b).sub(a).normalize();
-        normal.crossVectors(tangent,outside).normalize().multiplyScalar(part.normalSign);
+        tangent.copy(part.points[(j+1)%n]).sub(part.points[(i-1+n)%n]).normalize();outside.crossVectors(tangent,normal).normalize();
         direction.copy(normal).multiplyScalar(.85).addScaledVector(outside,strand.upper?.45-.65*blink:.45).addScaledVector(tangent,(strand.fraction-.5)*.22+strand.fan).normalize();
         across.copy(tangent).addScaledVector(direction,-tangent.dot(direction)).normalize();
-        const length=strand.length*unit*(strand.upper?1:1-.35*blink);anchor.copy(a).addScaledVector(normal,.00012*unit);
+        const length=strand.length*unit*(strand.upper?1:1-.35*blink);
+        // Lashes emerge from the anterior skin margin, just outside the wet
+        // inner edge. Starting inside that edge buries their roots in the roll.
+        anchor.lerpVectors(a,b,.25).addScaledVector(normal,.00012*unit);
         for(let segment=0;segment<=5;segment++){
           const v=segment/5;tip.copy(anchor).addScaledVector(direction,length*v).addScaledVector(outside,strand.curl*length*v*v*(strand.upper?1:.4));
           // Preserve subpixel fibre coverage as soft alpha instead of letting
           // narrow triangles break into dots as the camera pulls back.
-          const physical=strand.width*unit*(1-v*.96),display=Math.max(physical,.00018*unit,pixel*1.2),width=display*.5;
+          const physical=strand.width*unit*(1-v*.96),display=Math.max(physical,.00018*unit,pixel*2.5),width=display*.5;
           for(const side of [-1,1]){
             const vertex=index*12+segment*2+(side===1?1:0);attr.setXYZ(vertex,tip.x+across.x*width*side,tip.y+across.y*width*side,tip.z+across.z*width*side);coverage.setX(vertex,physical/display);
           }

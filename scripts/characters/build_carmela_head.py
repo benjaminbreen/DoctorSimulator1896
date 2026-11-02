@@ -281,7 +281,7 @@ lid_material = skin.copy()
 lid_material.name = 'Carmela_LidSkin'
 if male:
     shader=lid_material.node_tree.nodes.get('Principled BSDF')
-    for name,value in [('Normal',None),('Metallic',0),('Roughness',.85)]:
+    for name,value in [('Normal',None),('Metallic',0),('Roughness',.68)]:
         for link in list(shader.inputs[name].links):lid_material.node_tree.links.remove(link)
         if value is not None:shader.inputs[name].default_value=value
     clean=atlas_pixels.copy()
@@ -290,13 +290,20 @@ if male:
         for col in range(width):
             x=atlas_x+(col+.5)/width*atlas_width
             cx=eye_x if x>=0 else -eye_x
-            radius=math.sqrt(((x-cx)/(.030+eye_width))**2+((z-eye_z)/.047)**2)
-            t=max(0,min(1,(radius-.58)/.42));blend=1-t*t*(3-2*t)
-            if blend<=0:continue
-            _,skin_uv=sample(cx+(x-cx)*.5,eye_z-.075+(z-eye_z)*.15)
-            u,v=skin_uv
-            skin_pixel=source_pixels[min(source_image.size[1]-1,int((v%1)*source_image.size[1])),min(source_image.size[0]-1,int((u%1)*source_image.size[0]))]
-            clean[row,col]=clean[row,col]*(1-blend)+skin_pixel*blend
+            # Remove the painted eyeball and lashes, while retaining the
+            # donor's lid fold instead of replacing the whole socket with cheek.
+            radius=math.sqrt(((x-cx)/(eye_width+.006))**2+((z-eye_z)/(.027 if z>=eye_z else .025))**2)
+            t=max(0,min(1,(radius-.90)/.35));blend=1-t*t*(3-2*t)
+            if blend>0:
+                _,skin_uv=sample(cx+(x-cx)*.5,eye_z-.075+(z-eye_z)*.15)
+                u,v=skin_uv
+                skin_pixel=source_pixels[min(source_image.size[1]-1,int((v%1)*source_image.size[1])),min(source_image.size[0]-1,int((u%1)*source_image.size[0]))]
+                clean[row,col]=clean[row,col]*(1-blend)+skin_pixel*blend
+            rim=math.sqrt(((x-cx)/(eye_width*.90))**2+((z-eye_z)/(.025 if z>=eye_z else .017))**2)
+            side=max(0,1-((x-cx)/(eye_width*1.10))**2)**.5
+            edge=math.exp(-((rim-1)/.055)**2)*side
+            fold=math.exp(-((rim-1.38)/.08)**2)*side if z>eye_z else 0
+            clean[row,col,:3]*=1-edge*np.array([.30,.39,.43])-fold*np.array([.15,.20,.22])
     lid_image=bpy.data.images.new('Patient_CleanLidSkin',width=width,height=height)
     lid_image.pixels.foreach_set(clean.ravel())
     lid_image.filepath_raw=os.path.abspath(os.path.join(args.output,'clean-lid-skin.png'));lid_image.file_format='PNG';lid_image.save();lid_image.pack()
@@ -312,7 +319,7 @@ def atlas_uv(x, z):
     return ((x-atlas_x)/atlas_width, (z-atlas_z)/atlas_height)
 
 eye_depth=eye_width*1.1 if male else .056
-eye_radius=eye_width*1.1 if male else .055
+eye_radius=eye_width*.90 if male else .055
 for sign, side in [(1, 'Left'), (-1, 'Right')]:
     cx, cz = sign * eye_x, eye_z
     center_y = sample(cx, cz)[0] + eye_depth
@@ -346,8 +353,8 @@ for sign, side in [(1, 'Left'), (-1, 'Right')]:
         for column in range(columns):
             a = column / columns * math.tau
             c, s = math.cos(a), math.sin(a)
-            dx = ((1-t)*eye_width + t*(eye_width+.030)) * c
-            radius = (.016 if s>=0 else .010) if male else (.020 if s>=0 else .016)
+            dx = ((1-t)*eye_width*(.90 if male else 1) + t*(eye_width+.030)) * c
+            radius = (.017 if s>=0 else .011) if male else (.020 if s>=0 else .016)
             opened_z = cz + ((1-t)*radius + t*.047) * s
             closed_line = cz-.003*(1-c*c)
             closed_z = opened_z+(closed_line-opened_z)*(1-t)**1.2
@@ -356,10 +363,13 @@ for sign, side in [(1, 'Left'), (-1, 'Right')]:
             globe = center_y - eye_depth * math.sqrt(max(0, 1-(dx/(eye_width*1.1))**2-((closed_z-cz)/eye_radius)**2))
             if male:
                 globe_open=center_y-eye_depth*math.sqrt(max(0,1-(dx/(eye_width*1.1))**2-((opened_z-cz)/eye_radius)**2))
-                # The entire lid must stay outside the eyeball. Blending back
-                # through the sphere exposes extra white crescents at its rim.
-                open_y=min(globe_open,open_y)
-                offset=.0002+.001*(1-t)**2
+                # Wrap the margin onto the globe, then meet the scanned skin.
+                # A flat skin bridge leaves an exposed, detached-looking eye.
+                blend=max(0,min(1,t/.5));blend=blend*blend*(3-2*blend)
+                wrap=(1-blend)*abs(s)**.5
+                rolled=globe_open-.0015-.002*math.exp(-((t-.14)/.09)**2)
+                open_y=min(globe_open-.001,min(globe_open,open_y)*(1-wrap)+rolled*wrap)
+                offset=.0002
             else:
                 offset=.001
             vertices.append((cx+dx, open_y-offset, opened_z))

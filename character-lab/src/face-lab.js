@@ -42,7 +42,7 @@ const CHARACTERS = [
 const requested = new URLSearchParams(window.location.search).get('model');
 const CHARACTER = CHARACTERS.find((entry) => entry.id === requested) || CHARACTERS[0];
 const maleCharacter = CHARACTER.id.startsWith('male-') || ['samuel-taylor','wine-merchant'].includes(CHARACTER.id);
-const MODEL = CHARACTER.path+(CHARACTER.id === 'male-worker-template' ? '?v=20261101-worker-1' : CHARACTER.id.startsWith('male-')?'?v=20261031-garments-7':'');
+const MODEL = CHARACTER.path+(CHARACTER.id.startsWith('male-')?'?v=20261101-eye-fit-1':'');
 document.querySelector('#panel h1').textContent = `Face Lab — ${CHARACTER.label}`;
 document.title = `Face Lab — ${CHARACTER.label}`;
 
@@ -581,7 +581,9 @@ window.__faceLab = {
       if (!mesh.userData.reviewMaterial) mesh.userData.reviewMaterial = mesh.material;
       const original = mesh.userData.reviewMaterial;
       if (mesh.material !== original) mesh.material.dispose();
-      mesh.material = mode === 'original' ? original : mode === 'texture'
+      mesh.material = mode === 'eye-fit'
+        ? new THREE.MeshBasicMaterial({color:mesh.name.startsWith('Carmela_Eye_')?'#ff0000':mesh.name.startsWith('Carmela_Lid_')?'#375b9b':'#242424',side:THREE.DoubleSide})
+        : mode === 'original' ? original : mode === 'texture'
         ? new THREE.MeshBasicMaterial({ map: original.map, color: original.color, side: THREE.DoubleSide })
         : mode === 'front' ? Object.assign(original.clone(), { side: THREE.FrontSide })
         : new THREE.MeshNormalMaterial({ side: THREE.DoubleSide });

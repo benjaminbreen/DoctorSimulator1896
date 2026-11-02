@@ -36,7 +36,7 @@ eye curve. Lower lashes are shorter and sparser.
 
 Each fibre is a curved, tapered strip. Screen-size coverage widens subpixel
 strips and reduces their alpha, keeping them from breaking into dark dots as
-the camera pulls away. The two eyes add two draw calls and 360–1,280 triangles,
+the camera pulls away. The two eyes add two draw calls and 360–1,480 triangles,
 with no new texture download or cast shadows. Geometry and materials belong
 to the actor and are disposed with it.
 
@@ -44,6 +44,31 @@ The controller supports the five modular assets: Carmela, the seamstress,
 lean male, broad male and complete worker. Older one-piece heads without the
 fitted `Carmela_Lid_Left` / `Right` meshes retain their existing asset appearance.
 This is natural lash variation, not a mascara or false-eyelash system.
+
+## Male eye correction
+
+The first comparison overstated the consistency between heads. Carmela and
+the seamstress already have painted lashes, a dark lid margin and creases in
+their original eye atlases. Their Minimal setting means the least added fibre;
+it does not remove that painted base. The male cleanup previously replaced too
+much of the socket with cheek skin, losing its folds and margin definition.
+
+The correction preserves more of the male donor's lid fold and bakes a fitted
+margin and crease into its skin map. The narrower opening wraps onto the globe
+before meeting the surrounding skin. A smaller vertical globe radius removes
+the blue/white fragments that poked through the lower socket. This applies to
+both male head families and the complete worker, retaining all nine clips and
+their facial controls. The eye surface also has a lighter sclera and clear coat.
+
+The fibre fan now uses the moving eye plane instead of a local lid normal,
+which could point into the socket on the worker's steep lid roll. Roots sit
+on the anterior skin margin, just outside the wet inner edge. The middle and
+upper levels have more visible fibres, with softer subpixel coverage.
+
+The female painted baseline remains a limit on absolute cross-head matching.
+Removing those painted strands while keeping the existing skin and crease
+detail would be a separate texture cleanup; the current controls add geometry
+above that baseline.
 
 ## Review
 
@@ -68,3 +93,19 @@ browser/resource errors. The worker's 15-step consultation and Carmela's
 45-step expression/consultation route completed without failed actions or
 browser errors. Their capture metadata confirms Natural lashes on the worker
 and Full lashes on Carmela. PNGs and motion contact sheets were inspected.
+
+Add `--eye-fit` to save 15 more poses and flat eye masks across the five heads.
+In Face Lab, `inspectShading('eye-fit')` shows eye surfaces red and lids blue.
+For the male sclera maps, the runner checks for disconnected exposed fragments
+and uncovered eyes during full closure, allowing a few antialiasing pixels.
+Female atlases also contain surrounding skin, so their raw mesh masks are
+diagnostic images rather than a sclera-only assertion.
+
+The correction passed both production builds, 795 game tests and nine runtime
+tests. The final review saved 58 poses and two live videos without browser or
+resource errors. The three male heads passed the exposed-sclera checks, with
+no uncovered eye pixels at full closure. The worker's 15-step consultation and
+Carmela's 45-step route passed again. Asset comparison confirmed unchanged
+joint/node names, clips, facial-control names and triangle counts. The final
+captures are in `artifacts/characters/eyelashes/lid-final/` and
+`artifacts/gameplay/{worker,carmela}-eye-fit/`.

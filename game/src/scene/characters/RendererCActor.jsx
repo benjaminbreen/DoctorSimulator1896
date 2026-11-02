@@ -67,7 +67,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
   const castLook = reviewing ? MODULAR_CAST_LOOKS.find(preset => preset.id === review.get('appearancePreset')) : null;
   const reviewSeed = reviewing ? review.get('appearanceSeed') : null;
   // Bump the review URL when an exported character's geometry changes.
-  const reviewVersion=castLook?.model==='male-worker-template'?'20261101-worker-1':castLook?.cohort==='men'?'20261031-garments-7':'20261030-4';
+  const reviewVersion=castLook?.cohort==='men'?'20261101-eye-fit-1':'20261030-4';
   const bodyPath = castLook ? `/models/characters/${castLook.model}.glb?v=${reviewVersion}` : patientModelPath(recipe, manifest);
   const [gltf, motionGltf] = useLoader(GLTFLoader,
     [bodyPath, recipe.asset?.motionPath || bodyPath], configure);

@@ -20,11 +20,12 @@ function fixture(){
 function rootError(root,lids,lashes){
  root.updateMatrixWorld(true);const inverse=root.matrixWorld.clone().invert();let worst=0;
  for(let eye=0;eye<2;eye++){
-  const lid=lids[eye],matrix=new THREE.Matrix4().multiplyMatrices(inverse,lid.matrixWorld),rim=Array.from({length:64},(_,i)=>lid.getVertexPosition(i,new THREE.Vector3()).applyMatrix4(matrix));
+  const lid=lids[eye],matrix=new THREE.Matrix4().multiplyMatrices(inverse,lid.matrixWorld),points=Array.from({length:128},(_,i)=>lid.getVertexPosition(i,new THREE.Vector3()).applyMatrix4(matrix));
+  const index=lid.geometry.index,triangles=[];for(let i=0;i<64*6;i+=3)triangles.push(new THREE.Triangle(...[0,1,2].map(j=>points[index.getX(i+j)])));
   const p=lashes.meshes[eye].geometry.attributes.position;
   for(let i=0;i<p.count;i+=12){
    const anchor=new THREE.Vector3().fromBufferAttribute(p,i).add(new THREE.Vector3().fromBufferAttribute(p,i+1)).multiplyScalar(.5);let nearest=Infinity;
-   for(let j=0;j<64;j++)nearest=Math.min(nearest,new THREE.Line3(rim[j],rim[(j+1)%64]).closestPointToPoint(anchor,true,new THREE.Vector3()).distanceTo(anchor));
+   for(const triangle of triangles)nearest=Math.min(nearest,triangle.closestPointToPoint(anchor,new THREE.Vector3()).distanceTo(anchor));
    worst=Math.max(worst,nearest);
   }
  }return worst;
@@ -56,6 +57,21 @@ test('seeded lash choices overlap across both ranges while favouring fuller fema
   const look=eyelashVariation(seed,male);assert.deepEqual(look,eyelashVariation(seed,male));assert.ok(look.lashProminence>=0&&look.lashProminence<=4);seen[index].add(look.lashProminence);if(male)men+=look.lashProminence;else women+=look.lashProminence;
  }
  assert.equal(seen[0].size,5);assert.equal(seen[1].size,5);assert.ok(women/1600>men/1600+.2);
+});
+
+test('a steep rolled lid cannot turn the lash fan back into the socket',()=>{
+ const {root,lids}=fixture();
+ for(const lid of lids){const p=lid.geometry.attributes.position;for(let i=64;i<128;i++)p.setZ(i,p.getZ(i)+.02);}
+ const lashes=createModularEyelashes(root);lashes.updateLook({lashProminence:4});lashes.update();
+ for(const mesh of lashes.meshes){
+  const p=mesh.geometry.attributes.position,count=EYELASH_LEVELS[4].upper;
+  for(let i=Math.floor(count*.3);i<Math.floor(count*.7);i++){
+   const anchor=new THREE.Vector3().fromBufferAttribute(p,i*12).add(new THREE.Vector3().fromBufferAttribute(p,i*12+1)).multiplyScalar(.5);
+   const tip=new THREE.Vector3().fromBufferAttribute(p,i*12+10).add(new THREE.Vector3().fromBufferAttribute(p,i*12+11)).multiplyScalar(.5);
+   assert.ok(tip.y>anchor.y+.001,'Upper lashes should fan upwards');
+   assert.ok(tip.z>anchor.z+.001,'Lashes should grow in front of the eye');
+  }
+ }lashes.dispose();
 });
 
 test('auto lash colour follows hair tone, and unsupported heads retain their existing assets',()=>{

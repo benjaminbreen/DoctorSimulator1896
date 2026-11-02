@@ -43,7 +43,7 @@ def build(parts, identity, output):
     # as a luminous white insert, even under broad inspection lighting.
     lid_shadow=.88+.10*np.exp(-((v-cv)/(.012/atlas_height))**2)
     corners=np.clip((abs(u-cu)-.030/atlas_width)/(.025/atlas_width),0,1)
-    white=np.array([.73,.71,.67])[None,None,:]*lid_shadow[:,:,None]*(1+noise[:,:,None]*.35)
+    white=np.array([.82,.79,.75])[None,None,:]*lid_shadow[:,:,None]*(1+noise[:,:,None]*.35)
     white=white*(1-corners[:,:,None]*.12)+np.array([.46,.22,.20])[None,None,:]*corners[:,:,None]*.12
     pixels=np.ones((height,width,4),dtype=np.float32)
     color=color*edge[:,:,None]+white*(1-edge[:,:,None])
@@ -56,6 +56,6 @@ def build(parts, identity, output):
         material=eye.data.materials[0]
         next(n for n in material.node_tree.nodes if n.type=='TEX_IMAGE').image=image
         shader=material.node_tree.nodes.get('Principled BSDF')
-        for name,value in [('Normal',None),('Metallic',0),('Roughness',.14),('Specular IOR Level',.5)]:
+        for name,value in [('Normal',None),('Metallic',0),('Roughness',.14),('Specular IOR Level',.5),('Coat Weight',.28),('Coat Roughness',.06)]:
             for link in list(shader.inputs[name].links):material.node_tree.links.remove(link)
             if value is not None:shader.inputs[name].default_value=value
