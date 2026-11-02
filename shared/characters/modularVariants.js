@@ -2,6 +2,7 @@ import {eyelashVariation} from './modularEyelashes.js';
 import { MODULAR_FACE_STUDIES, MODULAR_NOSE_STUDIES } from './modularIdentity.js';
 import { MODULAR_HAIR_STYLES } from './modularHair.js';
 import { headwearVariation } from './headwearGeometry.js';
+import {accessoryVariation} from './periodAccessories.js';
 
 export function createModularVariation(seed = 1, male = false) {
   let state = (Math.trunc(Number(seed)) || 1) >>> 0;
@@ -12,7 +13,7 @@ export function createModularVariation(seed = 1, male = false) {
   };
   const face = pick(MODULAR_FACE_STUDIES.slice(4));
   const nose = pick(MODULAR_NOSE_STUDIES);
-  return {
+  const look={
     seed, identityVariant: 0,
     ...eyelashVariation(seed,male),
     ...headwearVariation(seed,male?'men':'women',['working','middle','affluent'][Math.abs(Math.trunc(Number(seed)||1))%3]),
@@ -30,4 +31,5 @@ export function createModularVariation(seed = 1, male = false) {
     hairPartOffset: pick([-.4, 0, .4]),
     hairEarCoverage: pick([-.2, 0, .3, .6]),
   };
+  return {...look,...accessoryVariation(seed,male?'men':'women',['plain','everyday','dress'][Math.abs(Math.trunc(Number(seed)||1))%3],look.outfit)};
 }

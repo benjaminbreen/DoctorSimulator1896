@@ -299,3 +299,12 @@ combines those sources with project-authored herringbone, weave, straw braid,
 velvet pile, leather grain and feather fields. It bakes separate albedo, normal
 and occlusion/roughness maps into `textures/headwear` in both apps. Museum
 reference images remain reference-only and are not part of these textures.
+
+## Modular accessories, November 1, 2026
+
+The procedural spectacles, pince-nez, neckwear, brooches, earrings, lockets,
+stickpins and watch chains are project-authored JavaScript geometry. Neckwear
+reuses the project's original baked silk and linen maps credited above, with
+procedural patterns. No new third-party models or textures were downloaded and
+no Tripo credits were used. Museum references and their date limitations are
+recorded in `docs/accessories.md`; their images are not shipped in the game.

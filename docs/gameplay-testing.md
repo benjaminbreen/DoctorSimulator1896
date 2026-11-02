@@ -59,7 +59,7 @@ For the modular Carmela appearance study, use
 parameter when adding its scenario flags. It selects a repeatable face and
 colour recipe only under `playtest=1`; the clinical case stays the same.
 Use `?appearancePreset=auburn-curls` to select a curated look and its head asset.
-The twelve choices are in `shared/characters/modularCast.js`. Capture state
+The 26 choices are in `shared/characters/modularCast.js`. Capture state
 records `assetPath` and `appearancePreset` in each performance entry so a review
 can confirm which geometry was actually rendered.
 Carmela's smaller lower face and stronger expressions are now the ordinary
@@ -202,6 +202,13 @@ Add `--offline --replay=game/scripts/playthroughs/modular-men.jsonl` for the
 repeatable entrance, dialogue, wrist/gum examination and return path. The replay
 waits for the full entrance before opening the interview. Use `broad-silver` to
 review a moustache and mutton chops through the same actions.
+
+Accessories are included in performance capture state: style and fit fields,
+triangle/draw-call counts, measured anchors and native-tie partition mode.
+`worker-silver` reviews oval spectacles with a work neckerchief; `broad-silver`
+reviews rimless pince-nez, a cravat, stickpin and double watch chain. Carmela's
+ordinary appearance includes her brooch and studs. The lab's accessory
+catalogue runner and historical sources are in `docs/accessories.md`.
 
 For character defects, use the lab's **Torso** view to keep the face, collar,
 wrists and lap in one capture. `window.__faceLab.pickSurface(x,y)` identifies

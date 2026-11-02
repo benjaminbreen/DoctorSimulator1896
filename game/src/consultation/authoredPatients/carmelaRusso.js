@@ -45,6 +45,7 @@ const recipe = patientToRendererCRecipe(profile, {
     features: { lowerFaceSize: -.6 },
     hairStyle: 'soft-side-waves',
     lashProminence: 3,
+    broochStyle:'oval',jewelryStone:'garnet',jewelryMetal:'brass',earringStyle:'stud',
     hairEarCoverage: .3,
     clipMap: {
       'clinic-idle': 'ClinicIdle',

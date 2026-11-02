@@ -1,4 +1,5 @@
 import {eyelashVariation} from './modularEyelashes.js';
+import {ACCESSORY_DEFAULTS} from './periodAccessories.js';
 // Appearance studies only; these records contain no clinical facts or roles.
 export const MODULAR_CAST_LOOKS = [
   { id:'carmela', label:'Carmela', model:'carmela-russo', look:{ lashProminence:3,features:{lowerFaceSize:-.6}, hairStyle:'soft-side-waves', hairEarCoverage:.3 } },
@@ -28,6 +29,35 @@ export const MODULAR_CAST_LOOKS = [
   { id:'worker-base', label:'Worker — cotton shirt and braces', cohort:'men', model:'male-worker-template', look:{lashProminence:2,hairStyle:'short-side-part',hairTone:'chestnut',outfit:'work-shirt'} },
   { id:'worker-silver', label:'Worker — silver whiskers', cohort:'men', model:'male-worker-template', look:{features:{lowerFaceSize:-.15,noseBridge:.35,noseLength:.2,earProminence:.3},hairStyle:'receding-sweep',hairTone:'mixedGray',sideburns:'mutton-chops',moustache:'full-moustache',eyeTone:'hazel',skinTone:'fairWarm',bellySize:.65,waistWidth:.2,palette:'navy',outfit:'work-shirt'} },
 ].map((preset,index) => ({...preset, look:{
+  ...ACCESSORY_DEFAULTS,
+  ...({
+    carmela:{broochStyle:'oval',jewelryStone:'garnet',earringStyle:'stud'},
+    'auburn-low-knot':{broochStyle:'cameo',earringStyle:'pearl',jewelryMetal:'gold'},
+    'silver-waves':{glassesStyle:'oval',glassesMetal:'silver',broochStyle:'bar',jewelryStone:'pearl'},
+    'chestnut-braid':{broochStyle:'bar',jewelryMetal:'brass',jewelryStone:'amber'},
+    'dark-curls':{earringStyle:'pearl',broochStyle:'oval',jewelryStone:'turquoise'},
+    'grey-chignon':{glassesStyle:'pince-nez',glassesMetal:'gold',earringStyle:'stud',locketStyle:'oval'},
+    seamstress:{glassesStyle:'round',glassesMetal:'steel'},
+    'copper-side-waves':{broochStyle:'cameo',earringStyle:'drop',jewelryStone:'garnet'},
+    'black-low-knot':{broochStyle:'jet',earringStyle:'jet',jewelryMetal:'silver'},
+    'blonde-braid':{glassesStyle:'rimless',glassesMetal:'gold',broochStyle:'bar'},
+    'silver-high-knot':{earringStyle:'pearl',broochStyle:'oval',jewelryStone:'amber'},
+    'auburn-curls':{glassesStyle:'oval',lensTint:'blue',earringStyle:'stud'},
+    'lean-base':{neckwearStyle:'tie',neckwearColor:'navy',neckwearPattern:'dot'},
+    'lean-fine':{neckwearStyle:'kerchief',neckwearColor:'slate',neckwearWear:.3},
+    'lean-convex':{glassesStyle:'oval',glassesMetal:'silver',neckwearStyle:'cravat',neckwearPattern:'stripe',tiePin:'pearl',watchChain:'single'},
+    'lean-bald':{glassesStyle:'round',glassesMetal:'black',neckwearStyle:'bow',neckwearColor:'black'},
+    'broad-base':{neckwearStyle:'bow',neckwearColor:'wine',watchChain:'single'},
+    'broad-compact':{glassesStyle:'pince-nez',glassesMetal:'gold',neckwearStyle:'tie',neckwearPattern:'stripe',tiePin:'plain'},
+    'broad-silver':{glassesStyle:'rimless',glassesMetal:'gold',neckwearStyle:'cravat',neckwearColor:'cream',tiePin:'stone',watchChain:'double'},
+    'broad-bald':{glassesStyle:'round',lensTint:'smoke',neckwearStyle:'bow',neckwearColor:'black'},
+    'lean-rounded':{neckwearStyle:'kerchief',neckwearColor:'ochre',neckwearWear:.45},
+    'lean-angular':{neckwearStyle:'tie',neckwearColor:'wine',watchChain:'single'},
+    'broad-fine':{neckwearStyle:'bow',neckwearColor:'forest',neckwearPattern:'dot'},
+    'broad-angular':{neckwearStyle:'kerchief',neckwearColor:'wine'},
+    'worker-base':{neckwearStyle:'kerchief',neckwearColor:'navy',neckwearWear:.4},
+    'worker-silver':{glassesStyle:'oval',glassesMetal:'steel',neckwearStyle:'kerchief',neckwearColor:'wine',neckwearPattern:'dot',neckwearWear:.3},
+  }[preset.id]||{}),
   ...eyelashVariation(1896+index*31,preset.cohort==='men'),
   ...({
     carmela:{hatStyle:'work-bonnet',hatColor:'brown',hatWear:.4},

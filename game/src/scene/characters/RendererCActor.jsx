@@ -17,6 +17,7 @@ import { createPatientMotion } from './patientMotion.js';
 import {createHeadwear} from '../../../../shared/characters/headwearPerformance.js';
 import {HEADWEAR_TEXTURE_URLS,configureHeadwearTextures} from '../../../../shared/characters/headwearMaterials.js';
 import {createModularEyelashes} from '../../../../shared/characters/modularEyelashes.js';
+import {createPeriodAccessories} from '../../../../shared/characters/periodAccessories.js';
 import { gameDebug } from '../../debug.js';
 import { examinationPresentation } from '../../consultation/examPresentation.js';
 import { getKTX2Loader } from '../ktx2.js';
@@ -141,6 +142,8 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
     const headwear=createHeadwear(root,hatLook);
     const eyelashes=createModularEyelashes(root,{cohort:recipe.cohort,seed:recipe.appearanceSeed});
     eyelashes.updateLook(look);
+    wardrobe.update({seated:false,outfit:look.outfit,apron:look.outfit==='work-apron',palette:look.palette,dt:0});
+    const accessories=createPeriodAccessories(root,{cohort:recipe.cohort,frame:identity.frame});accessories.updateLook(look);
     const lips = root.getObjectByName('Carmela_Lips');
     let mouthAnchor = null;
     if (lips && motion.bones.head) {
@@ -151,7 +154,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
       lips.localToWorld(mouthAnchor);
       motion.bones.head.worldToLocal(mouthAnchor);
     }
-    return { root, mixer, face, motion, headwear, eyelashes, hatLook, hatClock:0, hatAutomatic:false, wardrobe, identity, appearance, hair, look, mouthAnchor, mouthPoint:new THREE.Vector3() };
+    return { root, mixer, face, motion, headwear, eyelashes, accessories, hatLook, hatClock:0, hatAutomatic:false, wardrobe, identity, appearance, hair, look, mouthAnchor, mouthPoint:new THREE.Vector3() };
   }, [
     gltf,
     manifest,
@@ -397,6 +400,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
     // Hat geometry is built per actor, unlike the shared GLB geometry.
     actor.headwear.dispose();
     actor.eyelashes.dispose();
+    actor.accessories.dispose();
     const materials = new Set();
     const ownedTextures = new Set();
     actor.root.traverse((object) => {
@@ -505,6 +509,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
       actor.face.update(dt, recipe.animation);
       actor.headwear.update(dt);
       actor.eyelashes.update(camera,gl.domElement.height);actor.root.userData.eyelashes=actor.eyelashes.describe();
+      actor.accessories.update();actor.root.userData.accessories=actor.accessories.describe();
       actor.root.userData.headwear=actor.headwear.describe();
       actor.root.userData.performance = recipe.animation;
       return;
@@ -525,6 +530,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
     }
     actor.headwear.update(dt,{followHand:animation.gesture==='extend-both-arms'});
     actor.eyelashes.update(camera,gl.domElement.height);actor.root.userData.eyelashes=actor.eyelashes.describe();
+    actor.accessories.update();actor.root.userData.accessories=actor.accessories.describe();
     actor.root.userData.headwear=actor.headwear.describe();
     actor.root.userData.performance = animation;
     // While the examination reading is up, publish where the annotated body
