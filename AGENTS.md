@@ -28,3 +28,8 @@ game, own package, `npm run game`, port 5175).
 - For gameplay, UI, or visual changes, play the affected path with
   `game/scripts/gameplay-playtest.mjs` and inspect its PNG captures. Read
   `docs/gameplay-testing.md` for the persistent session and replay workflow.
+- For character rig or clothing changes, inspect close-ups of the affected
+  joins in standing, walking and seated poses, on both sides and at an oblique
+  angle. Full-figure thumbnails and passing numeric checks do not establish
+  that cuffs, necklines or other attachments look correct. Fix visible defects
+  in the changed parts and record remaining problems plainly.

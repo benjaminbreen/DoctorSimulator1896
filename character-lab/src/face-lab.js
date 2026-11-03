@@ -47,7 +47,7 @@ const requested = new URLSearchParams(window.location.search).get('model');
 const CHARACTER = CHARACTERS.find((entry) => entry.id === requested) || CHARACTERS[0];
 const defaultCast=CHARACTER.head?MODULAR_CAST_LOOKS.find(preset=>preset.id===CHARACTER.id):null;
 const maleCharacter = CHARACTER.id.startsWith('male-') || ['samuel-taylor','wine-merchant'].includes(CHARACTER.id);
-const MODEL = CHARACTER.path+'?v=20261103-stance-1';
+const MODEL = CHARACTER.path+'?v=20261103-wrist-1';
 document.querySelector('#panel h1').textContent = `Face Lab — ${CHARACTER.label}`;
 document.title = `Face Lab — ${CHARACTER.label}`;
 
@@ -466,7 +466,14 @@ function frameMouth(){
   const target=new THREE.Box3().setFromObject(lips,true).getCenter(new THREE.Vector3());
   camera.position.copy(target).add(new THREE.Vector3(.01,.005,.24));orbit.target.copy(target);orbit.update();
 }
-viewRow.append(button('Face', frameHead), button('Mouth',frameMouth), button('Accessories',frameAccessories), button('Torso', frameTorso), button('Whole figure', frameBody));
+function frameWrist(side){
+  const hand=gltf.scene.getObjectByName('mixamorig'+side+'Hand'),middle=gltf.scene.getObjectByName('mixamorig'+side+'HandMiddle1');
+  if(!hand||!middle)return;
+  gltf.scene.updateMatrixWorld(true);
+  const target=hand.getWorldPosition(new THREE.Vector3()).lerp(middle.getWorldPosition(new THREE.Vector3()),.18);
+  camera.position.copy(target).add(new THREE.Vector3(side==='Left'?.15:-.15,.045,.34));orbit.target.copy(target);orbit.update();
+}
+viewRow.append(button('Face', frameHead), button('Mouth',frameMouth), button('Accessories',frameAccessories), button('Torso', frameTorso), button('Whole figure', frameBody),button('Left wrist',()=>frameWrist('Left')),button('Right wrist',()=>frameWrist('Right')));
 performanceSection.append(viewRow);
 controlsHost.append(performanceSection);
 
@@ -744,6 +751,7 @@ window.__faceLab = {
     else if(view==='mouth')frameMouth();
     else if(view==='accessories')frameAccessories();
     else if (view === 'torso') frameTorso();
+    else if(view==='left-wrist'||view==='right-wrist')frameWrist(view==='left-wrist'?'Left':'Right');
     else frameHead(false);
     camera.position.sub(orbit.target).applyAxisAngle(new THREE.Vector3(0, 1, 0), angle).add(orbit.target);
     orbit.update();

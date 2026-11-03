@@ -171,6 +171,18 @@ def build(body, rig, clinic, height, output):
     formal.name = 'Patient_FormalUpper'
     bpy.context.collection.objects.link(formal)
     crop(formal, lambda f:f.index not in upper_faces)
+    # The donor's cuffs are fragmented into skin and shirt patches. Replace
+    # them with closed cloth tubes, independent of hand colour and finger bones.
+    def native_cuff(face):
+        centre=face.calc_center_median()
+        side=min(['Left','Right'],key=lambda side:(centre-rig.data.bones[f'mixamorig:{side}Hand'].head_local).length)
+        wrist=rig.data.bones[f'mixamorig:{side}Hand'].head_local
+        if (centre-wrist).length>=.15:return False
+        axis=(wrist-rig.data.bones[f'mixamorig:{side}ForeArm'].head_local).normalized()
+        return face.material_index==1 or (face.material_index==3 and (centre-wrist).dot(axis)>-.055)
+    crop(formal,native_cuff)
+    cuff_fabric=cloth('Patient_FormalCuffFabric',(.80,.78,.73),output)
+    formal.data.materials.append(cuff_fabric)
     bm=bmesh.new();bm.from_mesh(formal.data)
     for side in ['Left','Right']:
         wrist=rig.data.bones[f'mixamorig:{side}Hand'].head_local
@@ -179,7 +191,44 @@ def build(body, rig, clinic, height, output):
         geometry=list(selected)+[e for e in bm.edges if all(v in selected for v in e.verts)]+[f for f in bm.faces if all(v in selected for v in f.verts)]
         bmesh.ops.bisect_plane(bm,geom=geometry,plane_co=wrist+forward*.010,plane_no=forward,clear_outer=True)
     bmesh.ops.delete(bm,geom=[v for v in bm.verts if not v.link_faces],context='VERTS')
+    deform=bm.verts.layers.deform.verify();uv_layer=bm.loops.layers.uv.active
+    shape_layers=list(bm.verts.layers.shape.values())
+    for side in ['Left','Right']:
+        wrist=rig.data.bones[f'mixamorig:{side}Hand'].head_local
+        axis=(wrist-rig.data.bones[f'mixamorig:{side}ForeArm'].head_local).normalized()
+        front=Vector((0,-1,0));front=(front-axis*front.dot(axis)).normalized();across=axis.cross(front).normalized()
+        shells=[]
+        for inner in [False,True]:
+            rings=[]
+            for row in range(9):
+                t=row/8;ring=[];centre=wrist+axis*(-.075+.099*t)
+                rx=.034+.004*(1-t);ry=.029+.004*(1-t)
+                if inner:rx-=.0015;ry-=.0015
+                for col in range(48):
+                    angle=col/48*math.tau;position=centre+front*(rx*math.cos(angle))+across*(ry*math.sin(angle))
+                    vertex=bm.verts.new(position)
+                    for layer in shape_layers:vertex[layer]=position
+                    vertex[deform][groups.index(f'mixamorig:{side}ForeArm')]=1
+                    ring.append(vertex)
+                rings.append(ring)
+            shells.append(rings)
+            for row in range(8):
+                for col in range(48):
+                    nxt=(col+1)%48;corners=(rings[row][col],rings[row][nxt],rings[row+1][nxt],rings[row+1][col])
+                    face=bm.faces.new(corners[::-1] if inner else corners)
+                    face.material_index=len(formal.data.materials)-1;face.smooth=True
+                    for loop in face.loops:
+                        vertex=loop.vert;index=corners.index(vertex);u=(col+(index in [1,2]))/48*3;v=(row+(index in [2,3]))/8
+                        loop[uv_layer].uv=(u,v)
+        for row in [0,8]:
+            for col in range(48):
+                nxt=(col+1)%48;outer,inside=shells[0][row],shells[1][row]
+                face=bm.faces.new((outer[col],inside[col],inside[nxt],outer[nxt]) if row==8 else (outer[nxt],inside[nxt],inside[col],outer[col]))
+                face.material_index=len(formal.data.materials)-1;face.smooth=True
+                for loop in face.loops:loop[uv_layer].uv=(col/48*3,row/8)
+    bmesh.ops.recalc_face_normals(bm,faces=list(bm.faces))
     bm.to_mesh(formal.data);bm.free()
+    formal['formalCuffsVersion']=1
     for vertex in formal.data.vertices:
         side=min(['Left','Right'],key=lambda side:(vertex.co-rig.data.bones[f'mixamorig:{side}Hand'].head_local).length)
         if (vertex.co-rig.data.bones[f'mixamorig:{side}Hand'].head_local).length>.15:continue

@@ -4,6 +4,7 @@ import sharp from 'sharp';
 import { prune, resample } from '@gltf-transform/functions';
 import { createIO, contract, assertSameCharacter, conservativeDedup, compressCharacterTextures, compressAccessors, CHARACTER_QUANTIZATION, dropMorphTargetNormals } from '../lib/glb-pipeline.mjs';
 import {relaxStandingPosture} from '../lib/relax-standing-posture.mjs';
+import {repairWristBinding} from '../lib/repair-wrist-binding.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const files = process.argv.slice(2);
@@ -22,6 +23,7 @@ for (const relative of files) {
     if (material.getName() === 'Carmela_HairStrands') material.setAlphaMode('MASK').setAlphaCutoff(.35).setDoubleSided(true);
   }
   const before = contract(document);
+  repairWristBinding(document);
   relaxStandingPosture(document);
   const targets = (doc) => doc.getRoot().listMeshes().map((mesh) => [mesh.getName(), mesh.listPrimitives().map((primitive) => primitive.listTargets().map((target) => target.getName()))]);
   const beforeTargets = JSON.stringify(targets(document));
