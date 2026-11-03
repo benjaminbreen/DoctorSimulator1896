@@ -170,6 +170,20 @@ tested on the other pedestrian meshes before reuse.
 | --- | --- | --- |
 | `ashlar-gray.webp` | OpenAI ImageGen, directed for this project (2026) | Project-generated asset |
 
+The shared PBR sets in `facades/pbr/` use these Poly Haven sources. Colour is
+graded to the existing street palette; normal and packed occlusion/roughness
+maps retain the matching source detail. These are generic surface treatments,
+not scans of the depicted New York buildings.
+
+| Shipped set | Source and authors | Licence |
+| --- | --- | --- |
+| `brownstone-*`, `limestone-*` | [Sandstone Blocks 08](https://polyhaven.com/a/sandstone_blocks_08), Rob Tuytel | CC0-1.0 |
+| `brick-*` | [Brick Wall 001](https://polyhaven.com/a/brick_wall_001), Dimitrios Savva and Rob Tuytel | CC0-1.0 |
+| `ashlar-gray-*` | [Large Sandstone Blocks](https://polyhaven.com/a/large_sandstone_blocks), Rob Tuytel | CC0-1.0 |
+
+Source manifests and original maps: `assets/source/facade-pbr-2026-11-03/`.
+Rebuild with `node scripts/materials/build-facade-pbr.mjs`.
+
 ## Architectural surfaces — `game/public/textures/architecture/`
 
 | Texture | Creator / source | Licence |

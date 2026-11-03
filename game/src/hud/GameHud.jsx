@@ -26,7 +26,7 @@ import { isGameplayInputBlocked } from '../input/uiMode.js';
 import { isCarrying, subscribeCarrying } from '../world/pocket.js';
 import PocketClock from './PocketClock.jsx';
 import LettersModal from './LettersModal.jsx';
-import CasebookModal from './CasebookModal.jsx';
+import CasebookModal, { portraitPath } from './CasebookModal.jsx';
 import {
   getCasebookRecords,
   getCasebookRevision,
@@ -534,7 +534,7 @@ export default function GameHud({
             {queue.slice(0, 5).map((entry, index) => (entry.patient ? (
               <PortraitCameo
                 key={entry.patient.id}
-                src={`/ui/patients/${entry.patient.id}.webp`}
+                src={portraitPath(entry.patient)}
                 name={`${entry.patient.profile.identity.givenName} ${entry.patient.profile.identity.familyName}`}
                 age={entry.patient.profile.identity.age}
                 occupation={entry.patient.profile.social.occupation}

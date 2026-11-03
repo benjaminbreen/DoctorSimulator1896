@@ -1,7 +1,9 @@
 import { Matrix4, Vector3, MeshDepthMaterial, MeshDistanceMaterial, RGBADepthPacking, DataTexture, RedFormat, FloatType, NearestFilter } from 'three';
+import {createModularFabric} from './modularFabric.js';
 
 // The same fitted garment parts serve the game and the character review page.
 export function createModularWardrobe(root) {
+  const fabricSurface=createModularFabric(root);
   let garmentStyle = null;
   root.traverse(object => { if (object.userData.garmentStyle) garmentStyle = object.userData.garmentStyle; });
   const names = ['Patient_SkirtStanding', 'Patient_SkirtSeated', 'Patient_ApronStanding', 'Patient_ApronSeated'];
@@ -32,10 +34,13 @@ export function createModularWardrobe(root) {
     if(mesh.isMesh && mesh.material?.name==='Patient_MaleFabric')trousers.push({mesh,material:mesh.material});
   });
   return {
-    dispose:apronFit.dispose,
+    dispose(){apronFit.dispose();fabricSurface.dispose();},
+    fabricAvailable:fabricSurface.available,
+    fabricDescription:fabricSurface.describe,
     available: Boolean(parts[0]) || materials.size > 0,
     outfits: garmentStyle ? [garmentStyle] : formal ? ['tailored-clothes','work-shirt','canvas-apron','leather-apron'] : parts[0] ? ['day-dress', 'work-apron'] : root.getObjectByName('Patient_WorkerBody') ? ['work-shirt'] : ['tailored-clothes'],
-    update({ seated, apron = false, outfit = 'tailored-clothes', palette = 'original', dt = 0 }) {
+    update({ seated, apron = false, outfit = 'tailored-clothes', palette = 'original', fabric='wool', fabricScale=1, dt = 0 }) {
+      fabricSurface.update({fabric,fabricScale});
       const visible = [!seated, seated, !seated && apron, seated && apron];
       parts.forEach((part, index) => { if (part) part.visible = Boolean(visible[index]); });
       const worker = ['work-shirt','canvas-apron','leather-apron'].includes(outfit);

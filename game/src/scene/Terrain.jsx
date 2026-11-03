@@ -1,21 +1,15 @@
-import { useMemo } from 'react';
+import { useEffect,useMemo } from 'react';
 import * as THREE from 'three';
 import { useLoader } from '@react-three/fiber';
 import { RigidBody, HeightfieldCollider } from '@react-three/rapier';
-import { terrainHeight, pathsDistance, pondDepth, rockiness } from '../world/terrain.js';
-import { SHELTERS } from '../world/rusticwork.js';
 import { WORLD_BOUNDS } from '../world/streetGrid.js';
-import { constructedSurfaceAt } from '../world/constructedSurfaces.js';
+import {buildTerrainSurface,TERRAIN_COLUMNS,TERRAIN_ROWS} from './terrainSurface.js';
 import { freezeStaticTransforms } from './lib/staticScene.js';
 
 const WIDTH = WORLD_BOUNDS.maxX - WORLD_BOUNDS.minX;
 const DEPTH = WORLD_BOUNDS.maxZ - WORLD_BOUNDS.minZ;
 const CENTER_X = (WORLD_BOUNDS.minX + WORLD_BOUNDS.maxX) / 2;
 const CENTER_Z = (WORLD_BOUNDS.minZ + WORLD_BOUNDS.maxZ) / 2;
-// Fine enough that the pond's narrow channels (~3 world units) span several
-// cells; at 1-unit cells they collapsed into dotted puddles.
-const SEGMENTS_X = 280;
-const SEGMENTS_Z = 230;
 // World meters per texture tile.
 const TILE = 3.6;
 
@@ -39,56 +33,7 @@ export default function Terrain() {
     '/textures/street/carriage-setts_col.webp',
   ]);
 
-  const { geometry, heights } = useMemo(() => {
-    const geo = new THREE.PlaneGeometry(WIDTH, DEPTH, SEGMENTS_X, SEGMENTS_Z);
-    geo.rotateX(-Math.PI / 2);
-    geo.translate(CENTER_X, 0, CENTER_Z);
-    const positions = geo.attributes.position;
-    const splat = new Float32Array(positions.count * 4);
-    const urban = new Float32Array(positions.count);
-    for (let i = 0; i < positions.count; i += 1) {
-      const x = positions.getX(i);
-      const z = positions.getZ(i);
-      positions.setY(i, terrainHeight(x, z));
-
-      const fromPath = pathsDistance(x, z);
-      const nearPath = Math.max(0, 1 - fromPath / 1.5);
-      const pond = pondDepth(x, z);
-      let shelterWear = 0;
-      for (const shelter of SHELTERS) {
-        const distance = Math.hypot(x - shelter.x, z - shelter.z);
-        if (distance > shelter.radius + 2) continue;
-        for (const bay of shelter.entries) {
-          const angle = shelter.yaw + (bay + 0.5) * Math.PI * 2 / shelter.sides;
-          const radius = shelter.radius * Math.cos(Math.PI / shelter.sides);
-          const approach = Math.hypot(x - shelter.x - Math.cos(angle) * radius,
-            z - shelter.z - Math.sin(angle) * radius);
-          shelterWear = Math.max(shelterWear, Math.max(0, 1 - approach / 2.3) * 0.55);
-        }
-      }
-      splat[i * 4] = Math.max(nearPath * nearPath, shelterWear);
-      splat[i * 4 + 1] = Math.min(1, rockiness(x, z)) * 0.85;
-      splat[i * 4 + 2] = pond < 0.3 ? 1 - Math.max(0, pond) / 0.3 : 0;
-      // Worn verge: grass within a few metres of a walk, tinted in-shader.
-      splat[i * 4 + 3] = Math.max(0, 1 - fromPath / 5.5);
-      urban[i] = constructedSurfaceAt(x, z);
-    }
-    geo.setAttribute('aSplat', new THREE.BufferAttribute(splat, 4));
-    geo.setAttribute('aUrban', new THREE.BufferAttribute(urban, 1));
-    geo.computeVertexNormals();
-    // Collider heights on rapier's heightfield grid: column-major, columns
-    // along x, rows along z. A heightfield builds in milliseconds where the
-    // old trimesh spent seconds on a BVH for the same surface.
-    const heights = new Float32Array((SEGMENTS_X + 1) * (SEGMENTS_Z + 1));
-    const dx = WIDTH / SEGMENTS_X;
-    const dz = DEPTH / SEGMENTS_Z;
-    for (let i = 0; i < positions.count; i += 1) {
-      const ix = Math.round((positions.getX(i) - WORLD_BOUNDS.minX) / dx);
-      const iz = Math.round((positions.getZ(i) - WORLD_BOUNDS.minZ) / dz);
-      heights[ix * (SEGMENTS_Z + 1) + iz] = positions.getY(i);
-    }
-    return { geometry: geo, heights };
-  }, []);
+  const { geometry, heights } = useMemo(buildTerrainSurface, []);
 
   const material = useMemo(() => {
     loadRepeating(grassCol, THREE.SRGBColorSpace);
@@ -109,10 +54,10 @@ export default function Terrain() {
       shader.uniforms.rockMap = { value: rockCol };
       shader.uniforms.streetMap = { value: streetCol };
       shader.vertexShader =
-        'attribute vec4 aSplat;\nattribute float aUrban;\nvarying vec4 vSplat;\nvarying float vUrban;\n' +
-        shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vSplat = aSplat;\n  vUrban = aUrban;');
+        'attribute vec4 aSplat;\nattribute float aUrban;\nvarying vec4 vSplat;\nvarying float vUrban;\nvarying float vTerrainHeight;\n' +
+        shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vSplat = aSplat;\n  vUrban = aUrban;\n  vTerrainHeight=position.y;');
       shader.fragmentShader =
-        'varying vec4 vSplat;\nvarying float vUrban;\nuniform sampler2D pathMap;\nuniform sampler2D rockMap;\nuniform sampler2D streetMap;\n' +
+        'varying vec4 vSplat;\nvarying float vUrban;\nvarying float vTerrainHeight;\nuniform sampler2D pathMap;\nuniform sampler2D rockMap;\nuniform sampler2D streetMap;\n' +
         'float turfHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }\n' +
         'float turfNoise(vec2 p) {\n' +
         '  vec2 i = floor(p); vec2 f = fract(p);\n' +
@@ -159,21 +104,34 @@ export default function Terrain() {
             // Crushed limestone, not brown gravel: the period surface of the
             // drives and walks was pale.
             pathTex *= vec3(1.07, 1.04, 0.94);
-            blended = mix(blended, pathTex, clamp(vSplat.x, 0.0, 1.0));
+            float pathWeight=clamp(vSplat.x+(turfNoise(wuv*1.4)-.5)*.5*vSplat.x*(1.0-vSplat.x),0.0,1.0);
+            blended = mix(blended, pathTex, pathWeight);
+            // Keep the pale, worn bank above the narrow wet-earth margin.
             blended = mix(blended, pathTex * vec3(1.0, 0.93, 0.79), clamp(vSplat.z, 0.0, 1.0));
+            float bankNoise=turfNoise(wuv*1.15)*.65+turfNoise(wuv*3.7)*.35;
+            float dampBank=smoothstep(.05,.64,vSplat.z)*(1.0-smoothstep(-.44,-.36,vTerrainHeight+(bankNoise-.5)*.045));
+            float moisture=1.0-smoothstep(-.42,-.12,vTerrainHeight);
+            float soilGrain=dot(texture2D(pathMap,uvT*2.7).rgb,vec3(.2126,.7152,.0722));
+            vec3 soil=mix(vec3(.22,.17,.11),vec3(.10,.085,.062),moisture)*(.45+soilGrain*1.4+bankNoise*.32);
+            blended = mix(blended,soil,dampBank);
             blended = mix(blended, texture2D(streetMap, uvT * 1.2).rgb, smoothstep(0.12, 0.88, vUrban));
             diffuseColor.rgb *= blended;
           }`,
         );
+      shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_maps>',`vec3 groundNormal=normal;
+        #include <normal_fragment_maps>
+        float grassNormalWeight=(1.0-vSplat.x)*(1.0-vSplat.y)*(1.0-vUrban)*smoothstep(-.44,-.34,vTerrainHeight);
+        normal=normalize(mix(groundNormal,normal,grassNormalWeight));`);
     };
     return mat;
   }, [grassCol, grassNrm, pathCol, rockCol, streetCol]);
+  useEffect(()=>()=>{geometry.dispose();material.dispose();},[geometry,material]);
 
   return (
     <group ref={(node) => freezeStaticTransforms(node)}>
       <RigidBody type="fixed" colliders={false} position={[CENTER_X, 0, CENTER_Z]}>
         <HeightfieldCollider
-          args={[SEGMENTS_Z, SEGMENTS_X, heights, { x: WIDTH, y: 1, z: DEPTH }]}
+          args={[TERRAIN_ROWS, TERRAIN_COLUMNS, heights, { x: WIDTH, y: 1, z: DEPTH }]}
         />
       </RigidBody>
       <mesh geometry={geometry} material={material} receiveShadow />

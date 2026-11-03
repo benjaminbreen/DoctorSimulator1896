@@ -1,0 +1,967 @@
+{
+  "info": {
+    "type": 1,
+    "tags": [
+      "blocks",
+      "uneven",
+      "large",
+      "sandstone"
+    ],
+    "date_published": 1539053242,
+    "name": "Sandstone Blocks 08",
+    "old_id": 167,
+    "categories": [
+      "wall",
+      "floor",
+      "man made",
+      "outdoor",
+      "clean",
+      "indoor"
+    ],
+    "authors": {
+      "Rob Tuytel": "All"
+    },
+    "dimensions": [
+      3000,
+      3000
+    ],
+    "sponsors": [
+      "20953239"
+    ],
+    "max_resolution": [
+      8192,
+      8192
+    ],
+    "files_hash": "c0b33b1e055d95bdf78737ef27f3cf9e1bd48d4f",
+    "description": "Free 8K sandstone texture: tan, large uneven blocks with soft rounded edges, shallow joints, subtle tool marks and a light dusty surface.",
+    "category_id": "711f00d1-14a5-537f-addc-52bc3da7cd0e",
+    "category": "Brick & Block/Stone Block & Paver/Sandstone Brick & Block",
+    "attributes": {
+      "surface_use": "wall",
+      "origin": "man_made",
+      "setting": "either",
+      "condition": [
+        "clean"
+      ]
+    },
+    "img_version": "c7e6aab5",
+    "download_count": 61923,
+    "thumbnail_url": "https://cdn.polyhaven.com/asset_img/thumbs/sandstone_blocks_08.png?width=256&height=256&format=webp&v=c7e6aab5"
+  },
+  "files": {
+    "Diffuse": {
+      "8k": {
+        "jpg": {
+          "size": 22315435,
+          "md5": "40302149bc2123808cdf1f30fb41ebc4",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/8k/sandstone_blocks_08/sandstone_blocks_08_diff_8k.jpg"
+        },
+        "png": {
+          "size": 92720483,
+          "md5": "49ec1b173a073d19bb858e9982399266",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/8k/sandstone_blocks_08/sandstone_blocks_08_diff_8k.png"
+        },
+        "exr": {
+          "size": 54807949,
+          "md5": "a8a4220193463b07eb93f29e43fab774",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/8k/sandstone_blocks_08/sandstone_blocks_08_diff_8k.exr"
+        }
+      },
+      "4k": {
+        "jpg": {
+          "size": 5803405,
+          "md5": "a6bb3ab4225f09b093b68eb9be47673a",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/sandstone_blocks_08/sandstone_blocks_08_diff_4k.jpg"
+        },
+        "png": {
+          "size": 24201839,
+          "md5": "26f7fe77e1d0c760c8a51d73edbf1b63",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/sandstone_blocks_08/sandstone_blocks_08_diff_4k.png"
+        },
+        "exr": {
+          "size": 15681474,
+          "md5": "4de5268eb67e02b47908084f8851bb18",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/4k/sandstone_blocks_08/sandstone_blocks_08_diff_4k.exr"
+        }
+      },
+      "2k": {
+        "jpg": {
+          "size": 1129500,
+          "md5": "2bd2a87974f1870fad58e25da35ed706",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/sandstone_blocks_08/sandstone_blocks_08_diff_2k.jpg"
+        },
+        "png": {
+          "size": 5016047,
+          "md5": "a57770ad352a088b6b271b505b26d5e9",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/sandstone_blocks_08/sandstone_blocks_08_diff_2k.png"
+        },
+        "exr": {
+          "size": 3282007,
+          "md5": "b6f1f8bedc51bd229779972bc787ede9",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/2k/sandstone_blocks_08/sandstone_blocks_08_diff_2k.exr"
+        }
+      },
+      "1k": {
+        "jpg": {
+          "size": 242776,
+          "md5": "9b74a03abb0ff86619c4b6bf21f4fbf3",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/sandstone_blocks_08/sandstone_blocks_08_diff_1k.jpg"
+        },
+        "png": {
+          "size": 1152112,
+          "md5": "8d8f4e62dec1f5bc3cd2d255e07845c3",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/sandstone_blocks_08/sandstone_blocks_08_diff_1k.png"
+        },
+        "exr": {
+          "size": 731912,
+          "md5": "5519ff086067ad3342106d6c06343445",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/1k/sandstone_blocks_08/sandstone_blocks_08_diff_1k.exr"
+        }
+      }
+    },
+    "nor_dx": {
+      "8k": {
+        "jpg": {
+          "size": 12323160,
+          "md5": "7dbeaf111bdf60d267609830ce43eb70",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/8k/sandstone_blocks_08/sandstone_blocks_08_nor_dx_8k.jpg"
+        },
+        "png": {
+          "size": 40501984,
+          "md5": "cd460afa36549bd97cc75c2a04de0b21",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/8k/sandstone_blocks_08/sandstone_blocks_08_nor_dx_8k.png"
+        },
+        "exr": {
+          "size": 31050471,
+          "md5": "271702d890198245c2de0d91a572dcf2",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/8k/sandstone_blocks_08/sandstone_blocks_08_nor_dx_8k.exr"
+        }
+      },
+      "4k": {
+        "jpg": {
+          "size": 3616809,
+          "md5": "5d5ba471d26fc351401c14bc41d19472",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/sandstone_blocks_08/sandstone_blocks_08_nor_dx_4k.jpg"
+        },
+        "png": {
+          "size": 14910637,
+          "md5": "3ae28872cf12363a9c20ecb6cc3148d0",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/sandstone_blocks_08/sandstone_blocks_08_nor_dx_4k.png"
+        },
+        "exr": {
+          "size": 11696554,
+          "md5": "84b70d47dc71d9b5f9c106cb79112fe6",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/4k/sandstone_blocks_08/sandstone_blocks_08_nor_dx_4k.exr"
+        }
+      },
+      "2k": {
+        "jpg": {
+          "size": 813447,
+          "md5": "9368b833832f0bda0f6f7d16a8a32ca2",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/sandstone_blocks_08/sandstone_blocks_08_nor_dx_2k.jpg"
+        },
+        "png": {
+          "size": 4551225,
+          "md5": "826491f1348b00a46fbda2aada1d8d4c",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/sandstone_blocks_08/sandstone_blocks_08_nor_dx_2k.png"
+        },
+        "exr": {
+          "size": 4028752,
+          "md5": "9cfa5f7ecc84747b40756a044206a552",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/2k/sandstone_blocks_08/sandstone_blocks_08_nor_dx_2k.exr"
+        }
+      },
+      "1k": {
+        "jpg": {
+          "size": 142996,
+          "md5": "c6f2d9f237abc61192da5e2de431df37",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/sandstone_blocks_08/sandstone_blocks_08_nor_dx_1k.jpg"
+        },
+        "png": {
+          "size": 1101228,
+          "md5": "ef04883aecd6830edbb4c69db8effce1",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/sandstone_blocks_08/sandstone_blocks_08_nor_dx_1k.png"
+        },
+        "exr": {
+          "size": 876810,
+          "md5": "991b5dd37b5993391ec4d0ddeeaf826a",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/1k/sandstone_blocks_08/sandstone_blocks_08_nor_dx_1k.exr"
+        }
+      }
+    },
+    "nor_gl": {
+      "8k": {
+        "jpg": {
+          "size": 12841254,
+          "md5": "2bd9328051c059a18aa91437f909a760",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/8k/sandstone_blocks_08/sandstone_blocks_08_nor_gl_8k.jpg"
+        },
+        "png": {
+          "size": 41362145,
+          "md5": "57bcad93332973511690dc58e6d0a78e",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/8k/sandstone_blocks_08/sandstone_blocks_08_nor_gl_8k.png"
+        },
+        "exr": {
+          "size": 31908217,
+          "md5": "e10dfd751704bc15c866e8b99c7d16c0",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/8k/sandstone_blocks_08/sandstone_blocks_08_nor_gl_8k.exr"
+        }
+      },
+      "4k": {
+        "jpg": {
+          "size": 4094349,
+          "md5": "9f79fba6b0a09014e35d529b3c79d57f",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/sandstone_blocks_08/sandstone_blocks_08_nor_gl_4k.jpg"
+        },
+        "png": {
+          "size": 14910496,
+          "md5": "b52fc35ac6388da7495fcc3738c4c736",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/sandstone_blocks_08/sandstone_blocks_08_nor_gl_4k.png"
+        },
+        "exr": {
+          "size": 12054218,
+          "md5": "a9528e6369e16ee2a1ce496bbba3e98d",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/4k/sandstone_blocks_08/sandstone_blocks_08_nor_gl_4k.exr"
+        }
+      },
+      "2k": {
+        "jpg": {
+          "size": 954422,
+          "md5": "5156759065d1550ef60475c46611b89b",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/sandstone_blocks_08/sandstone_blocks_08_nor_gl_2k.jpg"
+        },
+        "png": {
+          "size": 4549107,
+          "md5": "fbf53ab86b84bafc0ff5abf087861d1a",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/sandstone_blocks_08/sandstone_blocks_08_nor_gl_2k.png"
+        },
+        "exr": {
+          "size": 4180608,
+          "md5": "2063e3b24844e3de9a4d1e6b340a8856",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/2k/sandstone_blocks_08/sandstone_blocks_08_nor_gl_2k.exr"
+        }
+      },
+      "1k": {
+        "jpg": {
+          "size": 167040,
+          "md5": "a51ab75cd9e554f030a053d02b7ecd11",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/sandstone_blocks_08/sandstone_blocks_08_nor_gl_1k.jpg"
+        },
+        "png": {
+          "size": 1099761,
+          "md5": "cca95bdc1256698ff4f4ad2133fd9e01",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/sandstone_blocks_08/sandstone_blocks_08_nor_gl_1k.png"
+        },
+        "exr": {
+          "size": 920972,
+          "md5": "e38090bdd2409126d21d1f671e3adf03",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/1k/sandstone_blocks_08/sandstone_blocks_08_nor_gl_1k.exr"
+        }
+      }
+    },
+    "blend": {
+      "8k": {
+        "blend": {
+          "size": 277922,
+          "md5": "2e10738746d6276bf44469924df785f8",
+          "include": {
+            "textures/sandstone_blocks_08_disp_8k.png": {
+              "size": 27066821,
+              "md5": "9445313cc2baa2b3033deb6d97b2ad31",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/8k/sandstone_blocks_08/sandstone_blocks_08_disp_8k.png"
+            },
+            "textures/sandstone_blocks_08_rough_8k.jpg": {
+              "size": 36872549,
+              "md5": "b62bcb99f1929fff23be2e33c66a005f",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/8k/sandstone_blocks_08/sandstone_blocks_08_rough_8k.jpg"
+            },
+            "textures/sandstone_blocks_08_diff_8k.jpg": {
+              "size": 22315435,
+              "md5": "40302149bc2123808cdf1f30fb41ebc4",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/8k/sandstone_blocks_08/sandstone_blocks_08_diff_8k.jpg"
+            },
+            "textures/sandstone_blocks_08_nor_gl_8k.exr": {
+              "size": 31908217,
+              "md5": "e10dfd751704bc15c866e8b99c7d16c0",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/8k/sandstone_blocks_08/sandstone_blocks_08_nor_gl_8k.exr"
+            }
+          },
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/blend/8k/sandstone_blocks_08/sandstone_blocks_08_8k.blend"
+        }
+      },
+      "4k": {
+        "blend": {
+          "size": 277902,
+          "md5": "5ec3e10b3578c591358c483bf6f21f4c",
+          "include": {
+            "textures/sandstone_blocks_08_diff_4k.jpg": {
+              "size": 5803405,
+              "md5": "a6bb3ab4225f09b093b68eb9be47673a",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/sandstone_blocks_08/sandstone_blocks_08_diff_4k.jpg"
+            },
+            "textures/sandstone_blocks_08_nor_gl_4k.exr": {
+              "size": 12054218,
+              "md5": "a9528e6369e16ee2a1ce496bbba3e98d",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/4k/sandstone_blocks_08/sandstone_blocks_08_nor_gl_4k.exr"
+            },
+            "textures/sandstone_blocks_08_rough_4k.jpg": {
+              "size": 5062502,
+              "md5": "80eda4b5bc7aaffe9bad7674120279a2",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/sandstone_blocks_08/sandstone_blocks_08_rough_4k.jpg"
+            },
+            "textures/sandstone_blocks_08_disp_4k.png": {
+              "size": 29518215,
+              "md5": "2348c3ad1c56b0c519d963f92672d6d4",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/sandstone_blocks_08/sandstone_blocks_08_disp_4k.png"
+            }
+          },
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/blend/4k/sandstone_blocks_08/sandstone_blocks_08_4k.blend"
+        }
+      },
+      "2k": {
+        "blend": {
+          "size": 277951,
+          "md5": "1cb65258cb11a3b7a37ab0443871e2d1",
+          "include": {
+            "textures/sandstone_blocks_08_disp_2k.png": {
+              "size": 7409561,
+              "md5": "75f870b789c7f6d7da26d7fff934ce48",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/sandstone_blocks_08/sandstone_blocks_08_disp_2k.png"
+            },
+            "textures/sandstone_blocks_08_nor_gl_2k.exr": {
+              "size": 4180608,
+              "md5": "2063e3b24844e3de9a4d1e6b340a8856",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/2k/sandstone_blocks_08/sandstone_blocks_08_nor_gl_2k.exr"
+            },
+            "textures/sandstone_blocks_08_rough_2k.jpg": {
+              "size": 877815,
+              "md5": "1f6cd4b874436929d438f8f5ba8818d9",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/sandstone_blocks_08/sandstone_blocks_08_rough_2k.jpg"
+            },
+            "textures/sandstone_blocks_08_diff_2k.jpg": {
+              "size": 1129500,
+              "md5": "2bd2a87974f1870fad58e25da35ed706",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/sandstone_blocks_08/sandstone_blocks_08_diff_2k.jpg"
+            }
+          },
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/blend/2k/sandstone_blocks_08/sandstone_blocks_08_2k.blend"
+        }
+      },
+      "1k": {
+        "blend": {
+          "size": 277836,
+          "md5": "7c08e1d1b1f37cf87781a7881a96956f",
+          "include": {
+            "textures/sandstone_blocks_08_nor_gl_1k.exr": {
+              "size": 920972,
+              "md5": "e38090bdd2409126d21d1f671e3adf03",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/1k/sandstone_blocks_08/sandstone_blocks_08_nor_gl_1k.exr"
+            },
+            "textures/sandstone_blocks_08_diff_1k.jpg": {
+              "size": 242776,
+              "md5": "9b74a03abb0ff86619c4b6bf21f4fbf3",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/sandstone_blocks_08/sandstone_blocks_08_diff_1k.jpg"
+            },
+            "textures/sandstone_blocks_08_disp_1k.png": {
+              "size": 1924571,
+              "md5": "fb93fc3243315650d0a0cefd3e62a98b",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/sandstone_blocks_08/sandstone_blocks_08_disp_1k.png"
+            },
+            "textures/sandstone_blocks_08_rough_1k.jpg": {
+              "size": 161690,
+              "md5": "bcd3565b78fb209dfab41984aabc2903",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/sandstone_blocks_08/sandstone_blocks_08_rough_1k.jpg"
+            }
+          },
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/blend/1k/sandstone_blocks_08/sandstone_blocks_08_1k.blend"
+        }
+      }
+    },
+    "gltf": {
+      "8k": {
+        "gltf": {
+          "size": 3598,
+          "md5": "a229d71d726569e7c8e9bc02ccedfebd",
+          "include": {
+            "sandstone_blocks_08.bin": {
+              "size": 2370036,
+              "md5": "e6934c48656f22b87554af74d4922f1f",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/gltf/8k/sandstone_blocks_08/sandstone_blocks_08.bin"
+            },
+            "textures/sandstone_blocks_08_rough_8k.jpg": {
+              "size": 36872549,
+              "md5": "b62bcb99f1929fff23be2e33c66a005f",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/8k/sandstone_blocks_08/sandstone_blocks_08_rough_8k.jpg"
+            },
+            "textures/sandstone_blocks_08_diff_8k.jpg": {
+              "size": 22315435,
+              "md5": "40302149bc2123808cdf1f30fb41ebc4",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/8k/sandstone_blocks_08/sandstone_blocks_08_diff_8k.jpg"
+            },
+            "textures/sandstone_blocks_08_nor_gl_8k.jpg": {
+              "size": 12841254,
+              "md5": "2bd9328051c059a18aa91437f909a760",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/8k/sandstone_blocks_08/sandstone_blocks_08_nor_gl_8k.jpg"
+            }
+          },
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/gltf/8k/sandstone_blocks_08/sandstone_blocks_08_8k.gltf"
+        }
+      },
+      "4k": {
+        "gltf": {
+          "size": 3598,
+          "md5": "9098a5bac353da66cdddae01b7ba3c59",
+          "include": {
+            "textures/sandstone_blocks_08_diff_4k.jpg": {
+              "size": 5803405,
+              "md5": "a6bb3ab4225f09b093b68eb9be47673a",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/sandstone_blocks_08/sandstone_blocks_08_diff_4k.jpg"
+            },
+            "sandstone_blocks_08.bin": {
+              "size": 2370036,
+              "md5": "e6934c48656f22b87554af74d4922f1f",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/gltf/8k/sandstone_blocks_08/sandstone_blocks_08.bin"
+            },
+            "textures/sandstone_blocks_08_nor_gl_4k.jpg": {
+              "size": 4094349,
+              "md5": "9f79fba6b0a09014e35d529b3c79d57f",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/sandstone_blocks_08/sandstone_blocks_08_nor_gl_4k.jpg"
+            },
+            "textures/sandstone_blocks_08_rough_4k.jpg": {
+              "size": 5062502,
+              "md5": "80eda4b5bc7aaffe9bad7674120279a2",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/sandstone_blocks_08/sandstone_blocks_08_rough_4k.jpg"
+            }
+          },
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/gltf/4k/sandstone_blocks_08/sandstone_blocks_08_4k.gltf"
+        }
+      },
+      "2k": {
+        "gltf": {
+          "size": 3598,
+          "md5": "bb0985f5b87eaffb2d1799974f838e42",
+          "include": {
+            "sandstone_blocks_08.bin": {
+              "size": 2370036,
+              "md5": "e6934c48656f22b87554af74d4922f1f",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/gltf/8k/sandstone_blocks_08/sandstone_blocks_08.bin"
+            },
+            "textures/sandstone_blocks_08_nor_gl_2k.jpg": {
+              "size": 954422,
+              "md5": "5156759065d1550ef60475c46611b89b",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/sandstone_blocks_08/sandstone_blocks_08_nor_gl_2k.jpg"
+            },
+            "textures/sandstone_blocks_08_rough_2k.jpg": {
+              "size": 877815,
+              "md5": "1f6cd4b874436929d438f8f5ba8818d9",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/sandstone_blocks_08/sandstone_blocks_08_rough_2k.jpg"
+            },
+            "textures/sandstone_blocks_08_diff_2k.jpg": {
+              "size": 1129500,
+              "md5": "2bd2a87974f1870fad58e25da35ed706",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/sandstone_blocks_08/sandstone_blocks_08_diff_2k.jpg"
+            }
+          },
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/gltf/2k/sandstone_blocks_08/sandstone_blocks_08_2k.gltf"
+        }
+      },
+      "1k": {
+        "gltf": {
+          "size": 3598,
+          "md5": "d2035aef7c642421cb17b04610d5daaa",
+          "include": {
+            "sandstone_blocks_08.bin": {
+              "size": 2370036,
+              "md5": "e6934c48656f22b87554af74d4922f1f",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/gltf/8k/sandstone_blocks_08/sandstone_blocks_08.bin"
+            },
+            "textures/sandstone_blocks_08_nor_gl_1k.jpg": {
+              "size": 167040,
+              "md5": "a51ab75cd9e554f030a053d02b7ecd11",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/sandstone_blocks_08/sandstone_blocks_08_nor_gl_1k.jpg"
+            },
+            "textures/sandstone_blocks_08_diff_1k.jpg": {
+              "size": 242776,
+              "md5": "9b74a03abb0ff86619c4b6bf21f4fbf3",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/sandstone_blocks_08/sandstone_blocks_08_diff_1k.jpg"
+            },
+            "textures/sandstone_blocks_08_rough_1k.jpg": {
+              "size": 161690,
+              "md5": "bcd3565b78fb209dfab41984aabc2903",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/sandstone_blocks_08/sandstone_blocks_08_rough_1k.jpg"
+            }
+          },
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/gltf/1k/sandstone_blocks_08/sandstone_blocks_08_1k.gltf"
+        }
+      }
+    },
+    "arm": {
+      "8k": {
+        "jpg": {
+          "size": 19581312,
+          "md5": "fdfc99758dc9280f43d075069388bfd3",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/8k/sandstone_blocks_08/sandstone_blocks_08_arm_8k.jpg"
+        },
+        "png": {
+          "size": 92690637,
+          "md5": "dd7c030157daee286ce353e35e917671",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/8k/sandstone_blocks_08/sandstone_blocks_08_arm_8k.png"
+        },
+        "exr": {
+          "size": 140992913,
+          "md5": "853b3465bbae8553a05c015492f647c3",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/8k/sandstone_blocks_08/sandstone_blocks_08_arm_8k.exr"
+        }
+      },
+      "4k": {
+        "jpg": {
+          "size": 1801191,
+          "md5": "0af4cb4f22557cd703da8ac29c1444c4",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/sandstone_blocks_08/sandstone_blocks_08_arm_4k.jpg"
+        },
+        "png": {
+          "size": 21541327,
+          "md5": "3912da594d84b8f5e4d5c4bcac4c1764",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/sandstone_blocks_08/sandstone_blocks_08_arm_4k.png"
+        },
+        "exr": {
+          "size": 23583311,
+          "md5": "9e6820a5394b276c5f1c27e2bfbd57ef",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/4k/sandstone_blocks_08/sandstone_blocks_08_arm_4k.exr"
+        }
+      },
+      "2k": {
+        "jpg": {
+          "size": 310135,
+          "md5": "a8eb587e6eea805266bc5e23401b5d7c",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/sandstone_blocks_08/sandstone_blocks_08_arm_2k.jpg"
+        },
+        "png": {
+          "size": 4283917,
+          "md5": "f14048a1eca331505c0bcb578d3ca868",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/sandstone_blocks_08/sandstone_blocks_08_arm_2k.png"
+        },
+        "exr": {
+          "size": 4322848,
+          "md5": "45ff8d53d24dd1a357ba7e7bf6bdbc50",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/2k/sandstone_blocks_08/sandstone_blocks_08_arm_2k.exr"
+        }
+      },
+      "1k": {
+        "jpg": {
+          "size": 58846,
+          "md5": "a1fa5504cead26487daa8da22d5d3c8b",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/sandstone_blocks_08/sandstone_blocks_08_arm_1k.jpg"
+        },
+        "png": {
+          "size": 892706,
+          "md5": "e9fa579b26ebda2e9edb9dd84fd4f828",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/sandstone_blocks_08/sandstone_blocks_08_arm_1k.png"
+        },
+        "exr": {
+          "size": 732056,
+          "md5": "451b4a4d83bb7042ad1d38d6e16a62f4",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/1k/sandstone_blocks_08/sandstone_blocks_08_arm_1k.exr"
+        }
+      }
+    },
+    "AO": {
+      "8k": {
+        "jpg": {
+          "size": 13107195,
+          "md5": "a7ac94a3d731c0453c5b73d3ab839bc2",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/8k/sandstone_blocks_08/sandstone_blocks_08_ao_8k.jpg"
+        },
+        "png": {
+          "size": 41694430,
+          "md5": "b7406e5da7f302e970037b672b5fcd60",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/8k/sandstone_blocks_08/sandstone_blocks_08_ao_8k.png"
+        },
+        "exr": {
+          "size": 24758931,
+          "md5": "bcd040671b7e00b15061f9ebba032204",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/8k/sandstone_blocks_08/sandstone_blocks_08_ao_8k.exr"
+        }
+      },
+      "4k": {
+        "jpg": {
+          "size": 4542477,
+          "md5": "0619332a8df757e69f9d02d29755c247",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/sandstone_blocks_08/sandstone_blocks_08_ao_4k.jpg"
+        },
+        "png": {
+          "size": 6608401,
+          "md5": "ccfb79451b742304af42d1fc7d0eb4ad",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/sandstone_blocks_08/sandstone_blocks_08_ao_4k.png"
+        },
+        "exr": {
+          "size": 9370385,
+          "md5": "6bea072f5ee90bb0a05f9e0836b7512e",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/4k/sandstone_blocks_08/sandstone_blocks_08_ao_4k.exr"
+        }
+      },
+      "2k": {
+        "jpg": {
+          "size": 674306,
+          "md5": "f56484d9686107d40e6b483b9cae0d13",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/sandstone_blocks_08/sandstone_blocks_08_ao_2k.jpg"
+        },
+        "png": {
+          "size": 1787046,
+          "md5": "b14f95c5f36138767bbae54b96d14a00",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/sandstone_blocks_08/sandstone_blocks_08_ao_2k.png"
+        },
+        "exr": {
+          "size": 1942984,
+          "md5": "f7e896748fbef5ab87beb7616da95595",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/2k/sandstone_blocks_08/sandstone_blocks_08_ao_2k.exr"
+        }
+      },
+      "1k": {
+        "jpg": {
+          "size": 118123,
+          "md5": "c046e1a230e778b712292d40d9cc82cf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/sandstone_blocks_08/sandstone_blocks_08_ao_1k.jpg"
+        },
+        "png": {
+          "size": 360337,
+          "md5": "e19cc789f258c74ced161c62d0577ea9",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/sandstone_blocks_08/sandstone_blocks_08_ao_1k.png"
+        },
+        "exr": {
+          "size": 382569,
+          "md5": "75c095485321052f25176bd3945aab66",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/1k/sandstone_blocks_08/sandstone_blocks_08_ao_1k.exr"
+        }
+      }
+    },
+    "Displacement": {
+      "8k": {
+        "jpg": {
+          "size": 3975727,
+          "md5": "1212346d2451671767b23020e9b09d65",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/8k/sandstone_blocks_08/sandstone_blocks_08_disp_8k.jpg"
+        },
+        "png": {
+          "size": 27066821,
+          "md5": "9445313cc2baa2b3033deb6d97b2ad31",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/8k/sandstone_blocks_08/sandstone_blocks_08_disp_8k.png"
+        },
+        "exr": {
+          "size": 20662324,
+          "md5": "4e8a182084ee27d9d865e6592396dfdf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/8k/sandstone_blocks_08/sandstone_blocks_08_disp_8k.exr"
+        }
+      },
+      "4k": {
+        "jpg": {
+          "size": 1237186,
+          "md5": "07d0b2ea19394f3557ff42c14c615ec8",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/sandstone_blocks_08/sandstone_blocks_08_disp_4k.jpg"
+        },
+        "png": {
+          "size": 29518215,
+          "md5": "2348c3ad1c56b0c519d963f92672d6d4",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/sandstone_blocks_08/sandstone_blocks_08_disp_4k.png"
+        },
+        "exr": {
+          "size": 9883122,
+          "md5": "e88e2142552840877536aeab08c0713f",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/4k/sandstone_blocks_08/sandstone_blocks_08_disp_4k.exr"
+        }
+      },
+      "2k": {
+        "jpg": {
+          "size": 332686,
+          "md5": "819bb58745d120c8f5e70f6854317cfa",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/sandstone_blocks_08/sandstone_blocks_08_disp_2k.jpg"
+        },
+        "png": {
+          "size": 7409561,
+          "md5": "75f870b789c7f6d7da26d7fff934ce48",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/sandstone_blocks_08/sandstone_blocks_08_disp_2k.png"
+        },
+        "exr": {
+          "size": 2707614,
+          "md5": "082211ab218804da08107f851eec85bc",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/2k/sandstone_blocks_08/sandstone_blocks_08_disp_2k.exr"
+        }
+      },
+      "1k": {
+        "jpg": {
+          "size": 91843,
+          "md5": "e8b59751b767a258a071844e4d269883",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/sandstone_blocks_08/sandstone_blocks_08_disp_1k.jpg"
+        },
+        "png": {
+          "size": 1924571,
+          "md5": "fb93fc3243315650d0a0cefd3e62a98b",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/sandstone_blocks_08/sandstone_blocks_08_disp_1k.png"
+        },
+        "exr": {
+          "size": 718125,
+          "md5": "f4e1246ad92554c5aea5921c13f0a722",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/1k/sandstone_blocks_08/sandstone_blocks_08_disp_1k.exr"
+        }
+      }
+    },
+    "Rough": {
+      "8k": {
+        "jpg": {
+          "size": 36872549,
+          "md5": "b62bcb99f1929fff23be2e33c66a005f",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/8k/sandstone_blocks_08/sandstone_blocks_08_rough_8k.jpg"
+        },
+        "png": {
+          "size": 119104048,
+          "md5": "7f9b9614c4549eed74a8391d9298f423",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/8k/sandstone_blocks_08/sandstone_blocks_08_rough_8k.png"
+        },
+        "exr": {
+          "size": 83454087,
+          "md5": "f3a03491bad3b6dd77218ed35f86ec06",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/8k/sandstone_blocks_08/sandstone_blocks_08_rough_8k.exr"
+        }
+      },
+      "4k": {
+        "jpg": {
+          "size": 5062502,
+          "md5": "80eda4b5bc7aaffe9bad7674120279a2",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/sandstone_blocks_08/sandstone_blocks_08_rough_4k.jpg"
+        },
+        "png": {
+          "size": 29387611,
+          "md5": "1a1a381c7130ea5bde7aa2c227539168",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/sandstone_blocks_08/sandstone_blocks_08_rough_4k.png"
+        },
+        "exr": {
+          "size": 19080081,
+          "md5": "fc13a0f89baaf922e6e8ae2041c23204",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/4k/sandstone_blocks_08/sandstone_blocks_08_rough_4k.exr"
+        }
+      },
+      "2k": {
+        "jpg": {
+          "size": 877815,
+          "md5": "1f6cd4b874436929d438f8f5ba8818d9",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/sandstone_blocks_08/sandstone_blocks_08_rough_2k.jpg"
+        },
+        "png": {
+          "size": 7108643,
+          "md5": "5f3eda92963121862d84649636ed48f0",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/sandstone_blocks_08/sandstone_blocks_08_rough_2k.png"
+        },
+        "exr": {
+          "size": 4377052,
+          "md5": "18f2a5bdd640677a0c52835240ab1d2b",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/2k/sandstone_blocks_08/sandstone_blocks_08_rough_2k.exr"
+        }
+      },
+      "1k": {
+        "jpg": {
+          "size": 161690,
+          "md5": "bcd3565b78fb209dfab41984aabc2903",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/sandstone_blocks_08/sandstone_blocks_08_rough_1k.jpg"
+        },
+        "png": {
+          "size": 1729174,
+          "md5": "c0dce1c645bf7a3bc03a47e2356b4b53",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/sandstone_blocks_08/sandstone_blocks_08_rough_1k.png"
+        },
+        "exr": {
+          "size": 1026260,
+          "md5": "d3ad26a7cb82863df0c6449ed801dfe3",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/1k/sandstone_blocks_08/sandstone_blocks_08_rough_1k.exr"
+        }
+      }
+    },
+    "spec": {
+      "8k": {
+        "jpg": {
+          "size": 15159964,
+          "md5": "ab24db81a3d464aa76e88fd5dd7b22d5",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/8k/sandstone_blocks_08/sandstone_blocks_08_spec_8k.jpg"
+        },
+        "png": {
+          "size": 29672954,
+          "md5": "493e571e2461a8acf47ed21ee4588735",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/8k/sandstone_blocks_08/sandstone_blocks_08_spec_8k.png"
+        },
+        "exr": {
+          "size": 62513709,
+          "md5": "0f425f40380139e173e939e337264e55",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/8k/sandstone_blocks_08/sandstone_blocks_08_spec_8k.exr"
+        }
+      },
+      "4k": {
+        "jpg": {
+          "size": 3181094,
+          "md5": "726892313f51331fcfe9ca281472ecf8",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/sandstone_blocks_08/sandstone_blocks_08_spec_4k.jpg"
+        },
+        "png": {
+          "size": 7613475,
+          "md5": "9ed69f9e8b1100206d01bb8105308ad2",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/sandstone_blocks_08/sandstone_blocks_08_spec_4k.png"
+        },
+        "exr": {
+          "size": 14753600,
+          "md5": "1ee3514634f8c6e4d2793189550ca10b",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/4k/sandstone_blocks_08/sandstone_blocks_08_spec_4k.exr"
+        }
+      },
+      "2k": {
+        "jpg": {
+          "size": 569248,
+          "md5": "c74da4566f9e3f4916ff97c4fca2be01",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/sandstone_blocks_08/sandstone_blocks_08_spec_2k.jpg"
+        },
+        "png": {
+          "size": 1569270,
+          "md5": "dcfcbf557674c1e85006dae11a7222ee",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/sandstone_blocks_08/sandstone_blocks_08_spec_2k.png"
+        },
+        "exr": {
+          "size": 3167066,
+          "md5": "ede8848c7f2e5366c345ce8efbfc6660",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/2k/sandstone_blocks_08/sandstone_blocks_08_spec_2k.exr"
+        }
+      },
+      "1k": {
+        "jpg": {
+          "size": 125836,
+          "md5": "7ad0061349dd2ae0734d299a467c5eb7",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/sandstone_blocks_08/sandstone_blocks_08_spec_1k.jpg"
+        },
+        "png": {
+          "size": 355936,
+          "md5": "f6e83e2236c48ae34eec19a359dbf1d6",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/sandstone_blocks_08/sandstone_blocks_08_spec_1k.png"
+        },
+        "exr": {
+          "size": 695695,
+          "md5": "d66ef4fe1ceab06c6e15ad3eae2e76d6",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/1k/sandstone_blocks_08/sandstone_blocks_08_spec_1k.exr"
+        }
+      }
+    },
+    "mtlx": {
+      "8k": {
+        "mtlx": {
+          "size": 4794,
+          "md5": "9ccf65fc4abe92da69f11b02d75b90d2",
+          "include": {
+            "textures/sandstone_blocks_08_disp_8k.png": {
+              "size": 27066821,
+              "md5": "9445313cc2baa2b3033deb6d97b2ad31",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/8k/sandstone_blocks_08/sandstone_blocks_08_disp_8k.png"
+            },
+            "textures/sandstone_blocks_08_rough_8k.jpg": {
+              "size": 36872549,
+              "md5": "b62bcb99f1929fff23be2e33c66a005f",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/8k/sandstone_blocks_08/sandstone_blocks_08_rough_8k.jpg"
+            },
+            "textures/sandstone_blocks_08_diff_8k.jpg": {
+              "size": 22315435,
+              "md5": "40302149bc2123808cdf1f30fb41ebc4",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/8k/sandstone_blocks_08/sandstone_blocks_08_diff_8k.jpg"
+            },
+            "textures/sandstone_blocks_08_nor_gl_8k.exr": {
+              "size": 31908217,
+              "md5": "e10dfd751704bc15c866e8b99c7d16c0",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/8k/sandstone_blocks_08/sandstone_blocks_08_nor_gl_8k.exr"
+            }
+          },
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/mtlx/8k/sandstone_blocks_08/sandstone_blocks_08_8k.mtlx"
+        }
+      },
+      "4k": {
+        "mtlx": {
+          "size": 4794,
+          "md5": "c2397ff44fd30f7db8a1ce210e7da03f",
+          "include": {
+            "textures/sandstone_blocks_08_diff_4k.jpg": {
+              "size": 5803405,
+              "md5": "a6bb3ab4225f09b093b68eb9be47673a",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/sandstone_blocks_08/sandstone_blocks_08_diff_4k.jpg"
+            },
+            "textures/sandstone_blocks_08_nor_gl_4k.exr": {
+              "size": 12054218,
+              "md5": "a9528e6369e16ee2a1ce496bbba3e98d",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/4k/sandstone_blocks_08/sandstone_blocks_08_nor_gl_4k.exr"
+            },
+            "textures/sandstone_blocks_08_rough_4k.jpg": {
+              "size": 5062502,
+              "md5": "80eda4b5bc7aaffe9bad7674120279a2",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/sandstone_blocks_08/sandstone_blocks_08_rough_4k.jpg"
+            },
+            "textures/sandstone_blocks_08_disp_4k.png": {
+              "size": 29518215,
+              "md5": "2348c3ad1c56b0c519d963f92672d6d4",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/sandstone_blocks_08/sandstone_blocks_08_disp_4k.png"
+            }
+          },
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/mtlx/4k/sandstone_blocks_08/sandstone_blocks_08_4k.mtlx"
+        }
+      },
+      "2k": {
+        "mtlx": {
+          "size": 4794,
+          "md5": "d15b50c27906f12d7552770cd95e51f1",
+          "include": {
+            "textures/sandstone_blocks_08_disp_2k.png": {
+              "size": 7409561,
+              "md5": "75f870b789c7f6d7da26d7fff934ce48",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/sandstone_blocks_08/sandstone_blocks_08_disp_2k.png"
+            },
+            "textures/sandstone_blocks_08_nor_gl_2k.exr": {
+              "size": 4180608,
+              "md5": "2063e3b24844e3de9a4d1e6b340a8856",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/2k/sandstone_blocks_08/sandstone_blocks_08_nor_gl_2k.exr"
+            },
+            "textures/sandstone_blocks_08_rough_2k.jpg": {
+              "size": 877815,
+              "md5": "1f6cd4b874436929d438f8f5ba8818d9",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/sandstone_blocks_08/sandstone_blocks_08_rough_2k.jpg"
+            },
+            "textures/sandstone_blocks_08_diff_2k.jpg": {
+              "size": 1129500,
+              "md5": "2bd2a87974f1870fad58e25da35ed706",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/sandstone_blocks_08/sandstone_blocks_08_diff_2k.jpg"
+            }
+          },
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/mtlx/2k/sandstone_blocks_08/sandstone_blocks_08_2k.mtlx"
+        }
+      },
+      "1k": {
+        "mtlx": {
+          "size": 4794,
+          "md5": "ba4b86e13a46d0e47708ac5c6ee5a38b",
+          "include": {
+            "textures/sandstone_blocks_08_nor_gl_1k.exr": {
+              "size": 920972,
+              "md5": "e38090bdd2409126d21d1f671e3adf03",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/exr/1k/sandstone_blocks_08/sandstone_blocks_08_nor_gl_1k.exr"
+            },
+            "textures/sandstone_blocks_08_diff_1k.jpg": {
+              "size": 242776,
+              "md5": "9b74a03abb0ff86619c4b6bf21f4fbf3",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/sandstone_blocks_08/sandstone_blocks_08_diff_1k.jpg"
+            },
+            "textures/sandstone_blocks_08_disp_1k.png": {
+              "size": 1924571,
+              "md5": "fb93fc3243315650d0a0cefd3e62a98b",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/sandstone_blocks_08/sandstone_blocks_08_disp_1k.png"
+            },
+            "textures/sandstone_blocks_08_rough_1k.jpg": {
+              "size": 161690,
+              "md5": "bcd3565b78fb209dfab41984aabc2903",
+              "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/sandstone_blocks_08/sandstone_blocks_08_rough_1k.jpg"
+            }
+          },
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/mtlx/1k/sandstone_blocks_08/sandstone_blocks_08_1k.mtlx"
+        }
+      }
+    }
+  }
+}

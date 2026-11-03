@@ -65,6 +65,13 @@ which could point into the socket on the worker's steep lid roll. Roots sit
 on the anterior skin margin, just outside the wet inner edge. The middle and
 upper levels have more visible fibres, with softer subpixel coverage.
 
+November 3: at consultation distance the fibres are almost invisible, and the
+first baked margin was too thin to read, so the expansion heads looked
+hairless. `build_carmela_head.py` now bakes a wider upper lash line (heavier
+towards the outer corner), a lighter lower margin and a deeper crease. Only a
+patched-texture preview has been reviewed. The expansion and male heads still
+need a Blender rebuild to ship it.
+
 The female painted baseline remains a limit on absolute cross-head matching.
 Removing those painted strands while keeping the existing skin and crease
 detail would be a separate texture cleanup; the current controls add geometry

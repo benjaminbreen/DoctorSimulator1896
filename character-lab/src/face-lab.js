@@ -10,6 +10,7 @@ import { MeshoptDecoder } from 'meshoptimizer';
 import { createModularFacialHair, MODULAR_SIDEBURNS, MODULAR_MOUSTACHES } from '../../shared/characters/modularFacialHair.js';
 import { createModularBody, MODULAR_BODY_CONTROLS } from '../../shared/characters/modularBody.js';
 import { createModularWardrobe } from '../../shared/characters/modularWardrobe.js';
+import {MODULAR_FABRICS,loadClothingTextures} from '../../shared/characters/modularFabric.js';
 import { createModularIdentity, MODULAR_IDENTITIES, MODULAR_FEATURES, MODULAR_FACE_STUDIES, MODULAR_NOSE_STUDIES } from '../../shared/characters/modularIdentity.js';
 import { createModularAppearance, MODULAR_SKIN_TONES, MODULAR_HAIR_TONES, MODULAR_EYE_TONES } from '../../shared/characters/modularAppearance.js';
 import { createModularVariation } from '../../shared/characters/modularVariants.js';
@@ -93,6 +94,7 @@ const state = {
   paused: false,
   outfit: CHARACTER.outfit || (CHARACTER.id.startsWith('male-') ? 'tailored-clothes' : 'day-dress'),
   palette: 'original',
+  fabric:'wool',fabricScale:1,
   identityVariant: 0, sideburns:'short-sideburns', moustache:'none', bellySize: 0, waistWidth: 0,
   hairStyle: CHARACTER.id.startsWith('male-') ? 'short-side-part' : 'soft-side-waves', hairVolume: 0, hairWave: 0, hairBunHeight: 0, hairPartOffset: 0, hairEarCoverage: .3, hairlineHeight:0, hairlinePeak:0, hairlineRecession:0, hairlineAsymmetry:0, hairThinning:0,
   performanceSeed: 7,
@@ -112,9 +114,10 @@ const loader = new GLTFLoader()
   .setMeshoptDecoder(MeshoptDecoder)
   .setKTX2Loader(new KTX2Loader().setTranscoderPath('/basis/').detectSupport(renderer));
 
-const [gltf] = await Promise.all([loader.loadAsync(MODEL),loadHeadwearTextures()]);
+const [gltf] = await Promise.all([loader.loadAsync(MODEL),loadHeadwearTextures(),loadClothingTextures()]);
 scene.add(gltf.scene);
 const wardrobe = createModularWardrobe(gltf.scene);
+await Promise.all(gltf.scene.children.flatMap(child=>{const pending=[];child.traverse(mesh=>{if(mesh.userData.preparation)pending.push(mesh.userData.preparation);});return pending;}));
 const bodyShape = createModularBody(gltf.scene);
 const facialHair = createModularFacialHair(gltf.scene);
 const hair = createModularHair(gltf.scene);
@@ -242,7 +245,7 @@ function syncAppearanceControls() {
   for(const name of ['hatStyle','hatHand','hatColor','hatBandColor','hatCrownHeight','hatBrimWidth','hatTilt','hatDecoration','hatWear']){
     const input=controlsHost.querySelector(`[name="${name}"]`);if(input)input.value=state[name]??(name==='hatDecoration'?HEADWEAR_STYLES[state.hatStyle]?.trim??0:name==='hatColor'?'':0);
   }
-  for (const name of ['identityVariant', 'outfit', 'palette', 'skinTone', 'hairTone', 'eyeTone', 'hairStyle','sideburns','moustache','lashProminence','lashTone']) {
+  for (const name of ['identityVariant', 'outfit', 'palette', 'fabric', 'skinTone', 'hairTone', 'eyeTone', 'hairStyle','sideburns','moustache','lashProminence','lashTone']) {
     const select = controlsHost.querySelector(`select[name="${name}"]`);
     if (select) select.value = state[name];
   }
@@ -398,7 +401,7 @@ if (wardrobe.available) {
   for (const [name, choices] of [['outfit', wardrobe.outfits], ['palette', ['original', 'navy', 'forest', 'taupe']]]) {
     const row = document.createElement('label');
     row.className = 'row';
-    row.textContent = name === 'outfit' ? 'Outfit' : 'Fabric';
+    row.textContent = name === 'outfit' ? 'Outfit' : 'Clothing colour';
     const select = document.createElement('select');
     select.name = name;
     for (const value of choices) {
@@ -411,6 +414,18 @@ if (wardrobe.available) {
     row.append(select);
     controlsHost.append(row);
   }
+}
+
+if(wardrobe.fabricAvailable){
+  const row=document.createElement('label');row.className='row';row.textContent='Clothing fabric';
+  const select=document.createElement('select');select.name='fabric';
+  for(const [id,label]of Object.entries(MODULAR_FABRICS)){const option=document.createElement('option');option.value=id;option.textContent=label;select.append(option);}
+  select.value=state.fabric;select.addEventListener('change',()=>{state.fabric=select.value;});row.append(select);controlsHost.append(row);
+  const scaleRow=document.createElement('label');scaleRow.className='row';scaleRow.textContent='Weave density';
+  const input=document.createElement('input');input.type='range';input.name='fabricScale';input.min=.5;input.max=2;input.step=.05;input.value=state.fabricScale;
+  const output=document.createElement('output');output.value=state.fabricScale.toFixed(2);
+  input.addEventListener('input',()=>{state.fabricScale=Number(input.value);output.value=state.fabricScale.toFixed(2);});
+  hairInputs.set('fabricScale',{input,output});scaleRow.append(input,output);controlsHost.append(scaleRow);
 }
 
 const modeRow = document.createElement('div');
@@ -561,7 +576,7 @@ function drive(delta) {
   const seated = state.clip === 'ClinicIdle' || state.clip.startsWith('Sitting')
     || (state.clip === 'SitDown' && action.time / action.getClip().duration > .65)
     || (state.clip === 'StandUp' && action.time / action.getClip().duration < .35);
-  wardrobe.update({ seated, apron: state.outfit === 'work-apron', outfit:state.outfit, palette: state.palette, dt:delta });
+  wardrobe.update({ seated, apron: state.outfit === 'work-apron', outfit:state.outfit, palette: state.palette, fabric:state.fabric, fabricScale:state.fabricScale, dt:delta });
   accessories.updateLook(state);
   if (state.mode === 'raw') {
     for (const mesh of faceMeshes) {
@@ -605,7 +620,7 @@ function drive(delta) {
 let surfaceVisibility=null;
 let surfaceSelection=null;
 function characterRecipe() {
-  const keys=['identityVariant','features','skinTone','hairTone','eyeTone','outfit','palette','hairStyle',
+  const keys=['identityVariant','features','skinTone','hairTone','eyeTone','outfit','palette','fabric','fabricScale','hairStyle',
     'hairVolume','hairWave','hairBunHeight','hairPartOffset','hairEarCoverage','hairlineHeight','hairlinePeak','hairlineRecession','hairlineAsymmetry','hairThinning','sideburns','moustache','bellySize','waistWidth'];
   keys.push('hatStyle','hatHand','hatSeed','hatColor','hatBandColor','hatCrownHeight','hatBrimWidth','hatTilt','hatDecoration','hatWear');
   keys.push('lashProminence','lashSeed','lashTone');
@@ -614,6 +629,7 @@ function characterRecipe() {
 }
 
 window.__faceLab = {
+  fabrics:()=>wardrobe.fabricDescription(),
   recipe:characterRecipe,
   eyelashes:()=>eyelashes.describe(),
   accessories:()=>accessories.describe(),
@@ -712,6 +728,7 @@ window.__faceLab = {
     for (const child of clipRow.children) child.classList.toggle('active', child.textContent === clip);
     state.outfit = outfit;
     state.palette = palette;
+    state.fabric=headwearLook.fabric??'wool';state.fabricScale=headwearLook.fabricScale??1;
     state.identityVariant = identityVariant;
     state.features = { ...features }; state.skinTone = skinTone; state.hairTone = hairTone; state.eyeTone = eyeTone;
     Object.assign(state, { sideburns, moustache, bellySize, waistWidth, hairStyle, hairVolume, hairWave, hairBunHeight, hairPartOffset, hairEarCoverage, hairlineHeight, hairlinePeak, hairlineRecession, hairlineAsymmetry, hairThinning });

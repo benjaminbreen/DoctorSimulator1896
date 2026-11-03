@@ -1,25 +1,20 @@
 import * as THREE from 'three';
 
-// Three shared surfaces replace the small per-building facade atlases. At a
-// three-metre repeat a 512px map supplies about 171 texels per metre, while
-// the whole street still uploads only three colour textures. The same sample
-// is reused as a restrained bump map; this costs shader work, not more texture
-// memory.
-export const FACADE_TEXTURE_URLS = [
-  '/textures/facades/brownstone.webp',
-  '/textures/facades/brick.webp',
-  '/textures/facades/limestone.webp',
-  '/textures/facades/ashlar-gray.webp',
-];
+// Shared PBR sets serve the city alongside the original regular brick.
+// Occlusion and roughness share one small texture.
+export const FACADE_TEXTURE_URLS = ['brownstone','brick','limestone','ashlar-gray']
+  .flatMap(name=>['color','normal','arm'].map(map=>{
+    const shared=name==='limestone'&&map!=='color'?'brownstone':name;
+    return `/textures/facades/pbr/${shared}-${map}.webp`;
+  })).concat('/textures/facades/brick.webp');
 
 const STYLE_SURFACES = [0, 1, 2, 0, 2, 3];
 // The two rowhouse entries deliberately share the brownstone surface but not
 // its finish: style 0 is warmer dressed stone, while style 3 is a darker,
 // more weathered row. Brick remains untouched by this distinction.
 const STYLE_TINTS = ['#f2e5dc', '#e2d6ce', '#cbc4b9', '#b8aaa0', '#f6f0e7', '#c8c6bf'];
-const STYLE_ROUGHNESS = [0.92, 0.9, 0.88, 0.97, 0.84, 0.94];
-// The brick source has lighter mortar, so its height direction is inverted.
-const STYLE_BUMP = [0.055, -0.052, 0.04, 0.036, 0.025, 0.035];
+const STYLE_ROUGHNESS = [1, 1, 0.97, 1, 0.92, 1];
+const STYLE_RELIEF = [0.48, 0.65, 0.32, 0.55, 0.24, 0.5];
 const STYLE_BASE_DARKEN = [0.26, 0, 0, 0.36, 0, 0.24];
 // Rowhouses reuse the brownstone surface. Tone 0 preserves its warm finish;
 // the other entries neutralise it into common urban stone colours. These are
@@ -38,13 +33,18 @@ function hash01(seed) {
 }
 
 export function prepareFacadeTextures(textures, anisotropy = 8) {
-  for (const texture of textures) {
+  for (const [index,texture] of textures.entries()) {
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
-    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.colorSpace = index%3===0 ? THREE.SRGBColorSpace : THREE.NoColorSpace;
     texture.anisotropy = anisotropy;
   }
-  return textures;
+  const surfaces=Array.from({length:4},(_,i)=>{
+    const relief=i===2?0:i;
+    return {map:textures[i*3],normal:textures[relief*3+1],arm:textures[relief*3+2]};
+  });
+  surfaces.push({map:textures[12],bump:textures[12]});
+  return surfaces;
 }
 
 function rowhouseTone(toneIndex) {
@@ -78,6 +78,12 @@ function applyMetreScaledUvs(material, seed, style, heightM, tone, instancedWorl
           facadePosition = (instanceMatrix * vec4(position, 1.0)).xyz;
         #endif`
     : 'vec3 facadePosition = position;';
+  const parcelPhase=instancedWorldSpace
+    ? `#ifdef USE_INSTANCING
+         vec2 parcel=instanceMatrix[3].xz;
+         facadeSurfaceUv+=fract(sin(vec2(dot(parcel,vec2(12.9898,78.233)),dot(parcel,vec2(39.346,11.135))))*43758.5453);
+       #endif`
+    : '';
   material.onBeforeCompile = (shader) => {
     shader.uniforms.facadeUvOffset = { value: offset };
     shader.uniforms.facadeGroundStart = { value: groundStart };
@@ -103,11 +109,21 @@ function applyMetreScaledUvs(material, seed, style, heightM, tone, instancedWorl
           facadeSurfaceUv = vec2(facadePosition.x * sign(normal.z), facadePosition.y);
         }
         facadeSurfaceUv = facadeSurfaceUv / ${METRES_PER_REPEAT.toFixed(1)} + facadeUvOffset;
+        ${parcelPhase}
         #ifdef USE_MAP
           vMapUv = facadeSurfaceUv;
         #endif
         #ifdef USE_BUMPMAP
           vBumpMapUv = facadeSurfaceUv;
+        #endif
+        #ifdef USE_NORMALMAP
+          vNormalMapUv = facadeSurfaceUv;
+        #endif
+        #ifdef USE_ROUGHNESSMAP
+          vRoughnessMapUv = facadeSurfaceUv;
+        #endif
+        #ifdef USE_AOMAP
+          vAoMapUv = facadeSurfaceUv;
         #endif`,
       );
     shader.fragmentShader = shader.fragmentShader
@@ -131,17 +147,13 @@ function applyMetreScaledUvs(material, seed, style, heightM, tone, instancedWorl
         `vec4 diffuseColor = vec4( diffuse, opacity );
         float facadeBaseTop = facadeGroundStart + 3.15;
         float facadeBaseMask = 1.0 - smoothstep(facadeBaseTop - 0.12, facadeBaseTop + 0.08, vFacadeLocalY);
-        float facadeCourse = fract((vFacadeLocalY - facadeGroundStart) / 0.58);
-        float facadeCourseEdge = min(facadeCourse, 1.0 - facadeCourse);
-        float facadeJoint = 1.0 - smoothstep(0.025, 0.075, facadeCourseEdge);
         float facadeShade = 1.0 - facadeBaseMask * facadeBaseDarken;
-        facadeShade *= 1.0 - facadeBaseMask * facadeJoint * 0.18;
         diffuseColor.rgb *= facadeShade;`,
       );
   };
   // Every facade uses the same shader shape; only ordinary uniforms, colour,
   // and texture bindings differ. This lets Three share one compiled program.
-  material.customProgramCacheKey = () => `facade-metre-uv-base-v4-${instancedWorldSpace ? 'world' : 'local'}`;
+  material.customProgramCacheKey = () => `facade-metre-pbr-v5-${instancedWorldSpace ? 'world' : 'local'}`;
   return material;
 }
 
@@ -153,12 +165,14 @@ export function createFacadeMaterial(
   heightM = 12,
   toneIndex = null,
   instancedWorldSpace = false,
+  brickFinish = 'smooth',
 ) {
   const style = ((styleIndex % STYLE_SURFACES.length) + STYLE_SURFACES.length) % STYLE_SURFACES.length;
-  const map = textures[STYLE_SURFACES[style]];
+  const regularBrick=style===1&&brickFinish!=='rough';
+  const surface = textures[regularBrick?4:STYLE_SURFACES[style]];
   const tone = Number.isInteger(toneIndex) ? rowhouseTone(toneIndex) : ROWHOUSE_TONES[0];
   const shared = {
-    map,
+    map: surface.map,
     color: facadeTint(style, seed, tone),
     fog: true,
   };
@@ -166,9 +180,14 @@ export function createFacadeMaterial(
     ? new THREE.MeshBasicMaterial(shared)
     : new THREE.MeshStandardMaterial({
         ...shared,
-        bumpMap: map,
-        bumpScale: STYLE_BUMP[style],
-        roughness: STYLE_ROUGHNESS[style],
+        normalMap: surface.normal??null,
+        normalScale: new THREE.Vector2(STYLE_RELIEF[style],STYLE_RELIEF[style]),
+        bumpMap: surface.bump??null,
+        bumpScale: regularBrick?-0.052:1,
+        roughnessMap: surface.arm??null,
+        aoMap: surface.arm??null,
+        aoMapIntensity: 0.35,
+        roughness: regularBrick?.9:STYLE_ROUGHNESS[style],
         metalness: 0,
       });
   return applyMetreScaledUvs(material, seed, style, heightM, tone, instancedWorldSpace);

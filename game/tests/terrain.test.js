@@ -23,6 +23,24 @@ test('the Pond is carved below water level and its banks stay dry', () => {
   assert.ok(terrainHeight(70, 38) > WATER_LEVEL, 'east bank toward the gate stays dry');
 });
 
+test('the pond bank meets the bed without a vertical step',()=>{
+  for(let i=0;i<POND_OUTLINE.length;i++){
+    const a=POND_OUTLINE[i],b=POND_OUTLINE[(i+1)%POND_OUTLINE.length];
+    const x=(a[0]+b[0])/2,z=(a[1]+b[1])/2,length=Math.hypot(b[0]-a[0],b[1]-a[1]);
+    const nx=-(b[1]-a[1])/length,nz=(b[0]-a[0])/length;
+    let low=-1,high=1;
+    const lowSign=Math.sign(pondDepth(x+nx*low,z+nz*low));
+    assert.notEqual(lowSign,Math.sign(pondDepth(x+nx*high,z+nz*high)),`bank crossing ${i}`);
+    for(let j=0;j<20;j++){
+      const mid=(low+high)/2;
+      if(Math.sign(pondDepth(x+nx*mid,z+nz*mid))===lowSign)low=mid;
+      else high=mid;
+    }
+    const edgeX=x+nx*(low+high)/2,edgeZ=z+nz*(low+high)/2;
+    assert.ok(Math.abs(terrainHeight(edgeX+nx*.005,edgeZ+nz*.005)-terrainHeight(edgeX-nx*.005,edgeZ-nz*.005))<.015,`bank edge ${i}`);
+  }
+});
+
 test('water contact uses both the authored outline and the player foot height', () => {
   const pond = { outline: POND_OUTLINE, level: WATER_LEVEL };
   assert.equal(feetAreInWater(pond, 0, terrainHeight(0, 54), 54), true);

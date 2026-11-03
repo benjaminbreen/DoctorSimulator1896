@@ -11,6 +11,7 @@ import GildedAgeLandmarks, { isGildedAgeLandmark } from './GildedAgeLandmarks.js
 import { getInteraction, subscribe } from '../world/interaction.js';
 import { identifyLandmark } from '../world/landmarkInformation.js';
 import { freezeStaticTransforms } from './lib/staticScene.js';
+import {facadeBrickFinish} from '../world/facade.js';
 import {
   createFacadeMaterial,
   FACADE_TEXTURE_URLS,
@@ -53,8 +54,10 @@ function Backdrop({ item, facadeTextures }) {
       false,
       item.size[1],
       item.facadeTone,
+      false,
+      facadeBrickFinish(item)??'smooth',
     ),
-    [facadeTextures, item.facadeStyle, item.facadeTone, item.size, seed],
+    [facadeTextures, item.facadeStyle, item.facadeTone, item.brickFinish, item.frontageFamily, item.size, seed],
   );
   useEffect(() => () => facadeMaterial.dispose(), [facadeMaterial]);
   const capY = item.size[1] / 2 + 0.25;
@@ -137,6 +140,7 @@ function FacadeBatch({ entries, facadeTextures }) {
       groundStart,
       tone,
       true,
+      facadeBrickFinish(entries[0])??'smooth',
     ),
     [entries, facadeTextures, groundStart, style, tone],
   );
@@ -159,7 +163,7 @@ function FacadeBatch({ entries, facadeTextures }) {
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   }, [dummy, entries]);
   return (
-    // These 131 street buildings collapse to seven material batches, so the
+    // Street masses share batches by material and brick finish, so the
     // complete masses can afford to cast. Leaving this off did not remove
     // building shadows altogether: WindowField's projecting trim still cast,
     // producing stray sill-and-stoop marks with no wall silhouette around
@@ -212,7 +216,7 @@ function ProceduralFacades({ items, facadeTextures }) {
     const mansardRoofs = [];
     for (const item of items) {
       if (item.kind !== 'backdrop' || !item.frontageFamily || item.landmarkLabel) continue;
-      const key = `${item.facadeStyle ?? 0}:${Number.isInteger(item.facadeTone) ? item.facadeTone : 'default'}`;
+      const key = `${item.facadeStyle ?? 0}:${Number.isInteger(item.facadeTone) ? item.facadeTone : 'default'}:${facadeBrickFinish(item)??'stone'}`;
       const batch = grouped.get(key) ?? [];
       batch.push(item);
       grouped.set(key, batch);
@@ -220,7 +224,8 @@ function ProceduralFacades({ items, facadeTextures }) {
         id: `${item.id}-roof-cap`,
         position: [item.position[0], item.position[1] + item.size[1] / 2 + 0.25, item.position[2]],
         size: [item.size[0] + 0.5, 0.5, item.size[2] + 0.5],
-        color: '#4c4138',
+        // Match the crown to its stone family; brick keeps a painted cornice.
+        color: ['#57453a','#4c4138','#9a8f7d','#4c433b','#b7af9e','#77746b'][item.facadeStyle??0],
       });
       const chimneySeed = idHash(item.id);
       chimneyPots.push({

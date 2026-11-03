@@ -59,6 +59,18 @@ function hash01(seed) {
   return value - Math.floor(value);
 }
 
+// Most brick fronts use the regular bond; a stable minority use worn brick.
+// Authored parcels can choose either finish explicitly.
+export function facadeBrickFinish(building) {
+  if(building.facadeStyle!==1)return null;
+  if(['smooth','rough'].includes(building.brickFinish))return building.brickFinish;
+  if(!building.frontageFamily||building.landmarkLabel)return 'smooth';
+  let seed=idHash(building.id);
+  seed=Math.imul(seed^(seed>>>16),0x45d9f3b);
+  seed=Math.imul(seed^(seed>>>16),0x45d9f3b);
+  return ((seed^(seed>>>16))>>>0)/4294967296<.25?'rough':'smooth';
+}
+
 // Attached houses characteristically put the door in a side bay. Keep a
 // smaller centred minority so a generated row does not exchange one repeated
 // pattern for another. Authored landmarks retain their documented builders.
@@ -77,7 +89,15 @@ export function facadeLayoutForFace(building, token = building.windowFaces?.[0] 
   const neutral = facadeLayout(width, building.size[1]);
   const faceIndex = building.windowFaces?.indexOf(token) ?? 0;
   if (facadeFaceRole(building, token, faceIndex) !== 'front') return neutral;
-  return facadeLayout(width, building.size[1], facadeDoorColumn(building, neutral.cols));
+  const layout=facadeLayout(width, building.size[1], facadeDoorColumn(building, neutral.cols));
+  // Keep bay centres aligned with rooms and entrances while giving each
+  // family a different rhythm, including smaller windows at the cornice.
+  const family=building.frontageFamily;
+  if(!family||building.landmarkModel)return layout;
+  const widthScale=family==='mansion'?1.13:family==='marble'?1.17:family==='apartment'?1.06:1;
+  layout.upper=layout.upper.map(win=>centeredScale(win,widthScale,win.floor===0?.86:family==='mansion'?1.12:1));
+  layout.ground=layout.ground.map(win=>win.isDoor?win:centeredScale(win,widthScale,family==='mansion'?1.12:1));
+  return layout;
 }
 
 export function facadeFaceRole(building, token, faceIndex = building.windowFaces?.indexOf(token) ?? 0) {

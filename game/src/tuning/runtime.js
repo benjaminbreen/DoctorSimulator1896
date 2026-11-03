@@ -52,6 +52,9 @@ const MIGRATIONS = {
       if (values.groundBounce === 0.3) values.groundBounce = 0.4;
     }
   },
+  8: (values) => {
+    if(isOutdoorZone(values.zone)&&values.outdoorShadowDistance===50)values.outdoorShadowDistance=32;
+  },
 };
 
 export function migrateStoredTuning(stored, schema) {

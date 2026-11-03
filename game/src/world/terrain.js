@@ -87,8 +87,11 @@ function polygonEdgeDistance(x, z, polygon) {
 export function pondDepth(x, z) {
   if (x < pondBounds.minX || x > pondBounds.maxX || z < pondBounds.minZ || z > pondBounds.maxZ) return 1;
   const edge = polygonEdgeDistance(x, z, POND_OUTLINE);
-  if (pointInPolygon(x, z, POND_OUTLINE)) return -Math.min(1, edge / 7);
-  return Math.min(1, edge / 7);
+  const signed=pointInPolygon(x,z,POND_OUTLINE)?-edge:edge;
+  // Small erosion scallops break the survey polygon's ruler-straight edges.
+  // The waterline remains inside the authored outline used by water contact.
+  const erosion=.26+(valueNoise(x*.48+13,z*.48-5)-.5)*.36+Math.sin(x*.9+z*.67)*.08;
+  return clamp((signed+erosion)/7,-1,1);
 }
 
 // Combined outcrop strength in [0, ~1.5]; also drives rock coloring.
@@ -151,16 +154,16 @@ function baseHeight(x, z) {
   const gate = 1 - smooth(clamp((gateDistance - GATE.flat) / (GATE.radius - GATE.flat), 0, 1));
   height = height * (1 - gate) + GATE.height * gate;
 
-  // The Pond: beach at the rim, carved hollow inside. The flat -0.55 term
-  // keeps even the narrowest channel (the west hook, the Gapstow neck)
-  // under the water surface; without it, water shallower than the edge
-  // gradient pokes through as dry terrain.
+  // A low earthen shelf meets the water, then rolls up into the lawn.
+  // Varying its width avoids a continuous raised grass embankment.
   const pond = pondDepth(x, z);
+  const bankWidth=4+valueNoise(x*.12+5,z*.12+8)*3;
   if (pond < 0) {
-    height = Math.min(height, -0.05) - 0.55 + pond * 1.7;
+    const bedWidth=.9+valueNoise(x*.23+7,z*.23)*.65;
+    height = -.42-.55*smooth(clamp(-pond*7/bedWidth,0,1))+pond*1.7;
   } else {
-    const shore = smooth(clamp(pond, 0, 1));
-    height = -0.05 * (1 - shore) + height * shore;
+    const shore = smooth(clamp(pond*7/bankWidth, 0, 1));
+    height = -.42 * (1 - shore) + height * shore;
   }
 
   return height;

@@ -15,7 +15,7 @@ import { PARK_LANDMARKS } from '../world/parkLandmarks.js';
 // tile in world space and flatten with distance. Adapted from Darwin's
 // standing-water renderer, cut down to what one pond needs.
 
-const DEPTH_RES = 256;
+const DEPTH_RES = 512;
 const DEPTH_RANGE = 2.5; // metres packed into one byte of the bake
 const MARGIN = 5; // bake/geometry margin beyond the outline, metres
 const CELL = 1.7; // surface grid cell, metres
@@ -354,7 +354,7 @@ const FRAGMENT = /* glsl */ `
     float shallow = (1.0 - smoothstep(0.0, min(0.16, uShoreWidth), depthM)) * wet;
     float lap = 0.6 + 0.4 * sin(vWorldPos.x * 2.3 - vWorldPos.z * 1.7 + uTime * 0.9)
       * sin(vWorldPos.x * 0.7 + vWorldPos.z * 1.1 - uTime * 0.6);
-    float foam = shallow * shallow * lap * uShoreFoam;
+    float foam = shallow * shallow * smoothstep(0.65, 0.92, lap) * uShoreFoam * 0.35;
     color += foam * vec3(0.72, 0.78, 0.74) * (0.08 + 0.92 * uDayness);
 
     // Deep water is opaque body+mirror; thin water hands over to the real bed.

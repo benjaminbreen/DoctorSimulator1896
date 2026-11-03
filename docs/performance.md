@@ -252,3 +252,72 @@ check verified automatic control collapse, manual reopening, dialogue clearance,
 NPC floor positions, speaker facing, and the rendered shelter. No runtime or
 shader errors were reported. This pass does not establish a new performance
 benchmark or eliminate the previously noted background loading pop-in.
+
+## November 3 exterior pass
+
+- Smaller tree cells and earlier distant geometry improve culling. Quantized
+  LOD attributes are expanded before world transforms so distant crowns keep
+  their shape. Bent leaf normals soften the flat-card lighting.
+- Outdoor sun coverage is 32 metres instead of 50. Nearby tree cells cast
+  shadows; stationary views refresh the sun map at most 30 times per second.
+  Customized shadow distances survive the saved-settings migration.
+- The original broad grass texture mix, colour and normal strength are kept.
+  Small plants disappear sooner. Path margins have a broken texture transition.
+- Pond banks slope continuously through the waterline, with varying width,
+  a pale worn upper bank, narrow wet-earth margin and sparse pebble clusters.
+  Extra terrain vertices are confined
+  to the shore; the water depth mask has finer resolution. Foam is sparse.
+
+Validation: 810 tests and the production build pass. Matching-camera captures
+are in `artifacts/performance/exterior-approved/`, including a contact sheet
+and shoreline detail. Local GPU timings vary under concurrent desktop work;
+this pass does not establish a reliable FPS improvement.
+The gameplay runner also checks the pond approach and the regular park route.
+The shoreline regression test checks continuity across the eroded bank field.
+The grass follow-up restores the original broad texture mix and pale bank;
+`artifacts/performance/grass-restored/comparison.jpg` shows the corrected blend.
+
+## November 3 procedural masonry and openings
+
+- Four 1K colour surfaces retain the street palette. Three matching normal
+  maps provide relief; 512px packed maps supply occlusion and roughness.
+  Brownstone and pale stone share their relief textures. The shipped set is
+  about 5.1 MB; sources, licence and rebuild instructions are in `credits.md`.
+- Window returns, ground-floor lintels and layered cornices join the existing
+  trim instances. One extra unlit instance batch supplies soft opening contact
+  shading. No lights or shadow passes are added, and no new per-frame CPU
+  animation work is required.
+- Frontage families vary window proportions and use smaller top-storey
+  openings. Bay centres and entrance records remain shared by interiors,
+  projectile hit testing and rendering.
+
+The comparison freezes the rest of the scene while swapping the four facade
+modules, using Chrome/Metal at DPR 1.5 and the same five cameras. GPU medians
+in milliseconds were:
+
+| View | Original | Updated |
+| --- | ---: | ---: |
+| Brownstone close-up | 12.94 | 12.91 |
+| Apartments | 9.01 | 6.25 |
+| Pale stone | 7.86 | 7.12 |
+| Brick | 5.47 | 6.96 |
+| Full frontage | 11.25 | 12.02 |
+
+Close street views retained a 16.7 ms median frame interval. Wider city views
+remained slower, around 33 ms in the updated capture. Animated crowds, shadow
+refresh cadence and concurrent desktop work vary these measurements; they do
+not establish an FPS improvement. Additional surface detail has a memory and
+geometry cost, including the measured increase in the brick view.
+
+Validation: 812 game tests, the production build, daytime/evening shader checks
+and the park/travel gameplay replay passed. The runner now holds `press` keys
+for 100 ms so frame-polled controls can observe them. Captures and the contact
+sheet are in `artifacts/performance/building-final-before/` and
+`artifacts/performance/building-final-after/`; the final replay is in
+`artifacts/gameplay/building-beauty-final/`.
+
+Brick follow-up: the original regular-bond texture is the common finish;
+rough PBR brick is a stable 25% choice on procedural brick parcels (18 regular,
+6 rough in the current layout). `brickFinish: 'smooth'` or `'rough'` overrides
+that choice. The exterior batch key and interior window proxy use the same
+selection. This adds one shared brick batch and one existing 512px texture.

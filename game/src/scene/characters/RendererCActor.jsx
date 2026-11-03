@@ -27,6 +27,7 @@ import { rendererCWomenPalette } from '../../../../shared/characters/rendererCWa
 import { createModularFacialHair } from '../../../../shared/characters/modularFacialHair.js';
 import { createModularBody } from '../../../../shared/characters/modularBody.js';
 import { createModularWardrobe } from '../../../../shared/characters/modularWardrobe.js';
+import {CLOTHING_TEXTURE_URLS,configureClothingTextures} from '../../../../shared/characters/modularFabric.js';
 import { createModularIdentity } from '../../../../shared/characters/modularIdentity.js';
 import { createModularAppearance } from '../../../../shared/characters/modularAppearance.js';
 import { createModularVariation } from '../../../../shared/characters/modularVariants.js';
@@ -74,6 +75,8 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
     [bodyPath, recipe.asset?.motionPath || bodyPath], configure);
   const hatTextures=useLoader(THREE.TextureLoader,HEADWEAR_TEXTURE_URLS);
   configureHeadwearTextures(hatTextures);
+  const clothingTextures=useLoader(THREE.TextureLoader,CLOTHING_TEXTURE_URLS);
+  configureClothingTextures(clothingTextures);
   const clips = useMemo(() => {
     let merged = gltf.animations;
     if (recipe.asset?.motionPath) {
@@ -142,7 +145,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
     const headwear=createHeadwear(root,hatLook);
     const eyelashes=createModularEyelashes(root,{cohort:recipe.cohort,seed:recipe.appearanceSeed});
     eyelashes.updateLook(look);
-    wardrobe.update({seated:false,outfit:look.outfit,apron:look.outfit==='work-apron',palette:look.palette,dt:0});
+    wardrobe.update({seated:false,outfit:look.outfit,apron:look.outfit==='work-apron',palette:look.palette,fabric:look.fabric,fabricScale:look.fabricScale,dt:0});
     const accessories=createPeriodAccessories(root,{cohort:recipe.cohort,frame:identity.frame});accessories.updateLook(look);
     const lips = root.getObjectByName('Carmela_Lips');
     let mouthAnchor = null;
@@ -576,6 +579,8 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
       outfit: actor.look?.outfit,
       apron: actor.look?.outfit === 'work-apron',
       palette: actor.look?.palette,
+      fabric:actor.look?.fabric,
+      fabricScale:actor.look?.fabricScale,
     });
   });
 

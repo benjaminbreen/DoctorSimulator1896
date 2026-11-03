@@ -322,9 +322,16 @@ if male:
                 clean[row,col]=clean[row,col]*(1-blend)+skin_pixel*blend
             rim=math.sqrt(((x-cx)/(eye_width*.90))**2+((z-eye_z)/(.025 if z>=eye_z else .017))**2)
             side=max(0,1-((x-cx)/(eye_width*1.10))**2)**.5
-            edge=math.exp(-((rim-1)/.055)**2)*side
-            fold=math.exp(-((rim-1.38)/.08)**2)*side if z>eye_z else 0
-            clean[row,col,:3]*=1-edge*np.array([.30,.39,.43])-fold*np.array([.15,.20,.22])
+            # rim 1-1.4 is the lid margin rolling onto the globe, seen nearly
+            # edge-on, so a thin line there vanishes. The upper lash line needs
+            # width and weight, heavier towards the outer corner.
+            outer=.65+.35*max(-1,min(1,(abs(x)-abs(cx))/eye_width))
+            up=max(0,min(1,(z-eye_z)/.008+.5));up=up*up*(3-2*up)
+            upper=math.exp(-(max(0,rim-1.10)/.14)**2)*side**.6*outer
+            lower=math.exp(-((rim-1.04)/.07)**2)*side*outer
+            fold=math.exp(-((rim-1.45)/.10)**2)*side*up
+            clean[row,col,:3]*=(1-up*upper*np.array([.72,.77,.79])-(1-up)*lower*np.array([.30,.38,.40])
+                                -fold*np.array([.20,.26,.28]))
     lid_image=bpy.data.images.new('Patient_CleanLidSkin',width=width,height=height)
     lid_image.pixels.foreach_set(clean.ravel())
     lid_image.filepath_raw=os.path.abspath(os.path.join(args.output,'clean-lid-skin.png'));lid_image.file_format='PNG';lid_image.save();lid_image.pack()

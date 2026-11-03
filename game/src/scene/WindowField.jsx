@@ -130,6 +130,22 @@ function makeGlassGradient() {
   return texture;
 }
 
+// A soft contact shadow anchors the opening without another light or shadow
+// pass. The opaque pane hides the centre; only the wall around it is shaded.
+function makeRecessShadeTexture() {
+  const width=64,height=96,data=new Uint8Array(width*height*4);
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+    const u=Math.abs((x+.5)/width-.5),v=Math.abs((y+.5)/height-.5);
+    const edge=Math.max((u-.36)/.14,(v-.40)/.10);
+    const fade=Math.max(0,1-Math.max(0,edge));
+    const i=(y*width+x)*4;data[i+3]=Math.round(255*.28*fade*fade);
+  }
+  const texture=new THREE.DataTexture(data,width,height);
+  texture.needsUpdate=true;
+  texture.magFilter=THREE.LinearFilter;texture.minFilter=THREE.LinearFilter;
+  return texture;
+}
+
 // Window-box planting, as two alpha-cut layers: a mass of leaves and the
 // blooms over it. Both are drawn white so the per-instance colour can carry
 // the green and the geranium red separately.
@@ -248,6 +264,7 @@ function jitterColor(base, seed, amount = 0.05) {
 export default function WindowField({ items, runtime }) {
   const meshes = useMemo(() => {
     const openings = [];
+    const recessShades = [];
     const glass = [];
     const litGlass = [];
     const frames = [];
@@ -307,6 +324,7 @@ export default function WindowField({ items, runtime }) {
           const u = (win.x + win.w / 2) / layout.texW;
           const wM = (win.w / layout.texW) * faceWidth;
           const hM = (win.h / layout.texH) * sy;
+          pushInstance(recessShades,...place(u,win.y+win.h/2,.007),face.yaw,wM*1.36,hM*1.22,1,'#ffffff');
           const roll = hash01(seed * 0.013 + faceIndex * 19.3 + (win.floor ?? -1) * 3.7 + win.col * 7.1);
 
           const shuttered = ornateFace && canShutter && upperFloor && roll < 0.22;
@@ -435,7 +453,7 @@ export default function WindowField({ items, runtime }) {
           }
 
           // Projecting stone sill and the heavier hood lintel above.
-          if (upperFloor) {
+          if (upperFloor || streetFront) {
             const [lx, ly, lz] = place(u, win.y + win.h + 3, 0.08);
             pushInstance(
               trimBoxes, lx, ly, lz, face.yaw,
@@ -451,6 +469,17 @@ export default function WindowField({ items, runtime }) {
               serviceFace ? 0.11 : strongBrownstoneLintel ? 0.23 : 0.18,
               sillColor,
             );
+          }
+
+          // Narrow returns make the glass sit within a stone opening. They
+          // join the existing trim batch, keeping material draw calls fixed.
+          if(ornateFace){
+            const jambWidth=style===1?.045:style===4?.085:.065;
+            const jambColor=jitterColor(sillColor,seed+win.col*3.7,.035);
+            for(const side of [-1,1]){
+              const jambU=u+side*(wM*.54+jambWidth/2)/faceWidth;
+              pushInstance(trimBoxes,...place(jambU,win.y+win.h/2,.06),face.yaw,jambWidth,hM*1.07,.12,jambColor);
+            }
           }
 
           if (shuttered) {
@@ -583,6 +612,12 @@ export default function WindowField({ items, runtime }) {
 
         // Bracketed cornice: the row of modillions under the painted band.
         if (ornateFace) {
+          const crown=item.frontageFamily==='mansion'||style===4?1.25:1;
+          const crownColor=jitterColor(sillColor,seed*1.3,.035);
+          for(const [drop,height,out,depth]of [[.14,.12,.12,.30],[.32,.13,.07,.20]]){
+            const [x,,z]=place(.5,0,out*crown);
+            pushInstance(trimBoxes,x,cy+sy/2-drop,z,face.yaw,faceWidth+.12*crown,height,depth*crown,crownColor);
+          }
           const brackets = Math.max(3, Math.round(faceWidth / 1.15));
           for (let b = 0; b < brackets; b += 1) {
             const [bx, by, bz] = place((b + 0.5) / brackets, 17, 0.13);
@@ -811,6 +846,9 @@ export default function WindowField({ items, runtime }) {
     });
 
     const built = [
+      buildMesh(recessShades,plane,new THREE.MeshBasicMaterial({
+        map:makeRecessShadeTexture(),color:'#000000',transparent:true,depthWrite:false,
+      })),
       buildMesh(openings, plane, new THREE.MeshStandardMaterial({
         color: '#ffffff', roughness: 1, metalness: 0, envMapIntensity: 0,
       })),

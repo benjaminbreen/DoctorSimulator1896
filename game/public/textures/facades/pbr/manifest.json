@@ -1,0 +1,54 @@
+{
+  "license": "CC0-1.0",
+  "materials": {
+    "brownstone": {
+      "asset": "sandstone_blocks_08",
+      "source": "https://polyhaven.com/a/sandstone_blocks_08",
+      "authors": {
+        "Rob Tuytel": "All"
+      },
+      "colorSize": 1024,
+      "normalSize": 1024,
+      "armSize": 512,
+      "repeatMetres": 3,
+      "reliefSet": "brownstone"
+    },
+    "brick": {
+      "asset": "brick_wall_001",
+      "source": "https://polyhaven.com/a/brick_wall_001",
+      "authors": {
+        "Rob Tuytel": "Processing",
+        "Dimitrios Savva": "Photography"
+      },
+      "colorSize": 1024,
+      "normalSize": 1024,
+      "armSize": 512,
+      "repeatMetres": 3,
+      "reliefSet": "brick"
+    },
+    "limestone": {
+      "asset": "sandstone_blocks_08",
+      "source": "https://polyhaven.com/a/sandstone_blocks_08",
+      "authors": {
+        "Rob Tuytel": "All"
+      },
+      "colorSize": 1024,
+      "normalSize": 1024,
+      "armSize": 512,
+      "repeatMetres": 3,
+      "reliefSet": "brownstone"
+    },
+    "ashlar-gray": {
+      "asset": "large_sandstone_blocks",
+      "source": "https://polyhaven.com/a/large_sandstone_blocks",
+      "authors": {
+        "Rob Tuytel": "All"
+      },
+      "colorSize": 1024,
+      "normalSize": 1024,
+      "armSize": 512,
+      "repeatMetres": 3,
+      "reliefSet": "ashlar-gray"
+    }
+  }
+}

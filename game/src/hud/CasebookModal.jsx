@@ -40,7 +40,9 @@ function initials(patient) {
   return `${givenName?.[0] || ''}${familyName?.[0] || ''}`;
 }
 
-function portraitPath(patient, recordPhoto) {
+export function portraitPath(patient, recordPhoto = false) {
+  // Generated case IDs have no photograph; use their initials instead.
+  if (!['nora-byrne-1896', 'samuel-taylor-1896', 'carmela-russo-1896', 'ferdinand-de-chapuys-1896'].includes(patient.id)) return null;
   return `/ui/patients/${patient.id}${recordPhoto ? '-record' : ''}.webp`;
 }
 
@@ -60,11 +62,13 @@ function statusFor(record) {
 }
 
 function PatientPortrait({ patient, className = '', recordPhoto = false }) {
-  const [failed, setFailed] = useState(false);
+  const src = portraitPath(patient, recordPhoto);
+  const [failedSrc, setFailedSrc] = useState(null);
+  const fallback = !src || failedSrc === src;
   return (
-    <span className={`casebook-portrait ${className}${failed ? ' is-fallback' : ''}`}>
-      {!failed ? (
-        <img src={portraitPath(patient, recordPhoto)} alt="" onError={() => setFailed(true)} draggable={false} />
+    <span className={`casebook-portrait ${className}${fallback ? ' is-fallback' : ''}`}>
+      {!fallback ? (
+        <img src={src} alt="" onError={() => setFailedSrc(src)} draggable={false} />
       ) : (
         <span aria-hidden="true">{initials(patient)}</span>
       )}

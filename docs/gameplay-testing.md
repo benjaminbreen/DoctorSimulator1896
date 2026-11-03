@@ -98,6 +98,8 @@ name fails; use the returned controls and an explicit `index` or selector.
 Fill uses an exact accessible `label`, or a selector. Assertions accept visible
 `text` or a selector, with `visible:false` to check absence. Movement releases
 every held key even when an action fails. Durations are limited to 60 seconds.
+`press` holds the key for 100 milliseconds so frame-polled actions register;
+an optional `ms` overrides that duration.
 
 Scenarios: `park`, `appointment`, `office`, `waiting-room`, `nora`, `samuel`, `carmela`,
 `wilhelmina`, and `chapuys`. Patient scenarios use ordinary casebook buttons to

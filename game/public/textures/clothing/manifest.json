@@ -1,0 +1,27 @@
+{
+  "fabrics": {
+    "wool": {
+      "size": 1024,
+      "tileMetres": 0.08
+    },
+    "herringbone": {
+      "size": 1024,
+      "tileMetres": 0.08
+    },
+    "silk": {
+      "size": 1024,
+      "tileMetres": 0.08
+    }
+  },
+  "atlases": {
+    "tripo_rgb_bfac1d41-0525-458a-9c0d-e6042b55be63": "/textures/clothing/atlas-tripo_rgb_bfac1d41-0525-458a-9c0d-e6042b55be63.webp",
+    "skirt-basecolor": "/textures/clothing/atlas-skirt-basecolor.webp",
+    "tripo_rgb_77721b7f-1fa4-4a28-927f-75ad65bcf539": "/textures/clothing/atlas-tripo_rgb_77721b7f-1fa4-4a28-927f-75ad65bcf539.webp",
+    "tripo_rgb_f922dd4d-3f76-42eb-a606-2d07ef619405": "/textures/clothing/atlas-tripo_rgb_f922dd4d-3f76-42eb-a606-2d07ef619405.webp",
+    "tripo_rgb_c9b039d7-8f73-460a-8807-24e278739369": "/textures/clothing/atlas-tripo_rgb_c9b039d7-8f73-460a-8807-24e278739369.webp",
+    "tripo_rgb_ea8fe6a9-f87c-482e-8a1c-fdc03d8296a4": "/textures/clothing/atlas-tripo_rgb_ea8fe6a9-f87c-482e-8a1c-fdc03d8296a4.webp",
+    "tripo_rgb_5e0d4e05-aa2d-4ce0-a88b-fc2e3d515fb1": "/textures/clothing/atlas-tripo_rgb_5e0d4e05-aa2d-4ce0-a88b-fc2e3d515fb1.webp",
+    "tripo_rgb_de62d4da-1033-481d-b47d-3405d174a698": "/textures/clothing/atlas-tripo_rgb_de62d4da-1033-481d-b47d-3405d174a698.webp",
+    "tripo_rgb_86d209b2-d7bc-4e57-b000-db7a8385b100": "/textures/clothing/atlas-tripo_rgb_86d209b2-d7bc-4e57-b000-db7a8385b100.webp"
+  }
+}

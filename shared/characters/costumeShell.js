@@ -487,10 +487,7 @@ let weaveTextureCache = null;
 function weaveNormalTexture() {
   if (weaveTextureCache) return weaveTextureCache;
   const size = 128;
-  const canvas = document.createElement('canvas');
-  canvas.width = size; canvas.height = size;
-  const context = canvas.getContext('2d');
-  const image = context.createImageData(size, size);
+  const pixels = new Uint8Array(size * size * 4);
   const height = new Float32Array(size * size);
   for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
     // twill diagonal plus a finer weft line; both periods divide the tile
@@ -507,13 +504,18 @@ function weaveNormalTexture() {
     const ny = (ym - yp) * 0.5;
     const inverse = 1 / Math.hypot(nx, ny, 1);
     const offset = (y * size + x) * 4;
-    image.data[offset] = (nx * inverse * 0.5 + 0.5) * 255;
-    image.data[offset + 1] = (ny * inverse * 0.5 + 0.5) * 255;
-    image.data[offset + 2] = (inverse * 0.5 + 0.5) * 255;
-    image.data[offset + 3] = 255;
+    pixels[offset] = Math.round((nx * inverse * 0.5 + 0.5) * 255);
+    pixels[offset + 1] = Math.round((ny * inverse * 0.5 + 0.5) * 255);
+    pixels[offset + 2] = Math.round((inverse * 0.5 + 0.5) * 255);
+    pixels[offset + 3] = 255;
   }
-  context.putImageData(image, 0, 0);
-  weaveTextureCache = new THREE.CanvasTexture(canvas);
+  // The texture is computed data, so geometry checks can build it in Node too.
+  weaveTextureCache = new THREE.DataTexture(pixels, size, size, THREE.RGBAFormat);
+  weaveTextureCache.flipY = true;
+  weaveTextureCache.minFilter = THREE.LinearMipmapLinearFilter;
+  weaveTextureCache.magFilter = THREE.LinearFilter;
+  weaveTextureCache.generateMipmaps = true;
+  weaveTextureCache.needsUpdate = true;
   weaveTextureCache.wrapS = THREE.RepeatWrapping;
   weaveTextureCache.wrapT = THREE.RepeatWrapping;
   return weaveTextureCache;

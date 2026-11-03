@@ -72,18 +72,21 @@ export function buildParkRocks() {
     const length = Math.hypot(x2 - x1, z2 - z1);
     const nx = -(z2 - z1) / (length || 1);
     const nz = (x2 - x1) / (length || 1);
-    const count = Math.max(1, Math.round(length / 6));
+    const count = Math.max(1, Math.round(length / 2.8));
     for (let k = 0; k < count; k += 1) {
       const seed = i * 17.3 + k * 5.9 + 900;
-      if (hash01(seed * 1.3) < 0.35) continue;
+      if (hash01(seed * 1.3) < 0.7) continue;
       const t = (k + 0.5) / count;
-      const setback = 1.0 + hash01(seed) * 1.8;
+      const setback = .25 + hash01(seed) * 1.1;
       // The outline winds clockwise, so (nx, nz) points onto dry land.
       const x = x1 + (x2 - x1) * t + nx * setback;
       const z = z1 + (z2 - z1) * t + nz * setback;
-      if (pondDepth(x, z) < 0.12 || pathsDistance(x, z) < 0.5 || onPad(x, z)) continue;
-      const radius = 0.08 + hash01(seed * 3.7) * 0.2;
-      pebbles.push(boulder(seed, x, z, radius));
+      if (pondDepth(x, z) < 0 || pathsDistance(x, z) < 0.5 || onPad(x, z)) continue;
+      for(let p=0;p<4;p++){
+        const px=x+(hash01(seed+p*4.7)-.5)*.8,pz=z+(hash01(seed+p*7.3)-.5)*.8;
+        if(terrainHeight(px,pz)<-.52||pathsDistance(px,pz)<.5||onPad(px,pz))continue;
+        pebbles.push(boulder(seed+p,px,pz,.045+hash01(seed+p*3.7)*.13));
+      }
     }
   }
 

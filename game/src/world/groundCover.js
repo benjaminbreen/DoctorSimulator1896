@@ -127,7 +127,7 @@ function tuftTint(tone) {
 // verges and in the beds, but never zero on the open lawn.
 function tuftChance(x, z, bed) {
   const bank = pondDepth(x, z);
-  if (bank > 0 && bank < 0.45) return 0.75;
+  if (bank > 0 && bank < 0.45) return .38+bed*.25;
   const verge = pathsDistance(x, z) < 7 ? 0.3 : 0.16;
   return verge + bed * bed * 0.45;
 }
@@ -164,7 +164,7 @@ export function buildGroundCover({ tuftAmount = 1, tuftSize = 1 } = {}) {
       // card is subpixel long before 95m, and its shadow never showed.
       if (model === MEADOW_GRASS || GRASS.includes(model) || CLOVER.includes(model) || FLOWERS.includes(model)) {
         item.shadow = false;
-        item.far = 95;
+        item.far = 55;
       }
       item.size = modelSize(model).map((value) => value * scale);
       item.color = tintFor(model, hash01(index * 5.9 + 3));
@@ -192,8 +192,8 @@ export function buildGroundCover({ tuftAmount = 1, tuftSize = 1 } = {}) {
       const base = (0.5 + hash01(index * 14.9 + 3) * 0.45) * tuftSize;
       // Strong-tone clumps grow wider faster than they grow tall, like a
       // tuft spreading where nothing tramples it.
-      const spread = base * (0.8 + tone * 0.4);
-      const rise = base * (0.55 + tone * 0.4);
+      const spread = base * (0.8 + tone * 0.4)*.8;
+      const rise = base * (0.55 + tone * 0.4)*.7;
       const item = parkProp(`tuft-${index}`, MEADOW_GRASS, x, z, hash01(index * 3.9 + 17) * Math.PI * 2, {
         collider: false,
         // Sunk a touch so a clump base never hangs off a grade.
@@ -203,7 +203,7 @@ export function buildGroundCover({ tuftAmount = 1, tuftSize = 1 } = {}) {
       item.wind = true;
       item.shadow = false;
       // Ankle-high: gone from view well inside 90m, so stop paying for it.
-      item.far = 90;
+      item.far = 42;
       item.size = modelSize(MEADOW_GRASS).map((value, axis) => value * item.modelScale[axis]);
       item.color = tuftTint(tone);
       items.push(item);

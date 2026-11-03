@@ -85,3 +85,11 @@ generated-patient gameplay check (`office`, seed 2, `?procedural=1`) selected
 the updated young male work jacket without a preset override, then exercised
 arrival, seating, dialogue and examination. Its captures were inspected and
 the run recorded no failed steps or runtime errors.
+
+The combined fabric and exterior checkpoint also passed all 77 root tests,
+813 game tests and both builds. Production gameplay replays cover eight park
+and travel steps and ten generated-patient consultation steps, with no errors.
+Generated patients use initials and silhouette fallbacks in the Casebook and
+appointment bar instead of requesting photographs that only authored patients
+have. Captures are in `artifacts/gameplay/main-final-park-verified/` and
+`artifacts/gameplay/main-final-patient-verified/`.

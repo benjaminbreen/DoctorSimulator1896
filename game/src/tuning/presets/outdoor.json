@@ -108,7 +108,7 @@
     "windStrength": 0.75,
     "windSpeed": 1.1,
     "sunShadowRadius": 1,
-    "outdoorShadowDistance": 50,
+    "outdoorShadowDistance": 32,
     "fogDensity": 0.004,
     "envIntensity": 0.48,
     "skyFill": 1.6,

@@ -8,6 +8,7 @@ import { applyWind } from './foliageWind.js';
 import { getKTX2Loader } from './ktx2.js';
 import { sharePackTextures } from './packTextures.js';
 import { freezeStaticTransforms } from './lib/staticScene.js';
+import {gameDebug} from '../debug.js';
 
 // How far a canopy top travels, as a fraction of the tree's height. A big elm
 // moving a quarter of a metre is a breeze; much more and it reads as a storm.
@@ -25,6 +26,19 @@ function isLeafMaterial(name) {
   return /branch|leaf/i.test(name ?? '');
 }
 
+// Bent normals light a leaf cluster as a volume instead of a flat card.
+// Keep some of the source normal so individual branches still catch light.
+function softenCanopyNormals(geometry, height) {
+  const position=geometry.attributes.position,normal=geometry.attributes.normal;
+  const outward=new THREE.Vector3(),source=new THREE.Vector3();
+  for(let i=0;i<position.count;i++){
+    outward.set(position.getX(i), (position.getY(i)-height*.56)*.65, position.getZ(i)).normalize();
+    source.fromBufferAttribute(normal,i);
+    if(source.dot(outward)<0)source.negate();
+    source.lerp(outward,.7).normalize();normal.setXYZ(i,source.x,source.y,source.z);
+  }
+}
+
 function hash01(seed) {
   const value = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
   return value - Math.floor(value);
@@ -38,6 +52,17 @@ function extractParts(gltf, origin = null) {
   gltf.scene.traverse((node) => {
     if (!node.isMesh) return;
     const geometry = node.geometry.clone();
+    // The LOD positions are normalized integers. Transforming them in that
+    // storage clips metre-scale coordinates and collapses distant crowns.
+    for(const name of ['position','normal']){
+      const attribute=geometry.attributes[name];
+      if(!attribute||attribute.array instanceof Float32Array)continue;
+      const values=new Float32Array(attribute.count*3);
+      for(let i=0;i<attribute.count;i++){
+        values[i*3]=attribute.getX(i);values[i*3+1]=attribute.getY(i);values[i*3+2]=attribute.getZ(i);
+      }
+      geometry.setAttribute(name,new THREE.BufferAttribute(values,3));
+    }
     geometry.applyMatrix4(node.matrixWorld);
     parts.push({ geometry, material: node.material, materialName: node.material?.name ?? '' });
   });
@@ -50,6 +75,7 @@ function extractParts(gltf, origin = null) {
   const base = origin?.base ?? box.min.y;
   for (const part of parts) {
     part.geometry.translate(-center.x, -base, -center.z);
+    if(isLeafMaterial(part.materialName))softenCanopyNormals(part.geometry,origin?.height??box.max.y-base);
   }
   return { parts, height: origin?.height ?? box.max.y - box.min.y, center, base };
 }
@@ -81,7 +107,7 @@ export default function TreeField({ items }) {
       const archetype = item.tree?.archetype ?? 0;
       const variant = Math.floor(hash01(item.position[0] * 7.3 + item.position[2] * 13.7) * VARIANTS);
       const model = archetype * VARIANTS + variant;
-      const key = `${model}:${Math.floor(item.position[0] / 72)}:${Math.floor(item.position[2] / 72)}`;
+      const key = `${model}:${Math.floor(item.position[0] / 36)}:${Math.floor(item.position[2] / 36)}`;
       if (!buckets.has(key)) buckets.set(key, { model, trees: [] });
       buckets.get(key).trees.push(item);
     }
@@ -99,6 +125,7 @@ export default function TreeField({ items }) {
         if (!surface) {
           const material = part.material.clone();
           material.color.set('#ffffff');
+          material.metalness=0;material.roughness=leaf ? .92 : .88;
           if (material.alphaTest > 0) material.depthWrite = true;
           const depth = leaf ? applyWind(material, { reference: model.height, amplitude: TREE_SWAY }) : undefined;
           materials.set(part, surface = { material, depth });
@@ -139,13 +166,17 @@ export default function TreeField({ items }) {
   }, [items, gltfs]);
 
   useFrame(({ camera }) => {
+    scratchPos.fromArray(gameDebug.player.position);
     for (const mesh of meshes) {
       const distance = camera.position.distanceTo(mesh.boundingSphere.center) - mesh.boundingSphere.radius;
-      const far = distance > (mesh.userData.far ? 80 : 95);
+      const far = distance > (mesh.userData.far ? 42 : 52);
       if (far !== mesh.userData.far) {
         mesh.userData.far = far;
         mesh.geometry = far ? mesh.userData.farGeometry : mesh.userData.nearGeometry;
       }
+      // Distant crowns retain their silhouette without another alpha-tested
+      // draw into the nearby sun map. Large nearby groves still cast together.
+      mesh.castShadow=mesh.boundingSphere.center.distanceTo(scratchPos)-mesh.boundingSphere.radius<32;
     }
   });
 

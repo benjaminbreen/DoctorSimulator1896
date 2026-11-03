@@ -138,7 +138,9 @@ async function act(command) {
       await locator.fill(command.value);
       return;
     }
-    case 'press': await page.keyboard.press(command.key); return;
+    // Camera switches poll key state in the frame loop, so a zero-length
+    // press can disappear between frames on a busy renderer.
+    case 'press': await page.keyboard.press(command.key,{delay:duration(command,100)}); return;
     case 'move': {
       const ms = duration(command);
       const keys = command.keys ?? ['KeyW'];
@@ -235,7 +237,7 @@ async function capture(command, failure = null) {
         pixelRatio: game.stats.pixelRatio, graphicsQuality: game.stats.graphicsQuality } : null,
     };
   }, Object.keys(MODULAR_HAIR_STYLES));
-  await page.screenshot({ path: screenshot, timeout: 15000 });
+  await page.screenshot({ path: screenshot, timeout: 60000 });
   if (arg('inspect-shadows', null) === stem) {
     for (const mode of ['on','off','restore']) {
       await page.evaluate(mode => {

@@ -5,7 +5,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { solarRamps } from '../world/solar.js';
 import { streetItems, STREET_LEVEL } from '../world/streetGrid.js';
 import { parkItems } from '../world/centralPark.js';
-import { FACES } from '../world/facade.js';
+import { FACES,facadeBrickFinish } from '../world/facade.js';
 import {
   createFacadeMaterial,
   FACADE_TEXTURE_URLS,
@@ -164,6 +164,8 @@ function buildProxy(hostId, facadeTextures) {
         true,
         item.size[1],
         item.facadeTone,
+        false,
+        facadeBrickFinish(item)??'smooth',
       ),
     );
     mesh.position.set(...item.position);

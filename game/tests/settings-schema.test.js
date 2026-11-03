@@ -83,7 +83,7 @@ test('Central Park starts with the approved outdoor art direction', () => {
   assert.equal(runtime.values.skySaturation, 0.75);
   assert.equal(runtime.values.skyFill, 1.6);
   assert.equal(runtime.values.groundBounce, 0.4);
-  assert.equal(runtime.values.outdoorShadowDistance, 50);
+  assert.equal(runtime.values.outdoorShadowDistance, 32);
   assert.equal(runtime.values.exposure, 1.0);
   assert.equal(runtime.values.toneMapping, 'ACESFilmic');
 });
@@ -104,7 +104,7 @@ test('reset restores the outdoor preset without changing the game clock', () => 
   assert.equal(runtime.values.sunIntensity, 1.25);
   assert.equal(runtime.values.skyFill, 1.6);
   assert.equal(runtime.values.groundBounce, 0.4);
-  assert.equal(runtime.values.outdoorShadowDistance, 50);
+  assert.equal(runtime.values.outdoorShadowDistance, 32);
   assert.equal(runtime.values.exposure, 1.0);
   assert.equal(runtime.values.timeOfDay, 12.3);
 });
@@ -227,4 +227,6 @@ test('performance and lighting defaults migrate while custom settings survive', 
   assert.equal(defaults.skyFill, 1.6);
   const custom = { zone: 'central-park', walkSpeed: 3, runSpeed: 7, envIntensity: .6, skyFill: 2, groundBounce: .8 };
   assert.deepEqual(migrate(custom), custom);
+  assert.equal(migrate({zone:'central-park',outdoorShadowDistance:50}).outdoorShadowDistance,32);
+  assert.equal(migrate({zone:'central-park',outdoorShadowDistance:40}).outdoorShadowDistance,40);
 });

@@ -8,6 +8,7 @@ import { environmentPalette } from '../world/skyPalette.js';
 import { gameDebug } from '../debug.js';
 import { windUniforms } from './foliageWind.js';
 import { cullSubTexelShadowCasters } from './shadowCulling.js';
+import { clearHaze, hazeUniforms } from './atmosphere.js';
 
 // Darwin's outdoor palette: sun and sky ramps keyed off solar altitude.
 const SUN_NIGHT = new THREE.Color('#41618f');
@@ -20,6 +21,15 @@ const HEMI_GROUND = { night: new THREE.Color('#1b2533'), day: new THREE.Color('#
 const AMBIENT_NIGHT = new THREE.Color('#526b91');
 const AMBIENT_DAY = new THREE.Color('#e4e7de');
 const scratch = new THREE.Color();
+// Daytime haze: linear warm grey, and how far it replaces the blue horizon.
+const HAZE_SMOKE = [0.54, 0.5, 0.43];
+const HAZE_SMOKE_SHARE = 0.7;
+// Scale height of about 30m above the park's low ground at y = 0.
+const HAZE_FALLOFF = 0.033;
+const HAZE_LINEAR = 0.85;
+const HAZE_SUN_EXPONENT = 6;
+const HAZE_SUN_GLOW = 0.35;
+const HAZE_FLOOR = 0.2;
 export default function SkyRig({
   config,
   runtime,
@@ -34,6 +44,7 @@ export default function SkyRig({
   const hemisphereRef = useRef();
   const shadowExtentRef = useRef(0);
   const shadowFrameRef = useRef(0);
+  const shadowElapsed=useRef(1),shadowPlayer=useRef(new THREE.Vector3(Infinity,0,0));
   const shadowCullKey = useRef(null);
   // The sun's map covers 50m against an interior light's few metres, so it
   // needs the extra rank to resolve thin casters. A bench is slats and iron
@@ -54,6 +65,7 @@ export default function SkyRig({
       uAuthoredHorizon: { value: new THREE.Vector3(0.035, 0.05, 0.085) },
       uMoonDir: { value: new THREE.Vector3(0, 1, 0) },
       uMoonLight: { value: 0 },
+      uHazeColor: { value: new THREE.Vector3() },
     }),
     [],
   );
@@ -61,6 +73,8 @@ export default function SkyRig({
   const sky = useMemo(() => {
     const dome = new Sky();
     dome.scale.setScalar(1000);
+    // SkyEnvironment renders this same material into the light probe.
+    dome.name = 'sky-dome';
     // Undo Preetham's display-gamma curve (exponent is exactly 1/2.4 for a
     // unit-length sun vector), then /8 to put the zenith near 1. Clamping r,
     // g, b separately instead turns the sky flat white.
@@ -72,6 +86,10 @@ export default function SkyRig({
       shader.uniforms.uAuthoredHorizon = grade.uAuthoredHorizon;
       shader.uniforms.uMoonDir = grade.uMoonDir;
       shader.uniforms.uMoonLight = grade.uMoonLight;
+      shader.uniforms.uHazeColor = grade.uHazeColor;
+      shader.uniforms.hazeSunDir = hazeUniforms.hazeSunDir;
+      shader.uniforms.hazeSunColor = hazeUniforms.hazeSunColor;
+      shader.uniforms.hazeParams = hazeUniforms.hazeParams;
       shader.fragmentShader = shader.fragmentShader
         .replace(
           'void main() {',
@@ -82,6 +100,10 @@ uniform vec3 uAuthoredZenith;
 uniform vec3 uAuthoredHorizon;
 uniform vec3 uMoonDir;
 uniform float uMoonLight;
+uniform vec3 uHazeColor;
+uniform vec3 hazeSunDir;
+uniform vec3 hazeSunColor;
+uniform vec4 hazeParams;
 void main() {`,
         )
         .replace(
@@ -93,6 +115,12 @@ void main() {`,
           float moonHalo = pow(max(dot(direction, normalize(uMoonDir)), 0.0), 28.0);
           authoredLinear += vec3(0.07, 0.10, 0.17) * moonHalo * uMoonLight;
           linear = mix(linear, authoredLinear, uAuthoredBlend);
+          // The same haze the scene fog uses, banked along the horizon so the
+          // far rooftops dissolve into it instead of cutting against blue.
+          float hazeSun = pow(max(dot(direction, hazeSunDir), 0.0), max(hazeParams.z, 1.0));
+          vec3 hazeLinear = uHazeColor + hazeSunColor * hazeSun;
+          float horizonHaze = 1.0 - smoothstep(-0.02, 0.2, direction.y);
+          linear = mix(linear, hazeLinear, horizonHaze * horizonHaze * 0.85 * step(1e-4, hazeParams.x));
           float luma = dot(linear, vec3(0.2126, 0.7152, 0.0722));
           gl_FragColor.rgb = max(mix(vec3(luma), linear, uSkySaturation), vec3(0.0));
         }
@@ -109,6 +137,7 @@ void main() {`,
     scene.fog = fog;
     return () => {
       scene.fog = null;
+      clearHaze();
     };
   }, [scene, config, runtime]);
 
@@ -126,8 +155,15 @@ void main() {`,
 
   useFrame((state, delta) => {
     shadowFrameRef.current += 1;
-    if (shadowFrameRef.current % shadowUpdateInterval === 0) {
+    shadowElapsed.current+=delta;
+    const player=gameDebug.player.position;
+    const moved=Math.hypot(player[0]-shadowPlayer.current.x,player[2]-shadowPlayer.current.z)>.035;
+    // Keep moving shadows responsive; a stationary view only needs a 30 Hz
+    // refresh for foliage wind and the slowly changing sun.
+    if (shadowFrameRef.current % shadowUpdateInterval === 0
+      && (moved||!gameDebug.stats.boot.complete||shadowElapsed.current>=1/30-.0001)) {
       gl.shadowMap.needsUpdate = true;
+      shadowElapsed.current%=1/30;shadowPlayer.current.set(...player);
     }
     const values = runtime.values;
     const ramps = solarRamps(
@@ -164,7 +200,6 @@ void main() {`,
 
     // Sun and shadow frustum follow the player, snapped to the shadow texel
     // grid so the shadow edges do not crawl as the player walks.
-    const player = gameDebug.player.position;
     const sun = sunRef.current;
     if (sun) {
       // The distance slider is the half-width of the player-centred shadow
@@ -234,13 +269,30 @@ void main() {`,
     }
     if (scene.fog) {
       // Fog takes the sky palette's horizon colour, so dusk haze warms with
-      // the sky instead of holding the daytime grey-blue.
-      scene.fog.color.setRGB(palette.horizon[0], palette.horizon[1], palette.horizon[2]);
+      // the sky. By day it is pulled toward coal-smoke grey: a clear blue
+      // horizon reads as modern air.
+      const smoke = daylight * (1 - golden) * HAZE_SMOKE_SHARE;
+      scene.fog.color.setRGB(
+        palette.horizon[0] + (HAZE_SMOKE[0] - palette.horizon[0]) * smoke,
+        palette.horizon[1] + (HAZE_SMOKE[1] - palette.horizon[1]) * smoke,
+        palette.horizon[2] + (HAZE_SMOKE[2] - palette.horizon[2]) * smoke,
+      );
       // Fade fog out as the camera climbs, so a zoomed-out overhead reads
       // like a map instead of a haze. Untouched below 45m.
       const camDistance = gameDebug.stats.cameraDistance || 0;
       const fade = Math.min(1, Math.max(0, 1 - (camDistance - 45) / 70));
       scene.fog.density = values.fogDensity * fade;
+      grade.uHazeColor.value.set(scene.fog.color.r, scene.fog.color.g, scene.fog.color.b);
+      const params = hazeUniforms.hazeParams.value;
+      params[0] = HAZE_FALLOFF;
+      params[1] = HAZE_LINEAR;
+      params[2] = HAZE_SUN_EXPONENT;
+      params[3] = HAZE_FLOOR;
+      hazeUniforms.hazeSunDir.value.set(direction);
+      // Sunlit haze glows in the sun's own colour, most of all when it is low.
+      const glow = daylight * HAZE_SUN_GLOW * (1 + golden * 0.6);
+      const sunColor = sunRef.current?.color ?? SUN_DAY;
+      hazeUniforms.hazeSunColor.value.set([sunColor.r * glow, sunColor.g * glow, sunColor.b * glow]);
     }
     // environmentIntensity belongs to SkyEnvironment, which owns the probe.
   });

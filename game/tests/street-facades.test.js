@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { facadeWindowAt } from '../src/world/projectileImpacts.js';
 import {
   facadeEntranceLayout,
+  facadeBrickFinish,
   facadeLayout,
   facadeLayoutForFace,
   facadeWidth,
@@ -36,6 +37,17 @@ const NAMED_BUILDINGS = new Map([
   ['navarro-flats-c', 'Navarro Flats'],
 ]);
 
+test('regular brick is common and rough brick is a stable procedural minority',()=>{
+  const brick=streetItems.filter(item=>item.frontageFamily&&item.facadeStyle===1&&!item.landmarkLabel);
+  const finishes=brick.map(facadeBrickFinish);
+  assert.deepEqual(finishes,brick.map(facadeBrickFinish));
+  const rough=finishes.filter(finish=>finish==='rough').length;
+  assert.ok(rough>=brick.length*.1&&rough<brick.length/2);
+  assert.equal(facadeBrickFinish({...brick[0],brickFinish:'rough'}),'rough');
+  assert.equal(facadeBrickFinish({...brick[0],brickFinish:'smooth'}),'smooth');
+  assert.equal(facadeBrickFinish({...brick[0],landmarkLabel:'Authored building'}),'smooth');
+});
+
 function rowBuildings(prefix) {
   return streetItems
     .filter((item) => item.kind === 'backdrop'
@@ -68,6 +80,19 @@ test('procedural sash openings keep period proportions and a raised street sill'
   assert.deepEqual([ground.w, ground.h], [18, 28]);
   assert.equal(ground.y + ground.h, layout.texH - 20);
   assert.equal(layout.ground.find((entry) => entry.isDoor).doorW, 24);
+});
+
+test('facade families vary opening proportions while preserving bay centres',()=>{
+  const base={id:'frontage-study',size:[10,16,12],facadeRoles:{'+z':'front'},windowFaces:['+z']};
+  const house=facadeLayoutForFace({...base,frontageFamily:'brownstone'});
+  const mansion=facadeLayoutForFace({...base,frontageFamily:'mansion'});
+  assert.ok(mansion.upper[1].w>house.upper[1].w);
+  assert.ok(mansion.upper[0].h<mansion.upper.at(-1).h);
+  for(let i=0;i<house.upper.length;i++){
+    assert.equal(house.upper[i].x+house.upper[i].w/2,mansion.upper[i].x+mansion.upper[i].w/2);
+    assert.equal(house.upper[i].y+house.upper[i].h/2,mansion.upper[i].y+mansion.upper[i].h/2);
+  }
+  assert.deepEqual(house.ground.find(w=>w.isDoor),mansion.ground.find(w=>w.isDoor));
 });
 
 test('parcel rows detail exposed ends but retain plain internal party walls', () => {

@@ -6,7 +6,7 @@ export const STARTING_ZONE = 'central-park';
 export const STARTING_TIME = 9.5;
 
 export const settingsSchema = {
-  version: 7,
+  version: 8,
   groups: [
     {
       id: 'world',
