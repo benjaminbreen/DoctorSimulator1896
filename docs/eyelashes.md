@@ -68,9 +68,16 @@ upper levels have more visible fibres, with softer subpixel coverage.
 November 3: at consultation distance the fibres are almost invisible, and the
 first baked margin was too thin to read, so the expansion heads looked
 hairless. `build_carmela_head.py` now bakes a wider upper lash line (heavier
-towards the outer corner), a lighter lower margin and a deeper crease. Only a
-patched-texture preview has been reviewed. The expansion and male heads still
-need a Blender rebuild to ship it.
+towards the outer corner), a lighter lower margin and a deeper crease. The 13
+expansion models were rebuilt with Blender 5.2.3 and reviewed open and
+blinking. The older male heads pick it up on their next rebuild.
+
+Two runtime changes go with it. Fibre alpha now has a floor (upper .55, lower
+.30, fading to the tip), so distant lashes still merge into a dark line, and
+"follow hair" lashes are darkened further. The eye shader also shades the
+globe under the upper lid and at the corners, so the sclera no longer reads
+as a bright inset. Both were checked in Face Lab and in the Samuel replay with
+`?appearancePreset=male-young-work-jacket`.
 
 The female painted baseline remains a limit on absolute cross-head matching.
 Removing those painted strands while keeping the existing skin and crease

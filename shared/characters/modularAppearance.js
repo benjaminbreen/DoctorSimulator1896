@@ -105,6 +105,12 @@ float identityLuma = dot(diffuseColor.rgb, vec3(.2126, .7152, .0722));
 float identityIrisMask = (1.0-smoothstep(.84,1.04,identityIrisDistance))*smoothstep(.008,.035,identityLuma)*(1.0-smoothstep(.52,.82,identityLuma));
 vec3 identityIris = modularIris*clamp(identityLuma/.12,.24,1.9);
 diffuseColor.rgb = mix(diffuseColor.rgb,identityIris,identityIrisMask*modularIrisEnabled);
+// The upper lid and corners shade the globe. Without this the sclera reads as
+// a bright inset and the eyes stare. Offsets are in iris radii; v runs down.
+vec2 identityEyeA = (vMapUv-modularEyeCenters.xy)/modularEyeRadius, identityEyeB = (vMapUv-modularEyeCenters.zw)/modularEyeRadius;
+vec2 identityEye = dot(identityEyeA,identityEyeA) < dot(identityEyeB,identityEyeB) ? identityEyeA : identityEyeB;
+float identityLidShade = min(.55, .36*smoothstep(-.7,.6,-identityEye.y)+.26*smoothstep(1.1,2.0,abs(identityEye.x)));
+diffuseColor.rgb *= 1.0-identityLidShade*vec3(.92,1.0,1.04);
 #endif`
             : `
 diffuseColor.rgb *= modularNativeSkinGain;
@@ -117,7 +123,7 @@ vec3 identityBrowColor = mix(modularHair*.5,vec3(.15),modularGray*.6)*clamp(iden
 diffuseColor.rgb = mix(diffuseColor.rgb,identityBrowColor,identityBrow*.8);`;
         shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n'+code);
       };
-      material.customProgramCacheKey = () => `modular-appearance-v5-${kind}-${Boolean(material.userData.crownHairLoss)}`;
+      material.customProgramCacheKey = () => `modular-appearance-v6-${kind}-${Boolean(material.userData.crownHairLoss)}`;
       material.needsUpdate = true;
     }
   });

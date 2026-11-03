@@ -84,7 +84,7 @@ export function createModularEyelashes(root,{cohort='women',seed=1}={}){
     key=nextKey;triangles=0;
     const tone={black:'#201c19',brown:'#4b3325',fair:'#867152',gray:'#76716a'}[next.lashTone];
     color.set(tone||(MODULAR_HAIR_TONES[next.hairTone]?.color||'#39291f'));
-    if(!tone)color.lerp(new THREE.Color('#17120e'),['blond','silver','mixedGray'].includes(next.hairTone)?.28:.50);
+    if(!tone)color.lerp(new THREE.Color('#17120e'),['blond','silver','mixedGray'].includes(next.hairTone)?.45:.65);
     for(const [eye,part]of parts.entries()){
       const settings=EYELASH_LEVELS[level],rng=random(Number(next.lashSeed??seed)+eye*313),strands=[];
       for(const upper of [true,false]){
@@ -130,11 +130,12 @@ export function createModularEyelashes(root,{cohort='women',seed=1}={}){
         anchor.lerpVectors(a,b,.25).addScaledVector(normal,.00012*unit);
         for(let segment=0;segment<=5;segment++){
           const v=segment/5;tip.copy(anchor).addScaledVector(direction,length*v).addScaledVector(outside,strand.curl*length*v*v*(strand.upper?1:.4));
-          // Preserve subpixel fibre coverage as soft alpha instead of letting
-          // narrow triangles break into dots as the camera pulls back.
+          // Widen subpixel fibres and soften them with alpha, so they don't break
+          // into dots. The alpha floor stops distant lashes fading to nothing.
           const physical=strand.width*unit*(1-v*.96),display=Math.max(physical,.00018*unit,pixel*2.5),width=display*.5;
+          const alpha=Math.max(physical/display,(strand.upper?.55:.30)*(1-v*.7));
           for(const side of [-1,1]){
-            const vertex=index*12+segment*2+(side===1?1:0);attr.setXYZ(vertex,tip.x+across.x*width*side,tip.y+across.y*width*side,tip.z+across.z*width*side);coverage.setX(vertex,physical/display);
+            const vertex=index*12+segment*2+(side===1?1:0);attr.setXYZ(vertex,tip.x+across.x*width*side,tip.y+across.y*width*side,tip.z+across.z*width*side);coverage.setX(vertex,alpha);
           }
         }
       }
