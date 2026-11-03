@@ -31,6 +31,28 @@ export const MODULAR_EYE_TONES = {
   gray: { label: 'Grey', color: '#818985' },
 };
 
+// Untinted hair keeps its texture colour, so the part needs that colour too.
+// Returns the original tone's colour where there is no canvas (tests).
+function averageHairColor(root) {
+  const color = new THREE.Color(MODULAR_HAIR_TONES.original.color);
+  let image;
+  root.traverse((mesh) => {
+    for (const material of [mesh.material].flat()) {
+      if (!image && ['Carmela_DarkHair', 'Carmela_CurlyHair'].includes(material?.name)) image = material.map?.image;
+    }
+  });
+  if (!image || typeof document === 'undefined') return color;
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 16;
+    const context = canvas.getContext('2d');
+    context.drawImage(image, 0, 0, 16, 16);
+    const data = context.getImageData(0, 0, 16, 16).data, sum = [0, 0, 0];
+    for (let i = 0; i < data.length; i += 4) for (let c = 0; c < 3; c++) sum[c] += data[i+c];
+    return color.setRGB(sum[0]/65280, sum[1]/65280, sum[2]/65280, THREE.SRGBColorSpace);
+  } catch { return color; }
+}
+
 export function createModularAppearance(root, frame) {
   if (!frame) return { available: false, update() {} };
   const referenceTone = root.getObjectByName('Carmela_Face')?.userData.modularSkinReference;
@@ -40,6 +62,7 @@ export function createModularAppearance(root, frame) {
     modularHair: { value: new THREE.Color() }, modularGray: { value: 0 }, modularHairEnabled: { value: 0 },
     modularIris: { value: new THREE.Color() }, modularIrisEnabled: { value: 0 },
     modularEyeCenters: { value: new THREE.Vector4() }, modularEyeRadius: {value:new THREE.Vector2(.049,.103)},
+    modularPartHair: { value: averageHairColor(root) },
   };
   const rawX = frame.eyeX/.308;
   const rawZ = ((frame.eyeY-1.4)/.88+.1)/.35;
@@ -86,7 +109,7 @@ export function createModularAppearance(root, frame) {
         shader.uniforms.modularNativeSkinGain = { value: nativeSkinGain };
         shader.fragmentShader = `uniform vec3 modularSkinGain; uniform float modularSkinLift; uniform vec3 modularNativeSkinGain;
 uniform vec3 modularHair; uniform float modularGray; uniform float modularHairEnabled;
-uniform vec3 modularIris; uniform float modularIrisEnabled; uniform vec4 modularEyeCenters; uniform vec2 modularEyeRadius;
+uniform vec3 modularIris; uniform float modularIrisEnabled; uniform vec4 modularEyeCenters; uniform vec2 modularEyeRadius; uniform vec3 modularPartHair;
 ${kind === 'skin' ? 'varying float vModularBrow;' : ''}\n`+shader.fragmentShader;
         if (kind === 'skin') {
           shader.vertexShader = 'attribute float modularBrowMask; varying float vModularBrow;\n'+shader.vertexShader;
@@ -120,10 +143,19 @@ vec3 identitySkin = diffuseColor.rgb*modularSkinGain+vec3(modularSkinLift)*smoot
 diffuseColor.rgb = mix(diffuseColor.rgb,identitySkin,identitySkinMask);
 float identityBrow = vModularBrow*(1.0-smoothstep(.025,.12,identityLuma))*modularHairEnabled;
 vec3 identityBrowColor = mix(modularHair*.5,vec3(.15),modularGray*.6)*clamp(identityLuma/.025,.3,1.4);
-diffuseColor.rgb = mix(diffuseColor.rgb,identityBrowColor,identityBrow*.8);`;
+diffuseColor.rgb = mix(diffuseColor.rgb,identityBrowColor,identityBrow*.8);`+(name === 'Carmela_HairPart' ? `
+#ifdef USE_MAP
+// A real part shows scalp through fine short hairs, not bare skin. Tint it toward
+// the hair's average shade (scaled as the hair shader scales tinted hair), with
+// texel grain that averages out at a distance.
+float identityPartStrand = clamp(pow(max(dot(modularPartHair,vec3(.2126,.7152,.0722)),.0001)/.045,.72),.22,2.3);
+vec3 identityPartHair = modularHairEnabled > .5 ? mix(modularHair,vec3(.32,.31,.29),modularGray)*identityPartStrand : modularPartHair;
+float identityPartGrain = fract(sin(dot(floor(vMapUv*4096.0),vec2(12.9898,78.233)))*43758.5453);
+diffuseColor.rgb = mix(diffuseColor.rgb,identityPartHair*(.6+.5*identityPartGrain),.88);
+#endif` : '');
         shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n'+code);
       };
-      material.customProgramCacheKey = () => `modular-appearance-v6-${kind}-${Boolean(material.userData.crownHairLoss)}`;
+      material.customProgramCacheKey = () => `modular-appearance-v7-${kind}-${name === 'Carmela_HairPart'}-${Boolean(material.userData.crownHairLoss)}`;
       material.needsUpdate = true;
     }
   });
