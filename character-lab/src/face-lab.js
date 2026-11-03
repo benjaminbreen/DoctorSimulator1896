@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { MeshoptDecoder } from 'meshoptimizer';
 import { createModularFacialHair, MODULAR_SIDEBURNS, MODULAR_MOUSTACHES } from '../../shared/characters/modularFacialHair.js';
 import { createModularBody, MODULAR_BODY_CONTROLS } from '../../shared/characters/modularBody.js';
@@ -44,6 +45,7 @@ const CHARACTERS = [
 ];
 const requested = new URLSearchParams(window.location.search).get('model');
 const CHARACTER = CHARACTERS.find((entry) => entry.id === requested) || CHARACTERS[0];
+const defaultCast=CHARACTER.head?MODULAR_CAST_LOOKS.find(preset=>preset.id===CHARACTER.id):null;
 const maleCharacter = CHARACTER.id.startsWith('male-') || ['samuel-taylor','wine-merchant'].includes(CHARACTER.id);
 const MODEL = CHARACTER.path+(CHARACTER.head?'?v=20261102-expansion-3':CHARACTER.id.startsWith('male-')?'?v=20261102-grooms-1':'');
 document.querySelector('#panel h1').textContent = `Face Lab — ${CHARACTER.label}`;
@@ -60,6 +62,10 @@ stage.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#20242a');
+// Cloth and metal need reflected light here as they already have in the game.
+const studio=new RoomEnvironment(),pmrem=new THREE.PMREMGenerator(renderer);
+scene.environment=pmrem.fromScene(studio,.04).texture;scene.environmentIntensity=.35;
+studio.dispose();pmrem.dispose();
 const camera = new THREE.PerspectiveCamera(34, 1, 0.01, 20);
 const orbit = new OrbitControls(camera, renderer.domElement);
 scene.add(new THREE.HemisphereLight('#e5eef7', '#34383d', 1.1));
@@ -98,7 +104,7 @@ const state = {
 let needsFrame = true;
 const variationSeed = new URLSearchParams(location.search).get('variantSeed');
 if (variationSeed !== null) Object.assign(state, createModularVariation(Number(variationSeed),CHARACTER.id.startsWith('male-')));
-const selectedCast = MODULAR_CAST_LOOKS.find(preset => preset.id === new URLSearchParams(location.search).get('preset') && preset.model === CHARACTER.id);
+const selectedCast = MODULAR_CAST_LOOKS.find(preset => preset.id === new URLSearchParams(location.search).get('preset') && preset.model === CHARACTER.id)||defaultCast;
 if (selectedCast) Object.assign(state,{...selectedCast.look,features:{...selectedCast.look.features}});
 if (CHARACTER.bakedHat) state.hatStyle='none';
 
@@ -309,14 +315,14 @@ if(eyelashes.available){
 if(accessories.available){
   const details=document.createElement('details');details.open=true;
   const summary=document.createElement('summary');summary.textContent='ACCESSORIES';details.append(summary);
-  const labels={glassesStyle:'Spectacles',glassesMetal:'Frame metal',lensTint:'Lenses',neckwearStyle:'Neckwear',neckwearColor:'Cloth colour',neckwearPattern:'Cloth pattern',broochStyle:'Brooch',earringStyle:'Earrings',locketStyle:'Locket',jewelryMetal:'Jewellery metal',jewelryStone:'Stone',tiePin:'Tie pin',watchChain:'Watch chain'};
+  const labels={glassesStyle:'Spectacles',glassesMetal:'Frame metal',lensTint:'Lenses',neckwearStyle:'Neckwear',neckwearColor:'Cloth colour',neckwearPattern:'Cloth pattern',neckwearFabric:'Fabric finish',neckwearAccent:'Motif colour',broochStyle:'Brooch',earringStyle:'Earrings',locketStyle:'Locket',jewelryMetal:'Jewellery metal',jewelryStone:'Stone',tiePin:'Tie pin',collarStud:'Collar stud',watchChain:'Watch chain'};
   for(const [name,choices]of Object.entries(ACCESSORY_CHOICES)){
     const row=document.createElement('label');row.className='row';row.textContent=labels[name];const select=document.createElement('select');select.name=name;
     for(const [value,label]of Object.entries(choices)){const option=document.createElement('option');option.value=value;option.textContent=label;select.append(option);}
     select.addEventListener('change',()=>{state[name]=select.value;});row.append(select);details.append(row);
   }
   const fit=document.createElement('details'),title=document.createElement('summary');title.textContent='FIT AND FABRIC';fit.append(title);
-  for(const [name,label]of [['glassesSize','Lens size'],['glassesBridge','Bridge width'],['glassesHeight','Frame height'],['glassesDepth','Frame depth'],['glassesWeight','Wire thickness'],['neckwearScale','Neckwear size'],['neckwearWear','Cloth wear']]){
+  for(const [name,label]of [['glassesSize','Lens size'],['glassesBridge','Bridge width'],['glassesHeight','Frame height'],['glassesDepth','Frame depth'],['glassesWeight','Wire thickness'],['neckwearScale','Neckwear size'],['neckwearPatternScale','Pattern size'],['neckwearWear','Cloth wear']]){
     const row=document.createElement('label');row.className='row';row.textContent=label;const input=document.createElement('input'),output=document.createElement('output');input.name=name;input.type='range';input.min=name==='neckwearWear'?0:-1;input.max=1;input.step=.05;input.value=state[name];output.value=Number(state[name]).toFixed(2);
     input.addEventListener('input',()=>{state[name]=Number(input.value);output.value=Number(input.value).toFixed(2);});row.append(input,output);fit.append(row);
   }
@@ -451,7 +457,7 @@ function frameTorso() {
 }
 function frameAccessories(){
   gltf.scene.updateMatrixWorld(true);
-  const target=head.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0,-.075,.035));
+  const target=head.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0,-.17,.035));
   camera.position.copy(target).add(new THREE.Vector3(.06,.01,.65));orbit.target.copy(target);orbit.update();
 }
 function frameMouth(){
@@ -684,6 +690,7 @@ window.__faceLab = {
   },
   show({ clip = 'ClinicIdle', time = 0, weights = {}, expression = null, speaking = false, faceTime = 1, legacyExpressions = false, view = 'face', angle = 0, outfit = CHARACTER.outfit || (CHARACTER.id.startsWith('male-') ? 'tailored-clothes' : 'day-dress'), palette = 'original', identityVariant = 0, features = {}, skinTone = 'original', hairTone = 'original', eyeTone = 'original', hairStyle = CHARACTER.id.startsWith('male-') ? 'short-side-part' : 'soft-side-waves', hairVolume = 0, hairWave = 0, hairBunHeight = 0, hairPartOffset = 0, hairEarCoverage = .3, hairlineHeight=0, hairlinePeak=0, hairlineRecession=0, hairlineAsymmetry=0, hairThinning=0, autoBlink = false, performanceSeed = 7, bellySize = 0, waistWidth = 0, sideburns = 'short-sideburns', moustache = 'none', lashProminence = maleCharacter?2:3, lashSeed = 7, lashTone = 'auto', headwearAction = 'worn', hatProgress = 0, ...headwearLook } = {}) {
     needsFrame = true;
+    accessories.resetMotion?.();
     headwear.restorePose();
     window.__faceLab.inspectShading('original');
     if(surfaceVisibility){for(const [mesh,visible] of surfaceVisibility)mesh.visible=visible;surfaceVisibility=null;surfaceSelection=null;}
@@ -699,7 +706,7 @@ window.__faceLab = {
     state.identityVariant = identityVariant;
     state.features = { ...features }; state.skinTone = skinTone; state.hairTone = hairTone; state.eyeTone = eyeTone;
     Object.assign(state, { sideburns, moustache, bellySize, waistWidth, hairStyle, hairVolume, hairWave, hairBunHeight, hairPartOffset, hairEarCoverage, hairlineHeight, hairlinePeak, hairlineRecession, hairlineAsymmetry, hairThinning });
-    Object.assign(state,{...ACCESSORY_DEFAULTS,lashProminence,lashSeed,lashTone,hatStyle:'none',hatHand:'left',hatColor:null,hatBandColor:'black',hatCrownHeight:0,hatBrimWidth:0,hatTilt:0,hatDecoration:null,hatWear:0,...headwearLook});
+    Object.assign(state,{...ACCESSORY_DEFAULTS,...Object.fromEntries(Object.keys(ACCESSORY_DEFAULTS).filter(name=>defaultCast?.look[name]!==undefined).map(name=>[name,defaultCast.look[name]])),lashProminence,lashSeed,lashTone,hatStyle:'none',hatHand:'left',hatColor:null,hatBandColor:'black',hatCrownHeight:0,hatBrimWidth:0,hatTilt:0,hatDecoration:null,hatWear:0,...headwearLook});
     syncAppearanceControls();
     for (const name of ['outfit', 'palette', 'identityVariant']) {
       const select = document.querySelector(`select[name="${name}"]`);
@@ -776,7 +783,7 @@ renderer.setAnimationLoop(() => {
   drive(state.paused ? 0 : delta);
   headwear.update(delta);
   eyelashes.update(camera,renderer.domElement.height);
-  accessories.update();
+  accessories.update(state.paused?0:delta);
   const expression = state.mode === 'raw'
     ? Object.entries(state.raw).filter(([, value]) => value > 0).map(([name, value]) => `${name} ${value.toFixed(2)}`).join(', ') || 'neutral'
     : state.expression;

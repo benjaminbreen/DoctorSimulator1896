@@ -510,7 +510,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
       actor.face.update(dt, recipe.animation);
       actor.headwear.update(dt);
       actor.eyelashes.update(camera,gl.domElement.height);actor.root.userData.eyelashes=actor.eyelashes.describe();
-      actor.accessories.update();actor.root.userData.accessories=actor.accessories.describe();
+      actor.accessories.update(dt);actor.root.userData.accessories=actor.accessories.describe();
       actor.root.userData.headwear=actor.headwear.describe();
       actor.root.userData.performance = recipe.animation;
       return;
@@ -531,7 +531,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
     }
     actor.headwear.update(dt,{followHand:animation.gesture==='extend-both-arms'});
     actor.eyelashes.update(camera,gl.domElement.height);actor.root.userData.eyelashes=actor.eyelashes.describe();
-    actor.accessories.update();actor.root.userData.accessories=actor.accessories.describe();
+    actor.accessories.update(dt);actor.root.userData.accessories=actor.accessories.describe();
     actor.root.userData.headwear=actor.headwear.describe();
     actor.root.userData.performance = animation;
     // While the examination reading is up, publish where the annotated body

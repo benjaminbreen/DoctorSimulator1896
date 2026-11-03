@@ -11,16 +11,20 @@ export function accessoryVariation(seed=1,cohort='women',range='everyday',outfit
   let state=(Math.imul(Number(seed)||1,0x5bd1e995)^0x527c4e91)>>>0;
   const next=()=>{state^=state<<13;state^=state>>>17;state^=state<<5;return(state>>>0)/4294967296;},pick=a=>a[Math.floor(next()*a.length)];
   const male=cohort==='men',plain=range==='plain',dress=range==='dress',work=/work|apron/.test(outfit);
+  const neckwearStyle=male?(work?pick(['none','none','kerchief','bow','narrow']):pick(outfit==='frock-coat'?['tie','tie','narrow','bow','cravat']:['tie','narrow','bow','cravat','original']))
+    : outfit==='shirtwaist-skirt'?pick(['original','ribbon','ribbon','bow','narrow']):outfit==='walking-suit'?pick(['original','original','original','ribbon']):'original';
+  const bare=['none','original'].includes(neckwearStyle);
   return {...ACCESSORY_DEFAULTS,accessorySeed:seed,
     glassesStyle:next()<.29?pick(['round','oval','pince-nez',...(dress?['rimless']:[])]):'none',
     glassesMetal:pick(plain?['steel','black']:['steel','silver','gold']),lensTint:next()<.045?pick(['blue','smoke','green']):'clear',glassesSize:pick([-.3,0,.3]),glassesWeight:plain?.1:pick([-.2,0,.2]),
-    neckwearStyle:male?(work?pick(['none','none','kerchief','bow']):pick(['tie','bow','cravat','original'])):'original',
-    neckwearColor:pick(['black','wine','navy','forest','cream','ochre','slate']),neckwearPattern:pick(plain?['plain','plain','dot']:['plain','stripe','dot','diamond']),neckwearScale:pick([-.3,0,.3]),neckwearWear:plain?.45:pick([0,.15,.3]),
-    broochStyle:!male&&next()<(plain?.22:.7)?pick(dress?['oval','cameo','bar','jet']:['oval','bar']):'none',
+    neckwearStyle,neckwearFabric:pick(work?['linen','grosgrain']:dress?['silk','silk','grosgrain','velvet']:['silk','grosgrain']),neckwearAccent:pick(['auto','auto','cream','ochre','slate']),neckwearPatternScale:pick([-.3,0,.35,.7]),
+    neckwearColor:pick(['black','wine','navy','forest','cream','ochre','slate','brown','plum','teal','rust','gray']),neckwearPattern:pick(plain?['plain','plain','dot','check']:['plain','stripe','dot','diamond','check','floret','herringbone']),neckwearScale:pick([-.3,0,.3]),neckwearWear:plain?.45:pick([0,.15,.3]),
+    broochStyle:!male&&bare&&next()<(plain?.22:.7)?pick(dress?['oval','cameo','bar','jet']:['oval','bar']):'none',
     earringStyle:!male&&next()<(plain?.24:.65)?pick(dress?['stud','pearl','drop','jet']:['stud','pearl']):'none',
     locketStyle:!male&&!plain&&next()<.20?pick(['oval','round']):'none',
     jewelryMetal:pick(plain?['brass','steel']:['gold','silver','brass']),jewelryStone:pick(['garnet','amber','turquoise','pearl','jet']),
-    tiePin:male&&!work&&next()<(dress?.65:.22)?pick(['plain','pearl','stone']):'none',watchChain:male&&!work&&next()<(dress?.7:.28)?pick(['single',...(dress?['double']:[])]):'none'};
+    collarStud:bare&&next()<.4?pick(plain?['plain']:['plain','pearl','stone']):'none',
+    tiePin:!work&&['tie','narrow','cravat'].includes(neckwearStyle)&&next()<(dress?.65:.22)?pick(['plain','pearl','stone']):'none',watchChain:male&&!work&&next()<(dress?.7:.28)?pick(['single',...(dress?['double']:[])]):'none'};
 }
 
 function pointsFor(mesh,canonical){
@@ -73,6 +77,10 @@ function frontField(sources,canonical,y,scale,face=null,originals=false){
     for(let yy=Math.max(0,Math.floor((y-ry-minY)/dy));yy<=Math.min(height,Math.ceil((y+ry-minY)/dy));yy++)for(let xx=Math.max(0,Math.floor((x-rx-minX)/dx));xx<=Math.min(width,Math.ceil((x+rx-minX)/dx));xx++)highest=Math.max(highest,raw[yy*(width+1)+xx]);
     return Number.isFinite(highest)?highest:front(x,y);
   };
+  front.raw=(x,y)=>{
+    const xx=Math.round((x-minX)/dx),yy=Math.round((y-minY)/dy);
+    return xx>=0&&xx<=width&&yy>=0&&yy<=height?raw[yy*(width+1)+xx]:-Infinity;
+  };
   return front;
 }
 
@@ -98,7 +106,7 @@ function splitNativeTie(source,canonical,fit){
 }
 
 export function createPeriodAccessories(root,{cohort='women',frame=null}={}){
-  const bones={};root.traverse(o=>{if(o.isBone)bones[suffix(o.name)]=o;});
+  const bones={};let garmentStyle=null;root.traverse(o=>{if(o.isBone)bones[suffix(o.name)]=o;if(o.userData.garmentStyle)garmentStyle=o.userData.garmentStyle;});
   const eyeLeft=root.getObjectByName('Carmela_Eye_Left'),eyeRight=root.getObjectByName('Carmela_Eye_Right'),face=root.getObjectByName('Carmela_Face');
   const head=bones.head,chest=bones.spine2||bones.neck,available=Boolean(head&&chest&&frame&&eyeLeft&&eyeRight&&face);
   if(!available)return {available:false,updateLook(){},update(){},describe:()=>({available:false}),dispose(){}};
@@ -110,6 +118,13 @@ export function createPeriodAccessories(root,{cohort='women',frame=null}={}){
   const headGroup=new THREE.Group(),bodyGroup=new THREE.Group();headGroup.name='Patient_HeadAccessories';bodyGroup.name='Patient_BodyAccessories';headGroup.matrixAutoUpdate=bodyGroup.matrixAutoUpdate=false;root.add(headGroup,bodyGroup);
   const clothGroup=new THREE.Group();clothGroup.name='Patient_FittedNeckwear';root.add(clothGroup);
   let key='',look={...ACCESSORY_DEFAULTS},fit=null,parts=[],partitions=[],triangles=0;
+  let looseMeshes=[],motionReady=false;
+  const clothMotion={sway:0,lift:0,swayVelocity:0,liftVelocity:0,time:0};
+  const lastChest=new THREE.Vector3(),lastRotation=new THREE.Quaternion(),chestPosition=new THREE.Vector3(),chestRotation=new THREE.Quaternion(),travel=new THREE.Vector3(),turn=new THREE.Euler();
+  function resetMotion(){
+    Object.assign(clothMotion,{sway:0,lift:0,swayVelocity:0,liftVelocity:0,time:0});motionReady=false;
+    for(const m of looseMeshes){m.position.array.set(m.rest);m.normal.array.set(m.restNormals);m.position.needsUpdate=m.normal.needsUpdate=true;}
+  }
   function canonical(bone,ref){return new THREE.Matrix4().multiplyMatrices(ref,bone.matrixWorld.clone().invert());}
   function measure(){
     root.updateWorldMatrix(true,true);const hc=canonical(head,headRef),bc=canonical(chest,chestRef),s=frame.scale;
@@ -128,13 +143,50 @@ export function createPeriodAccessories(root,{cohort='women',frame=null}={}){
       return near.length?near.reduce((sum,q)=>sum+q.p.x*sign,0)/near.length+.0012*s:Math.abs(ears[sign===1?1:0].x)+.0012*s;
     };
     const openCollar=Boolean(root.getObjectByName('Patient_WorkerBody'));
-    const knotY=frame.mouthY-(cohort==='men'?(openCollar?.092:.060):.080)*s,sources=[];
+    let knotY=frame.mouthY-(cohort==='men'?(openCollar?.092:.060):.080)*s;const sources=[];
     root.traverse(mesh=>{if(mesh.isSkinnedMesh&&visible(mesh)&&!mesh.name.startsWith('Accessory_')&&clothNames.has(mesh.material?.name))sources.push(mesh);});
-    const front=frontField(sources,bc,knotY,s,face,partitions.some(p=>!p.exact));
+    let closureY=null;
+    if(garmentStyle){
+      const collars=sources.filter(mesh=>['Patient_MaleShirt','Patient_Collar'].includes(mesh.material.name));
+      const frontCollar=[];
+      for(const mesh of collars){
+        const points=pointsFor(mesh,bc),ids=mesh.geometry.attributes.skinIndex,weights=mesh.geometry.attributes.skinWeight;
+        for(let i=0;i<points.length;i++){
+          const p=points[i];if(Math.abs(p.x)>.012*s||p.z<-.005*s||p.y>eyeY-.10*s||p.y<eyeY-.23*s)continue;
+          let torso=0;for(let j=0;j<4;j++)if(/^(spine\d*|neck)$/.test(suffix(mesh.skeleton.bones[ids.getComponent(i,j)]?.name||'')))torso+=weights.getComponent(i,j);
+          if(torso>.5)frontCollar.push(p);
+        }
+      }
+      if(frontCollar.length){closureY=Math.max(...frontCollar.map(p=>p.y));knotY=closureY-.015*s;}
+    }
+    const front=frontField(sources,bc,knotY,s,garmentStyle?null:face,partitions.some(p=>!p.exact));
+    const shirtSources=garmentStyle==='frock-coat'?sources.filter(mesh=>mesh.material.name==='Patient_MaleShirt'):[];
+    const shirtFront=shirtSources.length?frontField(shirtSources,bc,knotY,s):null;
+    const vestFront=shirtFront?frontField(sources.filter(mesh=>mesh.material.name==='Patient_MaleFabric'),bc,knotY,s):null;
+    const openingAt=shirtFront?(y)=>{
+      let half=0;for(let x=0;x<.085*s;x+=.002*s){
+        const visible=[-1,1].some(sign=>Number.isFinite(shirtFront.raw(x*sign,y))&&shirtFront.raw(x*sign,y)>=vestFront.raw(x*sign,y)-.002*s);
+        if(!visible&&x>.004*s)break;if(visible)half=x;
+      }return Math.max(0,half-.002*s);
+    }:null;
+    let shirtOpening=null;
+    if(openingAt){
+      const samples=[];let gaps=0;
+      for(let i=0;i<38;i++){
+        const y=knotY-(.010+i*.004)*s,w=openingAt(y);
+        if(w>.004*s){samples.push([y,w]);gaps=0;}else if(i>10&&++gaps>2)break;
+      }
+      if(samples.length>3){
+        const meanY=samples.reduce((n,p)=>n+p[0],0)/samples.length,meanW=samples.reduce((n,p)=>n+p[1],0)/samples.length;
+        const slope=clamp(samples.reduce((n,p)=>n+(p[0]-meanY)*(p[1]-meanW),0)/samples.reduce((n,p)=>n+(p[0]-meanY)**2,0),.15,.55);
+        const endY=clamp(meanY-meanW/slope,knotY-.16*s,knotY-.07*s);
+        shirtOpening=y=>Math.max(0,(y-endY)*slope);shirtOpening.endY=endY;
+      }
+    }
     const neckFront=look.neckwearStyle==='kerchief'?frontField([face],bc,knotY,s):null;
-    return {scale:s,eyeY,eyeX,eyeFrontZ:eyeFront,bridgeZ,ears,templeAt,knotY,front,neckFront,sources,bodyCanonical:bc};
+    return {scale:s,eyeY,eyeX,eyeFrontZ:eyeFront,bridgeZ,ears,templeAt,knotY,closureY,front,shirtFront,shirtOpening,neckFront,sources,bodyCanonical:bc};
   }
-  function clear(){for(const part of parts)disposeAccessories(part);parts=[];triangles=0;}
+  function clear(){for(const part of parts)disposeAccessories(part);parts=[];triangles=0;looseMeshes=[];resetMotion();}
   // Fit once, then let the existing bones deform the cloth on the GPU.
   // Undo the current pose so changing accessories mid-animation adds no bend.
   function skinNeckwear(group){
@@ -145,7 +197,8 @@ export function createPeriodAccessories(root,{cohort='women',frame=null}={}){
       for(let i=0;i<points.length;i+=2){
         const p=points[i];if(Math.abs(p.x)>.14*fit.scale||p.y>fit.knotY+.04*fit.scale||p.y<fit.knotY-.26*fit.scale)continue;
         if(source===face&&p.y<fit.knotY-.025*fit.scale)continue;
-        pool.push({p,indices:[0,1,2,3].map(j=>boneIds.get(source.skeleton.bones[indices.getComponent(i,j)])),weights:[0,1,2,3].map(j=>weights.getComponent(i,j))});
+        const ids=[0,1,2,3].map(j=>source.skeleton.bones[indices.getComponent(i,j)]),w=ids.map((bone,j)=>/^(spine\d*|neck|head)$/.test(suffix(bone.name))?weights.getComponent(i,j):0),sum=w.reduce((a,b)=>a+b,0);
+        if(sum>.5)pool.push({p,indices:ids.map(bone=>boneIds.get(bone)),weights:w.map(n=>n/sum)});
       }
     }
     const toWorld=fit.bodyCanonical.clone().invert(),blend=new THREE.Matrix4(),boneMatrix=new THREE.Matrix4(),point=new THREE.Vector3(),normal=new THREE.Vector3();
@@ -163,14 +216,20 @@ export function createPeriodAccessories(root,{cohort='women',frame=null}={}){
       }
       mesh.geometry.setAttribute('skinIndex',new THREE.Uint16BufferAttribute(skinIndices,4));mesh.geometry.setAttribute('skinWeight',new THREE.Float32BufferAttribute(skinWeights,4));
       const skinned=new THREE.SkinnedMesh(mesh.geometry,mesh.material);skinned.name=mesh.name;skinned.castShadow=mesh.castShadow;skinned.frustumCulled=false;skinned.bind(clothSkeleton,bindMatrix);mesh.removeFromParent();group.add(skinned);
+      const loose=skinned.geometry.attributes.accessoryLoose,vertices=[];
+      if(loose)for(let i=0;i<loose.count;i++)if(loose.getX(i)>0)vertices.push(i);
+      if(vertices.length){
+        const normal=skinned.geometry.attributes.normal;position.setUsage(THREE.DynamicDrawUsage);normal.setUsage(THREE.DynamicDrawUsage);
+        looseMeshes.push({position,normal,loose,vertices,rest:position.array.slice(),restNormals:normal.array.slice()});
+      }
     }
   }
   function updateLook(next={}){
     const cleaned={...ACCESSORY_DEFAULTS};for(const name of Object.keys(cleaned))if(next[name]!==undefined&&next[name]!==null)cleaned[name]=next[name];
     for(const [name,choices]of Object.entries(ACCESSORY_CHOICES))if(!(cleaned[name] in choices))cleaned[name]=ACCESSORY_DEFAULTS[name];
-    for(const name of ['glassesSize','glassesBridge','glassesHeight','glassesDepth','glassesWeight','neckwearScale'])cleaned[name]=clamp(cleaned[name]);cleaned.neckwearWear=clamp(cleaned.neckwearWear,0,1);
+    for(const name of ['glassesSize','glassesBridge','glassesHeight','glassesDepth','glassesWeight','neckwearScale','neckwearPatternScale'])cleaned[name]=clamp(cleaned[name]);cleaned.neckwearWear=clamp(cleaned.neckwearWear,0,1);
     const nextKey=JSON.stringify([cleaned,next.identityVariant,next.features,next.bellySize,next.waistWidth,next.outfit]);if(nextKey===key)return;key=nextKey;look=cleaned;clear();
-    if(!partitions.length&&look.neckwearStyle==='original'&&['glassesStyle','broochStyle','earringStyle','locketStyle','tiePin','watchChain'].every(k=>look[k]==='none')){fit=null;update();return;}
+    if(!partitions.length&&look.neckwearStyle==='original'&&['glassesStyle','broochStyle','earringStyle','locketStyle','tiePin','collarStud','watchChain'].every(k=>look[k]==='none')){fit=null;update();return;}
     fit=measure();
     const formal=root.getObjectByName('Patient_FormalUpper');
     if(formal&&visible(formal)&&look.neckwearStyle!=='original')formal.traverse(source=>{if(source.isSkinnedMesh&&!source.name.startsWith('Accessory_')){const split=splitNativeTie(source,fit.bodyCanonical,fit);if(split)partitions.push(split);}});
@@ -182,14 +241,49 @@ export function createPeriodAccessories(root,{cohort='women',frame=null}={}){
     for(const [part,parent]of [[glasses,headGroup],[neckwear,clothGroup],[jewelry.head,headGroup],[jewelry.body,bodyGroup]])if(part){parent.add(part);parts.push(part);part.traverse(o=>{if(o.isMesh)triangles+=(o.geometry.index?.count||o.geometry.attributes.position.count)/3;});}
     update();
   }
-  function update(){
+  function moveLooseCloth(delta){
+    if(!looseMeshes.length)return;
+    chest.getWorldPosition(chestPosition);chest.getWorldQuaternion(chestRotation);
+    let dt=Math.max(0,Math.min(Number(delta)||0,.067)),targetSway=0,targetLift=0;
+    if(motionReady&&dt>0&&lastChest.distanceTo(chestPosition)<.20&&lastRotation.angleTo(chestRotation)<1){
+      travel.copy(chestPosition).sub(lastChest).multiplyScalar(1/dt).applyQuaternion(chestRotation.clone().invert());
+      turn.setFromQuaternion(lastRotation.clone().invert().multiply(chestRotation));
+      targetSway=clamp(-travel.x*.014-turn.z/dt*.003-turn.y/dt*.0015,-.010,.010);
+      targetLift=clamp(Math.abs(travel.z)*.010+Math.abs(travel.y)*.005+Math.abs(turn.x/dt)*.003,0,.015);
+    }
+    lastChest.copy(chestPosition);lastRotation.copy(chestRotation);motionReady=true;
+    const before=Math.abs(clothMotion.sway)+clothMotion.lift;
+    clothMotion.time+=dt;
+    while(dt>0){const h=Math.min(dt,1/120);dt-=h;
+      clothMotion.swayVelocity+=(targetSway-clothMotion.sway)*90*h-clothMotion.swayVelocity*13*h;
+      clothMotion.liftVelocity+=(targetLift-clothMotion.lift)*75*h-clothMotion.liftVelocity*12*h;
+      clothMotion.sway=clamp(clothMotion.sway+clothMotion.swayVelocity*h,-.012,.012);
+      clothMotion.lift=clamp(clothMotion.lift+clothMotion.liftVelocity*h,0,.018);
+    }
+    if(before+Math.abs(clothMotion.sway)+clothMotion.lift<1e-8)return;
+    const energy=Math.min(1,(Math.abs(clothMotion.swayVelocity)+Math.abs(clothMotion.liftVelocity))/.04);
+    for(const {position,normal,loose,vertices,rest,restNormals}of looseMeshes){
+      for(const i of vertices){
+        const w=loose.getX(i),phase=clothMotion.time*7+loose.getY(i)*1.4;
+        const dx=clothMotion.sway+.0006*Math.sin(phase)*energy,dz=clothMotion.lift+Math.abs(dx)*.4+.0006*(1+Math.sin(phase+1))*energy;
+        position.setXYZ(i,rest[i*3]+w*dx,rest[i*3+1]+w*Math.abs(dx)*.15,rest[i*3+2]+w*dz);
+        const slope=1.8*w**(.8/1.8)/.11,nx=restNormals[i*3],nz=restNormals[i*3+2],ny=restNormals[i*3+1]+slope*(nx*dx+nz*dz),length=Math.max(1e-6,Math.hypot(nx,ny,nz));
+        normal.setXYZ(i,nx/length,ny/length,nz/length);
+      }
+      const start=vertices[0]*3,count=(vertices.at(-1)-vertices[0]+1)*3;
+      position.clearUpdateRanges();position.addUpdateRange(start,count);position.needsUpdate=true;
+      normal.clearUpdateRanges();normal.addUpdateRange(start,count);normal.needsUpdate=true;
+    }
+  }
+  function update(delta=0){
     if(!parts.length&&!partitions.length)return;
     root.updateWorldMatrix(true,true);rootInverse.copy(root.matrixWorld).invert();
     headGroup.matrix.copy(rootInverse).multiply(head.matrixWorld).multiply(headFrom);
     bodyGroup.matrix.copy(rootInverse).multiply(chest.matrixWorld).multiply(chestFrom);
     headGroup.updateWorldMatrix(false,true);bodyGroup.updateWorldMatrix(false,true);
+    moveLooseCloth(delta);
     for(const {native,source}of partitions){native.visible=look.neckwearStyle==='original'&&visible(source);native.morphTargetInfluences=source.morphTargetInfluences;}
   }
-  function describe(){return {available:true,...look,triangles,drawCalls:parts.reduce((n,p)=>n+p.children.length,0),nativeTieSeparated:partitions.length>0,nativeTieModes:partitions.map(p=>p.exact?'component':'region'),fit:fit?{eyeY:fit.eyeY,eyeX:fit.eyeX,bridgeZ:fit.bridgeZ,knotY:fit.knotY,ears:fit.ears.map(p=>p.toArray())}:null};}
-  return {available,updateLook,update,describe,groups:[headGroup,bodyGroup],dispose(){clear();for(const {source,native,original}of partitions){source.geometry.dispose();source.geometry=original;delete source.userData.accessoryOriginalGeometry;native.geometry.dispose();native.removeFromParent();}clothSkeleton?.dispose();clothGroup.removeFromParent();headGroup.removeFromParent();bodyGroup.removeFromParent();}};
+  function describe(){return {available:true,...look,triangles,drawCalls:parts.reduce((n,p)=>n+p.children.length,0),looseCloth:{vertices:looseMeshes.reduce((n,m)=>n+m.vertices.length,0),sway:clothMotion.sway,lift:clothMotion.lift},nativeTieSeparated:partitions.length>0,nativeTieModes:partitions.map(p=>p.exact?'component':'region'),fit:fit?{eyeY:fit.eyeY,eyeX:fit.eyeX,bridgeZ:fit.bridgeZ,knotY:fit.knotY,closureY:fit.closureY,ears:fit.ears.map(p=>p.toArray())}:null};}
+  return {available,updateLook,update,describe,resetMotion,groups:[headGroup,bodyGroup],dispose(){clear();for(const {source,native,original}of partitions){source.geometry.dispose();source.geometry=original;delete source.userData.accessoryOriginalGeometry;native.geometry.dispose();native.removeFromParent();}clothSkeleton?.dispose();clothGroup.removeFromParent();headGroup.removeFromParent();bodyGroup.removeFromParent();}};
 }

@@ -1,9 +1,9 @@
-# Modular accessories, November 1, 2026
+# Modular accessories, November 2, 2026
 
 The character lab and Renderer C game actors share the accessory builders in
 `shared/characters/accessoryGeometry.js` and fitting code in
 `shared/characters/periodAccessories.js`. They support Carmela, the seamstress,
-the lean and broad men, and the complete worker. Older actors without the
+the lean and broad men, the complete worker, and all thirteen expansion combinations. Older actors without the
 modular face anchors keep their existing appearance.
 
 ## Choices and variations
@@ -11,23 +11,24 @@ modular face anchors keep their existing appearance.
 | Family | Choices | Variation |
 | --- | --- | --- |
 | Spectacles | Round wire, oval wire, oval pince-nez, rimless pince-nez | Steel, silver, gold, blackened metal; clear, blue, smoke or green lenses; lens size, bridge width, height, depth and wire weight |
-| Neckwear | Original garment, none, bow, hanging tie, cravat, work neckerchief | Seven colours; plain, stripe, spots or diamonds; size and cloth wear |
+| Neckwear | Original garment, none, bow, ribbon bow, four-in-hand, narrow four-in-hand, cravat, work neckerchief | Twelve colours; seven patterns; silk, ribbed silk, velvet or linen; motif colour, pattern size, garment size and wear |
 | Brooches | Oval stone, cameo, bar, faceted black | Four metals and five stone colours |
 | Earrings | Studs, pearl drops, stone drops, black drops | Metal and stone colours |
 | Lockets | Oval or round, with chain | Four metals |
 | Tie pins | Plain, pearl or stone stickpin | Metal and stone colours |
+| Collar studs | Plain metal, pearl or stone | Metal and stone colours |
 | Watch chains | Single or double | Four metals |
 
 Every family also has a none option. Tie pins are suppressed with a bow,
 neckerchief or no neckwear. These are small representative period forms,
-not replicas of individual museum objects.
+not replicas of individual museum objects. Collar studs are suppressed when a bow, tie or brooch occupies the closure.
 
 Use **Accessories** in the lab for the controls and the **Accessories** camera
 button for a close collar/chest view. **Vary accessories** has plain, everyday
 and dress ranges. Its seed and all selections are included in the ordinary
 saved character recipe. The random stream is independent of the existing face,
 hair, body and hat streams, so adding accessories does not scramble those looks.
-The 26 curated appearances have explicit accessory selections. Carmela's ordinary
+The curated appearances have explicit accessory selections. The expansion frock coats default to striped silk ties, the shirtwaists to ribbed silk ribbon bows, and the work jackets to plain collar studs. Carmela's ordinary
 game appearance now includes a small garnet-coloured brooch and studs.
 
 The ranges are authoring conveniences. They do not establish a person's class,
@@ -65,8 +66,9 @@ shared GLB geometry is restored on disposal.
 Geometry is batched by component/material. Double watch chains use individual
 linked ovals with four-sided wire sections. Clear lenses use a faint transparent
 surface without optical magnification or an extra refraction render pass. Cloth
-reuses the project's baked silk/linen textures, with procedural pattern and wear
-controls. This pass adds no downloaded textures or models and uses no Tripo
+reuses the project's baked silk, ribbed silk, velvet and linen PBR maps. UVs use
+a consistent eight-centimetre tile, independent of garment width. Printed motifs
+have derivative antialiasing, selectable contrast colour and a separate size control. This pass adds no downloaded textures or models and uses no Tripo
 credits.
 
 Current limits: no glasses-removal gesture, clasp animation or swinging-chain
@@ -76,6 +78,41 @@ review. A new base rig needs compatible anchors and its own review; the code
 does not promise automatic fit to arbitrary imported humans. The source formal
 collars and the lean shirt insert are less detailed than the independent metal
 accessories.
+
+## Volume, fit and loose ribbon motion
+
+The neckwear has closed front, reverse and edge surfaces, about one millimetre
+of cloth thickness, folded bow loops and curved knots. Default bows span about
+10–11 cm; ribbon tails have different lengths. Four-in-hand blades have a
+central dimple, and cravats have broader folds. The neckband passes beneath the
+collar. These dimensions are authoring choices, not measurements of a museum object.
+
+Expansion garments use the measured shirt closure rather than a mouth-height
+offset. Collar samples exclude sleeve and cuff weights. Frock-coat blades fit a
+smooth approximation of the waistcoat opening, so scan irregularities do not
+produce stepped edges or detached fragments. Their surface encloses the shirt
+folds. Stickpins use that fitted cloth surface. Neckwear weight transfer excludes
+arm and hand bones, which must not pull a tie sideways during a gesture.
+
+Loose ribbon and kerchief ends react to torso translation and rotation using a
+small damped spring. Their upper edges remain pinned; motion increases toward
+the ends. Sideways lag, outward lift and a small difference between the two tails
+settle when the torso stops. Normals and actual mesh positions update together,
+so the same deformation casts shadows without another render pass. Only the
+loose vertex ranges upload, and still garments do no deformation work.
+
+Motion is bounded to 12 mm sideways and 18 mm outward; teleports do not kick
+the cloth. Outward displacement provides conservative body clearance. This is
+secondary animation, not full cloth simulation: it does not handle a hand
+catching a ribbon or cloth self-collision. Knots, loops and tucked tie blades
+remain attached to their garment. The game and Face Lab use the same motion
+controller. Pausing the lab freezes the motion; changing a review pose resets it.
+
+Face Lab now includes a neutral reflected studio environment. This gives metal
+and silk proper reflections, which the game already supplied through its room
+and sky environments. The Accessories camera focuses on the collar and chest. Cloth uses weave normals
+and sheen for its finish. Anisotropy is disabled on the folded pieces because
+their edge tangents produced bright speckles under nearby gameplay lamps.
 
 ## Historical references and uncertainty
 
@@ -103,6 +140,19 @@ accessories.
   documents a period watch-chain accessory. The game's metal single/double
   chains are general interpretations, not copies of that jet chain.
 
+- [Cincinnati Art Museum, neck tie, 1895, ribbed silk](https://collection.cincinnatiartmuseum.org/objects/127083/neck-tie)
+  supports the ribbed silk finish.
+- [V&A, late nineteenth-century tie types](https://artsandculture.google.com/asset/tie-john-barker-co-ltd/DgGsO_wiKVHRhA?hl=en)
+  discusses bow, scarf, Ascot and four-in-hand families and changing colours.
+- [Ladies’ Home Journal, February 1895, “The Minor Accessories of Dress”](https://upload.wikimedia.org/wikipedia/commons/0/02/Ladies%27_Home_Journal_Vol.12_No.03_%28February%2C_1895%29.pdf)
+  describes ribbon, velvet, silk and lace collars and bows as ways to vary a
+  woman's existing clothes. The procedural ribbon bow follows that general
+  practice; it is not a reconstruction of a specific printed pattern.
+- [H. O’Neill, Fall and Winter 1890–91 catalogue](https://www.cuttersguide.com/pdf/Catalogues/fallwinter18909100hone.pdf)
+  lists collar buttons for women and men, scarf pins, pearl and stone ornaments.
+  Its searchable text informed the stud and pin range; the catalogue illustrations
+  were not used as texture sources.
+
 These records informed shapes, scale and the available range. No museum image
 pixels or meshes are included in the shipped accessories.
 
@@ -127,3 +177,24 @@ For actual gameplay, use `game/scripts/gameplay-playtest.mjs` with
 Use `carmela-emotions.jsonl` with the ordinary Carmela appearance for her
 brooch and earrings. Finish builds before replaying against a dev server.
 See `docs/gameplay-testing.md` for the full commands and persistent workflow.
+
+The expanded neckwear review and animated ribbon captures are reproducible with:
+
+```sh
+node scripts/characters/capture-neckwear-review.mjs --url=http://127.0.0.1:5186
+node scripts/characters/capture-neckwear-motion.mjs --url=http://127.0.0.1:5186
+```
+
+The first script captures front/profile views and standing/talking poses on nine
+bases, including all four cloth finishes, seven motifs and the collar studs.
+The second advances walking and seated speech at 15 captured frames per second
+and records the actual spring offsets in `motion.json`. Captures are review
+artifacts, not shipped textures. Unit coverage checks attachment, closed edges,
+collar-based fitting, pinned roots, damping and teleport handling.
+
+November 2 verification: 809 game tests passed; both production builds passed.
+The neckwear catalogue captured 82 front/profile and animated-pose views without
+browser errors. Walking and sitting motion captures recorded 120 frames without
+browser errors. Full female and male gameplay replays cover the ribbon bow,
+silk tie, entrance, seated gestures and examination. The source scan still sets
+the collar silhouette; these procedural accessories do not replace its tailoring.

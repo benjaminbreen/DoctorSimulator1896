@@ -3,28 +3,32 @@ import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {headwearMaterial} from './headwearMaterials.js';
 
 export const ACCESSORY_DEFAULTS={glassesStyle:'none',glassesMetal:'steel',lensTint:'clear',glassesSize:0,glassesBridge:0,glassesHeight:0,glassesDepth:0,glassesWeight:0,
-  neckwearStyle:'original',neckwearColor:'wine',neckwearPattern:'plain',neckwearScale:0,neckwearWear:0,
-  broochStyle:'none',earringStyle:'none',locketStyle:'none',jewelryMetal:'brass',jewelryStone:'garnet',tiePin:'none',watchChain:'none',accessorySeed:1896};
+  neckwearStyle:'original',neckwearColor:'wine',neckwearPattern:'plain',neckwearFabric:'auto',neckwearAccent:'auto',neckwearPatternScale:0,neckwearScale:0,neckwearWear:0,
+  broochStyle:'none',earringStyle:'none',locketStyle:'none',jewelryMetal:'brass',jewelryStone:'garnet',tiePin:'none',collarStud:'none',watchChain:'none',accessorySeed:1896};
 export const ACCESSORY_CHOICES={
   glassesStyle:{none:'No spectacles',round:'Round wire spectacles',oval:'Oval wire spectacles','pince-nez':'Oval pince-nez',rimless:'Rimless pince-nez'},
   glassesMetal:{steel:'Steel',silver:'Silver',gold:'Gold',black:'Blackened metal'},lensTint:{clear:'Clear',blue:'Blue tinted',smoke:'Smoked',green:'Green tinted'},
-  neckwearStyle:{original:'Original garment tie',none:'No neckwear',bow:'Small bow tie',tie:'Hanging silk tie',cravat:'Full cravat',kerchief:'Work neckerchief'},
-  neckwearColor:{black:'Black',wine:'Wine',navy:'Navy',forest:'Forest',cream:'Ivory',ochre:'Ochre',slate:'Slate'},neckwearPattern:{plain:'Plain weave',stripe:'Fine diagonal stripe',dot:'Small spots',diamond:'Small diamonds'},
+  neckwearStyle:{original:'Original garment',none:'No neckwear',bow:'Bow tie',ribbon:'Ribbon bow',tie:'Four-in-hand tie',narrow:'Narrow four-in-hand',cravat:'Full cravat',kerchief:'Work neckerchief'},
+  neckwearColor:{black:'Black',wine:'Wine',navy:'Navy',forest:'Forest',cream:'Ivory',ochre:'Ochre',slate:'Slate',brown:'Brown',plum:'Plum',teal:'Teal',rust:'Russet',gray:'Pearl grey'},
+  neckwearPattern:{plain:'Plain',stripe:'Fine diagonal stripe',dot:'Small spots',diamond:'Small diamonds',check:'Small checks',floret:'Small floral figures',herringbone:'Fine chevrons'},
+  neckwearFabric:{auto:'Style default',silk:'Smooth silk',grosgrain:'Ribbed silk',velvet:'Velvet',linen:'Linen'},
+  neckwearAccent:{auto:'Soft contrast',cream:'Ivory motif',ochre:'Gold motif',slate:'Grey motif',wine:'Wine motif',black:'Black motif'},
   broochStyle:{none:'No brooch',oval:'Oval stone brooch',cameo:'Cameo brooch',bar:'Bar brooch',jet:'Faceted black brooch'},
   earringStyle:{none:'No earrings',stud:'Small studs',pearl:'Pearl drops',drop:'Stone drops',jet:'Black drops'},
   locketStyle:{none:'No locket',oval:'Oval locket',round:'Round locket'},
   jewelryMetal:{brass:'Brass',gold:'Gold',silver:'Silver',steel:'Steel'},jewelryStone:{garnet:'Garnet',amber:'Amber',turquoise:'Turquoise',pearl:'Pearl',jet:'Black glass'},
-  tiePin:{none:'No tie pin',plain:'Plain stickpin',pearl:'Pearl stickpin',stone:'Stone stickpin'},watchChain:{none:'No watch chain',single:'Single watch chain',double:'Double watch chain'},
+  tiePin:{none:'No tie pin',plain:'Plain stickpin',pearl:'Pearl stickpin',stone:'Stone stickpin'},collarStud:{none:'No collar stud',plain:'Metal collar stud',pearl:'Pearl collar stud',stone:'Stone collar stud'},watchChain:{none:'No watch chain',single:'Single watch chain',double:'Double watch chain'},
 };
 const metals={steel:'#8b9294',silver:'#d5d3c9',gold:'#bd934b',brass:'#a8874f',black:'#393b3a'};
 const stones={garnet:'#5f1823',amber:'#a96119',turquoise:'#287d80',pearl:'#d8d0b7',jet:'#171918'};
-const fabrics={black:'#252327',wine:'#5b2934',navy:'#293e51',forest:'#344738',cream:'#bfb5a0',ochre:'#86623c',slate:'#59636b'};
+const fabrics={black:'#252327',wine:'#5b2934',navy:'#293e51',forest:'#344738',cream:'#bfb5a0',ochre:'#86623c',slate:'#59636b',brown:'#4b3326',plum:'#4d3052',teal:'#1d555b',rust:'#7a3c2a',gray:'#999a92'};
 const v=(x,y,z)=>new THREE.Vector3(x,y,z);
 function material(color,metal=false){return new THREE.MeshStandardMaterial({color,metalness:metal?.78:0,roughness:metal?.29:.28});}
 function batch(name){
   const group=new THREE.Group(),batches=new Map();group.name='Patient_Accessories_'+name;
   return {group,add(name,geometry,material){const key=name;if(!batches.has(key))batches.set(key,{geometries:[],material});batches.get(key).geometries.push(geometry);},finish(){
     for(const [name,{geometries,material}]of batches){
+      if(geometries.some(g=>g.hasAttribute('accessoryLoose')))for(const g of geometries)if(!g.hasAttribute('accessoryLoose'))g.setAttribute('accessoryLoose',new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count*2),2));
       const indexed=geometries.every(g=>g.index),input=indexed?geometries:geometries.map(g=>g.index?g.toNonIndexed():g),geometry=mergeGeometries(input);
       for(const g of new Set([...input,...geometries]))g.dispose();const mesh=new THREE.Mesh(geometry,material);mesh.name='Accessory_'+name;mesh.castShadow=!material.transparent;mesh.frustumCulled=false;group.add(mesh);
     }return group;
@@ -74,59 +78,135 @@ export function buildSpectacles(fit,look){
 }
 
 function clothMaterial(look){
-  const m=headwearMaterial(fabrics[look.neckwearColor]||fabrics.wine,look.neckwearStyle==='kerchief'?'linen':'silk',look.neckwearWear);
-  m.name='Accessory_NeckwearFabric';m.normalScale.set(.32,.32);
+  const kind=look.neckwearFabric==='auto'||!look.neckwearFabric?(look.neckwearStyle==='kerchief'?'linen':'silk'):look.neckwearFabric;
+  const m=headwearMaterial(fabrics[look.neckwearColor]||fabrics.wine,kind,look.neckwearWear);
+  m.name='Accessory_NeckwearFabric';m.normalScale.setScalar({silk:.16,grosgrain:.42,velvet:.10,linen:.32}[kind]||.25);
+  m.roughness=1;m.specularIntensity=kind==='silk'?.28:.18;
+  // Fold edges have no stable fibre tangent. Anisotropy there caused fireflies
+  // under the game's nearby lamps; weave normals and sheen retain the cloth finish.
+  m.sheen=kind==='velvet'?.9:kind==='silk'?.45:.25;m.anisotropy=0;
+  const ink={value:new THREE.Color(look.neckwearAccent==='auto'?(look.neckwearColor==='cream'||look.neckwearColor==='gray'?'#423c38':'#b0a28b'):fabrics[look.neckwearAccent]||'#b0a28b')};
+  const patternSize={value:1/(1+(Number(look.neckwearPatternScale)||0)*.6)};
   const previous=m.onBeforeCompile;
-  m.onBeforeCompile=(shader,renderer)=>{previous?.(shader,renderer);const pattern={plain:0,stripe:1,dot:2,diamond:3}[look.neckwearPattern]||0;
+  m.onBeforeCompile=(shader,renderer)=>{previous?.(shader,renderer);const pattern={plain:0,stripe:1,dot:2,diamond:3,check:4,floret:5,herringbone:6}[look.neckwearPattern]||0;
+    shader.uniforms.accessoryInk=ink;shader.uniforms.accessoryPatternSize=patternSize;
+    shader.fragmentShader='uniform vec3 accessoryInk; uniform float accessoryPatternSize;\n'+shader.fragmentShader;
     shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
     #ifdef USE_MAP
-    vec2 accessoryUV=vMapUv*vec2(22.0,28.0); float motif=0.0;
-    ${pattern===1?'motif=1.0-smoothstep(.08,.15,abs(fract(accessoryUV.x+accessoryUV.y)-.5));':pattern===2?'motif=1.0-smoothstep(.11,.17,length(fract(accessoryUV)-.5));':pattern===3?'motif=1.0-smoothstep(.13,.20,abs(fract(accessoryUV.x)-.5)+abs(fract(accessoryUV.y)-.5));':''}
-    diffuseColor.rgb=mix(diffuseColor.rgb,diffuseColor.rgb*.45+vec3(.13),motif*.55);
+    vec2 accessoryUV=vMapUv*6.0*accessoryPatternSize; float motif=0.0;
+    float aa=max(length(fwidth(accessoryUV))*.7,.008);
+    ${pattern===1?'float stripe=abs(fract(accessoryUV.x+accessoryUV.y)-.5);motif=1.0-smoothstep(.055-aa,.055+aa,stripe);motif=max(motif,.55*(1.0-smoothstep(.014-aa,.014+aa,abs(stripe-.12))));':pattern===2?'motif=1.0-smoothstep(.10-aa,.10+aa,length(fract(accessoryUV)-.5));':pattern===3?'motif=1.0-smoothstep(.15-aa,.15+aa,abs(fract(accessoryUV.x)-.5)+abs(fract(accessoryUV.y)-.5));':''}
+    ${pattern===4?'vec2 cell=abs(fract(accessoryUV)-.5);motif=1.0-smoothstep(.025-aa,.025+aa,min(cell.x,cell.y));':pattern===5?'vec2 q=fract(accessoryUV)-.5;float petals=.13+.045*cos(5.0*atan(q.y,q.x));motif=1.0-smoothstep(petals-aa,petals+aa,length(q));motif*=smoothstep(.025-aa,.025+aa,length(q));':pattern===6?'float chevron=abs(fract(accessoryUV.x)-.5)*2.0+accessoryUV.y;motif=1.0-smoothstep(.045-aa,.045+aa,abs(fract(chevron)-.5));':''}
+    diffuseColor.rgb=mix(diffuseColor.rgb,accessoryInk,motif*.48);
     #endif`);};
-  m.customProgramCacheKey=()=>`accessory-cloth-${look.neckwearPattern}`;return m;
+  m.customProgramCacheKey=()=>`accessory-cloth-v3-${look.neckwearPattern}`;return m;
 }
 function panel(rows,columns=12){
   const positions=[],uv=[],indices=[];
   for(let r=0;r<rows.length;r++)for(let c=0;c<=columns;c++){const u=c/columns,point=rows[r](u);positions.push(...point.toArray());uv.push(u,r/(rows.length-1));if(r<rows.length-1&&c<columns){const a=r*(columns+1)+c;indices.push(a,a+1,a+columns+1,a+1,a+columns+2,a+columns+1);}}
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(indices);g.computeVertexNormals();return g;
 }
-export function buildNeckwear(fit,look,backing=null){
-  const active=!['none','original'].includes(look.neckwearStyle);if(!active&&!backing)return null;
-  const b=batch('Neckwear'),s=fit.scale,size=1+look.neckwearScale*.13,y=fit.knotY,z=fit.front(0,y),fabric=active?clothMaterial(look):null;
-  let scarfSurface=null;
-  if(look.neckwearStyle==='kerchief'){
-    const top=(fit.neckFront||fit.front).max(0,y,.040*s,.014*s)+.009*s,bottom=fit.front.max(0,y-.09*s,.020*s,.008*s)+.004*s;
-    const middle=Math.max(fit.front.max(0,y-.045*s,.015*s,.006*s)+.004*s,(top+bottom)/2),control=2*middle-(top+bottom)/2;
-    scarfSurface=(x,yy)=>{const t=THREE.MathUtils.clamp((y-yy)/(.09*s),0,1);return (1-t)**2*top+2*t*(1-t)*control+t*t*bottom-x*x*7.2/s;};
+// UVs are metres / 8 cm, shared by weave maps and printed motifs.
+// Closed cloth surfaces retain an edge and a reverse side in profile.
+function clothShell(surface,rows=28,columns=12,thickness=.0008){
+  const p=[],uv=[],loose=[],idx=[],stride=columns+1,sideCount=(rows+1)*stride;
+  for(let side=0;side<2;side++)for(let r=0;r<=rows;r++)for(let c=0;c<=columns;c++){
+    const t=r/rows,u=c/columns,q=surface(t,u);p.push(q.x,q.y,q.z+(side?-.5:.5)*thickness);uv.push(q.u,q.v);loose.push(q.loose||0,q.ribbon||0);
   }
+  for(let r=0;r<rows;r++)for(let c=0;c<columns;c++){
+    const a=r*stride+c,b=a+stride;idx.push(a,b,a+1,a+1,b,b+1);const k=sideCount;idx.push(a+k,a+1+k,b+k,a+1+k,b+1+k,b+k);
+  }
+  const rim=[];for(let c=0;c<=columns;c++)rim.push(c);for(let r=1;r<=rows;r++)rim.push(r*stride+columns);for(let c=columns-1;c>=0;c--)rim.push(rows*stride+c);for(let r=rows-1;r>0;r--)rim.push(r*stride);
+  for(let i=0;i<rim.length;i++){const a=rim[i],b=rim[(i+1)%rim.length];idx.push(a,b,a+sideCount,b,b+sideCount,a+sideCount);}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setAttribute('accessoryLoose',new THREE.Float32BufferAttribute(loose,2));g.setIndex(idx);g.computeVertexNormals();return g;
+}
+function foldedKnot(y,z,scale,bow=false,wide=false){
+  const p=[],uv=[],idx=[],rows=12,around=24,height=(bow?.032:.035)*scale;
+  for(let r=0;r<=rows;r++)for(let c=0;c<=around;c++){
+    const t=r/rows,a=c/around*Math.PI*2,half=(bow?.0105:(.0148*(1-t)+.0095*t+.0025*Math.sin(t*Math.PI)))*(wide?1.25:1)*scale;
+    const x=half*Math.cos(a)+(!bow?.0018*Math.sin(t*Math.PI)*scale:0),yy=y+height*(.5-t);
+    const depth=.0085*scale*(1-.6*t+.12*Math.sin(t*Math.PI));
+    const crease=.00065*scale*Math.sin(a*3+t*4)*Math.sin(t*Math.PI);
+    if(bow){
+      const gather=.87+.13*Math.sin(t*Math.PI);
+      p.push((t-.5)*.020*scale,y+.016*scale*Math.cos(a)*gather,z+.010*scale*Math.sin(a)*gather+crease);
+      uv.push(t*.020*scale/.08,a*.013*scale/.08);
+    }else{p.push(x,yy,z+depth*Math.sin(a)+crease);uv.push((a*half+.25*(yy-y))/.08,(height*t+.25*x)/.08);}
+    if(r<rows&&c<around){const k=r*(around+1)+c;idx.push(k,k+1,k+around+1,k+1,k+around+2,k+around+1);}
+  }
+  for(const r of [0,rows]){const center=p.length/3;p.push(bow?(r/rows-.5)*.020*scale:0,bow?y:y+height*(.5-r/rows),z);uv.push(.5,.5);for(let c=0;c<around;c++){const a=r*(around+1)+c;idx.push(center,r===0?a+1:a,r===0?a:a+1);}}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();return g;
+}
+export function buildNeckwear(fit,look,backing=null){
+  const style=look.neckwearStyle,active=!['none','original'].includes(style);if(!active&&!backing)return null;
+  const b=batch('Neckwear'),s=fit.scale,size=1+look.neckwearScale*.15,k=s*size,y=fit.knotY,fabric=active?clothMaterial(look):null;
+  const contact=fit.shirtFront||fit.front;
   if(backing){
     const shirt=headwearMaterial('#d8d3c7','linen');shirt.map=null;shirt.normalScale.set(.2,.2);
     const length=(backing==='short'?.080:.17)*s;
     b.add('ShirtFacing',panel(Array.from({length:25},(_,r)=>u=>{const t=r/24,yy=y-.012*s-t*length,x=((u-.5)*.075*(1-t)+(backing==='short'?.010:.004)*t)*s;return v(x,yy,fit.front(x,yy)+.001*s);}),12),shirt);
   }
   if(active){
-    if(scarfSurface)b.add('NeckwearCloth',panel(Array.from({length:13},(_,r)=>u=>{const t=r/12,yy=y+(.014-.050*t)*s,x=(u-.5)*(.100-.070*t)*s;return v(x,yy,scarfSurface(x,yy)+.001*Math.sin(u*Math.PI*4)*s);}),12),fabric);
-    if(look.neckwearStyle==='bow'){
-      const bowZ=fit.front.max(0,y,.041*s*size,.018*s*size)+.003*s;
-      for(const sign of [-1,1])b.add('NeckwearCloth',panel(Array.from({length:13},(_,r)=>u=>{const t=r/12,xx=sign*(.005+.032*t)*s*size,h=(.006+.007*Math.sin(t*Math.PI*.6))*s*size,yy=y+(u-.5)*h*2;return v(xx,yy,bowZ+(.002+.004*Math.sin(u*Math.PI)+.001*Math.cos(t*Math.PI*2))*s);}),8),fabric);
+    const bow=['bow','ribbon'].includes(style),ribbon=style==='ribbon',kerchief=style==='kerchief',cravat=style==='cravat';
+    const base=contact.max(0,y,.018*s,.012*s)+.004*s;
+    // An oval band passes beneath the collar, with the rear higher than the front.
+    b.add('NeckwearCloth',clothShell((t,u)=>{
+      const a=t*Math.PI*2,x=.050*k*Math.cos(a),yy=y+(.004+(u-.5)*.012+.030*(1-Math.sin(a))*.5)*k;
+      const z=contact(0,y)-.012*s-.052*k+.052*k*Math.sin(a);
+      return {x,y:yy,z,u:t*.32*k/.08,v:u*.012*k/.08};
+    },40,4,.0008*s),fabric);
+    if(bow){
+      const bowZ=fit.front.max(0,y,.012*k,.006*k)+.001*s;
+      for(const sign of [-1,1])b.add('NeckwearCloth',clothShell((t,u)=>{
+        const spread=Math.sin(Math.PI*t),half=(.004+.018*spread**.65)*k;
+        const x=sign*(.005+(ribbon?.048:.052)*spread)*k,yy=y+(u-.5)*half*2+sign*.002*k*spread-.003*k*t;
+        const gather=Math.cos(u*Math.PI*4)*.0022*k*(1-spread)**2;
+        const z=bowZ+(.004+.007*Math.sin(t*Math.PI*2)+.002*Math.sin(u*Math.PI))*k+gather;
+        return {x,y:yy,z,u:u*half*2/.08,v:t*.12*k/.08};
+      },28,12,.001*s),fabric);
+      if(ribbon)for(const sign of [-1,1])b.add('NeckwearCloth',clothShell((t,u)=>{
+        const width=.023*k,xx=sign*(.008+.014*t)*k+(u-.5)*width;
+        const yy=y-(.009+t*(sign===1?.095:.115))*k+.006*k*Math.abs(u-.5)*Math.max(0,(t-.85)/.15);
+        const z=fit.front(xx,yy)+(.004+.003*Math.sin(u*Math.PI)+.002*Math.sin(t*Math.PI*3))*k;
+        return {x:xx,y:yy,z,u:u*width/.08,v:t*.115*k/.08,loose:t**1.8,ribbon:sign};
+      },24,10,.001*s),fabric);
+      b.add('NeckwearCloth',foldedKnot(y,bowZ+.006*k,k,true),fabric);
+    }else if(kerchief){
+      const top=(fit.neckFront||fit.front).max(0,y,.045*s,.014*s)+.008*s;
+      b.add('NeckwearCloth',clothShell((t,u)=>{
+        const width=(.13*(1-t)+.020*t)*k,x=(u-.5)*width,yy=y+(.016-.070*t)*k;
+        const z=THREE.MathUtils.lerp(top,fit.front(x,yy)+.005*s,t)+.003*k*Math.cos(u*Math.PI*6)*Math.sin(t*Math.PI);
+        return {x,y:yy,z,u:u*width/.08,v:t*.09*k/.08};
+      },24,20,.001*s),fabric);
+      for(const sign of [-1,1])b.add('NeckwearCloth',clothShell((t,u)=>{
+        const width=.027*k*(1-.65*t),x=sign*(.006+.017*t)*k+(u-.5)*width,yy=y-(.005+t*(sign===1?.090:.11))*k;
+        return {x,y:yy,z:fit.front(x,yy)+(.008+.004*Math.sin(u*Math.PI)+.002*Math.sin(t*Math.PI*2))*k,u:u*width/.08,v:t*.11*k/.08,loose:t**1.8*.65,ribbon:sign};
+      },24,10,.001*s),fabric);
+      b.add('NeckwearCloth',foldedKnot(y,top+.008*k,k,false,true),fabric);
     }else{
-      const cravat=look.neckwearStyle==='cravat',kerchief=look.neckwearStyle==='kerchief',length=(kerchief?.090:cravat?.115:.14)*s*size;
-      for(let tail=0;tail<(kerchief?2:1);tail++)b.add('NeckwearCloth',panel(Array.from({length:25},(_,r)=>u=>{
-        const t=r/24,w=(cravat?(.018+.017*Math.sin(t*Math.PI)):(kerchief?.015:.011+.008*Math.sin(t*Math.PI*.85)))*s*size*(t>.88?(1-t)/.12:1);
-        const xx=(u-.5)*w*2+(kerchief?(tail?1:-1)*.012*s*t:0),yy=y-.004*s-t*length*(tail?.86:1);
-        const zz=(kerchief?scarfSurface(xx,yy):fit.front(xx,yy))+((kerchief?.001:.005)+Math.sin(u*Math.PI)*.004+(cravat?.003*Math.sin(u*Math.PI*6)*Math.sin(t*Math.PI):.0008*Math.sin(u*Math.PI*4)))*s;
-        return v(xx,yy,zz);
-      }),12),fabric);
+      const narrow=style==='narrow',length=fit.shirtOpening?y-fit.shirtOpening.endY-.010*k:(cravat?.20:.25)*k;
+      const top=contact.max(0,y-.010*k,.012*s,.006*s),bottom=contact.max(0,y-.010*k-length,.012*s,.006*s);
+      let control=2*contact(0,y-length*.5)-(top+bottom)/2;
+      for(let i=1;i<40;i++){
+        const t=i/40,yy=y-.010*k-t*length,half=fit.shirtOpening?fit.shirtOpening(yy):.020*s;
+        const support=contact.max(0,yy,Math.min(.035*s,half),.004*s);
+        control=Math.max(control,(support-(1-t)**2*top-t*t*bottom)/(2*t*(1-t)));
+      }
+      const line=t=>(1-t)**2*top+2*t*(1-t)*control+t*t*bottom;
+      fit.neckwearFront=yy=>line(THREE.MathUtils.clamp((y-.010*k-yy)/length,0,1))+.010*k;
+      b.add('NeckwearCloth',clothShell((t,u)=>{
+        const yy=y-.010*k-t*length,natural=(cravat?(.034+.050*Math.sin(t*Math.PI*.8)):narrow?(.021+.013*Math.sin(t*Math.PI*.8)):(.027+.031*Math.sin(t*Math.PI*.8)))*k;
+        const width=fit.shirtOpening?Math.min(natural,fit.shirtOpening(yy)*2):natural;
+        const tip=!fit.shirtOpening&&t>.88?(1-t)/.12:1,x=(u-.5)*width*tip+.002*k*Math.sin(t*Math.PI);
+        const fullness=(cravat?.008:.004)*Math.sin(u*Math.PI),dimple=.0045*Math.exp(-(((u-.48)/.15)**2))*Math.exp(-(((t-.05)/.09)**2));
+        const folds=cravat?.003*Math.cos(u*Math.PI*6)*Math.sin(t*Math.PI):.0007*Math.sin(t*Math.PI*3+u*3);
+        const surface=line(t)-x*x*.8/s;
+        return {x,y:yy,z:surface+(.004+fullness-dimple+folds)*k,u:x/.08,v:t*length/.08};
+      },40,18,.001*s),fabric);
+      b.add('NeckwearCloth',foldedKnot(y,base+.008*k,k,false,cravat),fabric);
     }
-    const knot=new THREE.Shape();knot.moveTo(-.008,.009);knot.lineTo(.008,.008);knot.lineTo(.005,-.009);knot.lineTo(-.006,-.010);knot.closePath();
-    const kg=new THREE.ExtrudeGeometry(knot,{depth:.004,bevelEnabled:true,bevelSize:.0015,bevelThickness:.0015,bevelSegments:2,steps:1});
-    const ku=kg.attributes.uv,kp=kg.attributes.position;for(let i=0;i<ku.count;i++)ku.setXY(i,(kp.getX(i)+.010)/.020,(kp.getY(i)+.012)/.024);
-    const kerchief=look.neckwearStyle==='kerchief',knotZ=look.neckwearStyle==='bow'?fit.front.max(0,y,.041*s*size,.018*s*size)+.003*s:kerchief?scarfSurface(0,y):z;
-    kg.scale(s*size*(kerchief?1.35:1),s*size*(kerchief?1.2:1),s);kg.translate(0,y+.002*s,knotZ+.007*s);b.add('NeckwearCloth',kg,fabric);
-    if(kerchief)b.add('NeckwearCloth',panel(Array.from({length:25},(_,r)=>u=>{const x=(r/24-.5)*.13*s,yy=y+(.002+u*.012)*s;return v(x,yy,scarfSurface(x,yy)+(.002+.001*Math.sin(u*Math.PI))*s);}),6),fabric);
   }
-  return b.finish();
+  const group=b.finish();group.userData.clothThickness=.001*s;return group;
 }
 
 export function buildJewelry(fit,look){
@@ -155,8 +235,13 @@ export function buildJewelry(fit,look){
       }
     }
   }
-  if(look.tiePin!=='none'&&!['none','bow','kerchief'].includes(look.neckwearStyle)){
-    const y=fit.knotY-.026*s,z=fit.front(0,y)+.011*s,p=v(.002*s,y,z);
+  if(look.collarStud!=='none'&&['none','original'].includes(look.neckwearStyle)&&look.broochStyle==='none'){
+    const y=(fit.closureY??fit.knotY)-.009*s,p=v(0,y,fit.front.max(0,y,.005*s,.005*s)+.002*s);
+    body.add('CollarStudMetal',sphere(p,[.0036*s,.0036*s,.0016*s],12),metal);
+    if(look.collarStud!=='plain')body.add('CollarStudStone',sphere(p.clone().add(v(0,0,.0014*s)),[.0025*s,.0025*s,.0014*s],12),look.collarStud==='pearl'?pearl:stone);
+  }
+  if(look.tiePin!=='none'&&!['none','bow','ribbon','kerchief'].includes(look.neckwearStyle)){
+    const y=fit.knotY-.026*s,z=fit.neckwearFront?fit.neckwearFront(y)+.001*s:(fit.shirtFront||fit.front)(0,y)+.011*s,p=v(.002*s,y,z);
     body.add('TiePinMetal',tube([p.clone().add(v(-.001*s,-.018*s,-.001*s)),p],.0004*s,1,6),metal);
     body.add('TiePinMetal',sphere(p,[.0028*s,.003*s,.0018*s],10),metal);
     if(look.tiePin!=='plain')body.add('TiePinStone',sphere(p.clone().add(v(0,0,.0013*s)),[.002*s,.002*s,.0015*s],10),look.tiePin==='pearl'?pearl:stone);

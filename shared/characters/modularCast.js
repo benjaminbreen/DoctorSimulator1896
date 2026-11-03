@@ -32,6 +32,7 @@ export const MODULAR_CAST_LOOKS = [
   ...EXPANSION_TEMPLATES.map(template => ({ id:template.id, label:template.label, model:template.id,
     cohort:template.sex === 'male' ? 'men' : 'women', expansion:true,
     look:{outfit:template.outfit, hairStyle:template.sex === 'male' ? 'short-side-part' : 'soft-side-waves',
+      ...(template.body==='C5'?{neckwearStyle:'tie',neckwearColor:'navy',neckwearPattern:'stripe',neckwearFabric:'silk'}:template.body==='C4'?{neckwearStyle:'none',collarStud:'plain'}:template.body==='C1'?{neckwearStyle:'ribbon',neckwearColor:'navy',neckwearFabric:'grosgrain'}:template.body==='C3'?{broochStyle:'oval',earringStyle:'stud'}:{broochStyle:'bar'}),
       ...(template.head === 'H3' ? {hairTone:'silver'} : template.head === 'H4' || template.head === 'H5' ? {hairTone:'black',eyeTone:'brown'} : {})} })),
 ].map((preset,index) => ({...preset, look:{
   ...ACCESSORY_DEFAULTS,

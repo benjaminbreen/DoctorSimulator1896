@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {createPeriodAccessories,accessoryVariation,ACCESSORY_CHOICES} from '../../shared/characters/periodAccessories.js';
+import {ACCESSORY_DEFAULTS,buildNeckwear,disposeAccessories} from '../../shared/characters/accessoryGeometry.js';
 
 function fixture(withTie=false){
   const root=new THREE.Group(),chest=new THREE.Bone(),head=new THREE.Bone();chest.name='mixamorigSpine2';chest.position.y=1.25;head.name='mixamorigHead';head.position.y=.25;chest.add(head);root.add(chest);root.updateMatrixWorld(true);
@@ -24,11 +25,36 @@ function fixture(withTie=false){
 test('all accessory families produce finite geometry within the detail budget',()=>{
   const {root,frame}=fixture(),controller=createPeriodAccessories(root,{frame,cohort:'men'});
   let caseIndex=0;
-  for(const glassesStyle of Object.keys(ACCESSORY_CHOICES.glassesStyle))for(const neckwearStyle of ['original','none','bow','tie','cravat','kerchief']){
+  for(const glassesStyle of Object.keys(ACCESSORY_CHOICES.glassesStyle))for(const neckwearStyle of Object.keys(ACCESSORY_CHOICES.neckwearStyle)){
     controller.updateLook({glassesStyle,neckwearStyle,broochStyle:Object.keys(ACCESSORY_CHOICES.broochStyle)[caseIndex%5],earringStyle:Object.keys(ACCESSORY_CHOICES.earringStyle)[caseIndex%5],locketStyle:Object.keys(ACCESSORY_CHOICES.locketStyle)[caseIndex%3],tiePin:'stone',watchChain:'double'});caseIndex++;
-    const info=controller.describe();assert.ok(info.available&&info.triangles<20000);assert.ok(info.drawCalls<=14);
+    const info=controller.describe();assert.ok(info.available&&info.triangles<24000,`${neckwearStyle}: ${info.triangles} triangles`);assert.ok(info.drawCalls<=14);
     root.traverse(o=>{if(o.isMesh&&o.name.startsWith('Accessory_'))for(const a of Object.values(o.geometry.attributes))assert.ok(Array.from(a.array).every(Number.isFinite));});
   }controller.dispose();
+});
+
+test('neckwear has adult proportions, closed cloth edges and usable material coordinates',()=>{
+  const front=()=>.1;front.max=front;const fit={scale:1,knotY:1.5,front};
+  for(const neckwearStyle of ['bow','ribbon','tie','narrow','cravat','kerchief']){
+    const group=buildNeckwear(fit,{...ACCESSORY_DEFAULTS,neckwearStyle}),box=new THREE.Box3().setFromObject(group),size=box.getSize(new THREE.Vector3());
+    assert.ok(size.z>.015,neckwearStyle+' must have volume');
+    if(['bow','ribbon'].includes(neckwearStyle))assert.ok(size.x>.10,'bows should span a realistic collar width');
+    const g=group.children[0].geometry,edges=new Map(),p=g.attributes.position;
+    const key=i=>[p.getX(i),p.getY(i),p.getZ(i)].map(n=>Math.round(n*1e6)).join('/');
+    for(let i=0;i<g.index.count;i+=3)for(let j=0;j<3;j++){
+      const a=key(g.index.getX(i+j)),b=key(g.index.getX(i+(j+1)%3));if(a===b)continue;const e=[a,b].sort().join('|');edges.set(e,(edges.get(e)||0)+1);
+    }
+    assert.equal([...edges.values()].filter(n=>n===1).length,0,neckwearStyle+' has no open cut edges');
+    assert.ok(Array.from(g.attributes.uv.array).every(Number.isFinite));disposeAccessories(group);
+  }
+});
+
+test('new garment ties use the shirt closure rather than the facial mouth offset',()=>{
+  const {root,frame,shirt}=fixture();root.userData.garmentStyle='frock-coat';shirt.material.name='Patient_MaleShirt';
+  const controller=createPeriodAccessories(root,{frame,cohort:'men'});controller.updateLook({neckwearStyle:'tie'});
+  const fit=controller.describe().fit;assert.ok(Math.abs(fit.closureY-1.495)<1e-5);assert.ok(fit.knotY<fit.closureY);
+  controller.updateLook({neckwearStyle:'original',collarStud:'pearl'});assert.ok(root.getObjectByName('Accessory_CollarStudStone'));
+  controller.dispose();
+  for(let seed=1;seed<=50;seed++)assert.ok(!['original','none'].includes(accessoryVariation(seed,'men','dress','frock-coat').neckwearStyle));
 });
 
 test('head and torso accessories follow their own bones without drift',()=>{
@@ -76,4 +102,21 @@ test('fitted neckwear keeps its garment attachment through root movement and tor
     controller.update();root.updateMatrixWorld(true);assert.ok(relative().distanceTo(initial)<1e-5);
   }
   controller.dispose();assert.equal(root.getObjectByName('Patient_FittedNeckwear'),undefined);
+});
+
+test('loose ribbons react to movement, keep their knot pinned and settle at rest',()=>{
+  const {root,frame,chest}=fixture(),controller=createPeriodAccessories(root,{frame});controller.updateLook({neckwearStyle:'ribbon'});
+  const mesh=root.getObjectByName('Accessory_NeckwearCloth'),p=mesh.geometry.attributes.position,w=mesh.geometry.attributes.accessoryLoose,rest=p.array.slice();
+  assert.ok(controller.describe().looseCloth.vertices>0);
+  let largest=0;
+  for(let frame=0;frame<90;frame++){
+    chest.position.x=.03*Math.sin(frame*.08);chest.rotation.z=.12*Math.sin(frame*.10);controller.update(1/60);
+    const motion=controller.describe().looseCloth;largest=Math.max(largest,Math.abs(motion.sway));assert.ok(motion.lift>=0&&motion.lift<=.018);
+  }
+  assert.ok(largest>.0005,'movement must visibly affect the free ends');
+  for(let i=0;i<p.count;i++)if(w.getX(i)===0)for(let j=0;j<3;j++)assert.equal(p.array[i*3+j],rest[i*3+j],'knot and loops stay fixed');
+  for(let i=0;i<360;i++)controller.update(1/60);
+  const settled=controller.describe().looseCloth;assert.ok(Math.abs(settled.sway)+settled.lift<.00001);
+  root.position.x=20;controller.update(1/60);assert.ok(Math.abs(controller.describe().looseCloth.sway)<.0001,'teleports do not kick the ribbons');
+  controller.resetMotion();assert.deepEqual(p.array,rest);controller.dispose();
 });
