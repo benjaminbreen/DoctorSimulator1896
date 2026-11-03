@@ -51,3 +51,37 @@ builds passed. The review also exposed rough native
 sleeve borders and coat/lap intersections, especially on the broad male and
 frock coat. Those remain separate garment cleanup work; the wider wardrobe
 should not be described as fully polished on the strength of the wrist fix.
+
+## Napes and sideburns
+
+All seven male templates now use a collar-based nape fit and rebuilt short
+sideburns, long sideburns and mutton chops. The fit measures the garment's back
+opening, tapers the lower neck and hair into it, preserves the ears and updates
+the deformed surface normals. Facial shape targets receive the same fit.
+
+The sideburns reuse the scalp's colour and normal textures. A dense surface
+provides coverage; fine tapered strands soften its borders. The temple fans
+back into the scalp above the ear and stays in front of the ear below it.
+A smooth ear contour avoids the jagged edges produced by separate measurements
+at each height. Barycentric transfer preserves facial feature and expression
+changes on the new geometry. These are build-time changes, with no new runtime
+fit solver or texture downloads.
+
+```sh
+node scripts/characters/fix-male-attachments.mjs
+node scripts/characters/capture-male-attachments.mjs --url=http://127.0.0.1:5196
+node --test tests/male-attachments.test.mjs tests/procedural-character-assets.test.mjs
+```
+
+The normal modular-patient optimizer runs the same repair after Blender export.
+The review covers 84 side, rear, standing, seated, emotional and feature-variation
+captures, followed by a separate worker-collar check. Tests cover collar clearance,
+ear clearance, temple coverage, shared hair textures, retained facial shapes and
+idempotence. Generated case patients also have a contract check that their
+selected clothing and animation clips exist in the shipped model.
+
+Validation passed 27 focused tests and both production builds. A ten-step
+generated-patient gameplay check (`office`, seed 2, `?procedural=1`) selected
+the updated young male work jacket without a preset override, then exercised
+arrival, seating, dialogue and examination. Its captures were inspected and
+the run recorded no failed steps or runtime errors.

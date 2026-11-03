@@ -29,6 +29,13 @@ The runner starts Vite if needed and opens an isolated browser profile. Add
 path, state file, visible text, controls, clock, and interaction prompt. Open
 the PNG to assess the actual rendered game; read the state for exact labels.
 
+Recorded authored scenarios keep their original first-day cast. To exercise
+the normal case-card generator instead, use an office scenario with
+`--url='http://127.0.0.1:5175/?procedural=1'`. For example, seed 2 includes
+Patrick Lynch. Open his casebook entry and ask him to return through the normal
+UI. Do not supply an appearance preset: the generated profile selects the model,
+clothing, features and accessories. Capture state records the asset actually used.
+
 Keep the process's stdin open and send one JSON object per line. In a terminal
 tool, use a persistent session with a PTY and send subsequent commands to that
 session. Do not start a browser for each action.

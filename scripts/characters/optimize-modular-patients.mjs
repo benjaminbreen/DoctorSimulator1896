@@ -5,6 +5,7 @@ import { prune, resample } from '@gltf-transform/functions';
 import { createIO, contract, assertSameCharacter, conservativeDedup, compressCharacterTextures, compressAccessors, CHARACTER_QUANTIZATION, dropMorphTargetNormals } from '../lib/glb-pipeline.mjs';
 import {relaxStandingPosture} from '../lib/relax-standing-posture.mjs';
 import {repairWristBinding} from '../lib/repair-wrist-binding.mjs';
+import {repairMaleNape,repairMaleSideburns} from '../lib/repair-male-attachments.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const files = process.argv.slice(2);
@@ -22,6 +23,8 @@ for (const relative of files) {
     if (material.getName() === 'Patient_FacialHair') material.setAlphaMode('MASK').setAlphaCutoff(.2).setDoubleSided(true);
     if (material.getName() === 'Carmela_HairStrands') material.setAlphaMode('MASK').setAlphaCutoff(.35).setDoubleSided(true);
   }
+  repairMaleNape(document);
+  await repairMaleSideburns(document);
   const before = contract(document);
   repairWristBinding(document);
   relaxStandingPosture(document);

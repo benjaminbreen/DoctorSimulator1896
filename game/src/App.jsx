@@ -125,8 +125,8 @@ export default function App() {
   }, [worldClock]);
   const keyboard = useMemo(() => createKeyboard(), []);
   const look = useMemo(() => createLook(runtime), [runtime]);
-  // Day one draws three people from the authored pool; each later day rolls
-  // procedural citizens. A reroll swaps in a procedural cast even on day one.
+  // Normal play uses the case-card cast. Authored replay fixtures stay
+  // available unless a playtest explicitly requests procedural patients.
   const [dayIndex, setDayIndex] = useState(0);
   const [morning, setMorning] = useState(null);
   const [castNonce, setCastNonce] = useState(0);
@@ -135,7 +135,7 @@ export default function App() {
   const daySeed = (getRunSeed() ^ Math.imul(dayIndex, 0x85ebca6b) ^ Math.imul(castNonce, 0x27d4eb2f)) >>> 0;
   const consultationPatients = useMemo(
     () => createConsultationPatients(dayIndex === 0 && castNonce === 0
-      ? { daySeed, dayIndex: 0, count: 3, authored: Boolean(pageParams?.has('playtest')) }
+      ? { daySeed, dayIndex: 0, count: 3, authored: Boolean(pageParams?.has('playtest') && !pageParams?.has('procedural')) }
       : { daySeed, dayIndex: castNonce ? `${dayIndex}r${castNonce}` : dayIndex, count: 4, referral }),
     [daySeed, dayIndex, castNonce, referral],
   );
