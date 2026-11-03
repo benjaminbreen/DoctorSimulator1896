@@ -2,6 +2,7 @@ import { createModularVariation } from './modularVariants.js';
 import { headwearVariation } from './headwearGeometry.js';
 import { accessoryVariation } from './periodAccessories.js';
 import { createRandom } from '../patients/random.js';
+import { EXPANSION_TEMPLATES } from './patientExpansion.js';
 
 // Turns a generated patient profile into a modular model and look. The seed
 // still varies the face; the profile decides what a viewer would read from
@@ -43,6 +44,23 @@ export function lookForProfile(profile) {
     model = random.pick(['carmela-russo', 'seamstress-prototype']);
     outfit = WOMEN_AT_WORK.test(trade) || classId === 'sponsored' ? 'work-apron' : 'day-dress';
   }
+  const origin = profile.identity.origin?.id;
+  let head = null;
+  if (male) {
+    if (origin === 'chinese-american') head = 'male-chinese';
+    else if (origin !== 'african-american' && (age < 30 || age < 40 && random.chance(.25))) head = 'male-young';
+  } else if (origin === 'african-american') head = 'female-black';
+  else if (age >= 55) head = 'female-older';
+  else if (age < 35) head = 'female-young';
+  if (head) {
+    outfit = male ? (HEAVY_WORK.test(trade) || TRADE.test(trade) || classId === 'sponsored' ? 'work-jacket' : 'frock-coat')
+      : wealthy ? 'walking-suit' : WOMEN_AT_WORK.test(trade) || classId === 'sponsored' ? random.pick(['working-dress', 'shirtwaist-skirt'])
+        : random.pick(['shirtwaist-skirt', 'walking-suit']);
+    model = EXPANSION_TEMPLATES.find(template => template.id === `${head}-${outfit}`).id;
+    // These donors already have proportionate lower faces. The old presets
+    // deliberately shrink Carmela's much larger jaw and chin.
+    base.features = Object.fromEntries(Object.entries(base.features).map(([name, value]) => [name, value*(name === 'lowerFaceSize' ? .20 : .65)]));
+  }
 
   let hairTone = random.pick(colouring.hair);
   if (age >= 60) hairTone = random.pick(['silver', 'mixedGray']);
@@ -71,6 +89,8 @@ export function lookForProfile(profile) {
   if (!male && household.spouseDeceased && random.chance(.6)) Object.assign(hat, { hatStyle: 'mourning-bonnet', hatColor: 'black' });
 
   const body = male ? {
+    hairlineRecession: age < 30 ? random.pick([0,.1,.25]) : random.pick([.15,.3,.5,.75]),
+    hairThinning: age < 35 ? 0 : random.chance(.35) ? random.pick([.15,.35,.6]) : 0,
     bellySize: wealthy && age >= 40 ? random.pick([.3, .7, 1]) : HEAVY_WORK.test(trade) ? random.pick([-.5, 0]) : random.pick([-.5, 0, .3]),
     waistWidth: wealthy && age >= 40 ? random.pick([0, .3]) : random.pick([-.3, 0]),
     // Young men in 1896 were often clean-shaven or wore a small moustache.
@@ -88,7 +108,7 @@ export function lookForProfile(profile) {
       outfit,
       hairStyle,
       hairTone,
-      skinTone: random.pick(colouring.skin),
+      skinTone: random.pick(head === 'female-black' ? ['umber', 'deep'] : colouring.skin),
       eyeTone: random.pick(colouring.eyes),
       palette: classId === 'sponsored' ? random.pick(['original', 'taupe']) : base.palette,
     },

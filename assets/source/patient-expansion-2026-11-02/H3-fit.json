@@ -1,0 +1,31 @@
+{
+  "identity": "female-older",
+  "source": "assets/source/patient-expansion-2026-11-02/H3-older-woman/tripo_convert_d372c8cc-94c0-4ce6-b4e6-eaf8d0af40d6.fbx",
+  "scale": 0.967250825119184,
+  "offset": [
+    0,
+    0,
+    0.033221465322768706
+  ],
+  "rawAnchors": [
+    0.648,
+    0.116,
+    0.052,
+    0.398,
+    0.091
+  ],
+  "anchors": [
+    0.66,
+    0.11220109571382535,
+    0.05029704290619757,
+    0.41818729372020397,
+    0.08801982508584574
+  ],
+  "chinZ": 0.27019791747696875,
+  "skinReference": "original",
+  "irisColor": [
+    0.32,
+    0.2,
+    0.09
+  ]
+}

@@ -123,7 +123,7 @@ export function createHeadwear(root,initialLook={}){
   }
   function updateLook(next={}){
     const style=next.hatStyle||'none';
-    const key=JSON.stringify([style,...['hatHand','hatSeed','hatColor','hatBandColor','hatCrownHeight','hatBrimWidth','hatTilt','hatDecoration','hatWear','hairStyle','hairVolume','hairWave','hairBunHeight','hairEarCoverage','hairPartOffset','identityVariant','features'].map(k=>next[k])]);
+    const key=JSON.stringify([style,...['hatHand','hatSeed','hatColor','hatBandColor','hatCrownHeight','hatBrimWidth','hatTilt','hatDecoration','hatWear','hairStyle','hairVolume','hairWave','hairBunHeight','hairEarCoverage','hairPartOffset','hairlineHeight','hairlinePeak','hairlineRecession','hairlineAsymmetry','hairThinning','identityVariant','features'].map(k=>next[k])]);
     if(key===lookKey)return;
     restorePose();lookKey=key;look={...next};disposeHeadwear(hat);hat=null;fastener=-1;
     hairUniforms.headwearHairMask.value=0;

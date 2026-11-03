@@ -49,7 +49,7 @@ export function deformModularPoint(point, values, frame) {
   const lower = Math.exp(-Math.pow((y-mouth+.015)/(.045*s), 4))*smooth(mouth-.055*s, mouth-.025*s, y)
     *(1-front*.9*smooth(mouth-.030*s,mouth-.006*s,y));
   dx += x*.30*values.jawWidth*lower;
-  const chin = g(x/(.048*s))*g((y-mouth+.034*s)/(.029*s))*front;
+  const chin = g(x/(.048*s))*g((y-(frame.chinY ?? mouth-.034*s))/(.029*s))*front;
   dx += x*.45*values.chinWidth*chin;
   dy -= .018*s*values.chinLength*chin;
   dz += .020*s*values.chinProjection*chin;
@@ -59,7 +59,7 @@ export function deformModularPoint(point, values, frame) {
   const cheek = g((Math.abs(x)-.055*s)/(.030*s))*g((y-eyes+.027*s)/(.026*s))*front;
   dx += Math.sign(x)*.008*s*values.cheekFullness*cheek;
   dz += .006*s*values.cheekFullness*cheek;
-  const noseY = mouth+.043*s;
+  const noseY = frame.noseY ?? mouth+.043*s;
   const noseFront = smooth(.075*s, .110*s, z);
   const tip = g(x/(.029*s))*g((y-noseY)/(.025*s))*noseFront;
   dx += x*.45*values.noseWidth*tip;
@@ -114,6 +114,8 @@ export function createModularIdentity(root) {
     scale: referenceSpan > 0 ? Math.abs(eyeCenter.y-mouthY)/referenceSpan : Math.abs(eyeCenter.x)/.034188,
     eyeX: Math.abs(eyeCenter.x), eyeZ:eyeCenter.z, depthOffset: Number(eye.userData.modularDepthOffset) || 0,
     neckGuard:Boolean(eye.userData.modularNeckGuard) } : null;
+  if (frame && Number.isFinite(eye.userData.modularNoseRatio)) frame.noseY = mouthY+(eyeCenter.y-mouthY)*eye.userData.modularNoseRatio;
+  if (frame && Number.isFinite(eye.userData.modularChinRatio)) frame.chinY = mouthY-(eyeCenter.y-mouthY)*eye.userData.modularChinRatio;
   const namesOfFeatures = Object.keys(MODULAR_FEATURES);
   const lastFeatures = namesOfFeatures.map(() => NaN);
   const values = Object.fromEntries(namesOfFeatures.map((name) => [name, 0]));

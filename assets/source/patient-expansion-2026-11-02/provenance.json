@@ -1,0 +1,309 @@
+{
+  "date": "2026-11-02",
+  "purpose": "Five expressive head donors and five complete clothed body templates",
+  "authorization": "User approved all ten image references and requested Tripo generation, integration and polish.",
+  "studioCreditsBefore": 2385,
+  "assets": {
+    "H1": {
+      "label": "Young woman",
+      "reference": "references/H1-young-woman.png",
+      "referenceSha256": "aaf1609e4a47c9e2d8e80d1e143df52e0afc6922d1af4a9e0323b285ffa8059b",
+      "status": "downloaded",
+      "generationId": "d0502df4-d46f-4e6e-834c-24f211268fdd",
+      "generationUrl": "https://studio.tripo3d.ai/workspace/generate/d0502df4-d46f-4e6e-834c-24f211268fdd",
+      "model": "Smart Mesh P2.0",
+      "topology": "quad",
+      "requestedPolygons": 10000,
+      "reportedFaces": 11910,
+      "reportedVertices": 11096,
+      "geometryCredits": 100,
+      "textureCredits": 20,
+      "sourceDirectory": "H1-young-woman",
+      "export": "FBX 4k",
+      "files": [
+        {
+          "path": "H1-young-woman/tripo_convert_cc9cd136-8980-4a67-9af2-c64d19b54a39.fbm/tripo_rgb_2da025b7-d902-4056-9326-a55295bef9c1.png",
+          "bytes": 22731601,
+          "sha256": "d5caaf21cc535e91b29bf12c7741e5ca70fa2196c6c14f01fc93bb05594eafe6"
+        },
+        {
+          "path": "H1-young-woman/tripo_convert_cc9cd136-8980-4a67-9af2-c64d19b54a39.fbx",
+          "bytes": 23522816,
+          "sha256": "9e75bdb3d1964fd0d10a9982c853b1f10b0f0b81e3782e424546e7415f4da1a3"
+        }
+      ]
+    },
+    "C1": {
+      "label": "Shirtwaist and skirt",
+      "reference": "references/C1-shirtwaist-skirt.png",
+      "referenceSha256": "949d9b411189cd0655d9ad6bfcd98bf5636ff86619013ff3c3235a024d0ccb5b",
+      "status": "downloaded",
+      "generationId": "449cccfc-bc15-4ec6-af06-14dc47368026",
+      "generationUrl": "https://studio.tripo3d.ai/workspace/generate/449cccfc-bc15-4ec6-af06-14dc47368026",
+      "model": "Smart Mesh P2.0",
+      "topology": "quad",
+      "requestedPolygons": 10000,
+      "reportedFaces": 11069,
+      "reportedVertices": 10600,
+      "geometryCredits": 100,
+      "textureCredits": 20,
+      "rigCredits": 20,
+      "skeleton": "Mixamo",
+      "export": "FBX 4k",
+      "sourceDirectory": "C1-shirtwaist-skirt",
+      "files": [
+        {
+          "path": "C1-shirtwaist-skirt/tripo_convert_26f1c831-2fbd-484e-a888-d1bb892b90e0.fbm/tripo_rgb_77721b7f-1fa4-4a28-927f-75ad65bcf539.png",
+          "bytes": 21562575,
+          "sha256": "04e2864626c4ceed7ff3dab2b338b88d3f1c5a83a758f91d2d0ca432ad22628b"
+        },
+        {
+          "path": "C1-shirtwaist-skirt/tripo_convert_26f1c831-2fbd-484e-a888-d1bb892b90e0.fbx",
+          "bytes": 22660400,
+          "sha256": "7fecd6dbf823381005136ecfba38086bc6febea2a87cc404bcb7f0ead5499166"
+        }
+      ]
+    },
+    "C4": {
+      "label": "Short work jacket",
+      "reference": "references/C4-work-jacket.png",
+      "referenceSha256": "2494acde6809e476074186e3b5655f4446937776f3988d9e378c0e871517d797",
+      "status": "downloaded",
+      "generationId": "99ab1a34-cd00-45c0-acbd-ba90cb57e869",
+      "generationUrl": "https://studio.tripo3d.ai/workspace/generate/99ab1a34-cd00-45c0-acbd-ba90cb57e869",
+      "model": "Smart Mesh P2.0",
+      "topology": "quad",
+      "requestedPolygons": 10000,
+      "reportedFaces": 10536,
+      "reportedVertices": 9696,
+      "geometryCredits": 100,
+      "textureCredits": 20,
+      "rigCredits": 20,
+      "skeleton": "Mixamo",
+      "sourceDirectory": "C4-work-jacket",
+      "export": "FBX 4k",
+      "files": [
+        {
+          "path": "C4-work-jacket/tripo_convert_d5d142eb-c55f-4f92-9af4-af3d1deb12ae.fbm/tripo_rgb_de62d4da-1033-481d-b47d-3405d174a698.png",
+          "bytes": 25935528,
+          "sha256": "c1a69fc3319ae04806b6434e9254d58c0494b4257a0080f4b85d543e9538c833"
+        },
+        {
+          "path": "C4-work-jacket/tripo_convert_d5d142eb-c55f-4f92-9af4-af3d1deb12ae.fbx",
+          "bytes": 26964544,
+          "sha256": "a959a63ba6191ccc56eefee2682fd6d88f4a0602d7ed2d117623c32ea45307e9"
+        }
+      ]
+    },
+    "H2": {
+      "label": "Young man",
+      "reference": "references/H2-young-man.png",
+      "referenceSha256": "071a8f0f987de43afedc8d9f5db8a3d2f1e6807e55ac151f307e240d2e5414c6",
+      "status": "downloaded",
+      "generationId": "0323f4bb-3bfc-4d68-8ad3-b319b4b98673",
+      "generationUrl": "https://studio.tripo3d.ai/workspace/generate/0323f4bb-3bfc-4d68-8ad3-b319b4b98673",
+      "model": "Smart Mesh P2.0",
+      "topology": "quad",
+      "requestedPolygons": 10000,
+      "reportedFaces": 10458,
+      "reportedVertices": 9482,
+      "geometryCredits": 100,
+      "textureCredits": 20,
+      "sourceDirectory": "H2-young-man",
+      "export": "FBX 4k",
+      "files": [
+        {
+          "path": "H2-young-man/tripo_convert_4b76ba59-123a-41f8-9a30-7a6702e5f5d7.fbm/tripo_rgb_6e202773-0b38-46bf-987d-97956a9cf0d5.png",
+          "bytes": 21862529,
+          "sha256": "ea09429c6ff5eb7c42738a9212cda8dedad5826310bf74a9bd8f71d3804d1ffb"
+        },
+        {
+          "path": "H2-young-man/tripo_convert_4b76ba59-123a-41f8-9a30-7a6702e5f5d7.fbx",
+          "bytes": 22551280,
+          "sha256": "55ac3f53385d74cc04ab4f17e9eb4fe3ba5d88a512cf14601f39e412e689e2ac"
+        }
+      ]
+    },
+    "H3": {
+      "label": "Older woman",
+      "reference": "references/H3-older-woman.png",
+      "referenceSha256": "7e3322502cb35953d7b85e8676934a75ad0df453d886dacf149a2ec673a18a5d",
+      "status": "downloaded",
+      "generationId": "797d1239-7e16-4291-9a96-947ae2806986",
+      "generationUrl": "https://studio.tripo3d.ai/workspace/generate/797d1239-7e16-4291-9a96-947ae2806986",
+      "model": "Smart Mesh P2.0",
+      "topology": "quad",
+      "requestedPolygons": 10000,
+      "reportedFaces": 12276,
+      "reportedVertices": 11949,
+      "geometryCredits": 100,
+      "textureCredits": 20,
+      "sourceDirectory": "H3-older-woman",
+      "export": "FBX 4k",
+      "files": [
+        {
+          "path": "H3-older-woman/tripo_convert_d372c8cc-94c0-4ce6-b4e6-eaf8d0af40d6.fbm/tripo_rgb_2d6c8265-bb6a-4b6f-8121-292c90c67749.png",
+          "bytes": 22671041,
+          "sha256": "8e1314e54c381c72481ef38f66c0d5ca168f9fdd12a17a92f645c2c1e13a49e0"
+        },
+        {
+          "path": "H3-older-woman/tripo_convert_d372c8cc-94c0-4ce6-b4e6-eaf8d0af40d6.fbx",
+          "bytes": 23497184,
+          "sha256": "19201af6be451c8f498385050e4bd7539db18902f9d894851a31dcc0543b00d7"
+        }
+      ]
+    },
+    "H4": {
+      "label": "Adult Black woman",
+      "reference": "references/H4-adult-black-woman.png",
+      "referenceSha256": "35dc89985803ae5aec2851330f046677722adaa24a652b6525b200380fa54a16",
+      "status": "downloaded",
+      "generationId": "4c6ef64e-e424-452e-87d5-d5f7354456c3",
+      "generationUrl": "https://studio.tripo3d.ai/workspace/generate/4c6ef64e-e424-452e-87d5-d5f7354456c3",
+      "model": "Smart Mesh P2.0",
+      "topology": "quad",
+      "requestedPolygons": 10000,
+      "reportedFaces": 11952,
+      "reportedVertices": 11915,
+      "geometryCredits": 100,
+      "textureCredits": 20,
+      "sourceDirectory": "H4-adult-black-woman",
+      "export": "FBX 4k",
+      "files": [
+        {
+          "path": "H4-adult-black-woman/tripo_convert_eca44f4e-31ae-46df-a2b4-07845fe66bf9.fbm/tripo_rgb_691b997f-33b8-4608-8db7-54d9da0fc4fc.png",
+          "bytes": 22625403,
+          "sha256": "c262870b05393fb7eed68de728b349bfa356faf1c5e3ac3341bdaa2878668daf"
+        },
+        {
+          "path": "H4-adult-black-woman/tripo_convert_eca44f4e-31ae-46df-a2b4-07845fe66bf9.fbx",
+          "bytes": 23438992,
+          "sha256": "5ce68f4f4c4e51ddfd883a6a6cea8d73ea0b66998fcf42a678d98297a0b0708a"
+        }
+      ]
+    },
+    "H5": {
+      "label": "Adult Chinese man",
+      "reference": "references/H5-adult-chinese-man.png",
+      "referenceSha256": "bda65c30f02d5d415847d1d43950e465c79f68fe182bc96bdfb7c0390cfdfec1",
+      "status": "downloaded",
+      "generationId": "3005646e-8eb9-4d19-b294-3b20b6c5a2b2",
+      "generationUrl": "https://studio.tripo3d.ai/workspace/generate/3005646e-8eb9-4d19-b294-3b20b6c5a2b2",
+      "model": "Smart Mesh P2.0",
+      "topology": "quad",
+      "requestedPolygons": 10000,
+      "reportedFaces": 12115,
+      "reportedVertices": 12007,
+      "geometryCredits": 100,
+      "textureCredits": 20,
+      "sourceDirectory": "H5-adult-chinese-man",
+      "export": "FBX 4k",
+      "files": [
+        {
+          "path": "H5-adult-chinese-man/tripo_convert_46b03c97-a919-4318-853f-e7a0ec126eca.fbm/tripo_rgb_b37bb3c5-d486-470d-b26b-947a81256dee.png",
+          "bytes": 21606177,
+          "sha256": "4e26c4a60e6ddb9725593380b79a5ca8c27d33a3de0b6a056ba09c11e608c56c"
+        },
+        {
+          "path": "H5-adult-chinese-man/tripo_convert_46b03c97-a919-4318-853f-e7a0ec126eca.fbx",
+          "bytes": 22431488,
+          "sha256": "0dc78767aabba1c10028c950511626e796b90ecd66c5564ca1d2a928af13d38d"
+        }
+      ]
+    },
+    "C2": {
+      "label": "Plain working dress",
+      "reference": "references/C2-working-dress.png",
+      "referenceSha256": "f27da7cd25467f463bc22c3abaad8108c8105309ad3c11c32a69a9824b42b514",
+      "status": "downloaded",
+      "generationId": "a3ae7ea4-1602-4674-a5cb-fbb945ab0d28",
+      "generationUrl": "https://studio.tripo3d.ai/workspace/generate/a3ae7ea4-1602-4674-a5cb-fbb945ab0d28",
+      "model": "Smart Mesh P2.0",
+      "topology": "quad",
+      "requestedPolygons": 10000,
+      "reportedFaces": 11181,
+      "reportedVertices": 10991,
+      "geometryCredits": 100,
+      "textureCredits": 20,
+      "rigCredits": 20,
+      "skeleton": "Mixamo",
+      "sourceDirectory": "C2-working-dress",
+      "export": "FBX 4k",
+      "files": [
+        {
+          "path": "C2-working-dress/tripo_convert_99b33abe-2a65-4456-9954-9c8d9629004e.fbm/tripo_rgb_c9b039d7-8f73-460a-8807-24e278739369.png",
+          "bytes": 26484012,
+          "sha256": "793ce68bb55eb84f2772eed174a507620e274f84fe3b707b1d6f571e2b429827"
+        },
+        {
+          "path": "C2-working-dress/tripo_convert_99b33abe-2a65-4456-9954-9c8d9629004e.fbx",
+          "bytes": 27613136,
+          "sha256": "bb6355146f726e553045f7c4d67acec1b1bdb606d121a1311ef65f58daecf136"
+        }
+      ]
+    },
+    "C3": {
+      "label": "Tailored walking suit",
+      "reference": "references/C3-walking-suit.png",
+      "referenceSha256": "e08b9985907ddc2ab322994a0f8ca4054ed3c70fd639ade344aefaaccbd603ac",
+      "status": "downloaded",
+      "generationId": "d89cced5-9027-4f8e-a65c-e5368bebceda",
+      "generationUrl": "https://studio.tripo3d.ai/workspace/generate/d89cced5-9027-4f8e-a65c-e5368bebceda",
+      "model": "Smart Mesh P2.0",
+      "topology": "quad",
+      "requestedPolygons": 10000,
+      "reportedFaces": 11353,
+      "reportedVertices": 10076,
+      "geometryCredits": 100,
+      "textureCredits": 20,
+      "rigCredits": 20,
+      "skeleton": "Mixamo",
+      "sourceDirectory": "C3-walking-suit",
+      "export": "FBX 4k",
+      "files": [
+        {
+          "path": "C3-walking-suit/tripo_convert_099ee0fa-f836-42a5-b7f5-06036aae6bb4.fbm/tripo_rgb_f922dd4d-3f76-42eb-a606-2d07ef619405.png",
+          "bytes": 19183684,
+          "sha256": "90582efd5f6cc7ef4c75a6062a976081fba0646e3b4adbb6503455ac5861ea7b"
+        },
+        {
+          "path": "C3-walking-suit/tripo_convert_099ee0fa-f836-42a5-b7f5-06036aae6bb4.fbx",
+          "bytes": 20281904,
+          "sha256": "3c81b1599ccbc8e2ca619abf92daaa1c19aaf78e867883e6fb1a16be466757b2"
+        }
+      ]
+    },
+    "C5": {
+      "label": "Frock-coat day ensemble",
+      "reference": "references/C5-frock-coat.png",
+      "referenceSha256": "d2617f6dfa2f25c6c2700656d3e0906761fb98185458bd53c94549edf360b4a7",
+      "status": "downloaded",
+      "generationId": "aa6a2f88-044f-4102-9fe4-4994e855137d",
+      "generationUrl": "https://studio.tripo3d.ai/workspace/generate/aa6a2f88-044f-4102-9fe4-4994e855137d",
+      "model": "Smart Mesh P2.0",
+      "topology": "quad",
+      "requestedPolygons": 10000,
+      "reportedFaces": 11134,
+      "reportedVertices": 10491,
+      "geometryCredits": 100,
+      "textureCredits": 20,
+      "rigCredits": 20,
+      "skeleton": "Mixamo",
+      "sourceDirectory": "C5-frock-coat",
+      "export": "FBX 4k",
+      "files": [
+        {
+          "path": "C5-frock-coat/tripo_convert_814dce69-b170-4044-bab6-127353d77cbe.fbm/tripo_rgb_5e0d4e05-aa2d-4ce0-a88b-fc2e3d515fb1.png",
+          "bytes": 19408151,
+          "sha256": "cfaa7ae3a8c46e1261b7ecdf2f222441b68cafea64023bcb17625c375f49715b"
+        },
+        {
+          "path": "C5-frock-coat/tripo_convert_814dce69-b170-4044-bab6-127353d77cbe.fbx",
+          "bytes": 20510976,
+          "sha256": "9f771417fe8134113ee0359cb73d4a8f4ab0eb0aa90acac04a7533b3c723232d"
+        }
+      ]
+    }
+  },
+  "studioCreditsAfter": 1085
+}

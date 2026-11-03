@@ -7,6 +7,7 @@ import { createModularIdentity, deformModularPoint, MODULAR_FEATURES } from '../
 import { createModularVariation } from '../../shared/characters/modularVariants.js';
 import { createModularHair, MODULAR_HAIR_STYLES } from '../../shared/characters/modularHair.js';
 import { MODULAR_CAST_LOOKS } from '../../shared/characters/modularCast.js';
+import { EXPANSION_TEMPLATES } from '../../shared/characters/patientExpansion.js';
 
 test('a seated outfit shows one skirt and keeps fabric changes off the hands', () => {
   const root = new THREE.Group();
@@ -147,7 +148,7 @@ test('the female and male studies have distinct, complete, bounded recipes', () 
   assert.equal(new Set(MODULAR_CAST_LOOKS.map(p=>p.id)).size,MODULAR_CAST_LOOKS.length);
   assert.equal(new Set(MODULAR_CAST_LOOKS.map(p=>JSON.stringify(p.look))).size,MODULAR_CAST_LOOKS.length);
   for(const preset of MODULAR_CAST_LOOKS) {
-    assert.ok(['carmela-russo','seamstress-prototype','male-lean-template','male-broad-template','male-worker-template'].includes(preset.model));
+    assert.ok(['carmela-russo','seamstress-prototype','male-lean-template','male-broad-template','male-worker-template',...EXPANSION_TEMPLATES.map(template=>template.id)].includes(preset.model));
     assert.ok(MODULAR_HAIR_STYLES[preset.look.hairStyle]);
     assert.ok(Object.entries(preset.look.features).every(([name,value])=>MODULAR_FEATURES[name] && value>=-1 && value<=1));
     for(const name of ['skinTone','hairTone','eyeTone','outfit','palette','hairVolume','hairWave','hairBunHeight','hairPartOffset','hairEarCoverage']) assert.notEqual(preset.look[name],undefined);

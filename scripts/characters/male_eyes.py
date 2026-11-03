@@ -5,7 +5,7 @@ import bpy
 import numpy as np
 
 
-def build(parts, identity, output):
+def build(parts, identity, output, iris_color=None):
     eyes=[o for o in parts if o.name.startswith('Carmela_Eye_')]
     left=next(o for o in eyes if o.name=='Carmela_Eye_Left')
     cx=(min(v.co.x for v in left.data.vertices)+max(v.co.x for v in left.data.vertices))/2
@@ -29,7 +29,7 @@ def build(parts, identity, output):
     noise=np.random.default_rng(1896).uniform(-.025,.025,r.shape)
     fibre=.78+.12*np.sin(angle*67+r*23)+.07*np.sin(angle*151+r*39)+noise
     limbic=1-.65*np.clip((r-.82)/.18,0,1)
-    iris=np.array([.40,.29,.16] if identity=='male-b' else [.34,.44,.48])
+    iris=np.array(iris_color if iris_color else [.40,.29,.16] if identity=='male-b' else [.34,.44,.48])
     sample_radius=.45+.55*np.clip(r,0,1)
     sx=np.clip(((cu+np.cos(angle)*sample_radius*radius[0])*original.size[0]).astype(int),0,original.size[0]-1)
     sy=np.clip(((cv+np.sin(angle)*sample_radius*radius[1]*.5)*original.size[1]).astype(int),0,original.size[1]-1)

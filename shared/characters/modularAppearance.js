@@ -33,6 +33,8 @@ export const MODULAR_EYE_TONES = {
 
 export function createModularAppearance(root, frame) {
   if (!frame) return { available: false, update() {} };
+  const referenceTone = root.getObjectByName('Carmela_Face')?.userData.modularSkinReference;
+  const reference = MODULAR_SKIN_TONES[referenceTone] || MODULAR_SKIN_TONES.original;
   const uniforms = {
     modularSkinGain: { value: new THREE.Vector3(1, 1, 1) }, modularSkinLift: { value: 0 },
     modularHair: { value: new THREE.Color() }, modularGray: { value: 0 }, modularHairEnabled: { value: 0 },
@@ -77,10 +79,12 @@ export function createModularAppearance(root, frame) {
       if (patched.has(material)) continue;
       patched.add(material);
       const previous = material.onBeforeCompile;
+      const nativeSkinGain = new THREE.Vector3(...(name === 'Patient_Hands' ? material.userData.modularNativeSkinGain || reference.gain : [1, 1, 1]));
       material.onBeforeCompile = (shader, renderer) => {
         previous?.(shader, renderer);
         Object.assign(shader.uniforms, uniforms);
-        shader.fragmentShader = `uniform vec3 modularSkinGain; uniform float modularSkinLift;
+        shader.uniforms.modularNativeSkinGain = { value: nativeSkinGain };
+        shader.fragmentShader = `uniform vec3 modularSkinGain; uniform float modularSkinLift; uniform vec3 modularNativeSkinGain;
 uniform vec3 modularHair; uniform float modularGray; uniform float modularHairEnabled;
 uniform vec3 modularIris; uniform float modularIrisEnabled; uniform vec4 modularEyeCenters; uniform vec2 modularEyeRadius;
 ${kind === 'skin' ? 'varying float vModularBrow;' : ''}\n`+shader.fragmentShader;
@@ -103,6 +107,7 @@ vec3 identityIris = modularIris*clamp(identityLuma/.12,.24,1.9);
 diffuseColor.rgb = mix(diffuseColor.rgb,identityIris,identityIrisMask*modularIrisEnabled);
 #endif`
             : `
+diffuseColor.rgb *= modularNativeSkinGain;
 float identityLuma = dot(diffuseColor.rgb, vec3(.2126, .7152, .0722));
 float identitySkinMask = smoothstep(.012,.07,identityLuma);
 vec3 identitySkin = diffuseColor.rgb*modularSkinGain+vec3(modularSkinLift)*smoothstep(.025,.20,identityLuma);
@@ -112,7 +117,7 @@ vec3 identityBrowColor = mix(modularHair*.5,vec3(.15),modularGray*.6)*clamp(iden
 diffuseColor.rgb = mix(diffuseColor.rgb,identityBrowColor,identityBrow*.8);`;
         shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n'+code);
       };
-      material.customProgramCacheKey = () => `modular-appearance-v3-${kind}`;
+      material.customProgramCacheKey = () => `modular-appearance-v5-${kind}-${Boolean(material.userData.crownHairLoss)}`;
       material.needsUpdate = true;
     }
   });
@@ -126,7 +131,7 @@ diffuseColor.rgb = mix(diffuseColor.rgb,identityBrowColor,identityBrow*.8);`;
       const skin = MODULAR_SKIN_TONES[skinTone] || MODULAR_SKIN_TONES.original;
       const hair = MODULAR_HAIR_TONES[hairTone] || MODULAR_HAIR_TONES.original;
       const eye = MODULAR_EYE_TONES[eyeTone] || MODULAR_EYE_TONES.original;
-      uniforms.modularSkinGain.value.fromArray(skin.gain); uniforms.modularSkinLift.value = skin.lift;
+      uniforms.modularSkinGain.value.fromArray(skinTone === 'original' ? skin.gain : skin.gain.map((gain, i) => gain/reference.gain[i])); uniforms.modularSkinLift.value = skin.lift;
       uniforms.modularHair.value.set(hair.color); uniforms.modularGray.value = hair.gray;
       uniforms.modularHairEnabled.value = hairTone !== 'original' ? 1 : 0;
       uniforms.modularIris.value.set(eye.color); uniforms.modularIrisEnabled.value = eyeTone !== 'original' ? 1 : 0;

@@ -68,7 +68,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
   const castLook = reviewing ? MODULAR_CAST_LOOKS.find(preset => preset.id === review.get('appearancePreset')) : null;
   const reviewSeed = reviewing ? review.get('appearanceSeed') : null;
   // Bump the review URL when an exported character's geometry changes.
-  const reviewVersion=castLook?.cohort==='men'?'20261101-mouth-fit-1':'20261030-4';
+  const reviewVersion=castLook?.expansion?'20261102-expansion-3':castLook?.cohort==='men'?'20261102-grooms-1':'20261030-4';
   const bodyPath = castLook ? `/models/characters/${castLook.model}.glb?v=${reviewVersion}` : patientModelPath(recipe, manifest);
   const [gltf, motionGltf] = useLoader(GLTFLoader,
     [bodyPath, recipe.asset?.motionPath || bodyPath], configure);
@@ -397,6 +397,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
     actor.mixer.stopAllAction();
     actor.mixer.uncacheRoot(actor.root);
     actor.wardrobe.dispose?.();
+    actor.hair.dispose?.();
     // Hat geometry is built per actor, unlike the shared GLB geometry.
     actor.headwear.dispose();
     actor.eyelashes.dispose();

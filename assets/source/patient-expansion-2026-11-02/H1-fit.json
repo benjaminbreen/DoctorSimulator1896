@@ -1,0 +1,31 @@
+{
+  "identity": "female-young",
+  "source": "assets/source/patient-expansion-2026-11-02/H1-young-woman/tripo_convert_cc9cd136-8980-4a67-9af2-c64d19b54a39.fbx",
+  "scale": 0.8510388658029822,
+  "offset": [
+    0,
+    0,
+    0.14937668051821074
+  ],
+  "rawAnchors": [
+    0.6,
+    0.1245,
+    0.056,
+    0.337,
+    0.093
+  ],
+  "anchors": [
+    0.66,
+    0.10595433879247128,
+    0.047658176484967,
+    0.43617677829381574,
+    0.07914661451967735
+  ],
+  "chinZ": 0.2855428990466879,
+  "skinReference": "original",
+  "irisColor": [
+    0.38,
+    0.29,
+    0.12
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "identity": "male-chinese",
+  "source": "assets/source/patient-expansion-2026-11-02/H5-adult-chinese-man/tripo_convert_46b03c97-a919-4318-853f-e7a0ec126eca.fbx",
+  "scale": 0.8796628498084834,
+  "offset": [
+    0,
+    0,
+    0.12076667306739963
+  ],
+  "rawAnchors": [
+    0.613,
+    0.115,
+    0.051,
+    0.347,
+    0.095
+  ],
+  "anchors": [
+    0.66,
+    0.1011612277279756,
+    0.04486280534023265,
+    0.42600968195094335,
+    0.08356797073180593
+  ],
+  "chinZ": 0.2879026145310115,
+  "skinReference": "original",
+  "irisColor": [
+    0.24,
+    0.13,
+    0.07
+  ]
+}

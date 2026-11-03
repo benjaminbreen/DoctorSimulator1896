@@ -1,0 +1,31 @@
+{
+  "identity": "female-black",
+  "source": "assets/source/patient-expansion-2026-11-02/H4-adult-black-woman/tripo_convert_eca44f4e-31ae-46df-a2b4-07845fe66bf9.fbx",
+  "scale": 0.9078487614080835,
+  "offset": [
+    0,
+    0,
+    0.09259452411994784
+  ],
+  "rawAnchors": [
+    0.625,
+    0.12,
+    0.052,
+    0.368,
+    0.1
+  ],
+  "anchors": [
+    0.66,
+    0.10894185136897001,
+    0.04720813559322034,
+    0.4266828683181225,
+    0.09078487614080835
+  ],
+  "chinZ": 0.26871718383311605,
+  "skinReference": "umber",
+  "irisColor": [
+    0.24,
+    0.13,
+    0.07
+  ]
+}

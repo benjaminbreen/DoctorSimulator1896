@@ -1,5 +1,6 @@
 import {eyelashVariation} from './modularEyelashes.js';
 import {ACCESSORY_DEFAULTS} from './periodAccessories.js';
+import {EXPANSION_TEMPLATES} from './patientExpansion.js';
 // Appearance studies only; these records contain no clinical facts or roles.
 export const MODULAR_CAST_LOOKS = [
   { id:'carmela', label:'Carmela', model:'carmela-russo', look:{ lashProminence:3,features:{lowerFaceSize:-.6}, hairStyle:'soft-side-waves', hairEarCoverage:.3 } },
@@ -28,6 +29,10 @@ export const MODULAR_CAST_LOOKS = [
   { id:'broad-angular', label:'Broad — angular jaw', cohort:'men', model:'male-broad-template', look:{features:{jawWidth:.3,chinWidth:.25,cheekFullness:-.3,noseLength:.2,noseBridge:.3},hairStyle:'receding-sweep',hairTone:'black',eyeTone:'gray',skinTone:'fairCool',bellySize:-.6,waistWidth:-.3,palette:'forest',outfit:'leather-apron'} },
   { id:'worker-base', label:'Worker — cotton shirt and braces', cohort:'men', model:'male-worker-template', look:{lashProminence:2,hairStyle:'short-side-part',hairTone:'chestnut',outfit:'work-shirt'} },
   { id:'worker-silver', label:'Worker — silver whiskers', cohort:'men', model:'male-worker-template', look:{features:{lowerFaceSize:-.15,noseBridge:.35,noseLength:.2,earProminence:.3},hairStyle:'receding-sweep',hairTone:'mixedGray',sideburns:'mutton-chops',moustache:'full-moustache',eyeTone:'hazel',skinTone:'fairWarm',bellySize:.65,waistWidth:.2,palette:'navy',outfit:'work-shirt'} },
+  ...EXPANSION_TEMPLATES.map(template => ({ id:template.id, label:template.label, model:template.id,
+    cohort:template.sex === 'male' ? 'men' : 'women', expansion:true,
+    look:{outfit:template.outfit, hairStyle:template.sex === 'male' ? 'short-side-part' : 'soft-side-waves',
+      ...(template.head === 'H3' ? {hairTone:'silver'} : template.head === 'H4' || template.head === 'H5' ? {hairTone:'black',eyeTone:'brown'} : {})} })),
 ].map((preset,index) => ({...preset, look:{
   ...ACCESSORY_DEFAULTS,
   ...({

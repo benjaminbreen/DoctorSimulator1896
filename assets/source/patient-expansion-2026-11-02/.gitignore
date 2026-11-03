@@ -1,0 +1,7 @@
+# Rebuilt from the original FBXs and measured fitting configurations.
+fitted-*/
+prepared-*.blend
+*-assembled.blend
+wardrobe-*/
+*-neck.png
+*-eyeballs.png

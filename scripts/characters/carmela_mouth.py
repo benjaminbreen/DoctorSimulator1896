@@ -127,6 +127,10 @@ def build(face, sample, image, width, height, expressions, output, fit_seam=Fals
     skin = face.data.materials[0].copy()
     skin.name = 'Patient_Lips'
     next(n for n in skin.node_tree.nodes if n.type == 'TEX_IMAGE').image = lip_image
+    shader = skin.node_tree.nodes.get('Principled BSDF')
+    for link in list(shader.inputs['Metallic'].links):
+        skin.node_tree.links.remove(link)
+    shader.inputs['Metallic'].default_value = 0
     if fit_seam:
         skin.node_tree.nodes.get('Principled BSDF').inputs['Roughness'].default_value = .8
 

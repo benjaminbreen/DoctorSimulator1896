@@ -2,6 +2,8 @@ import { Matrix4, Vector3, MeshDepthMaterial, MeshDistanceMaterial, RGBADepthPac
 
 // The same fitted garment parts serve the game and the character review page.
 export function createModularWardrobe(root) {
+  let garmentStyle = null;
+  root.traverse(object => { if (object.userData.garmentStyle) garmentStyle = object.userData.garmentStyle; });
   const names = ['Patient_SkirtStanding', 'Patient_SkirtSeated', 'Patient_ApronStanding', 'Patient_ApronSeated'];
   const parts = names.map((name) => root.getObjectByName(name));
   const formal = root.getObjectByName('Patient_FormalUpper');
@@ -32,7 +34,7 @@ export function createModularWardrobe(root) {
   return {
     dispose:apronFit.dispose,
     available: Boolean(parts[0]) || materials.size > 0,
-    outfits: formal ? ['tailored-clothes','work-shirt','canvas-apron','leather-apron'] : parts[0] ? ['day-dress', 'work-apron'] : root.getObjectByName('Patient_WorkerBody') ? ['work-shirt'] : ['tailored-clothes'],
+    outfits: garmentStyle ? [garmentStyle] : formal ? ['tailored-clothes','work-shirt','canvas-apron','leather-apron'] : parts[0] ? ['day-dress', 'work-apron'] : root.getObjectByName('Patient_WorkerBody') ? ['work-shirt'] : ['tailored-clothes'],
     update({ seated, apron = false, outfit = 'tailored-clothes', palette = 'original', dt = 0 }) {
       const visible = [!seated, seated, !seated && apron, seated && apron];
       parts.forEach((part, index) => { if (part) part.visible = Boolean(visible[index]); });

@@ -19,7 +19,9 @@ def crop(obj, remove):
     bm.free()
 
 
-def build(body, rig, clinic_action, output):
+def build(body, rig, clinic_action, output, waist_z=None, hem_z=.08, shoe_top=.30, skirt_vertices=None, fabric_band=None):
+    fitted_waist = waist_z is not None
+    waist_z = 1.035 if waist_z is None else waist_z
     os.makedirs(output, exist_ok=True)
     rig.data.pose_position = 'REST'
     cloth = body.data.materials[0]
@@ -54,7 +56,7 @@ def build(body, rig, clinic_action, output):
                     seen.add(neighbor)
                     stack.append(neighbor)
         heights = [body.data.vertices[i].co.z for i in component]
-        if len(component) > 100 and min(heights) < .01 and max(heights) < .30:
+        if len(component) > 100 and min(heights) < .01 and max(heights) < shoe_top:
             shoe_vertices.update(component)
             side = 'Left' if sum(body.data.vertices[i].co.x for i in component) > 0 else 'Right'
             foot = body.vertex_groups[f'mixamorig:{side}Foot']
@@ -89,7 +91,8 @@ def build(body, rig, clinic_action, output):
         center = sum((body.data.vertices[i].co for i in polygon.vertices), Vector()) / len(polygon.vertices)
         arm = arm_distance(center) < .075 and max(weight(i, arm_groups) for i in polygon.vertices) > .35
         shoe = all(i in shoe_vertices for i in polygon.vertices)
-        if center.z < 1.035 and not arm and not shoe:
+        skirt = all(i in skirt_vertices for i in polygon.vertices) if skirt_vertices is not None else center.z < waist_z and not arm and not shoe
+        if skirt:
             skirt_faces.add(polygon.index)
     standing = body.copy()
     standing.data = body.data.copy()
@@ -103,10 +106,10 @@ def build(body, rig, clinic_action, output):
     for vertex in body.data.vertices:
         # Inner elbows and boot tops overlap the bodice bounds. Rebinding them
         # to the hips stretches adjacent sleeve edges several times over.
-        if .25 < vertex.co.z < 1.16 and abs(vertex.co.x) < .26 and weight(vertex.index, foot_groups) < .5 and arm_distance(vertex.co) > .13 and weight(vertex.index, arm_groups) < .25:
+        if .25 < vertex.co.z < waist_z+.125 and abs(vertex.co.x) < .26 and weight(vertex.index, foot_groups) < .5 and arm_distance(vertex.co) > .13 and weight(vertex.index, arm_groups) < .25:
             for index in [entry.group for entry in vertex.groups]:
                 body.vertex_groups[index].remove([vertex.index])
-            blend = max(0, min(1, (vertex.co.z-1.035)/.125))
+            blend = max(0, min(1, (vertex.co.z-waist_z)/.125))
             hips_group.add([vertex.index], 1-blend, 'REPLACE')
             spine_group.add([vertex.index], blend, 'REPLACE')
     surface = BVHTree.FromPolygons([v.co for v in standing.data.vertices], [p.vertices for p in standing.data.polygons])
@@ -115,7 +118,7 @@ def build(body, rig, clinic_action, output):
     vertices, faces = [], []
     for row in range(rows+1):
         t = row / rows
-        z = 1.035 - .955*t
+        z = waist_z - (waist_z-hem_z)*t
         for column in range(columns):
             a = column / columns * math.tau
             direction = Vector((math.sin(a), -math.cos(a), 0))
@@ -176,6 +179,12 @@ def build(body, rig, clinic_action, output):
     pixels = np.empty(len(image.pixels), dtype=np.float32)
     image.pixels.foreach_get(pixels)
     pixels = pixels.reshape((1024, 1024, 4))
+    if fabric_band:
+        # Some generated skirt maps contain painted cuffs behind the hands.
+        # Reuse a clean strip of the same wool instead of baking those ghosts.
+        band = pixels[int(fabric_band[0]*1024):int(fabric_band[1]*1024)].copy()
+        fabric_rows = np.arange(1024)%(len(band)*2)
+        pixels = band[np.minimum(fabric_rows, len(band)*2-1-fabric_rows)].copy()
     valid = pixels[:, :, :3].sum(axis=2) > .015
     if not valid.any():
         raise RuntimeError('The skirt texture bake produced no fabric samples')
@@ -218,6 +227,7 @@ def build(body, rig, clinic_action, output):
     hips = rig.pose.bones['mixamorig:Hips']
     position = (rig.matrix_world @ hips.matrix).translation
     into_rest = hips.bone.matrix_local @ hips.matrix.inverted()
+    waist_offset = waist_z-hips.bone.head_local.z if fitted_waist else .10
     def interpolate(t, values):
         knots = [0, .18, .40, 1]
         for index in range(3):
@@ -226,18 +236,28 @@ def build(body, rig, clinic_action, output):
                 f = f*f*(3-2*f)
                 return values[index]*(1-f)+values[index+1]*f
         return values[-1]
+    waist_points = [v.co.copy() for v in list(seated.data.vertices)[:columns]]
     for index, vertex in enumerate(seated.data.vertices):
         t = (index//columns)/rows
         angle = (index % columns)/columns*math.tau
         c, s = math.cos(angle), math.sin(angle)
         width = interpolate(t, [.145, .22, .29, .31])
-        front = interpolate(t, [.105, .30, .45, .49])
+        front = interpolate(t, [.105, .30, .46, .62] if fitted_waist else [.105, .30, .45, .49])
         back = interpolate(t, [.105, .15, .16, .17])
-        front_z = position.z + interpolate(t, [.10, .09, .05, -.43])
-        back_z = position.z + interpolate(t, [.10, -.08, -.23, -.43])
+        front_z = position.z + interpolate(t, [waist_offset, .09, .05, -.43])
+        back_z = position.z + interpolate(t, [waist_offset, -.08, -.23, -.43])
         blend = max(0, min(1, (c+.1)*4))
-        fold = .006 * math.sin(angle*16+.4) * t
-        point = Vector((position.x+(width+fold)*s, position.y-(front if c >= 0 else back)*c-fold*c, back_z+(front_z-back_z)*blend))
+        fold = (.010 if fitted_waist else .006) * math.sin(angle*16+.4) * t
+        drape = c+(math.sqrt(max(0, c))-c)*min(1, t/.40) if fitted_waist and c > 0 else c
+        point = Vector((position.x+(width+fold)*s, position.y-(front*drape if c >= 0 else back*c)-fold*c, back_z+(front_z-back_z)*blend))
+        if fitted_waist:
+            lap = math.exp(-((t-.32)/.18)**2)*max(0, c)
+            point.z += (.010*math.exp(-((abs(point.x-position.x)-.17)/.10)**2)-.014*math.exp(-((point.x-position.x)/.09)**2))*lap
+            top = waist_points[index%columns].copy()
+            top.z += .012
+            top = hips.matrix @ hips.bone.matrix_local.inverted() @ top
+            join = max(0, min(1, t/.18))
+            point = top.lerp(point, join*join*(3-2*join))
         vertex.co = into_rest @ point
     seated.data.update()
     rig.animation_data.action = None

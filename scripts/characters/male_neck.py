@@ -2,7 +2,10 @@
 import math
 import bpy
 import bmesh
+import numpy as np
 from mathutils import Vector
+from mathutils.bvhtree import BVHTree
+from mathutils.geometry import barycentric_transform
 
 
 def smooth(a, b, x):
@@ -10,17 +13,19 @@ def smooth(a, b, x):
     return t*t*(3-2*t)
 
 
-def fit(face, reference, output, base, neck_radius, repair_nose=False):
+def fit(face, reference, output, base, neck_radius, repair_nose=False, fill_extension=False, cut_height=None):
     # The extension must descend into the collar. An upward extension folds
     # back through the native cut and exposes a loose flap in profile.
     base = base.copy()
     base.z = min(base.z, .075)
     old = face.data
     cut_z = .18 if repair_nose else .20
+    plane_z = cut_z+.045 if cut_height is None else cut_height
+    slope = .45 if cut_height is None else 0
     bm = bmesh.new()
     bm.from_mesh(old)
     bmesh.ops.bisect_plane(bm, geom=list(bm.verts)+list(bm.edges)+list(bm.faces),
-                          plane_co=(0,0,cut_z+.045), plane_no=(0,-.45,1), clear_inner=True)
+                          plane_co=(0,0,plane_z), plane_no=(0,-slope,1), clear_inner=True)
     bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context='VERTS')
     bm.to_mesh(old)
     bm.free()
@@ -28,10 +33,12 @@ def fit(face, reference, output, base, neck_radius, repair_nose=False):
     points = [p.copy() for p in key_data[0][1]]
     faces = [tuple(p.vertices) for p in old.polygons]
     uvs = [[old.uv_layers.active.data[i].uv.copy() for i in p.loop_indices] for p in old.polygons]
+    if fill_extension:
+        uvs = [[Vector(((.5+uv.x*1791)/2048, uv.y)) for uv in polygon] for polygon in uvs]
     original_normals = [n.vector.copy() for n in old.corner_normals]
     bm = bmesh.new()
     bm.from_mesh(old)
-    border = {v.index for e in bm.edges if e.is_boundary and all(abs(v.co.z-cut_z-.045-.45*v.co.y)<.0001 for v in e.verts) for v in e.verts}
+    border = {v.index for e in bm.edges if e.is_boundary and all(abs(v.co.z-plane_z-slope*v.co.y)<.0001 for v in e.verts) for v in e.verts}
     bm.free()
     if len(border) < 20:
         raise RuntimeError('The native neck cut did not produce a complete ring')
@@ -49,14 +56,17 @@ def fit(face, reference, output, base, neck_radius, repair_nose=False):
             angle = math.atan2(p.x-fitted_centre.x, p.y-fitted_centre.y)
             target = Vector((base.x+neck_radius[0]*math.sin(angle), base.y+neck_radius[1]*math.cos(angle), base.z))
             current.append(len(points))
-            fitted = p.lerp(target, smooth(0,1,t))
+            fitted = p.lerp(target, smooth(0,.4 if fill_extension else 1,t))
             fitted.z = p.z*(1-t)+target.z*t
             points.append(fitted)
         for i in range(len(ring)):
             j = (i+1) % len(ring)
             polygon = (previous[i], current[i], current[j], previous[j])
             faces.append(polygon)
-            uvs.append([(0,0)]*4)
+            uvs.append([((1792.5+i/len(ring)*255)/2048, 1-(step-1)/8),
+                        ((1792.5+i/len(ring)*255)/2048, 1-step/8),
+                        ((1792.5+(i+1)/len(ring)*255)/2048, 1-step/8),
+                        ((1792.5+(i+1)/len(ring)*255)/2048, 1-(step-1)/8)] if fill_extension else [(0,0)]*4)
         previous = current
 
     mesh = bpy.data.meshes.new('Patient_HeadWithNativeNeck')
@@ -85,7 +95,10 @@ def fit(face, reference, output, base, neck_radius, repair_nose=False):
             normal = normal.lerp(original_normals[i], smooth(.27, .38, mesh.vertices[loop.vertex_index].co.z)).normalized()
         normals.append(normal)
     mesh.normals_split_custom_set(normals)
-    bake_skin(face, reference, output, repair_nose)
+    if fill_extension:
+        extend_skin_atlas(face, reference, output, ring)
+    else:
+        bake_skin(face, reference, output, repair_nose)
     mesh.normals_split_custom_set(normals)
 
 
@@ -150,3 +163,57 @@ def bake_skin(face, reference, output, repair_nose):
         if node.type=='TEX_IMAGE' and node!=target:target_nodes.remove(node)
     mesh.uv_layers.remove(mesh.uv_layers[source_uv_name]);mesh.uv_layers.active_index=0
     reference.select_set(False)
+
+
+def extend_skin_atlas(face, reference, output, ring):
+    # Preserve the face's original UVs. Rebaking a whole head to add a small
+    # neck extension can project across nostrils, ears and eyelid cavities.
+    material = face.data.materials[0]
+    shader = material.node_tree.nodes.get('Principled BSDF')
+    target = shader.inputs['Base Color'].links[0].from_node
+    original = target.image
+    photo = np.array(original.pixels[:], dtype=np.float32).reshape(original.size[1], original.size[0], 4)
+    resized = original.copy()
+    resized.scale(1792, 2048)
+    atlas = np.ones((2048, 2048, 4), dtype=np.float32)
+    atlas[:, :1792] = np.array(resized.pixels[:], dtype=np.float32).reshape(2048, 1792, 4)
+    bpy.data.images.remove(resized)
+    reference.data.calc_loop_triangles()
+    triangles = list(reference.data.loop_triangles)
+    points = [v.co.copy() for v in reference.data.vertices]
+    surface = BVHTree.FromPolygons(points, [t.vertices for t in triangles], all_triangles=True)
+    original_uv = reference.data.uv_layers.active.data
+    border = [face.data.vertices[i].co.copy() for i in ring]
+    strip = np.ones((128, 256, 4), dtype=np.float32)
+    for column in range(256):
+        position = (column+.5)/256*len(border)
+        index = int(position)%len(border)
+        top = border[index].lerp(border[(index+1)%len(border)], position-int(position))
+        for row in range(128):
+            v = (row+.5)/128
+            point = top.copy()
+            point.z = max(min(.21, top.z), top.z-.15*(1-v))
+            hit = surface.find_nearest(point)
+            triangle = triangles[hit[2]]
+            uv = barycentric_transform(hit[0], *[points[i] for i in triangle.vertices],
+                                       *[Vector((*original_uv[i].uv, 0)) for i in triangle.loops])
+            strip[row, column] = photo[min(photo.shape[0]-1, int((uv.y%1)*photo.shape[0])),
+                                       min(photo.shape[1]-1, int((uv.x%1)*photo.shape[1]))]
+    patch = bpy.data.images.new('Patient_NeckStrip', width=256, height=128)
+    patch.pixels.foreach_set(strip.ravel())
+    patch.scale(256, 2048)
+    atlas[:, 1792:] = np.array(patch.pixels[:], dtype=np.float32).reshape(2048, 256, 4)
+    bpy.data.images.remove(patch)
+    image = bpy.data.images.new('Patient_SkinWithNeck', width=2048, height=2048)
+    image.pixels.foreach_set(atlas.ravel())
+    image.filepath_raw = output
+    image.file_format = 'PNG'
+    image.save()
+    image.pack()
+    target.image = image
+    target.extension = 'EXTEND'
+    for name, value in [('Normal', None), ('Metallic', 0), ('Roughness', .8), ('Alpha', 1)]:
+        for link in list(shader.inputs[name].links):
+            material.node_tree.links.remove(link)
+        if value is not None:
+            shader.inputs[name].default_value = value

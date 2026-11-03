@@ -8,7 +8,17 @@ from mathutils.bvhtree import BVHTree
 from mathutils.geometry import barycentric_transform
 
 
-def build(face, lips, identity):
+def ear_landmarks(points, eye):
+    result = {}
+    for sign in [-1, 1]:
+        side = [p for p in points if p.x*sign > 0 and eye-.18 < p.z < eye+.03 and p.y > -.08]
+        outer = max(p.x*sign for p in side)
+        ear = [p for p in side if p.x*sign > outer*.91]
+        result[sign] = dict(front=min(p.y for p in ear), top=max(p.z for p in ear), bottom=min(p.z for p in ear))
+    return result
+
+
+def build(face, lips, identity, anchors=None):
     face.data.calc_loop_triangles()
     triangles = list(face.data.loop_triangles)
     neutral = [v.co.copy() for v in face.data.shape_keys.key_blocks[0].data]
@@ -54,8 +64,10 @@ def build(face, lips, identity):
     normal=material.node_tree.nodes.new('ShaderNodeNormalMap');normal.inputs['Strength'].default_value=.5
     material.node_tree.links.new(node.outputs['Color'],normal.inputs['Color'])
     material.node_tree.links.new(normal.outputs['Normal'],shader.inputs['Normal'])
-    mouth = .424 if identity=='male-a' else .399
-    eye = .656 if identity=='male-a' else .645
+    mouth = anchors[3] if anchors else .424 if identity=='male-a' else .399
+    eye = anchors[0] if anchors else .656 if identity=='male-a' else .645
+    ears = ear_landmarks(neutral, eye)
+    print('SIDEBURN_EAR_ANCHORS', ears)
     parts=[]
     styles=['short_sideburns','long_sideburns','mutton_chops','neat_moustache','full_moustache','handlebar_moustache']
     for style in styles:
@@ -78,12 +90,15 @@ def build(face, lips, identity):
                         edge=math.sin(math.pi*t)**.6*math.sin(math.pi*u)**.3
                         volume=(.006 if style=='neat_moustache' else .012)*edge
                     else:
-                        length={'short_sideburns':.22,'long_sideburns':.32,'mutton_chops':.40}[style]
-                        z=eye+.15-t*length
-                        x=sign*(.23-(.05*t if style=='mutton_chops' else .005*t))
-                        width=(.055+.13*math.sin(math.pi*t*.75)**2) if style=='mutton_chops' else .055
-                        y=-.02-(.16*t*t if style=='mutton_chops' else 0)+(u-.5)*width
-                        hit=surface.find_nearest(Vector((x,y,z)))
+                        ear = ears[sign]
+                        top = ear['top']+.14
+                        bottom = (ear['top']+ear['bottom'])/2+.015 if style=='short_sideburns' else ear['bottom']-.035 if style=='long_sideburns' else mouth-.035
+                        z=top*(1-t)+bottom*t
+                        x=sign*(.27-(.065*t if style=='mutton_chops' else 0))
+                        width=(.050+.13*math.sin(math.pi*t*.75)**2) if style=='mutton_chops' else .055*(1-.48*t)
+                        y=ear['front']-.035-(.16*t*t if style=='mutton_chops' else 0)+(u-.5)*width
+                        hit=surface.ray_cast(Vector((sign*.65,y,z)),Vector((-sign,0,0)))
+                        if not hit[0]: hit=surface.find_nearest(Vector((x,y,z)))
                         direction=hit[1].copy()
                         if direction.dot(Vector((x,y-.03,0)))<0:direction.negate()
                         edge=math.sin(math.pi*u)**.7

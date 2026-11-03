@@ -1,6 +1,7 @@
 """Add fitted eyes, closing eyelids, and expression shapes to Carmela."""
 
 import argparse
+import json
 import math
 import os
 import sys
@@ -8,7 +9,7 @@ import sys
 import bmesh
 import bpy
 import numpy as np
-from mathutils import Quaternion, Vector
+from mathutils import Matrix, Quaternion, Vector
 from mathutils.bvhtree import BVHTree
 from mathutils.geometry import barycentric_transform
 
@@ -17,8 +18,11 @@ import carmela_mouth
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--output', required=True)
-parser.add_argument('--identity', choices=('carmela', 'seamstress', 'male-a', 'male-b'), default='carmela')
+parser.add_argument('--identity', default='carmela')
+parser.add_argument('--config', help='Measured anchors and source FBX for a new donor')
 args = parser.parse_args(sys.argv[sys.argv.index('--') + 1:])
+donor = json.load(open(args.config)) if args.config else None
+advanced = args.identity.startswith('male-') or donor is not None
 bpy.context.preferences.filepaths.save_version = 0
 root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
 source = os.path.join(root, 'assets/source/carmela-russo-2026-10-29')
@@ -27,24 +31,27 @@ if args.identity.startswith('male-'):
 os.makedirs(args.output, exist_ok=True)
 bpy.ops.object.select_all(action='SELECT')
 bpy.ops.object.delete(use_global=False)
-relative = {
+relative = donor['source'] if donor else {
     'carmela': 'head-p2-v1/carmela-head-p2-v1.fbx',
     'seamstress': 'second-head-p2-v1/second-identity-head-p2-v1.fbx',
     'male-a': 'male-a-head-p2-v1/male-a-head-p2-v1.fbx',
     'male-b': 'male-b-head-p2-v1/male-b-head-p2-v1.fbx',
 }[args.identity]
-bpy.ops.import_scene.fbx(filepath=os.path.join(source, relative))
+bpy.ops.import_scene.fbx(filepath=os.path.join(root if donor else source, relative))
 face = next(o for o in bpy.context.scene.objects if o.type == 'MESH')
 face.name = 'Carmela_Face'
 bpy.context.view_layer.objects.active = face
 bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+if donor:
+    face.data.transform(Matrix.Translation(Vector(donor.get('offset', [0, 0, 0]))) @
+                        Matrix.Scale(donor.get('scale', 1), 4))
 if args.identity == 'seamstress':
     face.scale = (1.035, 1.035, 1.035)
     face.location.z = .056
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
 # These anchors are measured on each donor's frontal projection. Moving a
 # fitted face to a different body must not change its texture-space anchors.
-eye_z, eye_x, eye_width, mouth_z, mouth_x = {
+eye_z, eye_x, eye_width, mouth_z, mouth_x = donor['anchors'] if donor else {
     'carmela': (.674, .111, .061, .445, .097),
     'seamstress': (.665, .107, .054, .431, .078),
     'male-a': (.656, .0975, .050, .424, .085),
@@ -108,16 +115,16 @@ for vertex in bm.verts:
                 stack.append(neighbor)
     heights = [point.co.z for point in component]
     front_detail=all(abs(v.co.x)<.23 and v.co.y<0 for v in component)
-    if len(component) < 2000 and min(heights) > eye_z-.10 and max(heights) < eye_z+.13 and (not args.identity.startswith('male-') or front_detail):
+    if len(component) < 2000 and min(heights) > eye_z-.10 and max(heights) < eye_z+.13 and (not advanced or front_detail):
         islands.extend(component)
 bmesh.ops.delete(bm, geom=islands, context='VERTS')
 for polygon in bm.faces:
     center = polygon.calc_center_median()
-    eye = min(((center.x - sign * eye_x) / (eye_width+(.023 if args.identity.startswith('male-') else .019))) ** 2 + ((center.z - eye_z) / (.0415 if args.identity.startswith('male-') else .039)) ** 2 for sign in (-1, 1))
+    eye = min(((center.x - sign * eye_x) / (eye_width+(.010 if donor else .023 if advanced else .019))) ** 2 + ((center.z - eye_z) / (.029 if donor else .0415 if advanced else .039)) ** 2 for sign in (-1, 1))
     if center.y < 0 and eye < 1.0:
         remove.append(polygon)
 bmesh.ops.delete(bm, geom=remove, context='FACES')
-if args.identity.startswith('male-'):
+if advanced:
     # Retain the donor's throat and under-jaw curve. Flattening this region
     # before fitting it to a collar turns the lower face into a long shelf.
     bmesh.ops.remove_doubles(bm,verts=[v for v in bm.verts if v.co.z<.30],dist=.00005)
@@ -137,7 +144,7 @@ else:
             vertex.co.y = .03 + (vertex.co.y-.03)*scale
 bm.to_mesh(face.data)
 bm.free()
-mouth_border=carmela_mouth.prepare(face, mouth_x, mouth_z, fit_seam=args.identity.startswith('male-'))
+mouth_border=carmela_mouth.prepare(face, mouth_x, mouth_z, fit_seam=advanced)
 face.shape_key_add(name='Basis', from_mix=False).value = 0
 
 def gaussian(co, center, widths):
@@ -169,6 +176,11 @@ expression('browInnerUp', lambda co: Vector((0, -.002, .046)) * gaussian(co, (0,
 expression('jawOpen', lambda co: Vector((0, .018, -.16)) * max(0, min(1, (mouth_z+.015-co.z) / .07)) * gaussian(co, (0, mouth_y, mouth_z-.085), (.23, .23, .22)))
 
 skin = face.data.materials[0]
+shader = skin.node_tree.nodes.get('Principled BSDF')
+for name, value in [('Metallic', 0), ('Alpha', 1)]:
+    for link in list(shader.inputs[name].links):
+        skin.node_tree.links.remove(link)
+    shader.inputs[name].default_value = value
 skin.node_tree.nodes.get('Principled BSDF').inputs['Roughness'].default_value = .68
 donor_image = next(n.image for n in skin.node_tree.nodes if n.type == 'TEX_IMAGE')
 
@@ -206,7 +218,7 @@ scene.render.bake.cage_extrusion = .04
 scene.render.bake.max_ray_distance = .12
 scene.render.bake.margin = 12
 bpy.ops.object.bake(type='EMIT')
-if args.identity.startswith('male-'):
+if advanced:
     # Projection is needed for detached brow fibres. Elsewhere the donor UVs
     # are already correct; cage rays around nostrils and ears leave dark seams.
     original=donor_image.copy();original.scale(2048,2048)
@@ -266,7 +278,7 @@ source_image = donor_image
 source_pixels = np.empty(len(source_image.pixels), dtype=np.float32)
 source_image.pixels.foreach_get(source_pixels)
 source_pixels = source_pixels.reshape((source_image.size[1], source_image.size[0], 4))
-male = args.identity.startswith('male-')
+male = advanced
 atlas_x = -.25 if male else -.21
 atlas_width = .50 if male else .42
 atlas_z = eye_z-.105 if male else .60
@@ -377,7 +389,7 @@ for sign, side in [(1, 'Left'), (-1, 'Right')]:
                 blend=max(0,min(1,t/.5));blend=blend*blend*(3-2*blend)
                 wrap=(1-blend)*abs(s)**.5
                 rolled=globe_open-.0015-.002*math.exp(-((t-.14)/.09)**2)
-                open_y=min(globe_open-.001,min(globe_open,open_y)*(1-wrap)+rolled*wrap)
+                open_y = open_y*(1-wrap)+rolled*wrap if donor else min(globe_open-.001,min(globe_open,open_y)*(1-wrap)+rolled*wrap)
                 offset=.0002
             else:
                 offset=.001
@@ -416,7 +428,7 @@ for sign, side in [(1, 'Left'), (-1, 'Right')]:
         vertex.co = Vector(a).lerp(Vector(b), -.25)
 
 carmela_mouth.build(face, sample, donor_image, mouth_x, mouth_z, expression_functions, args.output,
-                    fit_seam=args.identity.startswith('male-'),corner_band=.040 if args.identity=='male-b' else .014,
+                    fit_seam=advanced,corner_band=.040 if args.identity=='male-b' else .014,
                     boundary_indices=mouth_border, sample_normal=sample_normal)
 
 for polygon in face.data.polygons:

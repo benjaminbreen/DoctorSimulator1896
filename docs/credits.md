@@ -308,3 +308,20 @@ reuses the project's original baked silk and linen maps credited above, with
 procedural patterns. No new third-party models or textures were downloaded and
 no Tripo credits were used. Museum references and their date limitations are
 recorded in `docs/accessories.md`; their images are not shipped in the game.
+
+## Patient expansion, November 2, 2026
+
+The five new head donors and five complete clothed bodies were generated in
+the user’s paid Tripo Studio account from ten original project-made OpenAI
+ImageGen references approved by the user. Source files, prompts, generation IDs,
+export hashes and the 1,300-credit cost are recorded in
+`assets/source/patient-expansion-2026-11-02/provenance.json`. The five body
+exports use Studio’s Mixamo skeleton. The 13 shipped combinations add
+project-authored Blender fitting, facial controls, neck joins, procedural hair
+and seated drapes; the repaired worker band reuses the project-made linen
+textures credited under hats. Male grooms include project-authored hairline
+shapes, edge strands and crown-loss masks. Motion is retargeted from the existing Mixamo sources
+credited above. Hair textures and procedural hats/accessories retain their
+previous credits. Historical sources and reconstruction limits are recorded in
+`docs/patient-expansion.md`; museum images are reference-only and are not
+distributed in these assets.

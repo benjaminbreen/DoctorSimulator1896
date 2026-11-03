@@ -78,6 +78,7 @@ function frontField(sources,canonical,y,scale,face=null,originals=false){
 
 function splitNativeTie(source,canonical,fit){
   if(source.userData.accessoryOriginalGeometry||source.material?.name!=='Patient_MaleFabric')return null;
+  for(let parent=source;parent;parent=parent.parent)if(parent.userData.garmentStyle)return null;
   const points=pointsFor(source,canonical),original=source.geometry,index=original.index,kept=[],tie=[],s=fit.scale;
   const parent=points.map((_,i)=>i),find=i=>parent[i]===i?i:parent[i]=find(parent[i]),byPosition=new Map();
   for(let i=0;i<index.count;i+=3){parent[find(index.getX(i+1))]=find(index.getX(i));parent[find(index.getX(i+2))]=find(index.getX(i));}

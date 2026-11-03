@@ -1,0 +1,46 @@
+{
+  "C1": {
+    "source": "assets/source/patient-expansion-2026-11-02/C1-shirtwaist-skirt/tripo_convert_26f1c831-2fbd-484e-a888-d1bb892b90e0.fbx",
+    "sex": "female",
+    "height": 1.65,
+    "outfit": "shirtwaist-skirt",
+    "waist": 1.13,
+    "hem": 0.206
+  },
+  "C2": {
+    "source": "assets/source/patient-expansion-2026-11-02/C2-working-dress/tripo_convert_99b33abe-2a65-4456-9954-9c8d9629004e.fbx",
+    "sex": "female",
+    "height": 1.65,
+    "outfit": "working-dress",
+    "waist": 1.08,
+    "hem": 0.16
+  },
+  "C3": {
+    "source": "assets/source/patient-expansion-2026-11-02/C3-walking-suit/tripo_convert_099ee0fa-f836-42a5-b7f5-06036aae6bb4.fbx",
+    "sex": "female",
+    "height": 1.65,
+    "outfit": "walking-suit",
+    "waist": 1.015,
+    "hem": 0.156,
+    "fabricBand": [
+      0.6,
+      0.82
+    ]
+  },
+  "C4": {
+    "source": "assets/source/patient-expansion-2026-11-02/C4-work-jacket/tripo_convert_d5d142eb-c55f-4f92-9af4-af3d1deb12ae.fbx",
+    "sex": "male",
+    "height": 1.78,
+    "outfit": "work-jacket",
+    "waist": null,
+    "hem": null
+  },
+  "C5": {
+    "source": "assets/source/patient-expansion-2026-11-02/C5-frock-coat/tripo_convert_814dce69-b170-4044-bab6-127353d77cbe.fbx",
+    "sex": "male",
+    "height": 1.78,
+    "outfit": "frock-coat",
+    "waist": null,
+    "hem": null
+  }
+}

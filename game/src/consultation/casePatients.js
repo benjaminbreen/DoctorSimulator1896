@@ -1,5 +1,6 @@
 import { generatePatient, createRandom, patientToRendererCRecipe } from '../../../shared/patients/index.js';
 import { lookForProfile } from '../../../shared/characters/profileLook.js';
+import { EXPANSION_TEMPLATES } from '../../../shared/characters/patientExpansion.js';
 import { createActorInstance } from '../world/characters/actors.js';
 import { CONDITIONS } from '../../../shared/patients/cases/conditions.js';
 import { resolveTreatment } from './treatments.js';
@@ -281,10 +282,11 @@ const CLIP_MAP = {
 function modularActor(profile, id) {
   const { model, look } = lookForProfile(profile);
   const male = profile.identity.sex === 'male';
+  const version = EXPANSION_TEMPLATES.some(template => template.id === model) ? '20261102-expansion-3' : male ? '20261102-grooms-1' : '20261030-4';
   const recipe = patientToRendererCRecipe(profile, {
     id,
     asset: {
-      kind: 'authored-character', path: `/models/characters/${model}.glb?v=${male ? '20261101-mouth-fit-1' : '20261030-4'}`,
+      kind: 'authored-character', path: `/models/characters/${model}.glb?v=${version}`,
       applyRecipe: false, opaque: !male, motionClips: Object.values(CLIP_MAP), clipMap: CLIP_MAP, ...look,
     },
     animation: { body: 'clinic-idle', expression: ['weary', 'sad'].includes(profile.clinical.affect) ? 'fatigued' : 'guarded', gaze: 'doctor', speaking: false },

@@ -31,5 +31,6 @@ export function createModularVariation(seed = 1, male = false) {
     hairPartOffset: pick([-.4, 0, .4]),
     hairEarCoverage: pick([-.2, 0, .3, .6]),
   };
+  if(male)Object.assign(look,{hairlineHeight:pick([-.1,0,.2,.4]),hairlinePeak:pick([-.4,0,.35,.7]),hairlineRecession:pick([0,.1,.3,.55]),hairlineAsymmetry:pick([-.35,0,.3]),hairThinning:0});
   return {...look,...accessoryVariation(seed,male?'men':'women',['plain','everyday','dress'][Math.abs(Math.trunc(Number(seed)||1))%3],look.outfit)};
 }
