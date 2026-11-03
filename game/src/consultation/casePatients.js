@@ -282,7 +282,7 @@ const CLIP_MAP = {
 function modularActor(profile, id) {
   const { model, look } = lookForProfile(profile);
   const male = profile.identity.sex === 'male';
-  const version = EXPANSION_TEMPLATES.some(template => template.id === model) ? '20261102-expansion-3' : male ? '20261102-grooms-1' : '20261030-4';
+  const version = '20261103-stance-1';
   const recipe = patientToRendererCRecipe(profile, {
     id,
     asset: {

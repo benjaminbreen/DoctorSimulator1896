@@ -47,7 +47,7 @@ const requested = new URLSearchParams(window.location.search).get('model');
 const CHARACTER = CHARACTERS.find((entry) => entry.id === requested) || CHARACTERS[0];
 const defaultCast=CHARACTER.head?MODULAR_CAST_LOOKS.find(preset=>preset.id===CHARACTER.id):null;
 const maleCharacter = CHARACTER.id.startsWith('male-') || ['samuel-taylor','wine-merchant'].includes(CHARACTER.id);
-const MODEL = CHARACTER.path+(CHARACTER.head?'?v=20261102-expansion-3':CHARACTER.id.startsWith('male-')?'?v=20261102-grooms-1':'');
+const MODEL = CHARACTER.path+'?v=20261103-stance-1';
 document.querySelector('#panel h1').textContent = `Face Lab — ${CHARACTER.label}`;
 document.title = `Face Lab — ${CHARACTER.label}`;
 
@@ -653,6 +653,8 @@ window.__faceLab = {
     return headwear.describe();
   },
   pickSurface(x,y) {
+    gltf.scene.updateMatrixWorld(true);
+    gltf.scene.traverse(mesh=>{if(mesh.isSkinnedMesh){mesh.computeBoundingSphere();mesh.computeBoundingBox();}});
     const rect=renderer.domElement.getBoundingClientRect();
     const ray=new THREE.Raycaster();ray.setFromCamera(new THREE.Vector2((x-rect.left)/rect.width*2-1,1-(y-rect.top)/rect.height*2),camera);
     const hit=ray.intersectObject(gltf.scene,true).find(({object})=>{for(let p=object;p;p=p.parent)if(!p.visible)return false;return true;});

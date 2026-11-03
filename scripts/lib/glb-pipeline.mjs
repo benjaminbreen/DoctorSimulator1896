@@ -69,7 +69,9 @@ function assertAnimationsPlayable(document, name) {
   const root = document.getRoot();
   const nodeNames = new Set(root.listNodes().map((node) => node.getName()));
   for (const animation of root.listAnimations()) {
+    const samplers=new Set(animation.listSamplers());
     for (const channel of animation.listChannels()) {
+      if(!samplers.has(channel.getSampler()))throw new Error(`${name}: ${animation.getName()} has an unregistered animation sampler`);
       const target = channel.getTargetNode()?.getName();
       if (!target || !nodeNames.has(target)) {
         throw new Error(`${name}: ${animation.getName()} has a missing animation target`);
