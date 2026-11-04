@@ -19,6 +19,20 @@ function fabricMaps(kind){
   return fabrics.get(kind);
 }
 
+function atlasTexture(url){
+  if(!atlases.has(url)&&typeof document!=='undefined'){
+    let resolve,reject;const ready=new Promise((ok,fail)=>{resolve=ok;reject=fail;});
+    const clean=new THREE.TextureLoader().load(url,resolve,undefined,reject);clean.flipY=false;clean.colorSpace=THREE.SRGBColorSpace;clean.anisotropy=8;atlases.set(url,clean);atlasLoads.set(url,ready);
+  }
+  return atlases.get(url);
+}
+
+// Called with a GLB's image names as soon as its JSON is parsed, so the
+// clean atlas downloads alongside the model's own textures.
+export function prefetchClothingAtlas(imageName){
+  if(CLOTHING_ATLASES[imageName])atlasTexture(CLOTHING_ATLASES[imageName]);
+}
+
 // Lets an actor start its weave alongside the model download.
 export function prefetchClothingFabric(kind){fabricMaps(kind);}
 
@@ -92,11 +106,7 @@ export function createModularFabric(root){
       if(!url||seen.has(material)||!['Patient_MaleFabric','Patient_DressFabric','Patient_SeatedDressFabric'].includes(material.name))continue;
       seen.add(material);
       const original={map:material.map,roughness:material.roughness};
-      let clean=atlases.get(url);
-      if(!clean&&typeof document!=='undefined'){
-        let resolve,reject;const ready=new Promise((ok,fail)=>{resolve=ok;reject=fail;});
-        clean=new THREE.TextureLoader().load(url,resolve,undefined,reject);clean.flipY=false;clean.colorSpace=THREE.SRGBColorSpace;clean.anisotropy=8;atlases.set(url,clean);atlasLoads.set(url,ready);
-      }
+      const clean=atlasTexture(url);
       mesh.userData.preparation=Promise.all([mesh.userData.preparation,atlasLoads.get(url)]);
       const uniforms={clothAlbedo:{value:null},clothNormalMap:{value:null},clothRoughness:{value:null},clothEnabled:{value:0},clothRepeat:{value:12.5},clothRelief:{value:.24}};
       patchMaterial(material,uniforms);entries.push({material,original,clean,uniforms});

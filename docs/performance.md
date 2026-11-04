@@ -383,3 +383,33 @@ Follow-up the same day:
   walk-in, then 3 s and an idle callback. In the test above the pause now
   falls while the patient's opening lines are on screen, not during the
   entrance.
+
+## November 4 first load and shared-texture caching
+
+The consulting office's first load at 20 Mbps fell from 14.8 s (33 MB) to
+11.8 s (25.9 MB):
+
+- `Furniture` loaded bark, brick, paving and every facade map in every room.
+  It now loads each set only when the room has an item that uses it; the
+  office has none.
+- `WindowView` draws its street proxy unlit, which samples only colour maps,
+  but downloaded the facade normal and roughness maps too. It now loads the
+  five colour maps alone.
+- The three lossless facade normal maps are near-lossless at 60 (4.1 MB to
+  2.5 MB), the same rule as the character normal maps.
+
+Screenshots of the office and park, before (`-5227`) and after (`-5226`), are
+in `artifacts/performance/load-trim/`; the window region differs by 0.4/255
+on average.
+
+Two smaller changes:
+
+- The shared character textures are served with
+  `max-age=31536000, immutable`. Their names change when their bytes do.
+- A GLTFLoader plugin starts a model's clothing atlas as soon as the GLB's
+  JSON is parsed, so it downloads alongside the model's own textures.
+
+What remains in the office's first load is mostly what the room shows: the
+player figure (5.2 MB, on screen at the reveal), the laboratory bench's wood
+(6.8 MB) and the bottles. Those textures are already lossy and detailed;
+smaller encodings lost visible quality.

@@ -6,11 +6,11 @@ import { solarRamps } from '../world/solar.js';
 import { streetItems, STREET_LEVEL } from '../world/streetGrid.js';
 import { parkItems } from '../world/centralPark.js';
 import { FACES,facadeBrickFinish } from '../world/facade.js';
-import {
-  createFacadeMaterial,
-  FACADE_TEXTURE_URLS,
-  prepareFacadeTextures,
-} from './facadeMaterials.js';
+import { createFacadeMaterial, FACADE_TEXTURE_URLS } from './facadeMaterials.js';
+
+// The proxy is unlit, so it samples only the colour maps. Every third URL is
+// a colour map, then the regular brick, matching prepareFacadeTextures.
+const FACADE_COLOR_URLS = FACADE_TEXTURE_URLS.filter((_, index) => index % 3 === 0);
 
 // What you see out of an interior window. Rendering the real exterior zone
 // would mean carrying the whole park in memory while indoors, so this builds
@@ -226,11 +226,13 @@ function buildProxy(hostId, facadeTextures) {
 export default function WindowView({ holes, building, runtime, anchor }) {
   const gl = useThree((state) => state.gl);
   const lastBucket = useRef(null);
-  const facadeSources = useLoader(THREE.TextureLoader, FACADE_TEXTURE_URLS);
-  const facadeTextures = useMemo(
-    () => prepareFacadeTextures(facadeSources),
-    [...facadeSources],
-  );
+  const facadeSources = useLoader(THREE.TextureLoader, FACADE_COLOR_URLS);
+  const facadeTextures = useMemo(() => facadeSources.map((map) => {
+    map.wrapS = map.wrapT = THREE.RepeatWrapping;
+    map.colorSpace = THREE.SRGBColorSpace;
+    map.anisotropy = 8;
+    return { map };
+  }), [facadeSources]);
 
   const rig = useMemo(() => {
     const { scene, sky, disposables } = buildProxy(building.id, facadeTextures);

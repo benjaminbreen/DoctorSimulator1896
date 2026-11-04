@@ -411,25 +411,37 @@ export default function Furniture({ items, runtime, propsReady = true }) {
   // freeze prunes them out of the per-frame matrix walk.
   const staticRef = useRef(null);
   useEffect(() => freezeStaticTransforms(staticRef.current));
-  const [barkCol, barkNrm, brickCol, pavingCol, ...facadeSources] = useLoader(THREE.TextureLoader, [
-    '/textures/bark_col.webp',
-    '/textures/bark_nrm.webp',
-    '/textures/brick_col.webp',
-    '/textures/paving_col.webp',
-    ...FACADE_TEXTURE_URLS,
+  // Load only the surfaces this room uses. An interior has no trees, street
+  // or facades, and those maps were 7 MB of its first load.
+  const needs = useMemo(() => ({
+    bark: items.some((item) => item.kind === 'tree' && item.shape === 'cylinder'),
+    brick: items.some((item) => item.texture === 'brick'),
+    paving: items.some((item) => ['paving', 'road', 'blockstone'].includes(item.texture)),
+    facades: items.some((item) => item.kind === 'backdrop' || item.landmarkModel),
+  }), [items]);
+  const loaded = useLoader(THREE.TextureLoader, [
+    ...(needs.bark ? ['/textures/bark_col.webp', '/textures/bark_nrm.webp'] : []),
+    ...(needs.brick ? ['/textures/brick_col.webp'] : []),
+    ...(needs.paving ? ['/textures/paving_col.webp'] : []),
+    ...(needs.facades ? FACADE_TEXTURE_URLS : []),
   ]);
   const maps = useMemo(() => {
-    for (const texture of [barkCol, brickCol, pavingCol, barkNrm]) {
+    const queue = [...loaded];
+    const take = (needed, count) => (needed ? queue.splice(0, count) : []);
+    const [bark = null, barkNormal = null] = take(needs.bark, 2);
+    const [brick = null] = take(needs.brick, 1);
+    const [paving = null] = take(needs.paving, 1);
+    const facadeSources = take(needs.facades, FACADE_TEXTURE_URLS.length);
+    for (const texture of [bark, brick, paving, barkNormal]) {
+      if (!texture) continue;
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
       texture.anisotropy = 8;
+      if (texture !== barkNormal) texture.colorSpace = THREE.SRGBColorSpace;
     }
-    barkCol.colorSpace = THREE.SRGBColorSpace;
-    brickCol.colorSpace = THREE.SRGBColorSpace;
-    pavingCol.colorSpace = THREE.SRGBColorSpace;
-    const facades = prepareFacadeTextures(facadeSources);
-    return { bark: barkCol, barkNormal: barkNrm, brick: brickCol, paving: pavingCol, facades };
-  }, [barkCol, barkNrm, brickCol, pavingCol, ...facadeSources]);
+    const facades = facadeSources.length ? prepareFacadeTextures(facadeSources) : null;
+    return { bark, barkNormal, brick, paving, facades };
+  }, [loaded, needs]);
 
   // Dynamic pieces carry their own body, so they stay out of the shared
   // fixed one; the catalog models among them belong to VictorianProps.

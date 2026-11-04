@@ -27,7 +27,7 @@ import { rendererCWomenPalette } from '../../../../shared/characters/rendererCWa
 import { createModularFacialHair } from '../../../../shared/characters/modularFacialHair.js';
 import { createModularBody } from '../../../../shared/characters/modularBody.js';
 import { createModularWardrobe } from '../../../../shared/characters/modularWardrobe.js';
-import {clothingTexturesReady,prefetchClothingFabric} from '../../../../shared/characters/modularFabric.js';
+import {clothingTexturesReady,prefetchClothingAtlas,prefetchClothingFabric} from '../../../../shared/characters/modularFabric.js';
 import { createModularIdentity } from '../../../../shared/characters/modularIdentity.js';
 import { createModularAppearance } from '../../../../shared/characters/modularAppearance.js';
 import { createModularVariation } from '../../../../shared/characters/modularVariants.js';
@@ -65,6 +65,14 @@ export default function RendererCActor({ recipe, manifest, onReady, onSettled, p
   const configure = useCallback((loader) => {
     loader.setMeshoptDecoder(MeshoptDecoder);
     loader.setKTX2Loader(getKTX2Loader(gl));
+    // R3F may reuse one loader per type, so register the plugin only once.
+    if (!loader.userData?.atlasPrefetch) {
+      loader.userData = { ...loader.userData, atlasPrefetch: true };
+      loader.register((parser) => ({ beforeRoot() {
+        for (const image of parser.json.images ?? []) prefetchClothingAtlas(image.name);
+        return null;
+      } }));
+    }
   }, [gl]);
   const review = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search);
   const reviewing = ['carmela-russo-1896','samuel-taylor-1896'].includes(recipe.id) && review?.has('playtest');
