@@ -98,9 +98,16 @@ export function createModularAppearance(root, frame) {
           }
         }
         mesh.geometry.setAttribute('modularBrowMask', new THREE.Float32BufferAttribute(mask, 1));
+        // modularHair.js fills this on the face when the hairstyle changes.
+        mesh.geometry.setAttribute('modularHairlineDistance', new THREE.Float32BufferAttribute(new Float32Array(position.count).fill(3), 1));
       }
       if (patched.has(material)) continue;
       patched.add(material);
+      if (name === 'Carmela_LidSkin') {
+        // The lid's outer rows lie on the face surface; without an offset the two
+        // depth-fight into pale stair-step shards above the lash line.
+        material.polygonOffset = true; material.polygonOffsetFactor = -6; material.polygonOffsetUnits = -64;
+      }
       const previous = material.onBeforeCompile;
       const nativeSkinGain = new THREE.Vector3(...(name === 'Patient_Hands' ? material.userData.modularNativeSkinGain || reference.gain : [1, 1, 1]));
       material.onBeforeCompile = (shader, renderer) => {
@@ -110,10 +117,10 @@ export function createModularAppearance(root, frame) {
         shader.fragmentShader = `uniform vec3 modularSkinGain; uniform float modularSkinLift; uniform vec3 modularNativeSkinGain;
 uniform vec3 modularHair; uniform float modularGray; uniform float modularHairEnabled;
 uniform vec3 modularIris; uniform float modularIrisEnabled; uniform vec4 modularEyeCenters; uniform vec2 modularEyeRadius; uniform vec3 modularPartHair;
-${kind === 'skin' ? 'varying float vModularBrow;' : ''}\n`+shader.fragmentShader;
+${kind === 'skin' ? 'varying float vModularBrow; varying float vModularHairline;' : ''}\n`+shader.fragmentShader;
         if (kind === 'skin') {
-          shader.vertexShader = 'attribute float modularBrowMask; varying float vModularBrow;\n'+shader.vertexShader;
-          shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvModularBrow = modularBrowMask;');
+          shader.vertexShader = 'attribute float modularBrowMask; attribute float modularHairlineDistance; varying float vModularBrow; varying float vModularHairline;\n'+shader.vertexShader;
+          shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvModularBrow = modularBrowMask; vModularHairline = modularHairlineDistance;');
         }
         const code = kind === 'hair' ? `
 float identityLuma = dot(diffuseColor.rgb, vec3(.2126, .7152, .0722));
@@ -143,19 +150,31 @@ vec3 identitySkin = diffuseColor.rgb*modularSkinGain+vec3(modularSkinLift)*smoot
 diffuseColor.rgb = mix(diffuseColor.rgb,identitySkin,identitySkinMask);
 float identityBrow = vModularBrow*(1.0-smoothstep(.025,.12,identityLuma))*modularHairEnabled;
 vec3 identityBrowColor = mix(modularHair*.5,vec3(.15),modularGray*.6)*clamp(identityLuma/.025,.3,1.4);
-diffuseColor.rgb = mix(diffuseColor.rgb,identityBrowColor,identityBrow*.8);`+(name === 'Carmela_HairPart' ? `
+diffuseColor.rgb = mix(diffuseColor.rgb,identityBrowColor,identityBrow*.8);
+float identityFineHair = 0.0;
 #ifdef USE_MAP
-// A real part shows scalp through fine short hairs, not bare skin. Tint it toward
-// the hair's average shade (scaled as the hair shader scales tinted hair), with
-// texel grain that averages out at a distance.
+// Fine short hairs at the part and below the hairline, in the hair's average
+// shade (scaled as the hair shader scales tinted hair).
 float identityPartStrand = clamp(pow(max(dot(modularPartHair,vec3(.2126,.7152,.0722)),.0001)/.045,.72),.22,2.3);
 vec3 identityPartHair = modularHairEnabled > .5 ? mix(modularHair,vec3(.32,.31,.29),modularGray)*identityPartStrand : modularPartHair;
+${name === 'Carmela_HairPart' ? `
+// The part is nearly all hair, with texel grain that averages out at a distance.
 float identityPartGrain = fract(sin(dot(floor(vMapUv*4096.0),vec2(12.9898,78.233)))*43758.5453);
-diffuseColor.rgb = mix(diffuseColor.rgb,identityPartHair*(.6+.5*identityPartGrain),.88);
-#endif` : '');
+identityFineHair = .88;
+diffuseColor.rgb = mix(diffuseColor.rgb,identityPartHair*(.6+.5*identityPartGrain),identityFineHair);` : `
+// The hairline band stays smooth: per-texel grain here left a pale haze. Hair
+// lighter than the skin barely shows at a hairline, so the band fades out.
+float identitySkinLuma = dot(diffuseColor.rgb,vec3(.2126,.7152,.0722));
+float identityContrast = clamp(3.0*(identitySkinLuma-dot(identityPartHair,vec3(.2126,.7152,.0722)))/max(identitySkinLuma,.001),0.0,1.0);
+identityFineHair = (1.0-smoothstep(-.1,1.0,vModularHairline))*.85*identityContrast;
+diffuseColor.rgb = mix(diffuseColor.rgb,identityPartHair,identityFineHair);`}
+#endif`;
         shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n'+code);
+        // The skin's strong specular turns darkened hair grey, so hair takes its own.
+        if (kind === 'skin') shader.fragmentShader = shader.fragmentShader.replace('#include <lights_physical_fragment>',
+          '#include <lights_physical_fragment>\nmaterial.specularColor *= 1.0-identityFineHair; material.specularF90 *= 1.0-identityFineHair;');
       };
-      material.customProgramCacheKey = () => `modular-appearance-v7-${kind}-${name === 'Carmela_HairPart'}-${Boolean(material.userData.crownHairLoss)}`;
+      material.customProgramCacheKey = () => `modular-appearance-v12-${kind}-${name === 'Carmela_HairPart'}-${Boolean(material.userData.crownHairLoss)}`;
       material.needsUpdate = true;
     }
   });
