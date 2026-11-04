@@ -60,3 +60,5 @@ for (const relative of files) {
 const reportDirectory = path.join(root, files.some(file=>/male-worker-template/.test(file)) ? 'artifacts/characters/worker-template' : files.some(file=>/male-(lean|broad)-template/.test(file)) ? 'artifacts/characters/modular-men' : 'artifacts/characters/carmela-prototype');
 await mkdir(reportDirectory, { recursive: true });
 await writeFile(path.join(reportDirectory, 'asset-report.json'), JSON.stringify(reports, null, 2));
+// Writing re-embeds the images, so move them back to the shared folder.
+await import('./share-character-textures.mjs');

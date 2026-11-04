@@ -322,3 +322,18 @@ test('eye spacing moves both sockets while leaving the mouth and neck in place',
     assert.ok(deformModularPoint(point.clone(),values,frame).distanceTo(point)<1e-8);
   }
 });
+
+test('modular patient models load their images from the shared texture folder', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { existsSync } = await import('node:fs');
+  const directory = new URL('../public/models/characters/', import.meta.url);
+  for (const template of EXPANSION_TEMPLATES) {
+    const bytes = await readFile(new URL(template.path.split('/').pop(), directory));
+    const json = JSON.parse(bytes.subarray(20, 20 + bytes.readUInt32LE(12)).toString());
+    for (const image of json.images) {
+      // gltf-transform embeds images again whenever it rewrites a model.
+      assert.ok(image.uri, `${template.id}: run scripts/characters/share-character-textures.mjs`);
+      assert.ok(existsSync(new URL(image.uri, directory)), `${template.id}: missing ${image.uri}`);
+    }
+  }
+});

@@ -57,6 +57,7 @@ for(const template of templates){
  const bytes=(await stat(path.join(root,file))).size;assert.ok(bytes<16*1048576,`${template.id}: oversized export`);
  reports.push({model:template.id,head:template.head,body:template.body,bytes,clips:clips.length,textures:data.listTextures().length});
 }
+if(!('check'in options))run(process.execPath,['scripts/characters/share-character-textures.mjs']);
 const report=path.join(root,'artifacts/characters/patient-expansion-2026-11-02');await mkdir(report,{recursive:true});
 await writeFile(path.join(report,'asset-report.json'),JSON.stringify(reports,null,2));
 console.log(`EXPANSION_EXPORT_CONTRACT_OK ${reports.length} templates`);

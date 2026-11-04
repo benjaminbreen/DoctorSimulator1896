@@ -321,3 +321,28 @@ rough PBR brick is a stable 25% choice on procedural brick parcels (18 regular,
 6 rough in the current layout). `brickFinish: 'smooth'` or `'rough'` overrides
 that choice. The exterior batch key and interior window proxy use the same
 selection. This adds one shared brick batch and one existing 512px texture.
+
+## November 3 shared character textures
+
+Every modular patient GLB carried its own copy of the head, hair, eye and
+skin textures, so 49 MB of the 79 MB of character images were repeats.
+`scripts/characters/share-character-textures.mjs` now moves those images into
+`game/public/models/characters/textures/`, named by content hash, and points
+the GLBs at them. The browser caches each file once, so a later patient
+fetches only the GLB and any texture it has not seen.
+
+| Second patient | Before | After |
+| --- | ---: | ---: |
+| Same head, another outfit | 7.9 MB | 4.4 MB |
+| Another woman | 8.4 MB | 6.0 MB |
+| Another man | 5.9 MB | 5.1 MB |
+
+The 18 modular GLBs fell from 143 MB to 65 MB plus 24 MB of shared textures.
+A first patient downloads the same bytes as before; at 20 Mbps Carmela was
+ready in about 7.6 s either way. Images and geometry are unchanged.
+
+gltf-transform embeds the images again whenever it writes one of these
+models. `optimize-modular-patients.mjs` and `build-patient-expansion.mjs` run
+the step at the end; after any other script that rewrites a model (the
+`fix-*` scripts, `build-clothing-fabrics.mjs`), run it by hand. A test in
+`game/tests/modular-patients.test.js` fails if an expansion model embeds images.
