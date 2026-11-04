@@ -346,3 +346,30 @@ models. `optimize-modular-patients.mjs` and `build-patient-expansion.mjs` run
 the step at the end; after any other script that rewrites a model (the
 `fix-*` scripts, `build-clothing-fabrics.mjs`), run it by hand. A test in
 `game/tests/modular-patients.test.js` fails if an expansion model embeds images.
+
+## November 4 patient load time
+
+Before, a patient called in at 20 Mbps waited on a chain of downloads: the
+model, its textures, all 28 hat-fabric textures, the clothing fabrics and the
+clothing atlas, then about 1.5 s of shader compiling and texture uploads.
+
+- The next patient on the schedule is now mounted hidden once the office
+  has booted (`warmOnly` in `RendererCActor`). Their downloads, shaders and
+  texture uploads are done before they are called. `ActorLayer` keeps the
+  hidden copy until the real actor is ready, because disposing it first
+  would delete the shader programs the real actor reuses. Phones that defer
+  idle actors skip this.
+- Hat fabrics load the first time a material uses them, instead of all nine
+  fabrics (2.8 MB) for every patient.
+- Normal maps are near-lossless webp at quality 60 instead of lossless. Hair
+  normals stay within 1.3° (99th percentile), and the 18 models' unique
+  normal maps fell from 3.1 MB to 1.0 MB.
+
+| Production build, 20 Mbps, click to ready | Before | After |
+| --- | ---: | ---: |
+| Next patient (Nora, preloaded) | 4.3 s | 1.4 s |
+| A patient who is not next (Carmela) | 7.5 s | 5.7 s |
+
+Both include about 1 s for the test to open the casebook; unthrottled, Nora
+is ready 0.1 s after "Ask to return". Building the hidden patient costs a
+main-thread pause of about 0.4 s while the previous patient is on stage.

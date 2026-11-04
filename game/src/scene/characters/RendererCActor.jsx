@@ -15,7 +15,7 @@ import {
 import { createFaceController } from './faceController.js';
 import { createPatientMotion } from './patientMotion.js';
 import {createHeadwear} from '../../../../shared/characters/headwearPerformance.js';
-import {HEADWEAR_TEXTURE_URLS,configureHeadwearTextures} from '../../../../shared/characters/headwearMaterials.js';
+import {headwearTexturesReady} from '../../../../shared/characters/headwearMaterials.js';
 import {createModularEyelashes} from '../../../../shared/characters/modularEyelashes.js';
 import {createPeriodAccessories} from '../../../../shared/characters/periodAccessories.js';
 import { gameDebug } from '../../debug.js';
@@ -56,7 +56,9 @@ const TRANSIENT_BODY_CUES = new Set([
   'sitting-disbelief',
 ]);
 
-export default function RendererCActor({ recipe, manifest, onReady, paused = false, walkIn = false }) {
+// warmOnly mounts the next patient hidden so their downloads, shaders and
+// texture uploads are done before they are called in.
+export default function RendererCActor({ recipe, manifest, onReady, paused = false, walkIn = false, warmOnly = false }) {
   const gl = useThree((state) => state.gl);
   const renderScene = useThree((state) => state.scene);
   const camera = useThree((state) => state.camera);
@@ -73,8 +75,6 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
   const bodyPath = castLook ? `/models/characters/${castLook.model}.glb?v=${reviewVersion}` : patientModelPath(recipe, manifest);
   const [gltf, motionGltf] = useLoader(GLTFLoader,
     [bodyPath, recipe.asset?.motionPath || bodyPath], configure);
-  const hatTextures=useLoader(THREE.TextureLoader,HEADWEAR_TEXTURE_URLS);
-  configureHeadwearTextures(hatTextures);
   const clothingTextures=useLoader(THREE.TextureLoader,CLOTHING_TEXTURE_URLS);
   configureClothingTextures(clothingTextures);
   const clips = useMemo(() => {
@@ -147,6 +147,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
     eyelashes.updateLook(look);
     wardrobe.update({seated:false,outfit:look.outfit,apron:look.outfit==='work-apron',palette:look.palette,fabric:look.fabric,fabricScale:look.fabricScale,dt:0});
     const accessories=createPeriodAccessories(root,{cohort:recipe.cohort,frame:identity.frame});accessories.updateLook(look);
+    root.userData.preparation=headwearTexturesReady();
     const lips = root.getObjectByName('Carmela_Lips');
     let mouthAnchor = null;
     if (lips && motion.bones.head) {
@@ -213,7 +214,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
     head: [0, 0, 0], mouth:[0,0,0], neck: [0, 0, 0], chest: [0, 0, 0], abdomen: [0, 0, 0],
     leftHand: [0, 0, 0], rightHand: [0, 0, 0],
   });
-  useEffect(() => () => clearExamAnchors(), []);
+  useEffect(() => () => { if (!warmOnly) clearExamAnchors(); }, [warmOnly]);
   // Shell refits at cue endpoints, after the 0.12-0.2s crossfades settle;
   // rebinding mid-fade bakes an in-between pose into the garment.
   useLayoutEffect(() => {
@@ -430,14 +431,14 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
     let cancelled = false;
     actor.root.visible = false;
     prepareStage(gl, actor.root, camera, renderScene, () => cancelled).then(() => {
-      if (cancelled) return;
+      if (cancelled || warmOnly) return;
       actor.root.visible = true;
       onReady?.(recipe.id);
     }, error => {
-      if (!cancelled) { actor.root.visible = true; console.error('Patient preparation failed', error); }
+      if (!cancelled && !warmOnly) { actor.root.visible = true; console.error('Patient preparation failed', error); }
     });
     return () => { cancelled = true; };
-  }, [actor, gl, camera, renderScene, onReady, recipe.id]);
+  }, [actor, gl, camera, renderScene, onReady, recipe.id, warmOnly]);
 
   useFrame((_, delta) => {
     if (paused || !actor.root.visible) return;

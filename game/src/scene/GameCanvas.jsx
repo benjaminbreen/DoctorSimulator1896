@@ -467,6 +467,8 @@ function SceneContents({
     if (room.exterior || !bootComplete || !nextPatientRecipe) return undefined;
     return warmPatient(nextPatientRecipe, gl);
   }, [room.exterior, bootComplete, nextPatientRecipe, gl]);
+  // Low-memory phones skip the hidden next patient; it holds a second figure.
+  const warmActor = !room.exterior && bootComplete && !graphics.deferIdleActors ? nextPatientRecipe : null;
   const [avatarReady, setAvatarReady] = useState(() => !values.showAvatarGlb);
   const bootStartedAt = useRef(globalThis.performance?.now?.() ?? Date.now());
   const advanceTimer = useRef(null);
@@ -744,8 +746,9 @@ function SceneContents({
             </Stage>
 
             <Suspense fallback={null}>
-              {blueprint.id === 'CONSULTING_OFFICE' && actors.length > 0
-                && (!graphics.deferIdleActors || consultationActive) && <ActorLayer actors={actors} />}
+              {blueprint.id === 'CONSULTING_OFFICE' && (actors.length > 0 || warmActor)
+                && (!graphics.deferIdleActors || consultationActive)
+                && <ActorLayer actors={actors} warm={warmActor} />}
             </Suspense>
 
             {/* Outside the stages: a 3.6MB figure, and nothing in the room

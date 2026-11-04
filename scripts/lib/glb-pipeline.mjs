@@ -1,5 +1,5 @@
 // Shared gltf-transform passes for the game's web GLBs. Two rules throughout:
-// visible colour maps may be lossy but data maps stay lossless, and a pass
+// visible colour maps may be lossy but data maps stay (near) lossless, and a pass
 // must leave the model's runtime contract (clips, joints, node and material
 // names) untouched.
 
@@ -126,6 +126,8 @@ export function conservativeDedup() {
 }
 
 // Every character texture becomes webp: colour lossy, data maps lossless.
+// Normal maps use near-lossless at 60, under 1.5° of error on the hair normals
+// at half the size. Plain lossy webp subsamples colour and bends them by 13°.
 export async function compressCharacterTextures(document) {
   await document.transform(
     textureCompress({
@@ -138,7 +140,15 @@ export async function compressCharacterTextures(document) {
     textureCompress({
       encoder: sharp,
       targetFormat: 'webp',
-      slots: /^(?!(?:baseColorTexture|emissiveTexture)$).+/,
+      slots: /^normalTexture$/,
+      nearLossless: true,
+      quality: 60,
+      effort: 6,
+    }),
+    textureCompress({
+      encoder: sharp,
+      targetFormat: 'webp',
+      slots: /^(?!(?:baseColorTexture|emissiveTexture|normalTexture)$).+/,
       lossless: true,
       effort: 6,
     }),
