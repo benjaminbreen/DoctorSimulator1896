@@ -373,3 +373,13 @@ clothing atlas, then about 1.5 s of shader compiling and texture uploads.
 Both include about 1 s for the test to open the casebook; unthrottled, Nora
 is ready 0.1 s after "Ask to return". Building the hidden patient costs a
 main-thread pause of about 0.4 s while the previous patient is on stage.
+
+Follow-up the same day:
+
+- Clothing weaves (wool, herringbone, silk) load per weave on first use, like
+  the hat fabrics, and the actor starts its weave alongside the model.
+- The hidden next patient is no longer built the moment the schedule moves
+  on. `ActorLayer` waits until every patient on stage is seated after any
+  walk-in, then 3 s and an idle callback. In the test above the pause now
+  falls while the patient's opening lines are on screen, not during the
+  entrance.

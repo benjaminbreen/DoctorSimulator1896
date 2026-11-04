@@ -19,10 +19,23 @@ export default function ActorLayer({ actors = [], warm = null }) {
   // it disposes its materials, and three.js would delete the shader programs
   // the real actor is about to reuse.
   const [warmed, setWarmed] = useState([]);
+  const [settled, setSettled] = useState(() => new Set());
+  const onStage = actors.filter((actor) => actor.visible !== false);
   const present = actors.some((actor) => actor.id === warm?.id);
+  const quiet = onStage.every((actor) => settled.has(actorKey(actor)));
+  // Building the hidden patient blocks the main thread for about 0.4 s. Wait
+  // until the patients on stage are seated and the consultation camera has
+  // settled, then for an idle moment.
   useEffect(() => {
-    if (warm && !present) setWarmed((list) => list.some((recipe) => recipe.id === warm.id) ? list : [...list, warm]);
-  }, [warm, present]);
+    if (!warm || present || !quiet) return undefined;
+    const idle = window.requestIdleCallback ?? ((callback) => setTimeout(callback, 1));
+    const cancel = window.cancelIdleCallback ?? clearTimeout;
+    let handle = null;
+    const timer = setTimeout(() => {
+      handle = idle(() => setWarmed((list) => list.some((recipe) => recipe.id === warm.id) ? list : [...list, warm]), { timeout: 3000 });
+    }, 3000);
+    return () => { clearTimeout(timer); if (handle !== null) cancel(handle); };
+  }, [warm, present, quiet]);
   const onReady = useCallback((id) => {
     if (!gameDebug.actors.loaded.includes(id)) gameDebug.actors.loaded.push(id);
     setWarmed((list) => list.filter((recipe) => recipe.id !== id));
@@ -38,21 +51,26 @@ export default function ActorLayer({ actors = [], warm = null }) {
         </Suspense>
       );
     });
-  return [...hidden, ...actors.filter((actor) => actor.visible !== false).map((actor) => {
+  return [...hidden, ...onStage.map((actor) => {
     if (actor.recipe.renderer !== 'renderer-c') return null;
     const cohort = manifest.cohorts?.[actor.recipe.cohort];
     if (!cohort) return null;
-    // A fresh entrance token remounts the actor, so a summoned patient walks
-    // in instead of already sitting there.
-    const key = actor.entranceToken ? `${actor.id}:${actor.entranceToken}` : actor.id;
+    const key = actorKey(actor);
     return (
       <RendererCActor
         key={key}
         recipe={actor.recipe}
         manifest={cohort}
         onReady={onReady}
+        onSettled={() => setSettled((set) => set.has(key) ? set : new Set(set).add(key))}
         walkIn={Boolean(actor.entranceToken)}
       />
     );
   })];
+}
+
+// A fresh entrance token remounts the actor, so a summoned patient walks in
+// instead of already sitting there.
+function actorKey(actor) {
+  return actor.entranceToken ? `${actor.id}:${actor.entranceToken}` : actor.id;
 }

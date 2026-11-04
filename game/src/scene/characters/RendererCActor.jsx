@@ -27,7 +27,7 @@ import { rendererCWomenPalette } from '../../../../shared/characters/rendererCWa
 import { createModularFacialHair } from '../../../../shared/characters/modularFacialHair.js';
 import { createModularBody } from '../../../../shared/characters/modularBody.js';
 import { createModularWardrobe } from '../../../../shared/characters/modularWardrobe.js';
-import {CLOTHING_TEXTURE_URLS,configureClothingTextures} from '../../../../shared/characters/modularFabric.js';
+import {clothingTexturesReady,prefetchClothingFabric} from '../../../../shared/characters/modularFabric.js';
 import { createModularIdentity } from '../../../../shared/characters/modularIdentity.js';
 import { createModularAppearance } from '../../../../shared/characters/modularAppearance.js';
 import { createModularVariation } from '../../../../shared/characters/modularVariants.js';
@@ -58,7 +58,7 @@ const TRANSIENT_BODY_CUES = new Set([
 
 // warmOnly mounts the next patient hidden so their downloads, shaders and
 // texture uploads are done before they are called in.
-export default function RendererCActor({ recipe, manifest, onReady, paused = false, walkIn = false, warmOnly = false }) {
+export default function RendererCActor({ recipe, manifest, onReady, onSettled, paused = false, walkIn = false, warmOnly = false }) {
   const gl = useThree((state) => state.gl);
   const renderScene = useThree((state) => state.scene);
   const camera = useThree((state) => state.camera);
@@ -73,10 +73,9 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
   // Bump the review URL when an exported character's geometry changes.
   const reviewVersion='20261103-neck-1';
   const bodyPath = castLook ? `/models/characters/${castLook.model}.glb?v=${reviewVersion}` : patientModelPath(recipe, manifest);
+  prefetchClothingFabric(castLook?.look?.fabric || recipe.asset?.fabric || 'wool');
   const [gltf, motionGltf] = useLoader(GLTFLoader,
     [bodyPath, recipe.asset?.motionPath || bodyPath], configure);
-  const clothingTextures=useLoader(THREE.TextureLoader,CLOTHING_TEXTURE_URLS);
-  configureClothingTextures(clothingTextures);
   const clips = useMemo(() => {
     let merged = gltf.animations;
     if (recipe.asset?.motionPath) {
@@ -147,7 +146,7 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
     eyelashes.updateLook(look);
     wardrobe.update({seated:false,outfit:look.outfit,apron:look.outfit==='work-apron',palette:look.palette,fabric:look.fabric,fabricScale:look.fabricScale,dt:0});
     const accessories=createPeriodAccessories(root,{cohort:recipe.cohort,frame:identity.frame});accessories.updateLook(look);
-    root.userData.preparation=headwearTexturesReady();
+    root.userData.preparation=Promise.all([headwearTexturesReady(),clothingTexturesReady()]);
     const lips = root.getObjectByName('Carmela_Lips');
     let mouthAnchor = null;
     if (lips && motion.bones.head) {
@@ -427,18 +426,24 @@ export default function RendererCActor({ recipe, manifest, onReady, paused = fal
     for (const material of materials) material.dispose();
   }, [actor]);
 
+  const [shown, setShown] = useState(false);
   useEffect(() => {
     let cancelled = false;
     actor.root.visible = false;
     prepareStage(gl, actor.root, camera, renderScene, () => cancelled).then(() => {
       if (cancelled || warmOnly) return;
       actor.root.visible = true;
+      setShown(true);
       onReady?.(recipe.id);
     }, error => {
-      if (!cancelled && !warmOnly) { actor.root.visible = true; console.error('Patient preparation failed', error); }
+      if (!cancelled && !warmOnly) { actor.root.visible = true; setShown(true); console.error('Patient preparation failed', error); }
     });
     return () => { cancelled = true; };
   }, [actor, gl, camera, renderScene, onReady, recipe.id, warmOnly]);
+  // Settled means shown and, for a summoned patient, seated after the walk-in.
+  useEffect(() => {
+    if (shown && (entranceDone || !entranceRef.current)) onSettled?.();
+  }, [shown, entranceDone, onSettled]);
 
   useFrame((_, delta) => {
     if (paused || !actor.root.visible) return;

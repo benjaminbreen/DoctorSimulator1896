@@ -3,23 +3,31 @@ import {CLOTHING_ATLASES} from './clothingAtlases.js';
 
 export const MODULAR_FABRICS={wool:'Fine wool',herringbone:'Herringbone wool',silk:'Silk faille',original:'Original donor texture'};
 const channels=['albedo','normal','roughness'],kinds=['wool','herringbone','silk'];
-export const CLOTHING_TEXTURE_URLS=kinds.flatMap(kind=>channels.map(channel=>`/textures/clothing/${kind}-${channel}.webp`));
-const fabrics=new Map(),atlases=new Map(),atlasLoads=new Map();
+const fabrics=new Map(),atlases=new Map(),atlasLoads=new Map(),loads=new Set();
 
-export function configureClothingTextures(textures){
-  if(fabrics.size)return;
-  kinds.forEach((kind,i)=>{
-    const maps=textures.slice(i*3,i*3+3);
-    maps.forEach((texture,j)=>{
-      texture.wrapS=texture.wrapT=THREE.RepeatWrapping;texture.anisotropy=8;
-      texture.colorSpace=j===0?THREE.SRGBColorSpace:THREE.NoColorSpace;texture.needsUpdate=true;
-    });
-    fabrics.set(kind,maps);
-  });
+// Like the hat fabrics: each weave fetches its three maps the first time an
+// outfit wears it, instead of all three weaves (1 MB) for every patient.
+function fabricMaps(kind){
+  if(typeof document==='undefined'||!kinds.includes(kind))return null;
+  if(!fabrics.has(kind))fabrics.set(kind,channels.map((channel,j)=>{
+    let done;loads.add(new Promise((resolve,reject)=>{done=[resolve,reject];}));
+    const texture=new THREE.TextureLoader().load(`/textures/clothing/${kind}-${channel}.webp`,()=>done[0](),undefined,error=>done[1](error));
+    texture.wrapS=texture.wrapT=THREE.RepeatWrapping;texture.anisotropy=8;
+    texture.colorSpace=j===0?THREE.SRGBColorSpace:THREE.NoColorSpace;
+    return texture;
+  }));
+  return fabrics.get(kind);
 }
 
+// Lets an actor start its weave alongside the model download.
+export function prefetchClothingFabric(kind){fabricMaps(kind);}
+
+// Resolves once every weave and atlas requested so far has loaded.
+export function clothingTexturesReady(){return Promise.all([...loads,...atlasLoads.values()]);}
+
 export async function loadClothingTextures(){
-  configureClothingTextures(await Promise.all(CLOTHING_TEXTURE_URLS.map(url=>new THREE.TextureLoader().loadAsync(url))));
+  for(const kind of kinds)fabricMaps(kind);
+  await clothingTexturesReady();
 }
 
 // Bind-pose metres keep grain attached to cloth during skinning. Triplanar
@@ -90,7 +98,7 @@ export function createModularFabric(root){
         clean=new THREE.TextureLoader().load(url,resolve,undefined,reject);clean.flipY=false;clean.colorSpace=THREE.SRGBColorSpace;clean.anisotropy=8;atlases.set(url,clean);atlasLoads.set(url,ready);
       }
       mesh.userData.preparation=Promise.all([mesh.userData.preparation,atlasLoads.get(url)]);
-      const uniforms={clothAlbedo:{value:fabrics.get('wool')?.[0]},clothNormalMap:{value:fabrics.get('wool')?.[1]},clothRoughness:{value:fabrics.get('wool')?.[2]},clothEnabled:{value:0},clothRepeat:{value:12.5},clothRelief:{value:.24}};
+      const uniforms={clothAlbedo:{value:null},clothNormalMap:{value:null},clothRoughness:{value:null},clothEnabled:{value:0},clothRepeat:{value:12.5},clothRelief:{value:.24}};
       patchMaterial(material,uniforms);entries.push({material,original,clean,uniforms});
     }
   });
@@ -98,10 +106,10 @@ export function createModularFabric(root){
   return {
     available:entries.length>0,
     update({fabric='wool',fabricScale=1}={}){
-      const kind=fabrics.has(fabric)?fabric:'original',key=kind+'/'+fabricScale;
+      const kind=kinds.includes(fabric)?fabric:'original',key=kind+'/'+fabricScale;
       if(key===previous)return;previous=key;
       for(const {material,original,clean,uniforms}of entries){
-        const active=kind!=='original'&&Boolean(clean),maps=fabrics.get(kind)||fabrics.get('wool');
+        const active=kind!=='original'&&Boolean(clean),maps=active?fabricMaps(kind):null;
         material.map=active?clean:original.map;material.roughness=active?(kind==='silk'?.7:.94):original.roughness;
         uniforms.clothEnabled.value=Number(active);uniforms.clothRepeat.value=12.5*Math.max(.5,Math.min(2,fabricScale));
         uniforms.clothRelief.value=kind==='silk'?.14:.24;
