@@ -458,13 +458,15 @@ function SceneContents({
   );
 
   const gl = useThree((state) => state.gl);
-  useEffect(() => {
-    if (room.exterior || !nextPatientRecipe) return undefined;
-    return warmPatient(nextPatientRecipe, gl);
-  }, [room.exterior, nextPatientRecipe, gl]);
   const [stage, setStage] = useState(0);
   const [coreReady, setCoreReady] = useState(false);
   const [bootComplete, setBootComplete] = useState(false);
+  // A patient model is 6–10 MB. Fetched during boot it competes with the
+  // room's own assets, so wait until the room is up.
+  useEffect(() => {
+    if (room.exterior || !bootComplete || !nextPatientRecipe) return undefined;
+    return warmPatient(nextPatientRecipe, gl);
+  }, [room.exterior, bootComplete, nextPatientRecipe, gl]);
   const [avatarReady, setAvatarReady] = useState(() => !values.showAvatarGlb);
   const bootStartedAt = useRef(globalThis.performance?.now?.() ?? Date.now());
   const advanceTimer = useRef(null);
