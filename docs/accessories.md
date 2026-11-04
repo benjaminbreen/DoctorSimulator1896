@@ -172,8 +172,8 @@ variations on five bases, all curated looks, blinks and talking, plus three
 live motion recordings. It writes labelled contact sheets, individual PNGs
 and diagnostics in `review.json`. `--quick` omits the curated cast.
 
-For actual gameplay, use `game/scripts/gameplay-playtest.mjs` with
-`modular-men.jsonl` and `?appearancePreset=worker-silver` or `broad-silver`.
+For actual gameplay, use `game/scripts/gameplay-playtest.mjs --scenario=samuel`
+with `?appearancePreset=worker-silver` or `broad-silver`.
 Use `carmela-emotions.jsonl` with the ordinary Carmela appearance for her
 brooch and earrings. Finish builds before replaying against a dev server.
 See `docs/gameplay-testing.md` for the full commands and persistent workflow.

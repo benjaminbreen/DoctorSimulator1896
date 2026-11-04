@@ -207,10 +207,7 @@ This is a playtest-only visual override; it keeps Samuel's clinical facts.
 It supplies the new body, facial features and nine-clip motion map, including
 walking into the room and sitting. Other male appearance IDs, with selectable
 moustaches and sideburns, are in `shared/characters/modularCast.js`.
-Add `--offline --replay=game/scripts/playthroughs/modular-men.jsonl` for the
-repeatable entrance, dialogue, wrist/gum examination and return path. The replay
-waits for the full entrance before opening the interview. Use `broad-silver` to
-review a moustache and mutton chops through the same actions.
+Use `broad-silver` to review a moustache and mutton chops.
 
 Accessories are included in performance capture state: style and fit fields,
 triangle/draw-call counts, measured anchors and native-tie partition mode.

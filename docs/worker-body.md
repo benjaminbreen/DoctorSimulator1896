@@ -79,9 +79,8 @@ playtest-only appearance override. Clinical facts and the ordinary patient
 asset remain unchanged:
 
 ```sh
-node game/scripts/gameplay-playtest.mjs --scenario=samuel --offline \
-  --url='http://127.0.0.1:5175/?appearancePreset=worker-base' \
-  --video --replay=game/scripts/playthroughs/modular-men.jsonl
+node game/scripts/gameplay-playtest.mjs --scenario=samuel --offline --video \
+  --url='http://127.0.0.1:5175/?appearancePreset=worker-base'
 ```
 
 Check the side and rear views, wrist joins, hand contact, walking, sitting,
