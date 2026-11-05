@@ -59,6 +59,14 @@ const MIGRATIONS = {
     if (values.groundAcceleration === 47) values.groundAcceleration = 16;
     if (values.groundDeceleration === 46.5) values.groundDeceleration = 14;
   },
+  // AgX outdoors with a slightly stronger grade, and thinner haze.
+  10: (values) => {
+    if (!isOutdoorZone(values.zone)) return;
+    if (values.toneMapping === 'ACESFilmic') values.toneMapping = 'AgX';
+    if (values.fogDensity === 0.004) values.fogDensity = 0.0034;
+    if (values.contrast === 1) values.contrast = 1.06;
+    if (values.saturation === 1.08) values.saturation = 1.14;
+  },
 };
 
 export function migrateStoredTuning(stored, schema) {
