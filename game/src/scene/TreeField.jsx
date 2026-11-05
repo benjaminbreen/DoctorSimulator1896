@@ -25,15 +25,60 @@ function isLeafMaterial(name) {
 
 // Bent normals light a leaf cluster as a volume instead of a flat card.
 // Keep some of the source normal so individual branches still catch light.
+// Also stores `crownShade`: low deep inside and under the crown, where
+// little sky reaches, 1 at the outer shell.
 function softenCanopyNormals(geometry, height) {
   const position=geometry.attributes.position,normal=geometry.attributes.normal;
   const outward=new THREE.Vector3(),source=new THREE.Vector3();
+  const middle=height*.56;
+  let reach=0;
   for(let i=0;i<position.count;i++){
-    outward.set(position.getX(i), (position.getY(i)-height*.56)*.65, position.getZ(i)).normalize();
+    reach=Math.max(reach,Math.hypot(position.getX(i),(position.getY(i)-middle)*.65,position.getZ(i)));
+  }
+  const shade=new Float32Array(position.count);
+  for(let i=0;i<position.count;i++){
+    outward.set(position.getX(i), (position.getY(i)-middle)*.65, position.getZ(i));
+    const depth=outward.length()/Math.max(reach,1e-3);
+    const under=THREE.MathUtils.smoothstep((position.getY(i)-middle)/height,-.35,.25);
+    shade[i]=(.35+.65*THREE.MathUtils.smoothstep(depth,.25,.9))*(.7+.3*under);
+    outward.normalize();
     source.fromBufferAttribute(normal,i);
     if(source.dot(outward)<0)source.negate();
     source.lerp(outward,.7).normalize();normal.setXYZ(i,source.x,source.y,source.z);
   }
+  geometry.setAttribute('crownShade',new THREE.BufferAttribute(shade,1));
+}
+
+// Leaf lighting on top of the wind patch: crown shade darkens the inside,
+// and sun showing through the leaves lights the edges when the camera looks
+// toward the sun. The sun colour and direction are the haze uniforms.
+function shadeCrown(material) {
+  const previous = material.onBeforeCompile;
+  material.onBeforeCompile = (shader, renderer) => {
+    previous?.(shader, renderer);
+    shader.vertexShader = 'attribute float crownShade;\nvarying float vCrownShade;\n' + shader.vertexShader.replace(
+      '#include <begin_vertex>',
+      '#include <begin_vertex>\n  vCrownShade = crownShade;',
+    );
+    shader.fragmentShader = 'varying float vCrownShade;\n' + shader.fragmentShader
+      .replace(
+        '#include <alphamap_fragment>',
+        `#include <alphamap_fragment>
+         diffuseColor.rgb *= vCrownShade;`,
+      )
+      .replace(
+        '#include <opaque_fragment>',
+        `#if defined( USE_FOG ) && defined( FOG_EXP2 )
+           float leafToward = max(dot(normalize(vFogWorldOffset), hazeSunDir), 0.0);
+           float leafEdge = smoothstep(0.6, 1.0, vCrownShade);
+           outgoingLight += diffuseColor.rgb * hazeSunColor * (pow(leafToward, 4.0) * 3.2 + 0.25) * leafEdge;
+         #endif
+         #include <opaque_fragment>`,
+      );
+  };
+  const key = material.customProgramCacheKey();
+  material.customProgramCacheKey = () => `${key}|crown-shade-v1`;
+  return material;
 }
 
 function hash01(seed) {
@@ -127,6 +172,7 @@ export default function TreeField({ items }) {
           material.metalness=0;material.roughness=leaf ? .92 : .88;
           if (material.alphaTest > 0) material.depthWrite = true;
           const depth = leaf ? applyWind(material, { reference: model.height, amplitude: TREE_SWAY }) : undefined;
+          if (leaf) shadeCrown(material);
           materials.set(part, surface = { material, depth });
         }
         const mesh = new THREE.InstancedMesh(part.geometry, surface.material, trees.length);
