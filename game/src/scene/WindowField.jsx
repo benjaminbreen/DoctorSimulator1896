@@ -256,6 +256,100 @@ function varyGlass(material) {
   return material;
 }
 
+// A room behind each window, traced per pixel: the view ray from the camera
+// is followed into a box (back wall, side walls, floor, ceiling) set from the
+// window's size, so the room shifts in perspective as you walk past. All in
+// window-local metres: x along the facade, y up, z out of the wall.
+// `lit` panes glow warm at night through the same room.
+const roomUniforms = { uRoomDay: { value: 1 } };
+
+function roomGlass(material, lit = false) {
+  const previous = material.onBeforeCompile;
+  material.onBeforeCompile = (shader, renderer) => {
+    previous?.(shader, renderer);
+    shader.uniforms.uRoomDay = roomUniforms.uRoomDay;
+    shader.vertexShader = 'attribute vec4 paneRoom;\nvarying vec3 vRoomPos;\nvarying vec3 vRoomCam;\nvarying vec4 vRoom;\n'
+      + shader.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+      {
+        mat4 roomFrame = modelMatrix * instanceMatrix;
+        vec3 roomScale = vec3(length(roomFrame[0].xyz), length(roomFrame[1].xyz), 1.0);
+        vec3 lift = vec3(0.0, paneRoom.x, 0.0);
+        vRoomPos = vec3(position.xy * roomScale.xy, 0.0) - lift;
+        vec3 cam = (inverse(roomFrame) * vec4(cameraPosition, 1.0)).xyz;
+        vRoomCam = vec3(cam.xy * roomScale.xy, cam.z * length(roomFrame[2].xyz)) - lift;
+        vRoom = paneRoom;
+      }`);
+    shader.fragmentShader = 'varying vec3 vRoomPos;\nvarying vec3 vRoomCam;\nvarying vec4 vRoom;\nuniform float uRoomDay;\nvec3 roomLight = vec3(0.0);\n'
+      + shader.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+      {
+        float seed = vRoom.w;
+        float winH = vRoom.y;
+        float winW = vRoom.z;
+        // Rooms of the period: wide, deep, ceilings about 3.4 m, the sill
+        // about 0.8 m above the floor. Offset sideways so walls do not line up.
+        float halfW = max(winW * 1.3, 1.6) + seed * 0.8;
+        float shift = (seed - 0.5) * 1.2;
+        float floorY = -(winH * 0.5 + 0.8);
+        float ceilY = floorY + 3.4;
+        float depth = 4.0 + fract(seed * 7.1) * 2.5;
+        vec3 dir = normalize(vRoomPos - vRoomCam);
+        dir.z = min(dir.z, -1e-3);
+        float tBack = (-depth - vRoomPos.z) / dir.z;
+        float tSide = (sign(dir.x) * halfW + shift - vRoomPos.x) / (abs(dir.x) > 1e-4 ? dir.x : 1e-4);
+        float tFlat = ((dir.y < 0.0 ? floorY : ceilY) - vRoomPos.y) / (abs(dir.y) > 1e-4 ? dir.y : 1e-4);
+        float t = min(tBack, min(tSide, tFlat));
+        vec3 hit = vRoomPos + dir * t;
+        // Wallpaper from a period range: cream, sage, buff, ox-blood, brown.
+        float paper = fract(seed * 17.9);
+        vec3 wall = paper < 0.25 ? vec3(0.42, 0.37, 0.26)
+          : paper < 0.45 ? vec3(0.26, 0.3, 0.2)
+          : paper < 0.65 ? vec3(0.38, 0.3, 0.2)
+          : paper < 0.82 ? vec3(0.3, 0.1, 0.08)
+          : vec3(0.22, 0.15, 0.1);
+        vec3 surface = wall;
+        float shade = 0.95;
+        if (t == tSide) shade = 0.72;
+        if (t == tFlat) {
+          surface = dir.y < 0.0 ? vec3(0.2, 0.12, 0.07) : vec3(0.3, 0.28, 0.24);
+          shade = dir.y < 0.0 ? 0.8 : 0.55;
+        }
+        // Pattern on the paper: faint vertical stripes or a small repeat.
+        if (t != tFlat) surface *= 0.9 + 0.1 * step(0.5, fract((t == tBack ? hit.x : hit.z) * 5.0 + step(0.5, paper) * hit.y * 5.0));
+        // Floorboards, and a dado line and a dark sideboard on the back wall.
+        if (t == tFlat && dir.y < 0.0) shade *= 0.85 + 0.15 * step(0.5, fract(hit.x * 6.0));
+        if (t != tFlat) shade *= mix(0.86, 1.0, step(floorY + 0.95, hit.y));
+        if (t == tBack && abs(hit.x - shift - (fract(seed * 3.7) - 0.5) * 2.0) < 0.75 && hit.y < floorY + 0.9) shade *= 0.55;
+        if (t == tBack && abs(hit.x - shift + (fract(seed * 5.3) - 0.5) * 1.6) < 0.32 && abs(hit.y - floorY - 1.75) < 0.24) shade *= 1.25;
+        // Light falls off into the room from the window.
+        shade *= mix(1.15, 0.4, clamp(-hit.z / depth, 0.0, 1.0));
+        // Sash shadow: the frame and head darken the glass edge.
+        vec2 paneEdge = min(vMapUv, 1.0 - vMapUv);
+        // The room is lit by daylight through the window, not by whatever
+        // falls on the facade, so it goes in as emission. The glass itself
+        // keeps only a little of its tint; reflection does the rest.
+        float sashEdge = smoothstep(0.0, 0.07, min(paneEdge.x * winW, paneEdge.y * winH * 0.5));
+        roomLight = surface * shade * uRoomDay * 0.36 * mix(0.6, 1.0, sashEdge);
+        diffuseColor.rgb *= 0.4 * mix(0.7, 1.0, sashEdge);
+        // Lace curtains in some lower sashes, as most city parlours had.
+        float lace = step(0.62, fract(seed * 11.3)) * step(vRoomPos.y, 0.0);
+        // Soft vertical folds; a fine weave flickers at street distance.
+        float weave = 0.85 + 0.15 * sin(vRoomPos.x * 22.0 + seed * 6.0);
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.62, 0.6, 0.55) * weave, lace * 0.5);
+        roomLight *= 1.0 - lace * 0.6;
+        ${lit ? 'roomGlow = shade * (0.4 + dot(surface, vec3(1.2)));' : ''}
+      }`);
+    shader.fragmentShader = (lit ? 'float roomGlow = 1.0;\n' : '') + shader.fragmentShader.replace(
+      '#include <emissivemap_fragment>',
+      `#include <emissivemap_fragment>
+       ${lit ? 'totalEmissiveRadiance *= roomGlow;' : ''}
+       totalEmissiveRadiance += roomLight;`,
+    );
+  };
+  const key = material.customProgramCacheKey?.() ?? '';
+  material.customProgramCacheKey = () => `${key}|room-glass-v4-${lit}`;
+  return material;
+}
+
 // Striped awning canvas with a scalloped valance cut into the bottom edge.
 function makeAwningTexture(stripe) {
   const canvas = document.createElement('canvas');
@@ -420,7 +514,14 @@ function pushInstance(list, x, y, z, yaw, sx, sy, sz, color, tilt = 0, pitch = 0
 
 // One InstancedMesh from a list of {x,y,z,yaw,pitch,tilt,sx,sy,sz,color}
 // records. Euler YXZ keeps yaw mapping local X onto the face's right axis.
-function buildMesh(records, geometry, material, shadows = false) {
+function buildMesh(records, geometry, material, shadows = false, rooms = false) {
+  if (rooms) {
+    // Panes without a room record (bays, transoms) get one sized to the pane.
+    const data = new Float32Array(records.length * 4);
+    records.forEach((rec, index) => data.set(rec.room ?? [0, rec.sy, rec.sx, hash01(rec.x * 1.7 + rec.z)], index * 4));
+    geometry = geometry.clone();
+    geometry.setAttribute('paneRoom', new THREE.InstancedBufferAttribute(data, 4));
+  }
   const mesh = new THREE.InstancedMesh(geometry, material, records.length);
   records.forEach((rec, index) => {
     scratchEuler.set(rec.pitch, rec.yaw, rec.tilt, 'YXZ');
@@ -551,9 +652,14 @@ export default function WindowField({ items, runtime }) {
             seed + win.col * 3 + (win.floor ?? 4) * 7,
             0.09,
           );
+          // Both sashes look into one room: each pane carries the window's
+          // centre relative to itself, its size, and a seed (see roomGlass).
+          const windowY = place(u, win.y + win.h / 2, 0)[1];
+          const room = (paneY) => [windowY - paneY, hM, wM, roomRoll];
           if (openSash) {
             const [ox, oy, oz] = place(u, win.y + win.h * 0.26, 0.045);
             pushInstance(target, ox, oy, oz, face.yaw, wM * 0.96, hM * 0.5, 1, upperTint, skewTilt, skewPitch);
+            target[target.length - 1].room = room(oy);
           } else if (!shutClosed) {
             // The lower sash sits a little farther out than the upper. Two
             // planes remain in the same glass draw call but give the meeting
@@ -561,7 +667,9 @@ export default function WindowField({ items, runtime }) {
             const [ux, uy, uz] = place(u, win.y + win.h * 0.25, 0.03);
             const [lx, ly, lz] = place(u, win.y + win.h * 0.75, 0.044);
             pushInstance(target, ux, uy, uz, face.yaw, wM * 0.96, hM * 0.48, 1, upperTint, skewTilt, skewPitch);
+            target[target.length - 1].room = room(uy);
             pushInstance(target, lx, ly, lz, face.yaw, wM * 0.96, hM * 0.48, 1, lowerTint, skewTilt, skewPitch);
+            target[target.length - 1].room = room(ly);
           }
 
           // Sash frame overlay.
@@ -1087,11 +1195,11 @@ export default function WindowField({ items, runtime }) {
       // Fresnel does its job, so a pane looked straight into stays dark and
       // one seen along the row flares. That difference between neighbours is
       // what reads as glass. The per-instance tint is the interior behind it.
-      buildMesh(glass, plane, varyGlass(new THREE.MeshStandardMaterial({
+      buildMesh(glass, plane, roomGlass(varyGlass(new THREE.MeshStandardMaterial({
         color: '#ffffff', map: glassTexture,
         metalness: 0, roughness: 0.18, envMapIntensity: 0.58,
-      }))),
-      buildMesh(litGlass, plane, litMaterial),
+      }))), false, true),
+      buildMesh(litGlass, plane, roomGlass(litMaterial, true), false, true),
       buildMesh(frames, plane, new THREE.MeshStandardMaterial({
         color: '#ffffff', map: frameTexture, alphaTest: 0.4, roughness: 0.85,
       })),
@@ -1137,6 +1245,7 @@ export default function WindowField({ items, runtime }) {
     if (runtime) {
       const { night } = solarRamps(runtime.values.timeOfDay, runtime.values.dayOfYear);
       meshes.litMaterial.emissiveIntensity = night * 1.3;
+      roomUniforms.uRoomDay.value = 1 - night;
     }
     // Breeze: small pitch/tilt wobble on canvas and cloth instances.
     const time = state.clock.elapsedTime;
