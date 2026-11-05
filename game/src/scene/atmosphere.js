@@ -19,7 +19,13 @@ export const hazeUniforms = {
   // metre, z/w: drift offset. cloudShade2 x: coverage threshold, y: softness.
   cloudShade: { value: new Float32Array(4) },
   cloudShade2: { value: new Float32Array(2) },
+  // Far sun shadow. x: on, y/z: centre of the near shadow box, w: its radius.
+  farShadow: { value: new Float32Array(4) },
 };
+
+// TreeField turns distant crowns' shadows off for the near map; while the far
+// map is being drawn they must cast. SkyRig sets this around that frame.
+export const farShadowState = { casting: false };
 
 for (const shader of Object.values(THREE.ShaderLib)) {
   if (shader.uniforms?.fogDensity) Object.assign(shader.uniforms, hazeUniforms);
@@ -54,6 +60,7 @@ THREE.ShaderChunk.fog_pars_fragment = /* glsl */ `
     uniform vec3 hazeSunColor;
     uniform vec4 cloudShade;
     uniform vec2 cloudShade2;
+    uniform vec4 farShadow;
     float cloudShadeHash(vec2 p) {
       return fract(sin(dot(p, vec2(41.31, 289.17))) * 43758.5453);
     }
@@ -125,9 +132,35 @@ THREE.ShaderChunk.opaque_fragment = THREE.ShaderChunk.opaque_fragment.replace(
 #endif`,
 );
 
+// The sun's own shadow map covers a box around the player. Past it, the sun
+// takes the second directional shadow, a coarse map over the whole world
+// drawn by a light with no intensity (SkyRig). Light 1 is that light only
+// when farShadow.x is set; otherwise this adds nothing.
+THREE.ShaderChunk.lights_fragment_begin = THREE.ShaderChunk.lights_fragment_begin.replace(
+  '#pragma unroll_loop_start\n\tfor ( int i = 0; i < NUM_DIR_LIGHTS; i ++ ) {',
+  `float farSunShade = 1.0;
+  #if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 1 && defined( USE_FOG ) && defined( FOG_EXP2 )
+    if (farShadow.x > 0.5 && receiveShadow) {
+      vec2 farOffset = cameraPosition.xz + vFogWorldOffset.xz - farShadow.yz;
+      float farBeyond = smoothstep(farShadow.w * 0.7, farShadow.w * 0.92, length(farOffset));
+      if (farBeyond > 0.0) {
+        DirectionalLightShadow farLight = directionalLightShadows[ 1 ];
+        float farLit = getShadow(directionalShadowMap[ 1 ], farLight.shadowMapSize, farLight.shadowIntensity, farLight.shadowBias, farLight.shadowRadius, vDirectionalShadowCoord[ 1 ]);
+        farSunShade = mix(1.0, farLit, farBeyond);
+      }
+    }
+  #endif
+  #pragma unroll_loop_start
+	for ( int i = 0; i < NUM_DIR_LIGHTS; i ++ ) {`,
+).replace(
+  'directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] ) : 1.0;',
+  'directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] ) * farSunShade : 1.0;',
+);
+
 export function clearHaze() {
   hazeUniforms.hazeParams.value.fill(0);
   hazeUniforms.hazeSunDir.value.fill(0);
   hazeUniforms.hazeSunColor.value.fill(0);
   hazeUniforms.cloudShade.value.fill(0);
+  hazeUniforms.farShadow.value.fill(0);
 }

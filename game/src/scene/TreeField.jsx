@@ -5,6 +5,7 @@ import { GLTFLoader } from './modelLoader.js';
 import { MeshoptDecoder } from 'meshoptimizer';
 import { TREE_MODELS, TREE_MODEL_URLS, TREE_LOD_URLS, treeSpecies } from '../world/treeModels.js';
 import { applyWind } from './foliageWind.js';
+import { farShadowState } from './atmosphere.js';
 import { getKTX2Loader } from './ktx2.js';
 import { sharePackTextures } from './packTextures.js';
 import { freezeStaticTransforms } from './lib/staticScene.js';
@@ -220,7 +221,7 @@ export default function TreeField({ items }) {
       }
       // Distant crowns retain their silhouette without another alpha-tested
       // draw into the nearby sun map. Large nearby groves still cast together.
-      mesh.castShadow=mesh.boundingSphere.center.distanceTo(scratchPos)-mesh.boundingSphere.radius<32;
+      mesh.castShadow=farShadowState.casting||mesh.boundingSphere.center.distanceTo(scratchPos)-mesh.boundingSphere.radius<32;
     }
   });
 

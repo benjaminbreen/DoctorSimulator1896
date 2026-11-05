@@ -8,7 +8,7 @@ import { environmentPalette } from '../world/skyPalette.js';
 import { gameDebug } from '../debug.js';
 import { windUniforms } from './foliageWind.js';
 import { cullSubTexelShadowCasters } from './shadowCulling.js';
-import { clearHaze, hazeUniforms } from './atmosphere.js';
+import { clearHaze, farShadowState, hazeUniforms } from './atmosphere.js';
 
 // Darwin's outdoor palette: sun and sky ramps keyed off solar altitude.
 const SUN_NIGHT = new THREE.Color('#41618f');
@@ -40,6 +40,11 @@ const CLOUD_SHADE_METRES = 70;
 const CLOUD_SHADE_STRENGTH = 0.38;
 const CLOUD_DRIFT = [0.96, 0.27];
 const cloudDrift = [0, 0];
+// One coarse shadow map over the whole world (330 x 271 m) for everything
+// past the sun's near box. Its box is the world's half-diagonal, so it covers
+// the ground whatever the sun's azimuth: about 21 cm a texel at 2048.
+const FAR_CENTRE = [65, 0, 50];
+const FAR_EXTENT = 215;
 export default function SkyRig({
   config,
   runtime,
@@ -50,6 +55,10 @@ export default function SkyRig({
   const scene = useThree((state) => state.scene);
   const gl = useThree((state) => state.gl);
   const sunRef = useRef();
+  const farSunRef = useRef();
+  // Redrawn only when the sun has moved, with a slow fallback for scenery
+  // that loads late. Takes three frames: let distant trees cast, draw, stop.
+  const farUpdate = useRef({ direction: [0, 0, 0], elapsed: 0, stage: 0, drawn: false });
   const ambientRef = useRef();
   const hemisphereRef = useRef();
   const shadowExtentRef = useRef(0);
@@ -140,6 +149,11 @@ void main() {`,
     return dome;
   }, [grade]);
   const sunTarget = useMemo(() => new THREE.Object3D(), []);
+  const farTarget = useMemo(() => {
+    const target = new THREE.Object3D();
+    target.position.set(...FAR_CENTRE);
+    return target;
+  }, []);
 
   // Layout effect: fog is a shader define, so the boot compile must see it.
   useLayoutEffect(() => {
@@ -250,6 +264,40 @@ void main() {`,
       if (moonIsKey) scratch.copy(MOON_LIGHT);
       else scratch.copy(SUN_NIGHT).lerp(SUN_DAY, daylight).lerp(SUN_GOLDEN, golden * 0.95);
       sun.color.copy(scratch);
+      const far = farSunRef.current;
+      if (far) {
+        far.castShadow = sun.castShadow;
+        const update = farUpdate.current;
+        update.elapsed += delta;
+        if (!far.castShadow) {
+          update.stage = 0;
+          farShadowState.casting = false;
+        } else if (update.stage === 0) {
+          const last = update.direction;
+          const turned = keyDirection[0] * last[0] + keyDirection[1] * last[1] + keyDirection[2] * last[2] < 0.99995;
+          if (turned || update.elapsed > 12) {
+            farShadowState.casting = true;
+            update.stage = 1;
+          }
+        } else if (update.stage === 1) {
+          far.position.set(
+            FAR_CENTRE[0] + keyDirection[0] * 400,
+            Math.max(keyDirection[1], 0.05) * 400,
+            FAR_CENTRE[2] + keyDirection[2] * 400,
+          );
+          far.updateMatrixWorld();
+          far.shadow.needsUpdate = true;
+          update.direction = [...keyDirection];
+          update.elapsed = 0;
+          update.stage = 2;
+          update.drawn = true;
+        } else {
+          farShadowState.casting = false;
+          update.stage = 0;
+        }
+        // Off until the first draw: an empty map would read as all shade or none.
+        hazeUniforms.farShadow.value.set([far.castShadow && update.drawn ? 1 : 0, anchorX, anchorZ, shadowExtent]);
+      }
     }
     // Golden hour trades fill for key: ambient and hemisphere drop as the
     // sun warms, which is what makes a low sun read as contrast. The flat
@@ -344,6 +392,27 @@ void main() {`,
         shadow-camera-bottom={-Math.min(runtime.values.outdoorShadowDistance, maxShadowDistance)}
         shadow-bias={-0.0001}
         shadow-normalBias={0.012}
+      />
+      {/* No light of its own: it only draws the far shadow map the sun's
+          shader reads (atmosphere.js). Kept after the sun so three numbers
+          it as the second shadowed directional light. */}
+      <primitive object={farTarget} />
+      <directionalLight
+        ref={farSunRef}
+        intensity={0}
+        target={farTarget}
+        castShadow
+        shadow-autoUpdate={false}
+        shadow-mapSize-width={Math.min(2048, maxShadowMapSize)}
+        shadow-mapSize-height={Math.min(2048, maxShadowMapSize)}
+        shadow-camera-near={1}
+        shadow-camera-far={800}
+        shadow-camera-left={-FAR_EXTENT}
+        shadow-camera-right={FAR_EXTENT}
+        shadow-camera-top={FAR_EXTENT}
+        shadow-camera-bottom={-FAR_EXTENT}
+        shadow-bias={-0.0004}
+        shadow-normalBias={0.08}
       />
     </group>
   );
