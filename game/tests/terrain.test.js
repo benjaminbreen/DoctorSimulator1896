@@ -56,7 +56,7 @@ test('Hallett knoll rises on the peninsula', () => {
 test('park layout is deterministic and populated', () => {
   const trees = parkItems.filter((item) => item.kind === 'tree');
   assert.ok(trees.length > 50, `expected a real tree stock, got ${trees.length}`);
-  for (const tree of trees) assert.ok(tree.tree?.trunkH > 0, `${tree.id} carries tree data`);
+  for (const tree of trees) assert.ok(tree.tree?.species && tree.tree.height > 0, `${tree.id} carries tree data`);
   for (const id of ['gapstow-deck', 'arsenal', 'dairy-body', 'rail-east-0', 'rail-south-west-0']) {
     assert.ok(parkItems.some((item) => item.id === id), `missing ${id}`);
   }

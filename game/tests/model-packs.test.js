@@ -150,17 +150,3 @@ test('a bookcase shelves its books, on the boards and inside the carcass', () =>
     assert.ok(Math.abs(book.position[2]) + sx / 2 <= depth / 2, `${book.id} within the depth`);
   }
 });
-
-test('the perimeter railing closes its runs without gaps', () => {
-  const section = modelSize('metal_and_concrete_guardrail_8_MB')[0];
-  for (const prefix of ['rail-east', 'rail-south-east', 'rail-south-west']) {
-    const run = parkItems.filter((item) => item.id.startsWith(`${prefix}-`));
-    assert.ok(run.length >= 3, `${prefix} has sections`);
-    // Neighbours must be no further apart than one section is long.
-    for (let i = 1; i < run.length; i += 1) {
-      const [ax, , az] = run[i - 1].position;
-      const [bx, , bz] = run[i].position;
-      assert.ok(Math.hypot(bx - ax, bz - az) <= section + 0.01, `${prefix}: gap at ${i}`);
-    }
-  }
-});

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { useFrame, useLoader, useThree } from '@react-three/fiber';
 import { GLTFLoader } from './modelLoader.js';
 import { MeshoptDecoder } from 'meshoptimizer';
-import { TREE_MODEL_URLS, TREE_LOD_URLS, TREE_SOURCE_VARIANTS } from '../world/treeModels.js';
+import { TREE_MODELS, TREE_MODEL_URLS, TREE_LOD_URLS, treeSpecies } from '../world/treeModels.js';
 import { applyWind } from './foliageWind.js';
 import { getKTX2Loader } from './ktx2.js';
 import { sharePackTextures } from './packTextures.js';
@@ -14,16 +14,13 @@ import {gameDebug} from '../debug.js';
 // moving a quarter of a metre is a breeze; much more and it reads as a storm.
 const TREE_SWAY = 0.03;
 
-// Instanced trees from the Shapespark exterior plants kit, split into pieces
-// by the model converter; world/treeModels.js lists which pieces.
-const VARIANTS = TREE_SOURCE_VARIANTS.length;
-// Model height relative to trunkH + canopyR, tuned per archetype: elms tall,
-// oaks broad, pond willows low.
-const HEIGHT_SCALE = [2.05, 1.85, 1.5];
+// Instanced period trees baked from EZ-Tree; world/treeModels.js lists them.
+// Each item names a species and a height; the variant is picked by position.
 
 // Leaf cards take per-instance canopy colors; the trunk keeps its own bark.
+// The Shapespark elms name their leaf material 'branch...'.
 function isLeafMaterial(name) {
-  return /branch|leaf/i.test(name ?? '');
+  return /branch|leaf|leaves/i.test(name ?? '');
 }
 
 // Bent normals light a leaf cluster as a volume instead of a flat card.
@@ -99,32 +96,34 @@ export default function TreeField({ items }) {
     const models = gltfs.slice(0, TREE_MODEL_URLS.length).map((gltf) => extractParts(sharePackTextures(gltf)));
     const distant = gltfs.slice(TREE_MODEL_URLS.length).map((gltf, index) => extractParts(gltf, models[index]));
     const materials = new Map();
-    const modelFor = (archetype, variant) => models[archetype * VARIANTS + variant];
+    const bySpecies = new Map();
+    TREE_MODELS.forEach((name, index) => {
+      const species = treeSpecies(name);
+      if (!bySpecies.has(species)) bySpecies.set(species, []);
+      bySpecies.get(species).push(index);
+    });
 
     // Small geographic cells let both the eye and the sun cull whole groves.
     const buckets = new Map();
     for (const item of items) {
-      const archetype = item.tree?.archetype ?? 0;
-      const variant = Math.floor(hash01(item.position[0] * 7.3 + item.position[2] * 13.7) * VARIANTS);
-      const model = archetype * VARIANTS + variant;
-      const key = `${model}:${Math.floor(item.position[0] / 36)}:${Math.floor(item.position[2] / 36)}`;
+      const choices = bySpecies.get(item.tree?.species) ?? bySpecies.get('broadleaf');
+      const model = choices[Math.floor(hash01(item.position[0] * 7.3 + item.position[2] * 13.7) * choices.length)];
+      const key = `${model}:${Math.floor(item.position[0] / 50)}:${Math.floor(item.position[2] / 50)}`;
       if (!buckets.has(key)) buckets.set(key, { model, trees: [] });
       buckets.get(key).trees.push(item);
     }
 
     const built = [];
     for (const { model: key, trees } of buckets.values()) {
-      const archetype = Math.floor(key / VARIANTS);
-      const model = modelFor(archetype, key % VARIANTS);
+      const model = models[key];
       for (const part of model.parts) {
         const leaf = isLeafMaterial(part.materialName);
-        // The kit's own materials carry the bark and leaf textures, and the
-        // leaves are an alpha cutout that has to keep both faces. Instance
-        // colour multiplies the map, so the base has to stay white.
+        // The baked materials carry the textures, and the leaves are an alpha
+        // cutout that keeps both faces. Instance colour multiplies the leaf
+        // map; the bark keeps its baked species tint.
         let surface = materials.get(part);
         if (!surface) {
           const material = part.material.clone();
-          material.color.set('#ffffff');
           material.metalness=0;material.roughness=leaf ? .92 : .88;
           if (material.alphaTest > 0) material.depthWrite = true;
           const depth = leaf ? applyWind(material, { reference: model.height, amplitude: TREE_SWAY }) : undefined;
@@ -138,10 +137,9 @@ export default function TreeField({ items }) {
         mesh.userData.farGeometry = farPart?.geometry ?? part.geometry;
         mesh.userData.warmGeometries = [part.geometry, mesh.userData.farGeometry];
         trees.forEach((item, index) => {
-          const { trunkH, canopyR } = item.tree;
           const groundY = item.position[1] - item.size[1] / 2;
           const spin = (item.position[0] * 3.1 + item.position[2]) % Math.PI;
-          const scale = ((trunkH + canopyR) * HEIGHT_SCALE[archetype]) / model.height;
+          const scale = item.tree.height / model.height;
           scratchQuat.setFromAxisAngle(UP, spin);
           scratchPos.set(item.position[0], groundY, item.position[2]);
           scratchScale.setScalar(scale);
@@ -169,7 +167,7 @@ export default function TreeField({ items }) {
     scratchPos.fromArray(gameDebug.player.position);
     for (const mesh of meshes) {
       const distance = camera.position.distanceTo(mesh.boundingSphere.center) - mesh.boundingSphere.radius;
-      const far = distance > (mesh.userData.far ? 42 : 52);
+      const far = distance > (mesh.userData.far ? 30 : 38);
       if (far !== mesh.userData.far) {
         mesh.userData.far = far;
         mesh.geometry = far ? mesh.userData.farGeometry : mesh.userData.nearGeometry;

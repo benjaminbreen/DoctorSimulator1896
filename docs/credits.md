@@ -57,6 +57,13 @@ build serves the `.glb` itself. Those go under **Not cleared** below.
 
 ## Park props — `game/public/models/park/`
 
+The Central Park ordinances sign face at
+`game/public/textures/signs/central-park-ordinances.webp` was generated with
+OpenAI's built-in image tool on November 3, 2026. Its text abridges the
+Department of Public Parks' 1873 ordinances; its appearance is an inferred
+reconstruction. Sources, uncertainty, and the saved prompt are recorded in
+[Park signs](park-signs.md). No archival reference image is shipped.
+
 | Piece | Author | Licence | Source |
 | --- | --- | --- | --- |
 | Park Bench (`large_park_bench`) | RBG_illustrations | CC-BY-4.0 | [Sketchfab](https://sketchfab.com/3d-models/park-bench-2ee2bc87756d4bf0932d83ab860ddb8f) |
@@ -71,7 +78,20 @@ a model each (`__Tree-01-1_0`, `__Bush-03_15`, …). All of them carry the same
 credit. Both entries came across from Young Darwin, which had already converted
 them; the credit rides in the file, so it survived the trip.
 The six `shapespark_plants__Tree-*-lod.glb` derivatives simplify the same
-credited tree geometry for distant groves; they reuse the original textures.
+credited tree geometry for distant groves. The park now draws only two of
+these trees, the big elms at the Plaza entrance; EZ-Tree species (below)
+replaced the rest.
+
+## Park trees and shrubs — `game/public/models/trees/`
+
+| Piece | Author | Licence | Source |
+| --- | --- | --- | --- |
+| EZ-Tree procedural generator and its leaf sprites (`park-tree-*`, `park-shrub-*`) | Daniel Greenheck | MIT | [GitHub](https://github.com/dgreenheck/ez-tree) |
+| Bark textures shipped with EZ-Tree | Poly Haven, TextureCan | CC0 | via EZ-Tree |
+
+`scripts/models/build-park-trees.mjs` grows each species from EZ-Tree with
+our own settings, recolours the leaf sprites, and bakes near and `-lod` files.
+The species list follows Peet, *Trees and Shrubs of Central Park* (1903).
 
 ## Interior props — `game/public/models/props/`
 
@@ -246,6 +266,28 @@ The animated street horse (`game/public/models/horse.glb`) is **Horse** by
 [CC-BY-NC-SA-4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/), from
 [Sketchfab](https://sketchfab.com/3d-models/horse-86d47bdcd5ab41238ba44547e4d21f9c).
 The original credit and licence metadata remain embedded in the GLB.
+
+The flock's sheep (`game/public/models/sheep.glb`) is **Sheep-Test
+(Non-Commercial)** by [Nyilonelycompany](https://sketchfab.com/Nyilonelycompany),
+licensed [CC-BY-NC-4.0](https://creativecommons.org/licenses/by-nc/4.0/), from
+[Sketchfab](https://sketchfab.com/3d-models/none-196bb78e6e6343888d09f468a6a9dbc7).
+It is simplified and recompressed by `scripts/models/build-sheep.mjs`; the
+source download stays local in `assets-local/sheep/` (not in Git).
+
+The Menagerie and Pond animals are all licensed
+[CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/), from Sketchfab, and
+rebuilt by `scripts/models/build-animals.mjs` from sources in
+`assets-local/menagerie/`, which stays local (not in Git):
+
+- `game/public/models/bear.glb`: **Bear** by
+  [Nyilonelycompany](https://sketchfab.com/Nyilonelycompany)
+  ([source](https://sketchfab.com/3d-models/bear-ce0d5eb86cf5459bb6bd20244cb44b27)).
+- `game/public/models/elk.glb`: **Realistic Animated Elk 3D Model** by
+  WildMesh 3D
+  ([source](https://sketchfab.com/3d-models/realistic-animated-elk-3d-model-787834f9caa2474d9f1814b807c072d7)).
+- `game/public/models/mallard.glb`: **Duck_Walk (Free)** by
+  [Nyilonelycompany](https://sketchfab.com/Nyilonelycompany)
+  ([source](https://sketchfab.com/3d-models/duck-walk-free-415584bc3224484fba20a482592e2157)).
 
 The paintings in `game/public/art/` are public-domain works from
 [Wikimedia Commons](https://commons.wikimedia.org/): Arnold Böcklin,

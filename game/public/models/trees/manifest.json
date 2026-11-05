@@ -1,0 +1,325 @@
+{
+ "park-tree-elm-0": {
+  "file": "park-tree-elm-0.glb",
+  "min": [
+   -7.147927396169413,
+   0,
+   -7.147927396169413
+  ],
+  "size": [
+   14.295854792338826,
+   16,
+   14.295854792338826
+  ],
+  "credit": {
+   "title": "EZ-Tree procedural tree",
+   "author": "Daniel Greenheck (https://github.com/dgreenheck/ez-tree)",
+   "license": "MIT; bark textures CC0 (Poly Haven, TextureCan)",
+   "source": "https://github.com/dgreenheck/ez-tree"
+  }
+ },
+ "park-tree-elm-1": {
+  "file": "park-tree-elm-1.glb",
+  "min": [
+   -7.1430893700469085,
+   0,
+   -7.1430893700469085
+  ],
+  "size": [
+   14.286178740093817,
+   16,
+   14.286178740093817
+  ],
+  "credit": {
+   "title": "EZ-Tree procedural tree",
+   "author": "Daniel Greenheck (https://github.com/dgreenheck/ez-tree)",
+   "license": "MIT; bark textures CC0 (Poly Haven, TextureCan)",
+   "source": "https://github.com/dgreenheck/ez-tree"
+  }
+ },
+ "park-tree-willow-0": {
+  "file": "park-tree-willow-0.glb",
+  "min": [
+   -7.941049874500896,
+   0,
+   -7.941049874500896
+  ],
+  "size": [
+   15.882099749001792,
+   12,
+   15.882099749001792
+  ],
+  "credit": {
+   "title": "EZ-Tree procedural tree",
+   "author": "Daniel Greenheck (https://github.com/dgreenheck/ez-tree)",
+   "license": "MIT; bark textures CC0 (Poly Haven, TextureCan)",
+   "source": "https://github.com/dgreenheck/ez-tree"
+  }
+ },
+ "park-tree-cypress-0": {
+  "file": "park-tree-cypress-0.glb",
+  "min": [
+   -2.9718278051322193,
+   0,
+   -2.9718278051322193
+  ],
+  "size": [
+   5.943655610264439,
+   13,
+   5.943655610264439
+  ],
+  "credit": {
+   "title": "EZ-Tree procedural tree",
+   "author": "Daniel Greenheck (https://github.com/dgreenheck/ez-tree)",
+   "license": "MIT; bark textures CC0 (Poly Haven, TextureCan)",
+   "source": "https://github.com/dgreenheck/ez-tree"
+  }
+ },
+ "park-tree-cottonwood-0": {
+  "file": "park-tree-cottonwood-0.glb",
+  "min": [
+   -6.3923137096520275,
+   0,
+   -6.3923137096520275
+  ],
+  "size": [
+   12.784627419304055,
+   18,
+   12.784627419304055
+  ],
+  "credit": {
+   "title": "EZ-Tree procedural tree",
+   "author": "Daniel Greenheck (https://github.com/dgreenheck/ez-tree)",
+   "license": "MIT; bark textures CC0 (Poly Haven, TextureCan)",
+   "source": "https://github.com/dgreenheck/ez-tree"
+  }
+ },
+ "park-tree-poplar-0": {
+  "file": "park-tree-poplar-0.glb",
+  "min": [
+   -1.9729709609745356,
+   0,
+   -1.9729709609745356
+  ],
+  "size": [
+   3.9459419219490712,
+   17,
+   3.9459419219490712
+  ],
+  "credit": {
+   "title": "EZ-Tree procedural tree",
+   "author": "Daniel Greenheck (https://github.com/dgreenheck/ez-tree)",
+   "license": "MIT; bark textures CC0 (Poly Haven, TextureCan)",
+   "source": "https://github.com/dgreenheck/ez-tree"
+  }
+ },
+ "park-tree-beech-0": {
+  "file": "park-tree-beech-0.glb",
+  "min": [
+   -6.190915945677326,
+   0,
+   -6.190915945677326
+  ],
+  "size": [
+   12.381831891354652,
+   12,
+   12.381831891354652
+  ],
+  "credit": {
+   "title": "EZ-Tree procedural tree",
+   "author": "Daniel Greenheck (https://github.com/dgreenheck/ez-tree)",
+   "license": "MIT; bark textures CC0 (Poly Haven, TextureCan)",
+   "source": "https://github.com/dgreenheck/ez-tree"
+  }
+ },
+ "park-tree-pine-0": {
+  "file": "park-tree-pine-0.glb",
+  "min": [
+   -3.539306186618486,
+   0,
+   -3.539306186618486
+  ],
+  "size": [
+   7.078612373236972,
+   12,
+   7.078612373236972
+  ],
+  "credit": {
+   "title": "EZ-Tree procedural tree",
+   "author": "Daniel Greenheck (https://github.com/dgreenheck/ez-tree)",
+   "license": "MIT; bark textures CC0 (Poly Haven, TextureCan)",
+   "source": "https://github.com/dgreenheck/ez-tree"
+  }
+ },
+ "park-tree-pine-1": {
+  "file": "park-tree-pine-1.glb",
+  "min": [
+   -3.0422384476754734,
+   0,
+   -3.0422384476754734
+  ],
+  "size": [
+   6.084476895350947,
+   12,
+   6.084476895350947
+  ],
+  "credit": {
+   "title": "EZ-Tree procedural tree",
+   "author": "Daniel Greenheck (https://github.com/dgreenheck/ez-tree)",
+   "license": "MIT; bark textures CC0 (Poly Haven, TextureCan)",
+   "source": "https://github.com/dgreenheck/ez-tree"
+  }
+ },
+ "park-tree-broadleaf-0": {
+  "file": "park-tree-broadleaf-0.glb",
+  "min": [
+   -5.854027610111079,
+   0,
+   -5.854027610111079
+  ],
+  "size": [
+   11.708055220222159,
+   12,
+   11.708055220222159
+  ],
+  "credit": {
+   "title": "EZ-Tree procedural tree",
+   "author": "Daniel Greenheck (https://github.com/dgreenheck/ez-tree)",
+   "license": "MIT; bark textures CC0 (Poly Haven, TextureCan)",
+   "source": "https://github.com/dgreenheck/ez-tree"
+  }
+ },
+ "park-tree-broadleaf-1": {
+  "file": "park-tree-broadleaf-1.glb",
+  "min": [
+   -5.713386135306514,
+   0,
+   -5.713386135306514
+  ],
+  "size": [
+   11.426772270613029,
+   12,
+   11.426772270613029
+  ],
+  "credit": {
+   "title": "EZ-Tree procedural tree",
+   "author": "Daniel Greenheck (https://github.com/dgreenheck/ez-tree)",
+   "license": "MIT; bark textures CC0 (Poly Haven, TextureCan)",
+   "source": "https://github.com/dgreenheck/ez-tree"
+  }
+ },
+ "park-tree-compound-0": {
+  "file": "park-tree-compound-0.glb",
+  "min": [
+   -5.260161469933185,
+   0,
+   -5.260161469933185
+  ],
+  "size": [
+   10.52032293986637,
+   13,
+   10.52032293986637
+  ],
+  "credit": {
+   "title": "EZ-Tree procedural tree",
+   "author": "Daniel Greenheck (https://github.com/dgreenheck/ez-tree)",
+   "license": "MIT; bark textures CC0 (Poly Haven, TextureCan)",
+   "source": "https://github.com/dgreenheck/ez-tree"
+  }
+ },
+ "park-tree-ailanthus-0": {
+  "file": "park-tree-ailanthus-0.glb",
+  "min": [
+   -2.9352176350248915,
+   0,
+   -2.9352176350248915
+  ],
+  "size": [
+   5.870435270049783,
+   8,
+   5.870435270049783
+  ],
+  "credit": {
+   "title": "EZ-Tree procedural tree",
+   "author": "Daniel Greenheck (https://github.com/dgreenheck/ez-tree)",
+   "license": "MIT; bark textures CC0 (Poly Haven, TextureCan)",
+   "source": "https://github.com/dgreenheck/ez-tree"
+  }
+ },
+ "park-shrub-privet-0": {
+  "file": "park-shrub-privet-0.glb",
+  "min": [
+   -1.4204297416885039,
+   0,
+   -1.4204297416885039
+  ],
+  "size": [
+   2.8408594833770078,
+   2.2,
+   2.8408594833770078
+  ],
+  "credit": {
+   "title": "EZ-Tree procedural tree",
+   "author": "Daniel Greenheck (https://github.com/dgreenheck/ez-tree)",
+   "license": "MIT; bark textures CC0 (Poly Haven, TextureCan)",
+   "source": "https://github.com/dgreenheck/ez-tree"
+  }
+ },
+ "park-shrub-spirea-0": {
+  "file": "park-shrub-spirea-0.glb",
+  "min": [
+   -1.1049038476246331,
+   0,
+   -1.1049038476246331
+  ],
+  "size": [
+   2.2098076952492662,
+   1.7,
+   2.2098076952492662
+  ],
+  "credit": {
+   "title": "EZ-Tree procedural tree",
+   "author": "Daniel Greenheck (https://github.com/dgreenheck/ez-tree)",
+   "license": "MIT; bark textures CC0 (Poly Haven, TextureCan)",
+   "source": "https://github.com/dgreenheck/ez-tree"
+  }
+ },
+ "park-shrub-sumac-0": {
+  "file": "park-shrub-sumac-0.glb",
+  "min": [
+   -2.0325484766073902,
+   0,
+   -2.0325484766073902
+  ],
+  "size": [
+   4.0650969532147805,
+   3.2,
+   4.0650969532147805
+  ],
+  "credit": {
+   "title": "EZ-Tree procedural tree",
+   "author": "Daniel Greenheck (https://github.com/dgreenheck/ez-tree)",
+   "license": "MIT; bark textures CC0 (Poly Haven, TextureCan)",
+   "source": "https://github.com/dgreenheck/ez-tree"
+  }
+ },
+ "park-shrub-knotweed-0": {
+  "file": "park-shrub-knotweed-0.glb",
+  "min": [
+   -1.6556502621152065,
+   0,
+   -1.6556502621152065
+  ],
+  "size": [
+   3.311300524230413,
+   2.4,
+   3.311300524230413
+  ],
+  "credit": {
+   "title": "EZ-Tree procedural tree",
+   "author": "Daniel Greenheck (https://github.com/dgreenheck/ez-tree)",
+   "license": "MIT; bark textures CC0 (Poly Haven, TextureCan)",
+   "source": "https://github.com/dgreenheck/ez-tree"
+  }
+ }
+}

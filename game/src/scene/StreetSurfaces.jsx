@@ -3,12 +3,14 @@ import * as THREE from 'three';
 import { useLoader } from '@react-three/fiber';
 import { RigidBody, TrimeshCollider } from '@react-three/rapier';
 import { GRAND_ARMY_APRON } from '../world/heroStreetLayout.js';
+import { groundStain } from './lib/groundStain.js';
 import { identifyLandmark } from '../world/landmarkInformation.js';
 import { PARK_LANDMARKS } from '../world/parkLandmarks.js';
 import { ROAD_TOP, ROADS, STREET_SURFACES, WALK_TOP } from '../world/streetGrid.js';
 
 const ROAD_TILE = 3.0;
 const WALK_TILE = 3.3;
+const CURB_TILE = 0.7;
 const PLAZA_TOP = WALK_TOP;
 const EMPTY_HOLES = Object.freeze([]);
 
@@ -90,11 +92,14 @@ function ringGeometry(outer, inner, y, tile, angle = 0) {
 
 function sideGeometry(points, top, bottom, closed = true) {
   const positions = [];
+  const uvs = [];
   const indices = [];
   const edgeCount = closed ? points.length : points.length - 1;
+  let run = 0;
   for (let edge = 0; edge < edgeCount; edge += 1) {
     const current = points[edge];
     const next = points[(edge + 1) % points.length];
+    const length = Math.hypot(next[0] - current[0], next[1] - current[1]);
     const base = positions.length / 3;
     positions.push(
       current[0], top, current[1],
@@ -102,10 +107,18 @@ function sideGeometry(points, top, bottom, closed = true) {
       next[0], bottom, next[1],
       current[0], bottom, current[1],
     );
+    uvs.push(
+      run / CURB_TILE, top / CURB_TILE,
+      (run + length) / CURB_TILE, top / CURB_TILE,
+      (run + length) / CURB_TILE, bottom / CURB_TILE,
+      run / CURB_TILE, bottom / CURB_TILE,
+    );
+    run += length;
     indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   return geometry;
@@ -242,13 +255,28 @@ function StoneFace({ points, top, bottom, material, closed = true }) {
   return <mesh geometry={geometry} material={material} castShadow receiveShadow />;
 }
 
-function Curb({ curb, material }) {
+// Granite curb with UVs projected from world position per face, so the
+// grain keeps its size along a long run instead of stretching.
+function curbGeometry(curb) {
   const height = WALK_TOP - ROAD_TOP;
-  return (
-    <mesh position={[curb.x, ROAD_TOP + height / 2, curb.z]} material={material} castShadow receiveShadow>
-      <boxGeometry args={[curb.sx, height, curb.sz]} />
-    </mesh>
-  );
+  const geometry = new THREE.BoxGeometry(curb.sx, height, curb.sz);
+  geometry.translate(curb.x, ROAD_TOP + height / 2, curb.z);
+  const positions = geometry.attributes.position;
+  const normals = geometry.attributes.normal;
+  const uvs = geometry.attributes.uv;
+  for (let index = 0; index < positions.count; index += 1) {
+    const [x, y, z] = [positions.getX(index), positions.getY(index), positions.getZ(index)];
+    const [nx, ny] = [Math.abs(normals.getX(index)), Math.abs(normals.getY(index))];
+    const [u, v] = ny > 0.5 ? [x, z] : nx > 0.5 ? [z, y] : [x, y];
+    uvs.setXY(index, u / CURB_TILE, v / CURB_TILE);
+  }
+  return geometry;
+}
+
+function Curb({ curb, material }) {
+  const geometry = useMemo(() => curbGeometry(curb), [curb]);
+  useEffect(() => () => geometry.dispose(), [geometry]);
+  return <mesh geometry={geometry} material={material} castShadow receiveShadow />;
 }
 
 export default function StreetSurfaces() {
@@ -269,6 +297,8 @@ export default function StreetSurfaces() {
     '/textures/street/gutter-stones_col.webp',
     '/textures/street/gutter-stones_nrm.webp',
     '/textures/street/gutter-stones_rough.webp',
+    '/textures/street/granite_col.webp',
+    '/textures/street/granite_nrm.webp',
   ]);
   const maps = useMemo(() => ({
     road: {
@@ -291,6 +321,10 @@ export default function StreetSurfaces() {
       normal: configureTexture(textures[10]),
       roughness: configureTexture(textures[11]),
     },
+    granite: {
+      color: configureTexture(textures[12], true),
+      normal: configureTexture(textures[13]),
+    },
   }), [textures]);
 
   const materials = useMemo(() => {
@@ -307,7 +341,14 @@ export default function StreetSurfaces() {
       transition: createMaterial(maps, 'transition', { axis: 'z' }),
       gutterHorizontal: createMaterial(maps, 'gutter', { axis: 'z' }),
       gutterVertical: createMaterial(maps, 'gutter', { axis: 'x' }),
-      curb: new THREE.MeshStandardMaterial({ color: '#7b7972', roughness: 0.88 }),
+      // Gutter dirt banks against the curb face.
+      curb: groundStain(new THREE.MeshStandardMaterial({
+        map: maps.granite.color,
+        normalMap: maps.granite.normal,
+        normalScale: new THREE.Vector2(0.8, 0.8),
+        color: '#8f8d87',
+        roughness: 0.9,
+      }), { ground: ROAD_TOP, height: 0.08, strength: 0.55 }),
       edge: new THREE.MeshStandardMaterial({ color: '#696a66', roughness: 0.9 }),
       rail: new THREE.MeshStandardMaterial({ color: '#43464a', roughness: 0.42, metalness: 0.8 }),
     };
@@ -394,7 +435,7 @@ export default function StreetSurfaces() {
           key={`${corner.id}-curb-top`}
           points={corner.curb}
           y={WALK_TOP + 0.006}
-          tile={WALK_TILE}
+          tile={CURB_TILE}
           material={materials.curb}
         />
       ))}

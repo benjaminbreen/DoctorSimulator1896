@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildShelters, SHELTERS, quatFromUp } from '../src/world/rusticwork.js';
+import { buildShelters, SHELTERS, quatFromUp, LANDING_ROOT, LANDING_BERTH } from '../src/world/rusticwork.js';
 import { buildDairy, DAIRY } from '../src/world/dairy.js';
 import { terrainHeight } from '../src/world/terrain.js';
 import { PADS } from '../src/world/centralPark.js';
@@ -54,8 +54,15 @@ test('rustic shelters are deterministic and sized to their sites', () => {
   const lanterns = SHELTERS.filter((s) => s.lantern).length;
   assert.equal(built.roofs.length, SHELTERS.length + lanterns, 'a lantern adds a second roof');
   assert.ok(built.poles.length > 30 && built.branches.length > 100, 'timberwork populated');
+  // The boat landing's stage runs from the bank out to the berth.
+  const [rx, rz] = LANDING_ROOT;
+  const [bx, bz] = LANDING_BERTH.point;
+  const onLanding = ([x, , z]) => {
+    const t = Math.max(0, Math.min(1, ((x - rx) * (bx - rx) + (z - rz) * (bz - rz)) / ((bx - rx) ** 2 + (bz - rz) ** 2)));
+    return Math.hypot(x - rx - (bx - rx) * t, z - rz - (bz - rz) * t) < 2.4;
+  };
   for (const piece of [...built.poles, ...built.branches, ...built.seats]) {
-    const inside = SHELTERS.some(
+    const inside = onLanding(piece.p) || SHELTERS.some(
       (s) => Math.hypot(piece.p[0] - s.x, piece.p[2] - s.z) <= s.radius + s.overhang + 1.2,
     );
     assert.ok(inside, `piece at ${piece.p[0].toFixed(1)},${piece.p[2].toFixed(1)} belongs to a shelter`);
@@ -65,7 +72,8 @@ test('rustic shelters are deterministic and sized to their sites', () => {
 test('shelter entries stay open and railings block the rest', () => {
   const built = buildShelters();
   const railings = built.colliders.filter((c) => c.type === 'box' && c.size[1] === 1.0);
-  const expected = SHELTERS.reduce((sum, s) => sum + s.sides - s.entries.length, 0);
+  // Plus the two railings along the boat landing's walk.
+  const expected = SHELTERS.reduce((sum, s) => sum + s.sides - s.entries.length, 0) + 2;
   assert.equal(railings.length, expected, 'one railing collider per closed bay');
 });
 

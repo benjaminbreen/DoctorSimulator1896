@@ -1,26 +1,20 @@
-// Which tree pieces the park loads. Kept beside the other catalogs rather
+// Which tree models the park loads. Kept beside the other catalogs rather
 // than inside TreeField so the boot preloader can name them without pulling
 // the renderer into the eager bundle.
 
-import { modelUrl } from './modelPacks.js';
+import { modelUrl, packModels } from './modelPacks.js';
 
-// Two well-separated source variants per species keep the silhouettes varied;
-// random spin, scale and canopy tint supply the rest. Loading all four doubled
-// the tree payload and render buckets for very little visible gain at park
-// viewing distances.
-export const TREE_SOURCE_VARIANTS = [0, 2];
-const SOURCE_VARIANT_STRIDE = 4;
-const ARCHETYPE_MODELS = ['Tree-01', 'Tree-02', 'Tree-03'];
+// Baked by scripts/models/build-park-trees.mjs; each has a `-lod` twin. The
+// two Shapespark elms are the original park trees, kept for the big shade
+// trees at the Plaza entrance (species 'old-elm').
+const OLD_ELMS = ['shapespark_plants__Tree-01-1_0', 'shapespark_plants__Tree-01-3_2'];
+export const TREE_MODELS = [...packModels('trees').filter((name) => name.startsWith('park-tree-')), ...OLD_ELMS];
 
-// The converter names a split piece `<source>__<group>`, and the kit's groups
-// retain their original four-variant index even though only variants 1 and 3
-// are loaded here: Tree-01-1_0, Tree-01-3_2, … Tree-03-3_10.
-const MODEL_NAMES = ARCHETYPE_MODELS.flatMap((name, archetype) =>
-  TREE_SOURCE_VARIANTS.map((sourceVariant) => (
-    `shapespark_plants__${name}-${sourceVariant + 1}_${archetype * SOURCE_VARIANT_STRIDE + sourceVariant}`
-  )),
-);
+export function treeSpecies(name) {
+  if (OLD_ELMS.includes(name)) return 'old-elm';
+  return name.replace(/^park-tree-/, '').replace(/-\d+$/, '');
+}
 
-export const TREE_MODEL_URLS = MODEL_NAMES.map(modelUrl);
+export const TREE_MODEL_URLS = TREE_MODELS.map(modelUrl);
 
 export const TREE_LOD_URLS = TREE_MODEL_URLS.map((url) => url.replace('.glb', '-lod.glb'));

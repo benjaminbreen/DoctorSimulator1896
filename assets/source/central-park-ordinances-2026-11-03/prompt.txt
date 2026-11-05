@@ -1,0 +1,28 @@
+Use case: historical-scene
+Asset type: front-face albedo texture for an existing 0.8 metre wide by 1 metre tall wooden signboard in a 3D game set in Central Park, New York, June 1896.
+Primary request: a carefully restrained, historically plausible late nineteenth-century municipal park ordinances board, based on the Department of Public Parks ordinances of March 31, 1873. This is a reconstruction, not a facsimile of a known surviving 1896 sign.
+Composition/framing: portrait rectangle, exact 4:5 aspect ratio, straight-on orthographic view, the entire image is the flat rectangular sign face, all four edges at image edges. NO posts, no frame projecting outside the rectangle, no surroundings, no perspective, no cast shadows.
+Style/medium: photorealistic painted outdoor timber sign, warm ivory oil-painted surface with black signwriter's lettering. Subtle fine brush grain and a few tiny paint chips only at edges. A maintained working sign, not a ruined antique. Thin black double-rule inset border. Modest nineteenth-century condensed Roman serif capitals for the two largest headings; smaller highly readable book serif for the body. No modern park logos, pictograms, sans serif fonts or decorative Victorian fantasy.
+Layout: generous safe margins, large CENTRAL PARK. heading at top, smaller ORDINANCES. below it, narrow department name, horizontal thin rule. Seven numbered paragraphs below, left aligned and evenly spaced, black lettering on ivory with high contrast. Footer separated by a thin rule. Fit all text without clipping or repeating. Text is an abridgement for gameplay legibility. Render precisely the following and no other words:
+Text (verbatim):
+CENTRAL PARK.
+ORDINANCES.
+DEPARTMENT OF PUBLIC PARKS.
+
+I. Enter and leave only by the established entrance ways.
+
+II. Do not injure or deface the trees, shrubs, turf, seats, fences or other structures.
+
+III. Dogs must be controlled by a line of suitable strength, not more than six feet in length.
+
+IV. No firearms, fire-works, stone throwing or fires are permitted.
+
+V. No bathing, fishing, or disturbing the birds or animals in the Park.
+
+VI. Keep off the turf except where the word COMMON is posted.
+
+VII. No selling, begging, games of chance, or loud and indecent language.
+
+BY ORDER OF THE
+BOARD OF COMMISSIONERS.
+Constraints: all text exactly as supplied, very crisp at full resolution, authentic understated typography. Flat even neutral lighting; no lighting gradients or baked shadows. Matte paint, not glossy enamel, not paper parchment. No invented seal, dates, signatures, claims of authentic provenance, extra regulations or watermarks.

@@ -6,8 +6,9 @@
 import victorian from '../../public/models/victorian/manifest.json' with { type: 'json' };
 import park from '../../public/models/park/manifest.json' with { type: 'json' };
 import props from '../../public/models/props/manifest.json' with { type: 'json' };
+import trees from '../../public/models/trees/manifest.json' with { type: 'json' };
 
-const PACKS = { victorian, park, props };
+const PACKS = { victorian, park, props, trees };
 
 function entryFor(name) {
   for (const [pack, manifest] of Object.entries(PACKS)) {

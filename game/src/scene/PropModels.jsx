@@ -35,6 +35,7 @@ function LooseProp({ item, gltf }) {
   const response = useFurnitureSound(bodyRef, item);
   const object = useMemo(() => {
     const clone = gltf.scene.clone(true);
+    clone.name = `furniture:${item.id}`;
     clone.traverse((node) => {
       if (!node.isMesh) return;
       node.castShadow = true;
@@ -142,6 +143,17 @@ export default function PropModels({ items }) {
       gltf.scene.traverse((node) => {
         if (!node.isMesh) return;
         const geometry = node.geometry.clone();
+        // Quantized packs store positions as normalized integers; transformed
+        // in that storage they clamp to ±1, which squares off a 3m shrub.
+        for (const name of ['position', 'normal']) {
+          const attribute = geometry.attributes[name];
+          if (!attribute || attribute.array instanceof Float32Array) continue;
+          const values = new Float32Array(attribute.count * 3);
+          for (let i = 0; i < attribute.count; i += 1) {
+            values[i * 3] = attribute.getX(i); values[i * 3 + 1] = attribute.getY(i); values[i * 3 + 2] = attribute.getZ(i);
+          }
+          geometry.setAttribute(name, new THREE.BufferAttribute(values, 3));
+        }
         geometry.applyMatrix4(node.matrixWorld);
         parts.push({ geometry, material: node.material });
       });

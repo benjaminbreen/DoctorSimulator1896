@@ -52,7 +52,7 @@ const jointEnd = new THREE.Vector3();
 const jointDirection = new THREE.Vector3();
 const strapMidpoint = new THREE.Vector3();
 
-function isAuthoredDrawGear(part) {
+export function isAuthoredDrawGear(part) {
   return /^(single-shaft|pair-pole|pair-splinter-bar|pair-singletree)/.test(part.sculptPart);
 }
 
@@ -87,7 +87,7 @@ function materialKey(part) {
   ]);
 }
 
-function batchCoachwork(parts) {
+export function batchCoachwork(parts) {
   const groups = new Map();
   for (const part of parts) {
     const wheel = wheelId(part);
@@ -123,7 +123,7 @@ function batchCoachwork(parts) {
   });
 }
 
-function Coachwork({ batches, refs }) {
+export function Coachwork({ batches, refs }) {
   return batches.map(({ part, geometry, wheel, pivot }, index) => {
     const surface = (
       <mesh
@@ -438,7 +438,7 @@ function addHarness(horse, dark) {
   box('bridle-cheek-right', [0.18, 1.65, 0.88], [0.035, 0.48, 0.035], [0.36, 0, -0.08]);
 }
 
-function makeHorse(source, clip, phase, harnessMaterial) {
+export function makeHorse(source, clip, phase, harnessMaterial) {
   const horse = cloneSkeleton(source);
   horse.name = 'animated-harness-horse';
   horse.traverse((node) => {
@@ -456,7 +456,7 @@ function makeHorse(source, clip, phase, harnessMaterial) {
   return { object: horse, mixer, action };
 }
 
-function makeDriver(source, animations, phase) {
+export function makeDriver(source, animations, phase) {
   const figure = cloneSkeleton(source);
   figure.name = 'horse-drawn-driver';
   figure.scale.setScalar(figureHeight('carriage-driver'));

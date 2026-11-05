@@ -258,28 +258,13 @@ function serviceCourt(items, id, x, z, sx, sz, options = {}) {
   }
 }
 
-// Cast-iron hitching post: plinth, tapered shaft, collar, ball finial.
-function hitchingPost(id, x, z) {
-  return [
-    { id: `${id}-plinth`, kind: 'furniture', shape: 'cylinder', position: [x, WALK_TOP + 0.06, z], size: [0.2, 0.12, 0.2], yaw: 0, color: '#2c3033', metal: true, collider: false, absoluteY: true },
-    { id: `${id}-shaft`, kind: 'furniture', shape: 'cone', position: [x, WALK_TOP + 0.55, z], size: [0.11, 0.86, 0.11], yaw: 0, color: '#33383c', metal: true, collider: false, absoluteY: true },
-    { id: `${id}-collar`, kind: 'furniture', shape: 'cylinder', position: [x, WALK_TOP + 0.88, z], size: [0.11, 0.05, 0.11], yaw: 0, color: '#22262a', metal: true, collider: false, absoluteY: true },
-    { id: `${id}-ball`, kind: 'furniture', shape: 'sphere', position: [x, WALK_TOP + 0.99, z], size: [0.15, 0.15, 0.15], yaw: 0, color: '#2b2f33', metal: true, collider: false, absoluteY: true },
-  ];
-}
-
-// Squat cast-iron hydrant: base flange, barrel, domed bonnet, two capped
-// side nozzles.
-function hydrant(id, x, z) {
-  return [
-    { id: `${id}-flange`, kind: 'furniture', shape: 'cylinder', position: [x, WALK_TOP + 0.05, z], size: [0.42, 0.1, 0.42], yaw: 0, color: '#31402f', metal: true, collider: false, absoluteY: true },
-    { id: `${id}-body`, kind: 'furniture', shape: 'cylinder', position: [x, WALK_TOP + 0.4, z], size: [0.3, 0.62, 0.3], yaw: 0, color: '#3d4a3c', metal: true, absoluteY: true },
-    { id: `${id}-bonnet`, kind: 'furniture', shape: 'sphere', position: [x, WALK_TOP + 0.74, z], size: [0.3, 0.3, 0.3], yaw: 0, color: '#334032', metal: true, collider: false, absoluteY: true },
-    { id: `${id}-finial`, kind: 'furniture', shape: 'cylinder', position: [x, WALK_TOP + 0.92, z], size: [0.08, 0.1, 0.08], yaw: 0, color: '#2b362a', metal: true, collider: false, absoluteY: true },
-    { id: `${id}-nozzle-a`, kind: 'furniture', shape: 'cylinder', position: [x + 0.2, WALK_TOP + 0.45, z], size: [0.12, 0.16, 0.12], yaw: 0, rotation: [0, 0, Math.PI / 2], color: '#2b362a', metal: true, collider: false, absoluteY: true },
-    { id: `${id}-nozzle-b`, kind: 'furniture', shape: 'cylinder', position: [x - 0.2, WALK_TOP + 0.45, z], size: [0.12, 0.16, 0.12], yaw: 0, rotation: [0, 0, Math.PI / 2], color: '#2b362a', metal: true, collider: false, absoluteY: true },
-  ];
-}
+// Plain ball-top hitching posts and hydrants. StreetIronwork.jsx draws them
+// and their colliders; they sit at the curb, clear of the walking line.
+export const STREET_HITCHING_POSTS = [
+  ...Array.from({ length: 6 }, (_, i) => [107.35, -56 + i * 24]),
+  ...Array.from({ length: 6 }, (_, i) => [-80 + i * 26, 96.35]),
+];
+export const STREET_HYDRANTS = [[107.45, 82], [107.45, 126], [-50, 96.45], [171.45, 128]];
 
 // Telegraph pole with four crossarms — the 1890s avenue skyline at eye level.
 function telegraphPole(id, x, z) {
@@ -565,18 +550,7 @@ function buildStreets() {
 
   for (const site of STREET_LAMP_SITES) items.push(...lamp(site.id, site.x, site.z, site.yaw));
 
-  // Sidewalk iron: hitching posts and hydrants on the built side of Fifth
-  // and Central Park South, telegraph poles down the Sixth Avenue stand-in.
-  for (let i = 0; i < 6; i += 1) {
-    items.push(...hitchingPost(`fifth-hitch-${i}`, 108.6, -56 + i * 24));
-    items.push(...hitchingPost(`cps-hitch-${i}`, -80 + i * 26, 97.6));
-  }
-  items.push(
-    ...hydrant('hydrant-fifth-cps', 108.6, 82),
-    ...hydrant('hydrant-fifth-58', 108.6, 126),
-    ...hydrant('hydrant-cps-west', -50, 97.6),
-    ...hydrant('hydrant-madison', 172.6, 128),
-  );
+  // Telegraph poles down the Sixth Avenue stand-in.
   for (let i = 0; i < 3; i += 1) {
     items.push(...telegraphPole(`sixth-pole-${i}`, -47.7, 104 + i * 30));
   }

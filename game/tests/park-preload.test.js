@@ -38,7 +38,7 @@ test('the park warms its set dressing, its trees, and its cast', async () => {
   assert.ok(urls.length > 40, `expected the full park list, got ${urls.length}`);
   assert.equal(new Set(urls).size, urls.length, 'a file is warmed twice');
   // One representative of each stage the warming exists to cover.
-  for (const piece of ['large_park_bench', 'Tree-01', 'horse.glb', 'carriage-driver.glb']) {
+  for (const piece of ['large_park_bench', 'park-tree-elm', 'horse.glb', 'carriage-driver.glb']) {
     assert.ok(urls.some((url) => url.includes(piece)), `${piece} is not warmed`);
   }
   for (const lod of PEDESTRIAN_LOD_FILES) {

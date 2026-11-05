@@ -73,6 +73,7 @@
     "three": "^0.179.1"
   },
   "devDependencies": {
+    "@dgreenheck/ez-tree": "^1.1.0",
     "@gltf-transform/core": "^4.4.2",
     "@gltf-transform/extensions": "^4.4.2",
     "@gltf-transform/functions": "^4.4.2",

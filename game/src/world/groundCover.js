@@ -8,7 +8,7 @@
 
 import { parkProp } from './parkCatalog.js';
 import { modelSize } from './modelPacks.js';
-import { WATER_LEVEL, GATE } from './centralPark.js';
+import { WATER_LEVEL, GATE, PATHS } from './centralPark.js';
 import { terrainHeight, pathsDistance, pondDepth } from './terrain.js';
 
 // The park rectangle, inset so nothing straddles the perimeter railing.
@@ -29,9 +29,13 @@ const GRASS = ['shapespark_plants__Grass-01_23', 'shapespark_plants__Grass-02_24
 const CLOVER = ['shapespark_plants__Clover-01_18', 'shapespark_plants__Clover-03_20', 'shapespark_plants__Clover-05_22'];
 const FLOWERS = ['shapespark_plants__Flowers-01_28', 'shapespark_plants__Flowers-02_26', 'shapespark_plants__Flowers-03_29'];
 const BUSHES = ['shapespark_plants__Bush-01_13', 'shapespark_plants__Bush-02_14', 'shapespark_plants__Bush-03_15'];
-const SPREADING_BUSH = 'shapespark_plants__Bush-05_17';
-const HEDGE = 'shapespark_plants__Hedge-01_12';
 const MEADOW_GRASS = 'meadow_grass';
+// Period shrubs baked by scripts/models/build-park-trees.mjs.
+const PRIVET = 'park-shrub-privet-0';
+const SPIREA = 'park-shrub-spirea-0';
+const SUMAC = 'park-shrub-sumac-0';
+const KNOTWEED = 'park-shrub-knotweed-0';
+const SHRUBS = [PRIVET, SPIREA, SUMAC, KNOTWEED];
 
 // The kit is authored for a garden visualiser, where a grass card is a 1.5m
 // ornamental clump and a clover patch is nearly 2m across. A mown park lawn
@@ -39,8 +43,6 @@ const MEADOW_GRASS = 'meadow_grass';
 // before the per-item jitter.
 const BASE_SCALE = {
   [MEADOW_GRASS]: 1,
-  [HEDGE]: 1,
-  [SPREADING_BUSH]: 0.75,
 };
 const DEFAULT_SCALE = { grass: 0.34, clover: 0.5, flowers: 0.45, bush: 1.0 };
 
@@ -49,6 +51,7 @@ function baseScale(model) {
   if (GRASS.includes(model)) return DEFAULT_SCALE.grass;
   if (CLOVER.includes(model)) return DEFAULT_SCALE.clover;
   if (FLOWERS.includes(model)) return DEFAULT_SCALE.flowers;
+  if (SHRUBS.includes(model)) return 1;
   return DEFAULT_SCALE.bush;
 }
 
@@ -97,8 +100,8 @@ function speciesAt(x, z, roll, bed, variant) {
   // Shrubs only where the bed mask is strong and a walk is not close: a
   // planted bed, rather than bushes sprinkled evenly over the grass.
   if (bed > 0.72 && fromPath > 9) {
-    if (roll < chance * 0.06) return SPREADING_BUSH;
-    if (roll < chance * 0.14) return HEDGE;
+    if (roll < chance * 0.06) return SPIREA;
+    if (roll < chance * 0.14) return PRIVET;
     if (roll < chance * 0.34) return pick(BUSHES, variant);
     if (roll < chance * 0.42) return pick(FLOWERS, variant);
   }
@@ -108,14 +111,19 @@ function speciesAt(x, z, roll, bed, variant) {
   return roll < chance * 0.82 ? pick(GRASS, variant) : pick(CLOVER, variant);
 }
 
+const LAWN_GRASS = ['#b2c290', '#a8ba88', '#bccb9c'];
+
 function tintFor(model, roll) {
+  if (GRASS.includes(model)) return pick(LAWN_GRASS, roll);
   return model === MEADOW_GRASS ? pick(MEADOW, roll) : pick(FOLIAGE, roll);
 }
 
 // Tufts run a short ramp instead of a palette pick, so neighbouring clumps
 // shade into one another rather than sorting into three visible kinds.
-const TUFT_LIGHT = [0xe4, 0xec, 0xc2];
-const TUFT_DARK = [0xa6, 0xc0, 0x8c];
+// Matched to the Grass001 lawn texture, which is darker and greener than
+// the turf these were first tuned against.
+const TUFT_LIGHT = [0xb4, 0xc4, 0x8c];
+const TUFT_DARK = [0x86, 0xa2, 0x66];
 
 function tuftTint(tone) {
   const hex = TUFT_LIGHT.map((light, channel) =>
@@ -209,7 +217,56 @@ export function buildGroundCover({ tuftAmount = 1, tuftSize = 1 } = {}) {
       items.push(item);
     }
   }
+  plantShrubMasses(items);
   return items;
+}
+
+// Authored shrub masses, after Peet (1903): privet at the Plaza entrance,
+// knotweed and spirea along the Pond walks, sumac clumps on the rough edges,
+// and the Dairy's lilacs, shadbush and hydrangea (drawn as privet and spirea).
+function plantShrubMasses(items) {
+  let n = 0;
+  const clump = (model, cx, cz, count, radius) => {
+    for (let k = 0, left = count; k < count * 4 && left > 0; k += 1) {
+      n += 1;
+      const seed = cx * 3.1 + cz * 5.3 + k * 7.7;
+      const angle = hash01(seed) * Math.PI * 2;
+      const r = Math.sqrt(hash01(seed + 1)) * radius;
+      const x = cx + Math.cos(angle) * r;
+      const z = cz + Math.sin(angle) * r;
+      if (pondDepth(x, z) < 0.3 || terrainHeight(x, z) <= WATER_LEVEL + 0.15) continue;
+      if (pathsDistance(x, z) < PATH_CLEARANCE + 0.6) continue;
+      if (Math.hypot(x - GATE.x, z - GATE.z) < GATE.flat + 2) continue;
+      const scale = 0.8 + hash01(seed + 2) * 0.45;
+      const item = parkProp(`shrub-${n}`, model, x, z, hash01(seed + 3) * Math.PI * 2, { collider: false });
+      item.modelScale = scale;
+      item.wind = true;
+      item.far = 80;
+      item.size = modelSize(model).map((value) => value * scale);
+      item.color = pick(FOLIAGE, hash01(seed + 4));
+      items.push(item);
+      left -= 1;
+    }
+  };
+  // Privet banks either side of the Scholars' Gate entrance. The lawn by the
+  // Pond at about (70..75, 56..57) is left open: two posted pedestrians sit
+  // and lie there (pedestrianCatalog.js).
+  for (const [x, z] of [[72, 74], [64, 76], [81, 61], [88, 50], [90, 40]]) clump(PRIVET, x, z, 4, 3);
+  // Along the dry side of the Pond walk and north walk.
+  for (const path of [PATHS[2], PATHS[3]]) {
+    for (let i = 1; i + 1 < path.points.length; i += 2) {
+      const [x, z] = path.points[i];
+      const [px, pz] = path.points[i - 1];
+      const [qx, qz] = path.points[i + 1];
+      const length = Math.hypot(qx - px, qz - pz) || 1;
+      const [nx, nz] = [-(qz - pz) / length, (qx - px) / length];
+      const offset = path.width / 2 + 3.5;
+      const side = pondDepth(x + nx * offset, z + nz * offset) > pondDepth(x - nx * offset, z - nz * offset) ? 1 : -1;
+      clump(hash01(i * 3.1) < 0.6 ? KNOTWEED : SPIREA, x + nx * side * offset, z + nz * side * offset, 3, 2.5);
+    }
+  }
+  for (const [x, z] of [[62, 36], [-62, -12], [-40, 2], [-84, 10], [88, -14], [-88, 70], [30, 74]]) clump(SUMAC, x, z, 3, 3);
+  for (const [x, z, model] of [[22, -40, PRIVET], [38, -41, SPIREA], [36, -56, PRIVET], [20, -55, SPIREA], [27, -38, SPIREA]]) clump(model, x, z, 3, 2.5);
 }
 
 export const groundCoverItems = buildGroundCover();

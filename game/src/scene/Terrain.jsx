@@ -12,6 +12,9 @@ const CENTER_X = (WORLD_BOUNDS.minX + WORLD_BOUNDS.maxX) / 2;
 const CENTER_Z = (WORLD_BOUNDS.minZ + WORLD_BOUNDS.maxZ) / 2;
 // World meters per texture tile.
 const TILE = 3.6;
+// The lawn photo (ambientCG Grass001, 2K) covers less ground, so its blades
+// stay sharp at standing height.
+const LAWN_TILE = 2.6;
 
 function loadRepeating(texture, colorSpace) {
   texture.wrapS = THREE.RepeatWrapping;
@@ -25,9 +28,10 @@ function loadRepeating(texture, colorSpace) {
 // outcrops, wet sand at the pond rim. Blend weights ride a vertex attribute;
 // the same masks that shape the terrain drive them.
 export default function Terrain() {
-  const [grassCol, grassNrm, pathCol, rockCol, streetCol] = useLoader(THREE.TextureLoader, [
+  const [lawnCol, lawnNrm, grassCol, pathCol, rockCol, streetCol] = useLoader(THREE.TextureLoader, [
+    '/textures/lawn_col.webp',
+    '/textures/lawn_nrm.webp',
     '/textures/grass_col.webp',
-    '/textures/grass_nrm.webp',
     '/textures/path_col.webp',
     '/textures/rock_col.webp',
     '/textures/street/carriage-setts_col.webp',
@@ -36,20 +40,22 @@ export default function Terrain() {
   const { geometry, heights } = useMemo(buildTerrainSurface, []);
 
   const material = useMemo(() => {
+    loadRepeating(lawnCol, THREE.SRGBColorSpace);
     loadRepeating(grassCol, THREE.SRGBColorSpace);
     loadRepeating(pathCol, THREE.SRGBColorSpace);
     loadRepeating(rockCol, THREE.SRGBColorSpace);
     loadRepeating(streetCol, THREE.SRGBColorSpace);
-    loadRepeating(grassNrm);
-    grassNrm.repeat.set(WIDTH / TILE, DEPTH / TILE);
+    loadRepeating(lawnNrm);
+    lawnNrm.repeat.set(WIDTH / LAWN_TILE, DEPTH / LAWN_TILE);
 
     const mat = new THREE.MeshStandardMaterial({
-      map: grassCol,
-      normalMap: grassNrm,
+      map: lawnCol,
+      normalMap: lawnNrm,
       normalScale: new THREE.Vector2(0.5, 0.5),
       roughness: 0.95,
     });
     mat.onBeforeCompile = (shader) => {
+      shader.uniforms.dryMap = { value: grassCol };
       shader.uniforms.pathMap = { value: pathCol };
       shader.uniforms.rockMap = { value: rockCol };
       shader.uniforms.streetMap = { value: streetCol };
@@ -57,7 +63,7 @@ export default function Terrain() {
         'attribute vec4 aSplat;\nattribute float aUrban;\nvarying vec4 vSplat;\nvarying float vUrban;\nvarying float vTerrainHeight;\n' +
         shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vSplat = aSplat;\n  vUrban = aUrban;\n  vTerrainHeight=position.y;');
       shader.fragmentShader =
-        'varying vec4 vSplat;\nvarying float vUrban;\nvarying float vTerrainHeight;\nuniform sampler2D pathMap;\nuniform sampler2D rockMap;\nuniform sampler2D streetMap;\n' +
+        'varying vec4 vSplat;\nvarying float vUrban;\nvarying float vTerrainHeight;\nuniform sampler2D dryMap;\nuniform sampler2D pathMap;\nuniform sampler2D rockMap;\nuniform sampler2D streetMap;\n' +
         'float turfHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }\n' +
         'float turfNoise(vec2 p) {\n' +
         '  vec2 i = floor(p); vec2 f = fract(p);\n' +
@@ -70,12 +76,17 @@ export default function Terrain() {
           `{
             vec2 uvT = vMapUv * vec2(${(WIDTH / TILE).toFixed(1)}, ${(DEPTH / TILE).toFixed(1)});
             vec2 wuv = uvT * ${TILE.toFixed(1)};
-            // The same grass tile sampled at two unrelated scales, chosen
-            // per patch by slow noise: the repeat never survives both.
+            // The lawn tile and a turned, slightly larger copy, chosen per
+            // patch by noise, so the repeat never survives. Neither sample is
+            // enlarged much: a magnified photo reads as smeared blades.
+            vec2 lawnUv = wuv / ${LAWN_TILE.toFixed(1)};
             vec3 blended = mix(
-              texture2D(map, uvT).rgb,
-              texture2D(map, uvT * 0.23).rgb,
-              smoothstep(0.25, 0.75, turfNoise(wuv / 17.0)));
+              texture2D(map, lawnUv).rgb,
+              texture2D(map, mat2(0.8, 0.6, -0.6, 0.8) * lawnUv * 0.83 + 0.37).rgb,
+              smoothstep(0.3, 0.7, turfNoise(wuv / 6.0)));
+            // Drier, thinner turf in drifts across the lawn.
+            float dryness = smoothstep(0.5, 0.85, turfNoise(wuv / 23.0) * 0.7 + turfNoise(wuv / 7.0) * 0.3);
+            blended = mix(blended, texture2D(dryMap, uvT).rgb, dryness * 0.6);
             // Lawn patchiness at garden scale: lush to scorched over tens
             // of metres, two octaves so the patches have ragged edges.
             // ('patch' itself is a reserved word in GLSL ES 3.0.)
@@ -124,7 +135,7 @@ export default function Terrain() {
         normal=normalize(mix(groundNormal,normal,grassNormalWeight));`);
     };
     return mat;
-  }, [grassCol, grassNrm, pathCol, rockCol, streetCol]);
+  }, [lawnCol, lawnNrm, grassCol, pathCol, rockCol, streetCol]);
   useEffect(()=>()=>{geometry.dispose();material.dispose();},[geometry,material]);
 
   return (

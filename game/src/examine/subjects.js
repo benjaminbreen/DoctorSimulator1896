@@ -28,6 +28,15 @@ function roll(list, id, salt = 0) {
 
 // Period measure. A physician of 1896 reaches for inches and feet, and a
 // number the player can picture beats a decimal.
+function treeName(ctx) {
+  return ctx.item.tree?.name ?? 'American elm';
+}
+
+function withArticle(name, capital = false) {
+  const article = /^[aeiou]/i.test(name) ? 'an' : 'a';
+  return `${capital ? article[0].toUpperCase() + article.slice(1) : article} ${name}`;
+}
+
 export function measure(metres) {
   const inches = metres * 39.3700787;
   if (inches < 1) return 'under an inch';
@@ -52,7 +61,7 @@ function span(item) {
 // Classification. Every branch reads a field the world builders already set.
 
 const MODEL_CLASSES = [
-  [/grass|clover|flower|bush|meadow|plants__/i, 'plant'],
+  [/grass|clover|flower|bush|meadow|plants__|shrub/i, 'plant'],
   [/bench/i, 'timber'],
   [/lamp|guardrail|railing|fence/i, 'ironwork'],
   [/tree|elm|oak|pine/i, 'tree'],
@@ -163,35 +172,35 @@ const CLASSES = {
   },
 
   tree: {
-    title: () => 'An elm',
-    opening: (ctx) => `A grown elm, the trunk ${ctx.size} through at a man's chest, `
-      + `the bark broken into long ridges. The crown goes up out of sight from here.`,
+    // Park trees carry their common name (world/centralPark.js MIX).
+    title: (ctx) => withArticle(treeName(ctx), true),
+    opening: (ctx) => `A grown ${treeName(ctx)}, the trunk ${ctx.size} through at a man's chest. `
+      + 'The crown goes up out of sight from here.',
     procedures: [
       {
         id: 'bark', label: 'Look at the bark', minutes: 1,
-        observation: () => 'The ridges are deep enough to lay a finger in, and grey-black in the bottom of them '
-          + 'where the city\'s coal smoke has settled. Rubbed, the high parts come up brown.',
+        observation: () => 'The cracks in the bark are grey-black in the bottom '
+          + 'where the city\'s coal smoke has settled. Rubbed, the high parts come up clean.',
         finding: () => ({ label: 'The soot', value: 'Standing in city air, not country air', confidence: 'certain' }),
       },
       {
         id: 'girth', label: 'Judge its age', minutes: 2,
         observation: (ctx) => `Round the trunk is a little over ${measure(ctx.metres * Math.PI)}. `
-          + 'An elm of this stand puts on about an inch of girth a year, which would make it a good deal older than the park it stands in.',
-        finding: () => ({ label: 'Its age', value: 'Older than the park — planted or spared, not seeded here', confidence: 'uncertain' }),
+          + 'A park tree puts on something like an inch of girth a year, so this one was likely set out when the park was made.',
+        finding: () => ({ label: 'Its age', value: 'About as old as the park — planted, not seeded here', confidence: 'uncertain' }),
       },
       {
         id: 'leaf', label: 'Take down a leaf', minutes: 1,
-        observation: (ctx) => `The blade is lopsided at the base, one side running lower than the other, and toothed all round. `
-          + `${roll(['Something has eaten a scallop out of the edge.', 'The underside is furred and holds the dust.', 'A gall the size of a pea sits on the midrib.'], ctx.id, 11)}`,
-        finding: () => ({ label: 'The leaf', value: 'Elm — the uneven base settles it', confidence: 'certain' }),
+        observation: (ctx) => `It is ${withArticle(treeName(ctx))} leaf, green and a little dusty from the drive. `
+          + `${roll(['Something has eaten a scallop out of the edge.', 'The underside holds the dust.', 'A gall the size of a pea sits on the midrib.'], ctx.id, 11)}`,
+        finding: (ctx) => ({ label: 'The leaf', value: `${treeName(ctx)}, by the leaf`, confidence: 'certain' }),
       },
     ],
     facts: (ctx) => [
-      `It is a grown elm with a trunk about ${ctx.size} through, in full June leaf.`,
-      'The bark is broken into long deep ridges, grey-black in the bottoms with coal soot.',
+      `It is ${withArticle(treeName(ctx))} with a trunk about ${ctx.size} through, in full June leaf.`,
+      'The bark is grey-black in its cracks with coal soot.',
       `The girth is a little over ${measure(ctx.metres * Math.PI)}.`,
-      'An elm puts on roughly an inch of girth a year, so this one is likely older than the park around it.',
-      'The leaves are toothed and lopsided at the base, which is how an elm is told.',
+      'Most of the park\'s trees were set out in the 1860s and 1870s.',
       'There is insect damage on some leaves.',
       'Nothing about the tree says who planted it or when.',
     ],

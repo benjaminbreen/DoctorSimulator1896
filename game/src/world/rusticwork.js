@@ -1,10 +1,28 @@
 // Rustic timberwork for the park's summerhouses, framework-free and
 // deterministic: the Kinderberg (the great octagonal children's shelter on
-// its rock), Cop Cot above the Pond's southwest shore, and a small arbor on
-// the Hallett peninsula. Unbarked cedar posts, branch railings, shingle
-// roofs — the Vaux rustic vocabulary, built from instanced poles.
+// its rock), Cop Cot above the Pond's southwest shore, a small arbor on
+// the Hallett peninsula, and the swan boat landing. Unbarked cedar posts,
+// branch railings, shingle roofs — the Vaux rustic vocabulary.
 
 import { terrainHeight } from './terrain.js';
+
+// The swan boat landing: a plank stage on cedar piles from the Pond's south
+// bank, with an open shelter at its head modelled on Vaux's Lake landings.
+// `s` runs out from the bank along DIR; `side` runs across it.
+export const LANDING_ROOT = [1.86, 63.16];
+const DIR = [-0.41, -0.912];
+const WALK_TO = 2.8;
+const HEAD_TO = 6.4;
+const HEAD_W = 3.6;
+const WALK_W = 2.2;
+const DECK_Y = -0.18; // just above the boat's own deck, for stepping across
+const landingPoint = (s, side = 0) => [
+  LANDING_ROOT[0] + DIR[0] * s - DIR[1] * side,
+  LANDING_ROOT[1] + DIR[1] * s + DIR[0] * side,
+];
+const HEAD = landingPoint((WALK_TO + HEAD_TO) / 2);
+// SwanBoat.jsx holds the boat here, broadside to the head, bow to the east.
+export const LANDING_BERTH = { point: landingPoint(HEAD_TO + 1.38), heading: [-DIR[1], DIR[0]] };
 
 // Yaws point each shelter's first entry bay at its approach path.
 export const SHELTERS = [
@@ -15,6 +33,8 @@ export const SHELTERS = [
   // in the 1886 Magnus print of this corner. yaw π/4 puts the entry bay flat
   // toward the street; the plank deck keeps waiting feet off the lawn.
   { id: 'belt-line-stop', x: 66, z: 81.2, yaw: Math.PI / 4, sides: 4, radius: 2.0, postH: 2.5, postR: 0.13, roofRise: 1.35, overhang: 0.85, entries: [0], platform: 3.55 },
+  // Bay 0 opens to the walk, bay 2 to the berth; benches on the other two.
+  { id: 'boat-landing', x: HEAD[0], z: HEAD[1], yaw: Math.atan2(-DIR[1], -DIR[0]) - Math.PI / 4, sides: 4, radius: 2.3, postH: 2.3, postR: 0.12, roofRise: 1.2, overhang: 0.6, entries: [0, 2], floor: DECK_Y },
 ];
 
 function hash01(seed) {
@@ -57,7 +77,7 @@ function buildShelter(shelter, index) {
   const branches = [];
   const seats = [];
   const colliders = [];
-  const ground = terrainHeight(shelter.x, shelter.z);
+  const ground = shelter.floor ?? terrainHeight(shelter.x, shelter.z);
   const { sides, radius, postH, postR, roofRise, overhang, yaw } = shelter;
   let n = index * 1000;
   const seed = () => {
@@ -75,7 +95,8 @@ function buildShelter(shelter, index) {
   for (let k = 0; k < sides; k += 1) {
     const [x, z] = corner(k);
     const lean = (hash01(seed()) - 0.5) * 0.1;
-    poles.push(pole([x - lean, ground - 0.8, z], [x + lean, topY, z], postR, cedarTint(seed())));
+    const foot = Math.min(ground, terrainHeight(x, z)) - 0.8;
+    poles.push(pole([x - lean, foot, z], [x + lean, topY, z], postR, cedarTint(seed())));
     colliders.push({ type: 'cylinder', p: [x, ground + postH / 2, z], radius: postR + 0.05, height: postH });
   }
 
@@ -209,10 +230,70 @@ function buildShelter(shelter, index) {
   return { poles, branches, seats, colliders, roofs };
 }
 
+// The stage itself; the shelter on its head is an ordinary SHELTERS entry.
+// Planks go across, each its own box so the gaps read; piles run down to
+// the pond bed, and on the walk they carry on up as the railing posts.
+function buildLanding() {
+  const poles = [];
+  const branches = [];
+  const seats = [];
+  const colliders = [];
+  let n = 9000;
+  const tint = () => cedarTint((n += 1) * 3.7);
+  const deckYaw = Math.atan2(DIR[0], DIR[1]);
+  const at = (s, side, y) => {
+    const [x, z] = landingPoint(s, side);
+    return [x, y, z];
+  };
+  const widthAt = (s) => (s < WALK_TO ? WALK_W : HEAD_W);
+
+  for (let s = 0.15; s < HEAD_TO; s += 0.3) {
+    seats.push({ p: at(s, 0, DECK_Y - 0.035), r: [0, deckYaw, 0], s: [widthAt(s), 0.07, 0.27], tint: tint() });
+  }
+  // Stringers under the planks, and a cap beam on every row of piles.
+  for (const side of [-1, 1]) {
+    for (const [from, to, w] of [[0, WALK_TO, WALK_W], [WALK_TO, HEAD_TO, HEAD_W]]) {
+      seats.push({ p: at((from + to) / 2, side * (w / 2 - 0.2), DECK_Y - 0.14), r: [0, deckYaw, 0], s: [0.12, 0.16, to - from], tint: tint() });
+    }
+  }
+  const pileRows = [[0.35, WALK_W, 0.95], [1.6, WALK_W, 0.95], [WALK_TO, WALK_W, 0.95], [WALK_TO + 0.12, HEAD_W, 0], [(WALK_TO + HEAD_TO) / 2, HEAD_W, 0], [HEAD_TO - 0.12, HEAD_W, 0.55]];
+  for (const [s, w, rise] of pileRows) {
+    seats.push({ p: at(s, 0, DECK_Y - 0.15), r: [0, deckYaw, 0], s: [w + 0.16, 0.14, 0.16], tint: tint() });
+    for (const side of [-1, 1]) {
+      const [x, , z] = at(s, side * (w / 2 + 0.06), 0);
+      const top = DECK_Y + (rise || -0.08);
+      // Mooring posts at the outer corners stand thicker than the rest.
+      const radius = rise === 0.55 ? 0.15 : 0.11;
+      poles.push(pole([x, terrainHeight(x, z) - 0.4, z], [x, top, z], radius, tint()));
+      if (rise) colliders.push({ type: 'cylinder', p: [x, DECK_Y + rise / 2, z], radius: radius + 0.04, height: rise });
+    }
+  }
+  // Walk railings: top and bottom rail with the X-lattice between posts.
+  const walkPosts = pileRows.filter(([s, w, rise]) => w === WALK_W && rise);
+  for (const side of [-1, 1]) {
+    const across = side * (WALK_W / 2 + 0.06);
+    for (let i = 0; i + 1 < walkPosts.length; i += 1) {
+      const [s1] = walkPosts[i];
+      const [s2] = walkPosts[i + 1];
+      const rail = (t1, y1, t2, y2, r) => branches.push(pole(
+        at(s1 + (s2 - s1) * t1, across, DECK_Y + y1), at(s1 + (s2 - s1) * t2, across, DECK_Y + y2), r, tint(),
+      ));
+      rail(0, 0.88, 1, 0.88, 0.05);
+      rail(0, 0.14, 1, 0.14, 0.045);
+      rail(0.06, 0.16, 0.94, 0.86, 0.038);
+      rail(0.06, 0.86, 0.94, 0.16, 0.038);
+    }
+    colliders.push({ type: 'box', p: at(WALK_TO / 2, across, DECK_Y + 0.5), size: [0.14, 1.0, WALK_TO], yaw: deckYaw });
+  }
+  // A fender log along the berth face, where the boat comes alongside.
+  branches.push(pole(at(HEAD_TO + 0.1, -HEAD_W / 2, DECK_Y - 0.2), at(HEAD_TO + 0.1, HEAD_W / 2, DECK_Y - 0.2), 0.09, tint()));
+  colliders.push({ type: 'box', p: at(HEAD_TO / 2, 0, DECK_Y - 0.05), size: [HEAD_W, 0.1, HEAD_TO], yaw: deckYaw });
+  return { poles, branches, seats, colliders, roofs: [] };
+}
+
 export function buildShelters() {
   const all = { poles: [], branches: [], seats: [], colliders: [], roofs: [] };
-  SHELTERS.forEach((shelter, index) => {
-    const built = buildShelter(shelter, index);
+  [...SHELTERS.map(buildShelter), buildLanding()].forEach((built) => {
     all.poles.push(...built.poles);
     all.branches.push(...built.branches);
     all.seats.push(...built.seats);

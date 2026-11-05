@@ -198,7 +198,7 @@ Screenshots and results stay local under `artifacts/performance/`.
   less often while preserving its accumulated simulation time.
 - Tree instances are grouped by geographic cell for culling, with simplified
   distant geometry and hysteresis to prevent repeated LOD swaps near a boundary.
-  `scripts/models/build-tree-lods.mjs` rebuilds the six credited derivatives.
+  `scripts/models/build-park-trees.mjs` bakes the park trees' near and `-lod` files.
 - Water reflections skip negligible screen coverage, refresh less often, and
   omit small scenery and redundant shadow rendering.
 - The diagnostic overlay reports p95/p99 frame time and stalls. Adaptive
