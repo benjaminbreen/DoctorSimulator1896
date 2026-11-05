@@ -15,6 +15,10 @@ export const hazeUniforms = {
   hazeParams: { value: new Float32Array(4) },
   hazeSunDir: { value: new Float32Array(3) },
   hazeSunColor: { value: new Float32Array(3) },
+  // Cloud shadows. x: darkening (0 turns them off), y: pattern frequency per
+  // metre, z/w: drift offset. cloudShade2 x: coverage threshold, y: softness.
+  cloudShade: { value: new Float32Array(4) },
+  cloudShade2: { value: new Float32Array(2) },
 };
 
 for (const shader of Object.values(THREE.ShaderLib)) {
@@ -48,6 +52,18 @@ THREE.ShaderChunk.fog_pars_fragment = /* glsl */ `
     uniform vec4 hazeParams;
     uniform vec3 hazeSunDir;
     uniform vec3 hazeSunColor;
+    uniform vec4 cloudShade;
+    uniform vec2 cloudShade2;
+    float cloudShadeHash(vec2 p) {
+      return fract(sin(dot(p, vec2(41.31, 289.17))) * 43758.5453);
+    }
+    float cloudShadeNoise(vec2 p) {
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+      vec2 u = f * f * (3.0 - 2.0 * f);
+      return mix(mix(cloudShadeHash(i), cloudShadeHash(i + vec2(1.0, 0.0)), u.x),
+        mix(cloudShadeHash(i + vec2(0.0, 1.0)), cloudShadeHash(i + vec2(1.0, 1.0)), u.x), u.y);
+    }
   #else
     uniform float fogNear;
     uniform float fogFar;
@@ -90,8 +106,28 @@ THREE.ShaderChunk.fog_fragment = /* glsl */ `
 #endif
 `;
 
+// Cloud shadows go in after lighting and before tone mapping, so they remove
+// light rather than paint grey over the finished colour. Blue is left behind
+// more than red: ground in a cloud's shadow is lit by the sky and reads cool.
+// Pattern and approach from the Young Darwin game's fogAtmosphere.js.
+THREE.ShaderChunk.opaque_fragment = THREE.ShaderChunk.opaque_fragment.replace(
+  'gl_FragColor = vec4( outgoingLight, diffuseColor.a );',
+  `gl_FragColor = vec4( outgoingLight, diffuseColor.a );
+#if defined( USE_FOG ) && defined( FOG_EXP2 )
+  if (cloudShade.x > 0.0) {
+    vec2 cloudP = (cameraPosition.xz + vFogWorldOffset.xz) * cloudShade.y + cloudShade.zw;
+    float cloudField = 0.62 * cloudShadeNoise(cloudP)
+      + 0.26 * cloudShadeNoise(cloudP * 2.13 + vec2(11.7, 5.3))
+      + 0.12 * cloudShadeNoise(cloudP * 4.41 + vec2(3.1, 19.4));
+    float cloudCover = smoothstep(cloudShade2.x, cloudShade2.x + cloudShade2.y, cloudField);
+    gl_FragColor.rgb *= max(vec3(0.0), 1.0 - cloudShade.x * cloudCover * vec3(1.12, 1.0, 0.72));
+  }
+#endif`,
+);
+
 export function clearHaze() {
   hazeUniforms.hazeParams.value.fill(0);
   hazeUniforms.hazeSunDir.value.fill(0);
   hazeUniforms.hazeSunColor.value.fill(0);
+  hazeUniforms.cloudShade.value.fill(0);
 }

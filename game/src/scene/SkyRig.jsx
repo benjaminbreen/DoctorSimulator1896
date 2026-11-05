@@ -28,10 +28,18 @@ const HAZE_SMOKE = [0.54, 0.5, 0.43];
 const HAZE_SMOKE_SHARE = 0.7;
 // Scale height of about 30m above the park's low ground at y = 0.
 const HAZE_FALLOFF = 0.033;
-const HAZE_LINEAR = 0.85;
+// A large linear share or floor fills the middle distance evenly and reads
+// as a fake fade-out; kept small so haze mostly builds with real distance.
+const HAZE_LINEAR = 0.2;
 const HAZE_SUN_EXPONENT = 6;
 const HAZE_SUN_GLOW = 0.35;
-const HAZE_FLOOR = 0.2;
+const HAZE_FLOOR = 0.05;
+// Cloud shadows: blobs about 70 m across, darkening sunlit ground by up to
+// 0.38 in linear light. Drift follows the cloud dome's own direction.
+const CLOUD_SHADE_METRES = 70;
+const CLOUD_SHADE_STRENGTH = 0.38;
+const CLOUD_DRIFT = [0.96, 0.27];
+const cloudDrift = [0, 0];
 export default function SkyRig({
   config,
   runtime,
@@ -121,8 +129,8 @@ void main() {`,
           // far rooftops dissolve into it instead of cutting against blue.
           float hazeSun = pow(max(dot(direction, hazeSunDir), 0.0), max(hazeParams.z, 1.0));
           vec3 hazeLinear = uHazeColor + hazeSunColor * hazeSun;
-          float horizonHaze = 1.0 - smoothstep(-0.02, 0.2, direction.y);
-          linear = mix(linear, hazeLinear, horizonHaze * horizonHaze * 0.85 * step(1e-4, hazeParams.x));
+          float horizonHaze = 1.0 - smoothstep(-0.02, 0.1, direction.y);
+          linear = mix(linear, hazeLinear, horizonHaze * horizonHaze * 0.6 * step(1e-4, hazeParams.x));
           float luma = dot(linear, vec3(0.2126, 0.7152, 0.0722));
           gl_FragColor.rgb = max(mix(vec3(luma), linear, uSkySaturation), vec3(0.0));
         }
@@ -295,6 +303,17 @@ void main() {`,
       const glow = daylight * HAZE_SUN_GLOW * (1 + golden * 0.6);
       const sunColor = sunRef.current?.color ?? SUN_DAY;
       hazeUniforms.hazeSunColor.value.set([sunColor.r * glow, sunColor.g * glow, sunColor.b * glow]);
+      // Shadows need direct sun through broken cloud: none under a clear sky
+      // or a closed deck, and they fade as the sun drops.
+      const broken = Math.min(1, values.cloudCover / 0.3) * Math.max(0, 1 - Math.max(0, values.cloudCover - 0.75) / 0.25);
+      const sunUp = THREE.MathUtils.smoothstep(direction[1], 0.05, 0.2);
+      const frequency = 1 / CLOUD_SHADE_METRES;
+      const step = 7 * values.cloudSpeed * frequency * Math.min(delta, 0.1);
+      cloudDrift[0] = (cloudDrift[0] + CLOUD_DRIFT[0] * step) % 1024;
+      cloudDrift[1] = (cloudDrift[1] + CLOUD_DRIFT[1] * step) % 1024;
+      hazeUniforms.cloudShade.value.set([CLOUD_SHADE_STRENGTH * broken * sunUp * daylight * (1 - golden * 0.5), frequency, cloudDrift[0], cloudDrift[1]]);
+      // More cover shades more ground; the fbm spreads about 0.2 around 0.5.
+      hazeUniforms.cloudShade2.value.set([0.66 - values.cloudCover * 0.22, 0.09]);
     }
     // environmentIntensity belongs to SkyEnvironment, which owns the probe.
   });

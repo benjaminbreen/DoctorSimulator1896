@@ -85,12 +85,12 @@ test('Central Park starts with the approved outdoor art direction', () => {
   assert.equal(runtime.values.groundBounce, 0.4);
   assert.equal(runtime.values.outdoorShadowDistance, 32);
   assert.equal(runtime.values.exposure, 1.0);
-  assert.equal(runtime.values.toneMapping, 'ACESFilmic');
+  assert.equal(runtime.values.toneMapping, 'AgX');
 });
 
 test('reset restores the outdoor preset without changing the game clock', () => {
   const runtime = createTuningRuntime(settingsSchema);
-  runtime.set('toneMapping', 'AgX');
+  runtime.set('toneMapping', 'Neutral');
   runtime.set('sunIntensity', 2);
   runtime.set('skyFill', 2);
   runtime.set('groundBounce', 2);
@@ -100,7 +100,7 @@ test('reset restores the outdoor preset without changing the game clock', () => 
 
   runtime.resetToDefaults();
 
-  assert.equal(runtime.values.toneMapping, 'ACESFilmic');
+  assert.equal(runtime.values.toneMapping, 'AgX');
   assert.equal(runtime.values.sunIntensity, 1.25);
   assert.equal(runtime.values.skyFill, 1.6);
   assert.equal(runtime.values.groundBounce, 0.4);
