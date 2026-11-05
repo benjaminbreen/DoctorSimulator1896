@@ -25,7 +25,7 @@ import { freezeStaticTransforms } from './lib/staticScene.js';
 // period photos; nothing here should read as metal. The rowhouse styles may
 // carry shutters, while gray ashlar gets the heavier lintels seen at distance.
 const FRAME_COLORS = ['#514334', '#574231', '#625745', '#44362a', '#6d6655', '#4a4841'];
-const SILL_COLORS = ['#57453a', '#5e3b2e', '#726a5c', '#4c433b', '#a8a191', '#77746b'];
+const SILL_COLORS = ['#57453a', '#5e3b2e', '#968c7a', '#4c433b', '#a8a191', '#8e8879'];
 const SHUTTER_STYLES = new Set([0, 3, 5]);
 const CLOTH_COLORS = ['#e8e2d4', '#ddd3bf', '#cfc8b8', '#8d95a8', '#b9a08a'];
 const SHADE_COLORS = ['#998c75', '#8d816c', '#a99c82', '#817765'];
@@ -149,42 +149,111 @@ function makeRecessShadeTexture() {
 // Window-box planting, as two alpha-cut layers: a mass of leaves and the
 // blooms over it. Both are drawn white so the per-instance colour can carry
 // the green and the geranium red separately.
+// Geranium umbels in a window box, shared by the leaf and bloom textures so
+// the flower heads sit on their own stems.
+const UMBELS = Array.from({ length: 7 }, (_, i) => [
+  12 + hash01(i * 5.3 + 2.1) * 104,
+  14 + hash01(i * 9.1 + 0.9) * 26,
+]);
+
+// Rounded geranium leaves with a darker zone, lit from above, and stems up
+// to the flower heads. Greyscale: the instance colour supplies the green.
 function makeFoliageTexture() {
   const canvas = document.createElement('canvas');
-  canvas.width = 64;
-  canvas.height = 48;
+  canvas.width = 128;
+  canvas.height = 96;
   const context = canvas.getContext('2d');
-  context.fillStyle = '#ffffff';
-  for (let i = 0; i < 24; i += 1) {
-    const x = 4 + hash01(i * 3.1 + 0.7) * 56;
-    const y = 12 + hash01(i * 7.7 + 1.3) * 32;
-    const r = 5 + hash01(i * 2.3) * 5;
+  context.strokeStyle = '#b8b8b8';
+  context.lineWidth = 1.5;
+  for (const [x, y] of UMBELS) {
     context.beginPath();
-    context.ellipse(x, y, r, r * 0.7, hash01(i * 1.9) * Math.PI, 0, Math.PI * 2);
+    context.moveTo(x + (hash01(x) - 0.5) * 10, 90);
+    context.quadraticCurveTo(x + (hash01(y) - 0.5) * 14, (y + 90) / 2, x, y + 4);
+    context.stroke();
+  }
+  for (let i = 0; i < 46; i += 1) {
+    const x = 6 + hash01(i * 3.1 + 0.7) * 116;
+    const y = 40 + Math.pow(hash01(i * 7.7 + 1.3), 0.7) * 50;
+    const r = 6 + hash01(i * 2.3) * 6;
+    const light = Math.round(150 + (1 - (y - 40) / 50) * 70 + hash01(i * 4.4) * 35);
+    context.fillStyle = `rgb(${light},${light},${light})`;
+    context.beginPath();
+    context.arc(x, y, r, 0, Math.PI * 2);
     context.fill();
+    context.strokeStyle = `rgba(60,60,60,${(0.1 + hash01(i * 5.9) * 0.1).toFixed(2)})`;
+    context.lineWidth = r * 0.4;
+    context.beginPath();
+    context.arc(x, y, r * 0.55, 0, Math.PI * 2);
+    context.stroke();
   }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
 }
 
+// Each head is a dome of small five-petal florets, paler on top.
 function makeBloomTexture() {
   const canvas = document.createElement('canvas');
-  canvas.width = 64;
-  canvas.height = 48;
+  canvas.width = 128;
+  canvas.height = 96;
   const context = canvas.getContext('2d');
-  context.fillStyle = '#ffffff';
-  for (let i = 0; i < 10; i += 1) {
-    const x = 6 + hash01(i * 5.3 + 2.1) * 52;
-    const y = 8 + hash01(i * 9.1 + 0.9) * 24;
-    const r = 2.4 + hash01(i * 4.7) * 1.9;
-    context.beginPath();
-    context.arc(x, y, r, 0, Math.PI * 2);
-    context.fill();
+  UMBELS.forEach(([cx, cy], head) => {
+    for (let i = 0; i < 16; i += 1) {
+      const angle = hash01(head * 31 + i * 1.7) * Math.PI * 2;
+      const out = Math.sqrt(hash01(head * 17 + i * 2.9)) * 8;
+      const x = cx + Math.cos(angle) * out;
+      const y = cy + Math.sin(angle) * out * 0.8;
+      const light = Math.round(175 + (1 - (y - cy + 8) / 16) * 60 + hash01(head + i * 3.3) * 20);
+      context.fillStyle = `rgb(${light},${light},${light})`;
+      for (let petal = 0; petal < 5; petal += 1) {
+        const turn = (petal / 5) * Math.PI * 2 + angle;
+        context.beginPath();
+        context.arc(x + Math.cos(turn) * 1.4, y + Math.sin(turn) * 1.4, 1.3, 0, Math.PI * 2);
+        context.fill();
+      }
+    }
+  });
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+// Soft vertical folds for the muslin and the washing on the line.
+function makeClothTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 4;
+  const context = canvas.getContext('2d');
+  for (let x = 0; x < 64; x += 1) {
+    const fold = Math.sin(x * 0.55) * 0.6 + Math.sin(x * 1.31 + 1) * 0.4;
+    const light = Math.round(212 + fold * 40);
+    context.fillStyle = `rgb(${light},${light},${light})`;
+    context.fillRect(x, 0, 1, 4);
   }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
+}
+
+// Panes differ: each picks up its own glint of sky and a reflected roofline
+// from across the street at its own height. Seeded per pane from the
+// instance position, so it costs no attributes or extra draws.
+function varyGlass(material) {
+  material.onBeforeCompile = (shader) => {
+    shader.vertexShader = 'varying float vPaneSeed;\n' + shader.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+      vPaneSeed = fract(sin(dot(instanceMatrix[3].xyz, vec3(12.9898, 78.233, 37.719))) * 43758.5453);`);
+    shader.fragmentShader = 'varying float vPaneSeed;\n' + shader.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+      float paneSeed = vPaneSeed;
+      float roofStep = floor(vMapUv.x * 3.0 + paneSeed * 9.0);
+      float roofline = 0.25 + paneSeed * 0.45 + 0.07 * (fract(sin(roofStep * 91.7 + paneSeed * 13.0) * 43758.5453) - 0.5);
+      diffuseColor.rgb *= mix(0.72, 1.0, smoothstep(roofline - 0.03, roofline + 0.03, vMapUv.y));
+      float glintAt = vMapUv.x * 0.45 + vMapUv.y - (0.25 + fract(paneSeed * 7.3) * 1.3);
+      float glint = smoothstep(0.0, 0.04, glintAt) * (1.0 - smoothstep(0.06, 0.18, glintAt));
+      diffuseColor.rgb += glint * 0.08 * step(0.45, fract(paneSeed * 3.1));
+      diffuseColor.rgb *= 0.86 + fract(paneSeed * 13.7) * 0.28;`);
+  };
+  material.customProgramCacheKey = () => 'vary-glass';
+  return material;
 }
 
 // Striped awning canvas with a scalloped valance cut into the bottom edge.
@@ -222,6 +291,120 @@ function makeCheekGeometry() {
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
   return geometry;
+}
+
+// Dirt washed off a sill by rain: a soft stain directly below it, darkest
+// under the sill and fading down and out to the sides. Computed per pixel
+// so it stays smooth; alpha only, the material is black.
+function makeSillWashTexture() {
+  const size = 64;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext('2d');
+  const image = context.createImageData(size, size);
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const across = Math.abs((x + 0.5) / size - 0.5) * 2;
+      const down = (y + 0.5) / size;
+      // A slight unevenness so the lower edge is not a straight line.
+      const reach = 0.85 + 0.1 * Math.sin(x * 0.17 + 1.2);
+      const sides = 1 - Math.pow(Math.min(1, across), 3);
+      const fade = Math.pow(Math.max(0, 1 - down / reach), 1.6);
+      const at = (y * size + x) * 4;
+      image.data[at] = 255;
+      image.data[at + 1] = 255;
+      image.data[at + 2] = 255;
+      image.data[at + 3] = Math.round(255 * sides * fade);
+    }
+  }
+  context.putImageData(image, 0, 0);
+  return new THREE.CanvasTexture(canvas);
+}
+
+// Grain for the dressed-stone and painted trim. Red holds soft blotches and
+// fine tooling; green varies only across x, so a lookup along one row gives
+// vertical rain streaks. Data texture, read in world space by weatherTrim.
+function makeTrimGrainTexture() {
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext('2d');
+  context.fillStyle = 'rgb(128,128,0)';
+  context.fillRect(0, 0, size, size);
+  // Blotches drawn at each wrap offset so the tile repeats without a seam.
+  const blot = (x, y, radius, value, alpha) => {
+    for (const ox of [-size, 0, size]) {
+      for (const oy of [-size, 0, size]) {
+        const gradient = context.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, radius);
+        gradient.addColorStop(0, `rgba(${value},128,0,${alpha})`);
+        gradient.addColorStop(1, `rgba(${value},128,0,0)`);
+        context.fillStyle = gradient;
+        context.fillRect(x + ox - radius, y + oy - radius, radius * 2, radius * 2);
+      }
+    }
+  };
+  for (let index = 0; index < 70; index += 1) {
+    blot(hash01(index * 1.7) * size, hash01(index * 2.9) * size, 14 + hash01(index * 4.3) * 40,
+      hash01(index * 6.1) < 0.5 ? 60 : 200, 0.22);
+  }
+  const image = context.getImageData(0, 0, size, size);
+  const streaks = Array.from({ length: size }, (_, x) => {
+    const wide = Math.sin(x * 0.11 + 1.3) * 0.5 + Math.sin(x * 0.37) * 0.3;
+    return Math.max(0, Math.min(255, 128 + wide * 70 + (hash01(x * 3.7) - 0.5) * 90));
+  });
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const at = (y * size + x) * 4;
+      image.data[at] = Math.max(0, Math.min(255, image.data[at] + (hash01(at * 0.37) - 0.5) * 50));
+      image.data[at + 1] = streaks[x];
+    }
+  }
+  context.putImageData(image, 0, 0);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.anisotropy = 4;
+  return texture;
+}
+
+// Weathers the plain instanced trim boxes in the shader, so the street keeps
+// its draw calls: stone grain in world space, worn light arrises, dirt on
+// upper faces, soot streaks down the fronts, and shade where trim meets the
+// wall. `edges` assumes the unit box centred on the origin.
+function weatherTrim(material, grain, edges = true) {
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uTrimGrain = { value: grain };
+    shader.vertexShader = 'varying vec3 vTrimWorld;\nvarying vec3 vTrimNormal;\nvarying vec3 vTrimFace;\nvarying vec3 vTrimLocal;\nvarying vec3 vTrimSize;\n'
+      + shader.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+        mat4 trimMatrix = modelMatrix * instanceMatrix;
+        vTrimWorld = (trimMatrix * vec4(transformed, 1.0)).xyz;
+        vTrimNormal = normalize(mat3(trimMatrix) * objectNormal);
+        vTrimFace = abs(objectNormal);
+        vTrimLocal = position;
+        vTrimSize = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));`);
+    shader.fragmentShader = 'uniform sampler2D uTrimGrain;\nvarying vec3 vTrimWorld;\nvarying vec3 vTrimNormal;\nvarying vec3 vTrimFace;\nvarying vec3 vTrimLocal;\nvarying vec3 vTrimSize;\n'
+      + shader.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+        vec3 trimAxis = abs(vTrimNormal);
+        bool trimTop = trimAxis.y > 0.6;
+        vec2 trimUv = trimTop ? vTrimWorld.xz : (trimAxis.x > trimAxis.z ? vTrimWorld.zy : vTrimWorld.xy);
+        float grain = texture2D(uTrimGrain, trimUv * 0.7).r;
+        diffuseColor.rgb *= 0.8 + grain * 0.4;
+        ${edges ? `
+        vec3 toFace = (0.5 - abs(vTrimLocal)) * vTrimSize + step(0.6, vTrimFace) * 9.0;
+        float arris = 1.0 - smoothstep(0.003, 0.016, min(toFace.x, min(toFace.y, toFace.z)));
+        diffuseColor.rgb *= 1.0 + arris * 0.28;
+        float fromWall = (vTrimLocal.z + 0.5) * vTrimSize.z;
+        diffuseColor.rgb *= mix(0.62, 1.0, mix(smoothstep(0.0, 0.06, fromWall), 1.0, vTrimFace.z));
+        float below = 0.5 - vTrimLocal.y;` : 'float below = 0.5;'}
+        if (trimTop && vTrimNormal.y > 0.0) diffuseColor.rgb *= 0.66 + grain * 0.24;
+        float streak = texture2D(uTrimGrain, vec2(trimUv.x * 0.35, 0.5)).g;
+        diffuseColor.rgb *= 1.0 - (1.0 - trimAxis.y) * smoothstep(0.5, 0.9, streak) * below * 0.22;
+        if (vTrimNormal.y < -0.6) diffuseColor.rgb *= 0.7;`);
+  };
+  material.customProgramCacheKey = () => `weather-trim-${edges}`;
+  return material;
 }
 
 const scratchMatrix = new THREE.Matrix4();
@@ -265,6 +448,7 @@ export default function WindowField({ items, runtime }) {
   const meshes = useMemo(() => {
     const openings = [];
     const recessShades = [];
+    const sillWashes = [];
     const glass = [];
     const litGlass = [];
     const frames = [];
@@ -401,10 +585,11 @@ export default function WindowField({ items, runtime }) {
               openings, ...place(u, shadeMid, 0.052),
               face.yaw, wM * 0.88, shadeH, 1, shadeColor,
             );
-            pushInstance(
-              trimBoxes, ...place(u, win.y + win.h * shadeRatio, 0.064),
-              face.yaw, wM * 0.91, 0.025, 0.025, jitterColor('#675945', seed + win.col, 0.04),
-            );
+            const [rx, ry, rz] = place(u, win.y + win.h * shadeRatio, 0.064);
+            pushInstance(trimBoxes, rx, ry, rz, face.yaw, wM * 0.91, 0.025, 0.025, jitterColor('#675945', seed + win.col, 0.04));
+            // The pull cord and its ring hang from the middle of the roller.
+            pushInstance(trimBoxes, rx, ry - 0.07, rz, face.yaw, 0.012, 0.12, 0.012, '#cfc5ad');
+            pushInstance(railings, rx, ry - 0.14, rz, face.yaw, 0.035, 0.035, 0.012, '#9c8550');
           } else if (!openSash && !shutClosed) {
             const curtainRoll = hash01(seed * 1.17 + faceIndex * 17.3 + (win.floor ?? 3) * 2.3 + win.col * 9.7);
             if (curtainRoll < 0.3) {
@@ -452,33 +637,49 @@ export default function WindowField({ items, runtime }) {
             }
           }
 
-          // Projecting stone sill and the heavier hood lintel above.
-          if (upperFloor || streetFront) {
-            const [lx, ly, lz] = place(u, win.y + win.h + 3, 0.08);
-            pushInstance(
-              trimBoxes, lx, ly, lz, face.yaw,
-              wM * (serviceFace ? 1.08 : 1.2), serviceFace ? 0.07 : 0.1,
-              serviceFace ? 0.1 : 0.16, sillColor,
-            );
-            const [hx, hy, hz] = place(u, win.y - 4, 0.09);
-            const strongBrownstoneLintel = streetFront && (style === 0 || style === 3 || style === 5);
-            pushInstance(
-              trimBoxes, hx, hy, hz, face.yaw,
-              wM * (serviceFace ? 1.1 : strongBrownstoneLintel ? 1.48 : 1.35),
-              serviceFace ? 0.075 : strongBrownstoneLintel ? 0.24 : 0.14,
-              serviceFace ? 0.11 : strongBrownstoneLintel ? 0.23 : 0.18,
-              sillColor,
-            );
+          // Stone surround in metres, built so its pieces meet: jambs run from
+          // the sill's top to the lintel's underside, and on the street faces
+          // a thin cap projects over the lintel.
+          const jambWidth = ornateFace ? (style === 1 ? 0.045 : style === 4 ? 0.085 : 0.065) : 0;
+          const [, topY] = place(u, win.y, 0);
+          const [, bottomY] = place(u, win.y + win.h, 0);
+          const jambTop = topY + 0.04;
+          const jambBottom = bottomY - 0.02;
+          const outer = wM * 1.08 + jambWidth * 2;
+          if (ornateFace) {
+            const jambColor = jitterColor(sillColor, seed + win.col * 3.7, 0.035);
+            for (const side of [-1, 1]) {
+              const jambU = u + (side * (wM * 0.54 + jambWidth / 2)) / faceWidth;
+              const [jx, , jz] = place(jambU, 0, 0.06);
+              pushInstance(trimBoxes, jx, (jambTop + jambBottom) / 2, jz, face.yaw, jambWidth, jambTop - jambBottom, 0.12, jambColor);
+            }
           }
-
-          // Narrow returns make the glass sit within a stone opening. They
-          // join the existing trim batch, keeping material draw calls fixed.
-          if(ornateFace){
-            const jambWidth=style===1?.045:style===4?.085:.065;
-            const jambColor=jitterColor(sillColor,seed+win.col*3.7,.035);
-            for(const side of [-1,1]){
-              const jambU=u+side*(wM*.54+jambWidth/2)/faceWidth;
-              pushInstance(trimBoxes,...place(jambU,win.y+win.h/2,.06),face.yaw,jambWidth,hM*1.07,.12,jambColor);
+          if (upperFloor || streetFront) {
+            const sillH = serviceFace ? 0.07 : 0.1;
+            const [sx2, , sz2] = place(u, 0, 0.08);
+            pushInstance(
+              trimBoxes, sx2, jambBottom - sillH / 2, sz2, face.yaw,
+              outer + (serviceFace ? 0.06 : 0.14), sillH, serviceFace ? 0.1 : 0.16, sillColor,
+            );
+            const washH = 0.25 + hash01(seed * 1.9 + win.col * 3.1 + (win.floor ?? 0) * 7.3) * 0.25;
+            const [wx, , wz] = place(u, 0, 0.004);
+            pushInstance(sillWashes, wx, jambBottom - sillH - washH / 2, wz, face.yaw, outer, washH, 1, '#000000');
+            const strongBrownstoneLintel = streetFront && (style === 0 || style === 3 || style === 5);
+            const lintelH = serviceFace ? 0.075 : strongBrownstoneLintel ? 0.24 : 0.14;
+            const lintelBase = serviceFace ? topY + 0.02 : jambTop;
+            const [hx, , hz] = place(u, 0, 0.09);
+            pushInstance(
+              trimBoxes, hx, lintelBase + lintelH / 2, hz, face.yaw,
+              outer + (serviceFace ? 0.06 : strongBrownstoneLintel ? 0.2 : 0.1), lintelH,
+              serviceFace ? 0.11 : strongBrownstoneLintel ? 0.23 : 0.18, sillColor,
+            );
+            if (ornateFace) {
+              const [kx, , kz] = place(u, 0, 0.11);
+              pushInstance(
+                trimBoxes, kx, lintelBase + lintelH + 0.025, kz, face.yaw,
+                outer + (strongBrownstoneLintel ? 0.3 : 0.18), 0.05,
+                strongBrownstoneLintel ? 0.27 : 0.22, jitterColor(sillColor, seed + win.col * 1.9, 0.03),
+              );
             }
           }
 
@@ -534,12 +735,17 @@ export default function WindowField({ items, runtime }) {
             );
             // Leaves, then blooms a centimetre proud of them.
             const [fx, , fz] = place(u, win.y + win.h + 1, 0.15);
-            pushInstance(plants, fx, py + 0.19, fz, face.yaw, boxW * 1.06, 0.28, 1, jitterColor('#4c6636', seed + win.col * 3, 0.14));
+            // A second, mirrored card leans out over the box edge, so the
+            // planting has depth from below and the side.
+            const leafColor = jitterColor('#4c6636', seed + win.col * 3, 0.14);
+            const bloomColor = jitterColor(BLOOM_COLORS[Math.floor(boxRoll * 977) % BLOOM_COLORS.length], seed + win.col * 5, 0.1);
+            pushInstance(plants, fx, py + 0.22, fz, face.yaw, boxW * 1.06, 0.34, 1, leafColor);
             const [bx, , bz] = place(u, win.y + win.h + 1, 0.17);
-            pushInstance(
-              blooms, bx, py + 0.22, bz, face.yaw, boxW * 1.06, 0.28, 1,
-              jitterColor(BLOOM_COLORS[Math.floor(boxRoll * 977) % BLOOM_COLORS.length], seed + win.col * 5, 0.1),
-            );
+            pushInstance(blooms, bx, py + 0.25, bz, face.yaw, boxW * 1.06, 0.34, 1, bloomColor);
+            const [ox, , oz] = place(u, win.y + win.h + 1, 0.25);
+            pushInstance(plants, ox, py + 0.17, oz, face.yaw, -boxW * 1.02, 0.3, 1, leafColor, 0, -0.45);
+            const [qx, , qz] = place(u, win.y + win.h + 1, 0.27);
+            pushInstance(blooms, qx, py + 0.19, qz, face.yaw, -boxW * 1.02, 0.3, 1, bloomColor, 0, -0.45);
           }
 
           // Muslin behind an open sash. It goes in the laundry bucket, so the
@@ -550,7 +756,7 @@ export default function WindowField({ items, runtime }) {
             pushInstance(
               cloths, qx, qy, qz, face.yaw,
               wM * (0.36 + hash01(seed + win.col * 4.1) * 0.18), hM * 0.4, 1,
-              jitterColor('#b9ad96', seed + win.col * 2.7, 0.07), lean * 0.14,
+              jitterColor('#a1977f', seed + win.col * 2.7, 0.07), lean * 0.14,
             );
           }
         }
@@ -694,18 +900,38 @@ export default function WindowField({ items, runtime }) {
             pushInstance(trimBoxes, px, doorBase + woodHeight / 2, pz, face.yaw, 0.05, woodHeight * 0.72, 0.055, panelColor);
           }
 
+          // Pilasters close against the leaf, standing on plinth blocks and
+          // carrying small capitals under the head, so the doorcase is one piece.
           const pilasterW = surround === 'corniced' ? 0.22 : 0.17;
+          const pilasterOff = doorW / 2 + pilasterW / 2;
+          const headW = doorW + pilasterW * 2 + 0.12;
           for (const side of [-1, 1]) {
-            const uP = uDoor + (side * doorW * 0.62) / faceWidth;
+            const uP = uDoor + (side * pilasterOff) / faceWidth;
             const [px, , pz] = place(uP, 0, 0.07);
             pushInstance(trimBoxes, px, doorBase + doorHeight / 2, pz, face.yaw, pilasterW, doorHeight, 0.14, stone);
+            const [bx, , bz] = place(uP, 0, 0.085);
+            pushInstance(trimBoxes, bx, doorBase + 0.14, bz, face.yaw, pilasterW + 0.05, 0.28, 0.17, stone);
+            pushInstance(trimBoxes, bx, doorBase + doorHeight - 0.05, bz, face.yaw, pilasterW + 0.05, 0.1, 0.17, stone);
           }
           const [ex, , ez] = place(uDoor, 0, 0.09);
           const headH = surround === 'corniced' ? 0.34 : 0.25;
-          pushInstance(trimBoxes, ex, doorBase + doorHeight + headH / 2, ez, face.yaw, doorW * 1.65, headH, 0.18, stone);
+          pushInstance(trimBoxes, ex, doorBase + doorHeight + headH / 2, ez, face.yaw, headW, headH, 0.18, stone);
           if (surround === 'corniced') {
             const [cx2, , cz2] = place(uDoor, 0, 0.15);
-            pushInstance(trimBoxes, cx2, doorBase + doorHeight + headH + 0.06, cz2, face.yaw, doorW * 1.95, 0.12, 0.3, stone);
+            pushInstance(trimBoxes, cx2, doorBase + doorHeight + headH + 0.06, cz2, face.yaw, headW + 0.2, 0.12, 0.3, stone);
+          }
+          // Raised panels between the rails, so the leaf is not a flat card.
+          const rails = [0, ...panelRows, 1].sort((a, b) => a - b);
+          for (let row = 0; row < rails.length - 1; row += 1) {
+            const low = rails[row] + 0.035;
+            const high = rails[row + 1] - 0.035;
+            if (high - low < 0.06) continue;
+            for (let column = 0; column < panelColumns; column += 1) {
+              const panelW = (doorW * 0.7) / panelColumns - 0.06;
+              const panelU = uDoor + ((column + 0.5) / panelColumns - 0.5) * doorW * 0.7 / faceWidth;
+              const [qx, , qz] = place(panelU, 0, 0.05);
+              pushInstance(trimBoxes, qx, doorBase + woodHeight * (low + high) / 2, qz, face.yaw, panelW, woodHeight * (high - low), 0.03, jitterColor(doorColor, seed + row * 3 + column, 0.04));
+            }
           }
 
           if (transomHeight > 0) {
@@ -837,6 +1063,7 @@ export default function WindowField({ items, runtime }) {
     const box = new THREE.BoxGeometry(1, 1, 1);
     const frameTexture = makeFrameTexture();
     const glassTexture = makeGlassGradient();
+    const trimGrain = makeTrimGrainTexture();
 
     // Gaslight interiors: dark by day, a dim warm glow after dusk. The frame
     // loop ramps this material with the solar night curve.
@@ -849,6 +1076,9 @@ export default function WindowField({ items, runtime }) {
       buildMesh(recessShades,plane,new THREE.MeshBasicMaterial({
         map:makeRecessShadeTexture(),color:'#000000',transparent:true,depthWrite:false,
       })),
+      buildMesh(sillWashes, plane, new THREE.MeshBasicMaterial({
+        alphaMap: makeSillWashTexture(), color: '#1d1a15', transparent: true, opacity: 0.14, depthWrite: false,
+      })),
       buildMesh(openings, plane, new THREE.MeshStandardMaterial({
         color: '#ffffff', roughness: 1, metalness: 0, envMapIntensity: 0,
       })),
@@ -857,19 +1087,19 @@ export default function WindowField({ items, runtime }) {
       // Fresnel does its job, so a pane looked straight into stays dark and
       // one seen along the row flares. That difference between neighbours is
       // what reads as glass. The per-instance tint is the interior behind it.
-      buildMesh(glass, plane, new THREE.MeshStandardMaterial({
+      buildMesh(glass, plane, varyGlass(new THREE.MeshStandardMaterial({
         color: '#ffffff', map: glassTexture,
         metalness: 0, roughness: 0.18, envMapIntensity: 0.58,
-      })),
+      }))),
       buildMesh(litGlass, plane, litMaterial),
       buildMesh(frames, plane, new THREE.MeshStandardMaterial({
         color: '#ffffff', map: frameTexture, alphaTest: 0.4, roughness: 0.85,
       })),
-      buildMesh(trimBoxes, box, new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.9 }), true),
-      buildMesh(cheekWalls, makeCheekGeometry(), new THREE.MeshStandardMaterial({
+      buildMesh(trimBoxes, box, weatherTrim(new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.9 }), trimGrain), true),
+      buildMesh(cheekWalls, makeCheekGeometry(), weatherTrim(new THREE.MeshStandardMaterial({
         color: '#ffffff', roughness: 0.9,
-      }), true),
-      buildMesh(shutters, box, new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.9 }), true),
+      }), trimGrain, false), true),
+      buildMesh(shutters, box, weatherTrim(new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.9 }), trimGrain), true),
       buildMesh(ropes, box, new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.95 })),
       buildMesh(bayBodies, box, new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.85 }), true),
       buildMesh(railings, box, new THREE.MeshStandardMaterial({
@@ -886,7 +1116,7 @@ export default function WindowField({ items, runtime }) {
     ];
     // Cloth and canvas sway in the frame loop, so they keep their records.
     const clothMesh = buildMesh(cloths, plane, new THREE.MeshStandardMaterial({
-      color: '#ffffff', roughness: 0.95, side: THREE.DoubleSide,
+      color: '#ffffff', map: makeClothTexture(), roughness: 0.95, side: THREE.DoubleSide,
     }));
     const awningRedMesh = buildMesh(awningsRed, plane, new THREE.MeshStandardMaterial({
       color: '#ffffff', map: makeAwningTexture('#b5533c'), alphaTest: 0.4, side: THREE.DoubleSide, roughness: 0.9,
@@ -900,7 +1130,7 @@ export default function WindowField({ items, runtime }) {
       { mesh: awningGreenMesh, records: awningsGreen, amount: 0.022 },
       { mesh: clothMesh, records: cloths, amount: 0.05 },
     ];
-    return { built, litMaterial, flutter };
+    return { built, litMaterial, flutter, trimGrain };
   }, [items]);
 
   useFrame((state) => {
@@ -930,9 +1160,11 @@ export default function WindowField({ items, runtime }) {
 
   useEffect(
     () => () => {
+      meshes.trimGrain.dispose();
       const disposedTextures = new Set();
       for (const mesh of meshes.built) {
         mesh.geometry.dispose();
+        mesh.material.alphaMap?.dispose();
         if (mesh.material.map && !disposedTextures.has(mesh.material.map)) {
           disposedTextures.add(mesh.material.map);
           mesh.material.map.dispose();

@@ -90,16 +90,26 @@ function applyMetreScaledUvs(material, seed, style, heightM, tone, instancedWorl
     shader.uniforms.facadeBaseDarken = { value: STYLE_BASE_DARKEN[style] };
     shader.uniforms.facadeToneSaturation = { value: tone.saturation };
     shader.uniforms.facadeToneLift = { value: tone.lift };
+    // Weathering: a single box knows its top here; instances read theirs
+    // from the instance matrix in the vertex shader.
+    shader.uniforms.facadeTop = { value: heightM / 2 };
+    shader.uniforms.facadeSoot = { value: 0.45 + hash01(seed * 7.91) * 0.55 };
     shader.vertexShader = shader.vertexShader
       .replace(
         '#include <uv_pars_vertex>',
-        '#include <uv_pars_vertex>\nuniform vec2 facadeUvOffset;\nvarying float vFacadeLocalY;',
+        '#include <uv_pars_vertex>\nuniform vec2 facadeUvOffset;\nuniform float facadeTop;\nuniform float facadeSoot;\nvarying float vFacadeLocalY;\nvarying float vFacadeAcross;\nvarying float vFacadeTop;\nvarying float vFacadeSoot;',
       )
       .replace(
         '#include <uv_vertex>',
         `#include <uv_vertex>
         ${facadePosition}
         vFacadeLocalY = facadePosition.y;
+        vFacadeTop = facadeTop;
+        vFacadeSoot = facadeSoot;
+        ${instancedWorldSpace ? `#ifdef USE_INSTANCING
+          vFacadeTop = instanceMatrix[3].y + 0.5 * length(instanceMatrix[1].xyz);
+          vFacadeSoot = 0.45 + 0.55 * fract(sin(dot(instanceMatrix[3].xz, vec2(7.13, 3.71))) * 43758.5453);
+        #endif` : ''}
         vec2 facadeSurfaceUv;
         if (abs(normal.y) > 0.5) {
           facadeSurfaceUv = vec2(facadePosition.x, -facadePosition.z);
@@ -108,6 +118,7 @@ function applyMetreScaledUvs(material, seed, style, heightM, tone, instancedWorl
         } else {
           facadeSurfaceUv = vec2(facadePosition.x * sign(normal.z), facadePosition.y);
         }
+        vFacadeAcross = facadeSurfaceUv.x;
         facadeSurfaceUv = facadeSurfaceUv / ${METRES_PER_REPEAT.toFixed(1)} + facadeUvOffset;
         ${parcelPhase}
         #ifdef USE_MAP
@@ -134,7 +145,16 @@ function applyMetreScaledUvs(material, seed, style, heightM, tone, instancedWorl
         uniform float facadeBaseDarken;
         uniform float facadeToneSaturation;
         uniform float facadeToneLift;
-        varying float vFacadeLocalY;`,
+        varying float vFacadeLocalY;
+        varying float vFacadeAcross;
+        varying float vFacadeTop;
+        varying float vFacadeSoot;
+        float facadeHash(float n) { return fract(sin(n) * 43758.5453); }
+        float facadeNoise(float x) {
+          float i = floor(x);
+          float f = fract(x);
+          return mix(facadeHash(i), facadeHash(i + 1.0), f * f * (3.0 - 2.0 * f));
+        }`,
       )
       .replace(
         '#include <map_fragment>',
@@ -148,12 +168,31 @@ function applyMetreScaledUvs(material, seed, style, heightM, tone, instancedWorl
         float facadeBaseTop = facadeGroundStart + 3.15;
         float facadeBaseMask = 1.0 - smoothstep(facadeBaseTop - 0.12, facadeBaseTop + 0.08, vFacadeLocalY);
         float facadeShade = 1.0 - facadeBaseMask * facadeBaseDarken;
-        diffuseColor.rgb *= facadeShade;`,
+        diffuseColor.rgb *= facadeShade;
+        // Coal smoke and rain, in metres. Soot gathers under the cornice and
+        // runs down in streaks; broad patches vary the wall; the lowest metre
+        // is splashed brown from the street.
+        {
+          float facadeSoot = vFacadeSoot;
+          float fromTop = vFacadeTop - vFacadeLocalY;
+          float fromGround = vFacadeLocalY - facadeGroundStart;
+          float streak = facadeNoise(vFacadeAcross * 2.3) * 0.65 + facadeNoise(vFacadeAcross * 7.1 + 3.0) * 0.35;
+          float drips = smoothstep(0.35, 0.8, facadeNoise(vFacadeAcross * 3.7 + 7.0));
+          float reach = 1.5 + streak * 3.5 + drips * 5.0;
+          float cornice = (1.0 - smoothstep(0.0, reach, fromTop)) * (0.5 + streak * 0.5);
+          float patches = facadeNoise(vFacadeAcross * 0.45 + floor(vFacadeLocalY * 0.4) * 5.3)
+            * facadeNoise(vFacadeLocalY * 0.6 + vFacadeAcross * 0.13 + 11.0);
+          float rise = smoothstep(0.0, 1.0, fromGround / max(1.0, vFacadeTop - facadeGroundStart));
+          float soot = cornice * 0.6 + rise * 0.18 + patches * 0.18;
+          diffuseColor.rgb *= 1.0 - soot * facadeSoot;
+          float splash = (1.0 - smoothstep(0.15, 0.9 + streak * 0.4, fromGround)) * facadeSoot;
+          diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.6, 0.54, 0.46), splash * 0.8);
+        }`,
       );
   };
   // Every facade uses the same shader shape; only ordinary uniforms, colour,
   // and texture bindings differ. This lets Three share one compiled program.
-  material.customProgramCacheKey = () => `facade-metre-pbr-v5-${instancedWorldSpace ? 'world' : 'local'}`;
+  material.customProgramCacheKey = () => `facade-metre-pbr-v6-${instancedWorldSpace ? 'world' : 'local'}`;
   return material;
 }
 

@@ -74,46 +74,60 @@ function drawCity(ctx, w, h, seed, { wall, haze, detail }) {
   ctx.fillRect(0, ground - 2, w, h - ground + 2);
 }
 
+// A crown is a dark mass of lobes covered in small leaf clumps, lit from
+// above: lighter on top and toward the sun side, darker underneath. The
+// clumps also break the outline, so the cutout edge reads as leaves.
 function drawCrown(ctx, cx, cy, rx, ry, seed, color, lobeCount = 11) {
-  ctx.fillStyle = color;
-
-  // A broad inner mass keeps the crown joined while smaller edge clusters
-  // break the outline into recognisable foliage rather than one smooth oval.
-  ctx.beginPath();
-  ctx.ellipse(cx, cy + ry * 0.12, rx * 0.78, ry * 0.68, 0, 0, Math.PI * 2);
-  ctx.fill();
-
+  const lobes = [[cx, cy + ry * 0.12, rx * 0.78, ry * 0.68]];
   for (let lobe = 0; lobe < lobeCount; lobe += 1) {
     const across = lobeCount === 1 ? 0 : (lobe / (lobeCount - 1)) * 2 - 1;
     const crown = Math.sqrt(Math.max(0, 1 - across * across));
-    const jitterX = (hash01(seed + lobe * 7.1) - 0.5) * rx * 0.15;
-    const jitterY = (hash01(seed + lobe * 11.9) - 0.5) * ry * 0.16;
-    const lobeRx = rx * (0.17 + hash01(seed + lobe * 17.3) * 0.1);
-    const lobeRy = ry * (0.2 + hash01(seed + lobe * 23.7) * 0.12);
-    const x = cx + across * rx * 0.8 + jitterX;
-    const y = cy - crown * ry * 0.56 + Math.abs(across) * ry * 0.22 + jitterY;
+    lobes.push([
+      cx + across * rx * 0.8 + (hash01(seed + lobe * 7.1) - 0.5) * rx * 0.15,
+      cy - crown * ry * 0.56 + Math.abs(across) * ry * 0.22 + (hash01(seed + lobe * 11.9) - 0.5) * ry * 0.16,
+      rx * (0.17 + hash01(seed + lobe * 17.3) * 0.1),
+      ry * (0.2 + hash01(seed + lobe * 23.7) * 0.12),
+    ]);
+  }
+  // Lower clusters hang over the trunk like a mature park tree.
+  for (let lobe = 0; lobe < 4; lobe += 1) {
+    const across = (lobe / 3) * 1.5 - 0.75;
+    lobes.push([
+      cx + across * rx + (hash01(seed + 89 + lobe) - 0.5) * rx * 0.12,
+      cy + ry * (0.42 + hash01(seed + 101 + lobe) * 0.18),
+      rx * (0.2 + hash01(seed + 53 + lobe) * 0.08),
+      ry * (0.16 + hash01(seed + 71 + lobe) * 0.08),
+    ]);
+  }
+
+  const base = new THREE.Color(color);
+  const shade = base.clone().multiplyScalar(0.62);
+  ctx.fillStyle = `#${shade.getHexString()}`;
+  for (const [x, y, lx, ly] of lobes) {
     ctx.beginPath();
-    ctx.ellipse(x, y, lobeRx, lobeRy, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, y, lx, ly, 0, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // A few lower clusters make the crown hang over the trunk like an elm or
-  // mature park tree instead of ending in a straight horizontal edge.
-  for (let lobe = 0; lobe < 4; lobe += 1) {
-    const across = (lobe / 3) * 1.5 - 0.75;
-    const lobeRx = rx * (0.2 + hash01(seed + 53 + lobe) * 0.08);
-    const lobeRy = ry * (0.16 + hash01(seed + 71 + lobe) * 0.08);
-    ctx.beginPath();
-    ctx.ellipse(
-      cx + across * rx + (hash01(seed + 89 + lobe) - 0.5) * rx * 0.12,
-      cy + ry * (0.42 + hash01(seed + 101 + lobe) * 0.18),
-      lobeRx,
-      lobeRy,
-      0,
-      0,
-      Math.PI * 2,
-    );
-    ctx.fill();
+  const lit = base.clone().multiplyScalar(1.45).lerp(new THREE.Color('#a8ad6a'), 0.12);
+  const mixed = new THREE.Color();
+  let index = 0;
+  for (const [x, y, lx, ly] of lobes) {
+    const clumps = Math.round((lx * ly) / 2.5);
+    for (let clump = 0; clump < clumps; clump += 1, index += 1) {
+      const angle = hash01(seed * 3.7 + index * 1.31) * Math.PI * 2;
+      const out = Math.sqrt(hash01(seed * 5.3 + index * 2.17)) * 1.05;
+      const px = x + Math.cos(angle) * lx * out;
+      const py = y + Math.sin(angle) * ly * out;
+      const height = (cy - py) / ry;
+      const light = Math.min(1, Math.max(0,
+        0.45 + height * 0.55 + ((cx - px) / rx) * 0.15 + (hash01(seed + index * 9.1) - 0.5) * 0.45));
+      mixed.copy(shade).lerp(lit, light);
+      ctx.fillStyle = `#${mixed.getHexString()}`;
+      ctx.beginPath();
+      ctx.arc(px, py, 0.5 + hash01(seed + index * 4.9) * 0.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 }
 
@@ -143,6 +157,10 @@ function drawTrunk(ctx, x, ground, branchY, crownY, seed, width, color) {
 // still painted only once, so the more natural outline costs nothing per frame.
 function drawTrees(ctx, w, h, seed, { leaf, leafMid, leafFar, trunk, haze }) {
   const ground = Math.round(h * 0.75);
+
+  // Far woods behind everything, so no sky shows between the trunks.
+  ctx.fillStyle = leafFar;
+  ctx.fillRect(0, ground - 12, w, h - ground + 12);
 
   // A lower, paler rank stops distant gaps from looking empty without
   // repeating the foreground tree rhythm.
@@ -214,19 +232,22 @@ function drawTrees(ctx, w, h, seed, { leaf, leafMid, leafFar, trunk, haze }) {
 }
 
 function makeStrip(width, height, seed, style) {
+  // Painted at twice the size in the same layout units, so the leaf
+  // clumps stay small and sharp up close.
   const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
+  canvas.width = width * 2;
+  canvas.height = height * 2;
   const ctx = canvas.getContext('2d');
+  ctx.scale(2, 2);
   if (style === 'city') {
     drawCity(ctx, width, height, seed, { wall: '#41392f', haze: '#767468', detail: true });
   } else if (style === 'city-far') {
     drawCity(ctx, width, height, seed, { wall: '#6d7480', haze: '#868d96', detail: false });
   } else {
     drawTrees(ctx, width, height, seed, {
-      leaf: '#35402f',
-      leafMid: '#465044',
-      leafFar: '#596158',
+      leaf: '#3c4a2b',
+      leafMid: '#4a5534',
+      leafFar: '#5b6452',
       trunk: '#33352d',
       haze: '#6d7263',
     });
@@ -259,7 +280,7 @@ export default function Backdrop({ runtime }) {
   const flats = useMemo(
     () =>
       FLATS.map(([style, seed, width, height, position, yaw]) => ({
-        texture: makeStrip(Math.min(4096, Math.round(width * 4)), 128, seed, style),
+        texture: makeStrip(Math.min(2048, Math.round(width * 4)), 128, seed, style),
         width,
         height,
         position,
