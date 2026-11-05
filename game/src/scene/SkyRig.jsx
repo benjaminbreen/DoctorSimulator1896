@@ -16,10 +16,12 @@ const MOON_LIGHT = new THREE.Color('#9cbce8');
 const SUN_DAY = new THREE.Color('#ffe6b8');
 const SUN_GOLDEN = new THREE.Color('#ff9b4d');
 const HEMI_SKY = { night: new THREE.Color('#3b5274'), day: new THREE.Color('#b9dfef'), golden: new THREE.Color('#9cc4ea') };
-// Day ground is sunlit grass, the main source of bounce light into shade.
-const HEMI_GROUND = { night: new THREE.Color('#1b2533'), day: new THREE.Color('#93986b'), golden: new THREE.Color('#c2915d') };
+// Day ground is sunlit grass and gravel, the main source of bounce light into
+// shade. Kept earth-warm: an olive bounce tints every shadow green-grey.
+const HEMI_GROUND = { night: new THREE.Color('#1b2533'), day: new THREE.Color('#968a6a'), golden: new THREE.Color('#c2915d') };
 const AMBIENT_NIGHT = new THREE.Color('#526b91');
-const AMBIENT_DAY = new THREE.Color('#e4e7de');
+// Slightly cool, so shade reads as lit by the sky against the warm sun.
+const AMBIENT_DAY = new THREE.Color('#dde3ec');
 const scratch = new THREE.Color();
 // Daytime haze: linear warm grey, and how far it replaces the blue horizon.
 const HAZE_SMOKE = [0.54, 0.5, 0.43];

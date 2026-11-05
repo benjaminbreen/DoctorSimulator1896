@@ -72,12 +72,18 @@ THREE.ShaderChunk.fog_fragment = /* glsl */ `
     // Real haze is linear in distance; FogExp2's square keeps the near field
     // clear. The linear share fills the middle distance.
     float hazeOptical = fogDensity * hazeDistance;
-    float fogFactor = 1.0 - exp(-(hazeOptical * hazeOptical + hazeParams.y * hazeOptical) * hazeHeight);
+    float hazeDepth = (hazeOptical * hazeOptical + hazeParams.y * hazeOptical) * hazeHeight;
+    // Air scatters blue more than red, so the middle distance cools first
+    // and far greens turn blue-grey rather than going flat grey-green.
+    vec3 fogFactor = 1.0 - exp(-hazeDepth * vec3(0.8, 1.0, 1.3));
     vec3 hazeView = vFogWorldOffset / max(hazeDistance, 1e-4);
     float hazeSun = pow(max(dot(hazeView, hazeSunDir), 0.0), max(hazeParams.z, 1.0));
-    vec3 hazeColor = fogColor + hazeSunColor * hazeSun;
+    // Haze is cooler looking away from the sun; the sunward side gets the glow.
+    float hazeAway = 1.0 - pow(max(dot(hazeView, hazeSunDir) * 0.5 + 0.5, 0.0), 2.0);
+    vec3 hazeColor = fogColor * mix(vec3(1.0), vec3(0.9, 0.97, 1.1), hazeAway * step(1e-4, hazeParams.x))
+      + hazeSunColor * hazeSun;
   #else
-    float fogFactor = smoothstep(fogNear, fogFar, vFogDepth);
+    vec3 fogFactor = vec3(smoothstep(fogNear, fogFar, vFogDepth));
     vec3 hazeColor = fogColor;
   #endif
   gl_FragColor.rgb = mix(gl_FragColor.rgb, hazeColor, fogFactor);

@@ -7,6 +7,7 @@ import { itemBoxes, boxDensity, rotateOffset } from '../physics/propBodies.js';
 import PropShape from './PropShape.jsx';
 import PropMaterial from './PropMaterial.jsx';
 import MetropolitanClub from './MetropolitanClub.jsx';
+import Rooftops from './Rooftops.jsx';
 import GildedAgeLandmarks, { isGildedAgeLandmark } from './GildedAgeLandmarks.jsx';
 import { getInteraction, subscribe } from '../world/interaction.js';
 import { identifyLandmark } from '../world/landmarkInformation.js';
@@ -209,10 +210,9 @@ function MansardBatch({ entries }) {
 }
 
 function ProceduralFacades({ items, facadeTextures }) {
-  const { batches, caps, chimneys, mansards } = useMemo(() => {
+  const { batches, caps, mansards } = useMemo(() => {
     const grouped = new Map();
     const roofCaps = [];
-    const chimneyPots = [];
     const mansardRoofs = [];
     for (const item of items) {
       if (item.kind !== 'backdrop' || !item.frontageFamily || item.landmarkLabel) continue;
@@ -227,23 +227,19 @@ function ProceduralFacades({ items, facadeTextures }) {
         // Match the crown to its stone family; brick keeps a painted cornice.
         color: ['#57453a','#4c4138','#9a8f7d','#4c433b','#b7af9e','#77746b'][item.facadeStyle??0],
       });
-      const chimneySeed = idHash(item.id);
-      chimneyPots.push({
-        id: `${item.id}-chimney`,
-        position: [
-          item.position[0] + (hash01(chimneySeed) - 0.5) * item.size[0] * 0.45,
-          item.position[1] + item.size[1] / 2 + 1.05,
-          item.position[2] + (hash01(chimneySeed * 2.7) - 0.5) * item.size[2] * 0.4,
-        ],
-        size: [0.48, 1.1, 0.48],
-        color: item.facadeStyle === 1 ? '#51382e' : '#4a3a32',
+      // Tar and gravel flat roof inside the cornice, so the stone colour above
+      // stays on the cap's edge and does not cover the whole roof.
+      roofCaps.push({
+        id: `${item.id}-roof`,
+        position: [item.position[0], item.position[1] + item.size[1] / 2 + 0.52, item.position[2]],
+        size: [item.size[0] - 0.3, 0.05, item.size[2] - 0.3],
+        color: hash01(idHash(item.id)) < 0.5 ? '#3d3a36' : '#45403a',
       });
       if (item.roof === 'mansard') mansardRoofs.push(item);
     }
     return {
       batches: [...grouped.entries()],
       caps: roofCaps,
-      chimneys: chimneyPots,
       mansards: mansardRoofs,
     };
   }, [items]);
@@ -253,7 +249,7 @@ function ProceduralFacades({ items, facadeTextures }) {
         <FacadeBatch key={key} entries={entries} facadeTextures={facadeTextures} />
       ))}
       <InfillBatch entries={caps} />
-      <InfillBatch entries={chimneys} />
+      <Rooftops items={items} />
       <MansardBatch entries={mansards} />
     </group>
   );
@@ -280,7 +276,7 @@ function InfillBatch({ entries }) {
   return (
     <instancedMesh ref={meshRef} args={[undefined, undefined, entries.length]} receiveShadow>
       <boxGeometry args={[1, 1, 1]} />
-      <meshStandardMaterial vertexColors roughness={0.95} />
+      <meshStandardMaterial roughness={0.95} />
     </instancedMesh>
   );
 }

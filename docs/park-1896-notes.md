@@ -74,3 +74,15 @@ dialogue. Guesses are marked as guesses.
 - Letter boxes reading "U.S. MAIL / LETTER BOX" on every third lamp post on
   the built side. Check the colour: I used a dark green, but boxes of the
   1890s may have been painted differently.
+
+## Rooftops (`world/rooftops.js`, `scene/Rooftops.jsx`)
+
+- Brick chimney stacks stand on the side (party) walls, each with a row of
+  clay chimney pots, one per flue. This follows the usual New York row-house
+  pattern, but the counts and heights here are generic.
+- Wooden water tanks on legs stand on some apartment houses over about 18 m.
+  Check when roof tanks became common in Manhattan: they were needed once
+  buildings rose above about six storeys, but how many stood on Fifth Avenue
+  and Central Park South blocks by 1896 is unverified.
+- Stair bulkheads and glass skylights over the stair well are generic
+  details of flat-roofed houses of the period.
