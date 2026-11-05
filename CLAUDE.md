@@ -31,5 +31,9 @@ game, own package, `npm run game`, port 5175).
 - Build the simplest thing that works. No shared constants, indirection layers,
   or abstractions for a problem that has not happened yet. Duplicating a value
   in two files with a one-line note beats a module that exists to hold it.
+- Keep the repository small. Raw downloads and authoring sources that only a
+  build script reads go in `assets-local/` (ignored); commit only the converted
+  runtime asset. Large binaries go through LFS (`.gitattributes`). When `.git`
+  grows, run `npm run repo:prune`, which drops local LFS copies already on GitHub.
 - Test the behaviour that matters. Do not add tests to pin down details that
   will change, and do not exhaustively verify a change that is obviously right.

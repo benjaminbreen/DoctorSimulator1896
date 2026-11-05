@@ -3,3 +3,10 @@
 assets/source/patient-expansion-2026-11-02/**/*.fbx filter=lfs diff=lfs merge=lfs -text
 assets/source/patient-expansion-2026-11-02/**/*.png filter=lfs diff=lfs merge=lfs -text
 game/public/models/characters/textures/** filter=lfs diff=lfs merge=lfs -text
+# Large binaries anywhere: source scans, renders and authoring files.
+*.fbx filter=lfs diff=lfs merge=lfs -text
+*.zprj filter=lfs diff=lfs merge=lfs -text
+*.exr filter=lfs diff=lfs merge=lfs -text
+assets/source/**/*.png filter=lfs diff=lfs merge=lfs -text
+assets/source/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+artifacts/**/*.png filter=lfs diff=lfs merge=lfs -text

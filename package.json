@@ -9,6 +9,7 @@
     "game:install": "npm --prefix game install",
     "game:build": "npm --prefix game run build",
     "game:test": "npm --prefix game test",
+    "repo:prune": "git lfs prune --verify-remote --when-unverified=continue",
     "lab:build": "vite build character-lab --outDir ../dist/character-lab --emptyOutDir",
     "character:generate": "make character",
     "character:validate": "node scripts/characters/validate-preset.mjs",
