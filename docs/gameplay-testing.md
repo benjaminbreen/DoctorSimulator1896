@@ -225,6 +225,31 @@ These debug materials show the source mesh. They do not run the male apron's
 contact shader, and surface picks on that panel report its underlying skinned
 mesh rather than the final displaced contact point.
 
+For patient seating, replay `game/scripts/playthroughs/patient-seat.jsonl`
+with Carmela or Samuel. `wait-seated` waits for the entrance to finish.
+`camera` saves a paused inspection view with the HUD hidden; its `position`,
+`target`, and optional `fov` are world coordinates. `relativeToPatient:true`
+offsets those coordinates from the actor. `patient-pose` selects `clinic-idle`,
+`standing-idle`, or `walk` for visual review without changing clinical facts.
+The replay captures both sides and an oblique view in all three postures.
+
+`hands-and-doors.jsonl` uses closer wrist/lap views in those postures and
+checks the closed consulting-room door from two angles. Run it with Carmela
+and, for the walking suit, `?appearancePreset=female-young-walking-suit`.
+`resting-hands-examination.jsonl` uses the Samuel scenario to check resting
+hands, a spoken response, wrist examination, and return to rest. Use
+`?appearancePreset=lean-base` to review the modular male body. Both replays
+support `--offline` and save their ordinary gameplay captures alongside the
+inspection views.
+
+The seat fit estimates the body's underside from the animated thighs and
+follows the consultation chair's live transform. The skirt and apron shader
+keeps low fabric outside the cushion, including a margin for coarse triangles.
+Its dimensions are fitted to ChairSmall2, whose cushion centre is about 0.65m
+high. This is a contact correction, not a cloth simulation; another chair model
+would need its own measured cushion dimensions. Surface picks still report the
+underlying skinned garment, as with the male apron shader.
+
 To distinguish a texture fault from a received shadow in the game, add
 `--inspect-shadows=0008` to a replay. It saves `0008-shadow-on.png` and
 `0008-shadow-off.png` at the same paused pose, then restores the actor's flags.

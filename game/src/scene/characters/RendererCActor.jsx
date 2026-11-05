@@ -14,6 +14,7 @@ import {
 } from './rendererCController.js';
 import { createFaceController } from './faceController.js';
 import { createPatientMotion } from './patientMotion.js';
+import { createPatientSeat } from './patientSeat.js';
 import {createHeadwear} from '../../../../shared/characters/headwearPerformance.js';
 import {headwearTexturesReady} from '../../../../shared/characters/headwearMaterials.js';
 import {createModularEyelashes} from '../../../../shared/characters/modularEyelashes.js';
@@ -135,6 +136,7 @@ export default function RendererCActor({ recipe, manifest, onReady, onSettled, p
     const mixer = new THREE.AnimationMixer(root);
     const face = createFaceController(root, recipe);
     const motion = createPatientMotion(root, recipe);
+    const seat = createPatientSeat(root, renderScene);
     const wardrobe = createModularWardrobe(root);
     const hair = createModularHair(root);
     const identity = createModularIdentity(root);
@@ -165,7 +167,7 @@ export default function RendererCActor({ recipe, manifest, onReady, onSettled, p
       lips.localToWorld(mouthAnchor);
       motion.bones.head.worldToLocal(mouthAnchor);
     }
-    return { root, mixer, face, motion, headwear, eyelashes, accessories, hatLook, hatClock:0, hatAutomatic:false, wardrobe, identity, appearance, hair, look, mouthAnchor, mouthPoint:new THREE.Vector3() };
+    return { root, mixer, face, motion, seat, headwear, eyelashes, accessories, hatLook, hatClock:0, hatAutomatic:false, wardrobe, identity, appearance, hair, look, mouthAnchor, mouthPoint:new THREE.Vector3() };
   }, [
     gltf,
     manifest,
@@ -408,6 +410,7 @@ export default function RendererCActor({ recipe, manifest, onReady, onSettled, p
     actor.mixer.stopAllAction();
     actor.mixer.uncacheRoot(actor.root);
     actor.wardrobe.dispose?.();
+    actor.seat.dispose();
     actor.hair.dispose?.();
     // Hat geometry is built per actor, unlike the shared GLB geometry.
     actor.headwear.dispose();
@@ -458,7 +461,13 @@ export default function RendererCActor({ recipe, manifest, onReady, onSettled, p
     actor.headwear.restorePose();
     actor.motion.restorePose();
     const dt = Math.min(delta, 0.1);
+    const alignSeat = (amount = 1) => {
+      const contact = actor.seat.height();
+      if (contact === null || !groupRef.current) return;
+      groupRef.current.position.y += (actor.seat.cushionHeight - contact) * amount;
+    };
     const entrance = entranceRef.current;
+    actor.seat.update(entrance ? 0 : SHELL_SEATED_CUES.has(recipe.animation.body) ? 1 : 0);
     const group = groupRef.current;
     if (entrance && group) {
       const { position, rotation } = recipe.placement;
@@ -523,19 +532,31 @@ export default function RendererCActor({ recipe, manifest, onReady, onSettled, p
         }
       }
       actor.mixer.update(dt);
+      if (entrance.phase === 'sit') {
+        const t = Math.max(0, Math.min(1, (entrance.sitTime / entrance.sitDuration - .45) / .45));
+        alignSeat(t * t * (3 - 2 * t));
+        actor.seat.update(t * t * (3 - 2 * t));
+      }
       updateShell(dt);
       actor.face.update(dt, recipe.animation);
       actor.headwear.update(dt);
       actor.eyelashes.update(camera,gl.domElement.height);actor.root.userData.eyelashes=actor.eyelashes.describe();
       actor.accessories.update(dt);actor.root.userData.accessories=actor.accessories.describe();
       actor.root.userData.headwear=actor.headwear.describe();
+      actor.root.userData.seatContact = { phase: entrance.phase };
       actor.root.userData.performance = recipe.animation;
       return;
     }
     actor.mixer.update(dt);
+    if (SHELL_SEATED_CUES.has(recipe.animation.body)) {
+      if (group) actor.seat.anchor(group, recipe.placement);
+      alignSeat();
+    }
+    else if (group) group.position.y = recipe.placement.position[1];
     updateShell(dt);
     const animation = settledAnimationRef.current || recipe.animation;
-    actor.motion.update(dt, animation, gameDebug.camera);
+    const restingClip = recipe.asset?.clipMap?.['clinic-idle'] || 'ClinicIdle';
+    actor.motion.update(dt, animation, gameDebug.camera, currentActionRef.current?.action.getClip().name === restingClip);
     actor.face.update(delta, animation);
     actor.hatClock+=dt;
     const hatDemo=review?.has('playtest')&&review.get('hatDemo')==='1';
@@ -550,6 +571,10 @@ export default function RendererCActor({ recipe, manifest, onReady, onSettled, p
     actor.eyelashes.update(camera,gl.domElement.height);actor.root.userData.eyelashes=actor.eyelashes.describe();
     actor.accessories.update(dt);actor.root.userData.accessories=actor.accessories.describe();
     actor.root.userData.headwear=actor.headwear.describe();
+    actor.root.userData.seatContact = {
+      phase: SHELL_SEATED_CUES.has(animation.body) ? 'seated' : 'standing',
+      height: actor.seat.height(), rootY: group?.position.y,
+    };
     actor.root.userData.performance = animation;
     // While the examination reading is up, publish where the annotated body
     // parts actually are, so the leader lines track the pose and the camera.

@@ -301,7 +301,7 @@ export default function App() {
     }
     const state = consultationRuntime.get();
     const patient = consultationPatients.find((candidate) => candidate.id === state?.patientId);
-    const [x, , z] = patient?.actor.recipe.placement?.position ?? [0.45, 0, -1.7];
+    const [x, , z] = patient?.actor.recipe.placement?.position ?? [-0.45, 0, -1.7];
     // Keep lights and depth of field on the same chest point as the camera.
     setExaminationPresentation(true, [x, 1.01, z]);
     return () => setExaminationPresentation(false);

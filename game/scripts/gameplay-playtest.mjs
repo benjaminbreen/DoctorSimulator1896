@@ -37,6 +37,8 @@ Send one JSON command per line on stdin. Every command saves a screenshot and st
   {"type":"scroll","dy":200}
   {"type":"wait","ms":1000}
   {"type":"resize","width":390,"height":844}
+  {"type":"wait-seated"}
+  {"type":"camera","position":[1.8,1,-2],"target":[0.45,0.7,-1.7],"fov":45}
   {"type":"assert","text":"Consultation"}
   {"type":"pause"} / {"type":"resume"} / {"type":"quit"}
 Click/fill/assert also accept a CSS selector. Assert supports visible:false.
@@ -168,6 +170,22 @@ async function act(command) {
     case 'scroll': await page.mouse.wheel(command.dx ?? 0, command.dy ?? 0); return;
     case 'wait': await page.waitForTimeout(duration(command, 1000)); return;
     case 'resize': await page.setViewportSize({ width: command.width, height: command.height }); return;
+    case 'camera': return;
+    case 'patient-pose':
+      if (!['clinic-idle', 'standing-idle', 'walk'].includes(command.body)) throw new Error('Unknown review pose.');
+      await page.evaluate(body => {
+        __game.scene.traverse(root => {
+          if (root.userData.patientId) __game.cueActor(root.userData.patientId, { body, speaking: false });
+        });
+      }, command.body);
+      return;
+    case 'wait-seated':
+      await page.waitForFunction(() => {
+        let seated = false;
+        __game.scene.traverse(root => { if (root.userData.patientId && root.userData.seatContact?.phase === 'seated') seated = true; });
+        return seated;
+      }, null, { timeout: 180000 });
+      return;
     case 'assert': {
       const locator = command.selector ? target(command) : page.getByText(command.text, { exact: command.exact ?? false });
       await locator.waitFor({ state: command.visible === false ? 'hidden' : 'visible' });
@@ -212,7 +230,7 @@ async function capture(command, failure = null) {
           if (style && name.startsWith('rc_hair')) grooming[name.slice(3)] = value;
         }
       });
-      performances.push({ id: root.userData.patientId, assetPath: root.userData.assetPath, appearancePreset: root.userData.appearancePreset, ...root.userData.performance, headwear:root.userData.headwear||null,eyelashes:root.userData.eyelashes||null,accessories:root.userData.accessories||null, weights, bodyShape, hair: { facialHair: [...facialHair], styles: [...hairstyles], grooming, materials: [...hairMaterials.values()] } });
+      performances.push({ id: root.userData.patientId, assetPath: root.userData.assetPath, appearancePreset: root.userData.appearancePreset, ...root.userData.performance, seatContact:root.userData.seatContact, headwear:root.userData.headwear||null,eyelashes:root.userData.eyelashes||null,accessories:root.userData.accessories||null, weights, bodyShape, hair: { facialHair: [...facialHair], styles: [...hairstyles], grooming, materials: [...hairMaterials.values()] } });
     });
     return {
       url: location.href,
@@ -237,7 +255,28 @@ async function capture(command, failure = null) {
         pixelRatio: game.stats.pixelRatio, graphicsQuality: game.stats.graphicsQuality } : null,
     };
   }, Object.keys(MODULAR_HAIR_STYLES));
+  if (command.type === 'camera') {
+    await page.evaluate(({ position, target, fov = 50, relativeToPatient = false }) => {
+      const { camera, renderer, scene } = __game;
+      if (relativeToPatient) {
+        let patient;
+        scene.traverse(root => { if (root.userData.patientId) patient = root; });
+        if (!patient) throw new Error('No patient to inspect.');
+        const origin = patient.getWorldPosition(patient.position.clone()).toArray();
+        position = position.map((value, axis) => value + origin[axis]);
+        target = target.map((value, axis) => value + origin[axis]);
+      }
+      camera.position.set(...position);
+      camera.lookAt(...target);
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+      renderer.render(scene, camera);
+    }, command);
+    const style = await page.addStyleTag({ content: 'body * { visibility: hidden !important; } body canvas { visibility: visible !important; }' });
+    await style.evaluate(node => { node.id = 'playtest-camera-style'; });
+  }
   await page.screenshot({ path: screenshot, timeout: 60000 });
+  if (command.type === 'camera') await page.locator('#playtest-camera-style').evaluate(node => node.remove());
   if (arg('inspect-shadows', null) === stem) {
     for (const mode of ['on','off','restore']) {
       await page.evaluate(mode => {
@@ -269,7 +308,7 @@ async function execute(command) {
   }
   await appendFile(resolve(output, 'actions.jsonl'), `${JSON.stringify(command)}\n`);
   let failure = null;
-  const inspectOnly = ['observe', 'assert', 'quit', 'pause'].includes(command.type);
+  const inspectOnly = ['observe', 'assert', 'quit', 'pause', 'camera'].includes(command.type);
   try {
     if (command.type === 'pause') {
       if (continuous) throw new Error('Pause requires starting without --continuous.');

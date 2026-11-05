@@ -47,7 +47,7 @@ const profile = Object.freeze({
 const recipe = patientToRendererCRecipe(profile, {
   id,
   animation: { body: 'clinic-idle', expression: 'guarded', gaze: 'doctor', speaking: false },
-  placement: { position: [0.45, 0.22, -1.7], rotation: [0, Math.PI, 0], scale: 1 },
+  placement: { position: [-0.45, 0.22, -1.7], rotation: [0, Math.PI, 0], scale: 1 },
 });
 
 // Enter by the waiting-room door (south wall, consulting-office blueprint).

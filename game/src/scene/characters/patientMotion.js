@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { aimBoneToward, createRestingHands } from './restingHands.js';
 
 // Procedural motion layered over the baked consultation clips, written after
 // the mixer each frame: the patient looks at the doctor and away again on her
@@ -61,42 +62,15 @@ const GESTURES = {
 };
 
 const scratchQuat = new THREE.Quaternion();
-const scratchQuatB = new THREE.Quaternion();
-const scratchQuatC = new THREE.Quaternion();
-const scratchQuatD = new THREE.Quaternion();
 const scratchEuler = new THREE.Euler();
 const scratchVecA = new THREE.Vector3();
 const scratchVecB = new THREE.Vector3();
-const scratchVecC = new THREE.Vector3();
 const scratchMat = new THREE.Matrix4();
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
 
 function worldPositionOf(bone, out) {
   bone.updateWorldMatrix(true, false);
   return out.setFromMatrixPosition(bone.matrixWorld);
-}
-
-// Swing `bone` so its child points at a world target, blended toward the
-// clip's pose by `weight`. World-space vectors throughout: no assumptions
-// about any bone's local axes, which is what made joint-angle offsets fail.
-function aimBoneToward(bone, child, targetWorld, weight) {
-  const rest = scratchQuatB.copy(bone.quaternion);
-  const origin = worldPositionOf(bone, scratchVecA);
-  const current = worldPositionOf(child, scratchVecB).sub(origin);
-  const desired = scratchVecC.copy(targetWorld).sub(origin);
-  if (current.lengthSq() < 1e-7 || desired.lengthSq() < 1e-7) return;
-  current.normalize();
-  desired.normalize();
-  const worldQuat = bone.getWorldQuaternion(scratchQuatC);
-  const delta = scratchQuat.setFromUnitVectors(current, desired);
-  const desiredWorld = delta.multiply(worldQuat);
-  const parentWorld = bone.parent.getWorldQuaternion(scratchQuatC);
-  // Into a scratch, not bone.quaternion: slerpQuaternions copies its first
-  // argument over `this` before reading the second, so aliasing the target
-  // with the destination silently cancels the whole aim.
-  const aimed = scratchQuatD.copy(parentWorld.invert().multiply(desiredWorld));
-  bone.quaternion.slerpQuaternions(rest, aimed, weight);
-  bone.updateWorldMatrix(true, false);
 }
 
 // Deterministic per-actor randomness for the gaze rhythm.
@@ -129,6 +103,7 @@ export function createPatientMotion(root, recipe) {
     if (finger) fingers[finger[1]].push({ bone: object, segment: Number(finger[3]) });
   });
 
+  const restingHands = createRestingHands(root, bones);
   const rng = makeRng((recipe?.identitySeed ?? 1) * 7919);
   let posed = false;
   const restorePose = () => {
@@ -152,7 +127,7 @@ export function createPatientMotion(root, recipe) {
     hasPresentedHand: false,
   };
 
-  const update = (dt, animation, camera) => {
+  const update = (dt, animation, camera, resting = animation.body === 'clinic-idle') => {
     if (!camera || dt <= 0) return;
     // Three skips writing unchanged animation tracks. Remove our last offsets
     // before the mixer runs, then save its new pose before adding this frame's.
@@ -220,6 +195,8 @@ export function createPatientMotion(root, recipe) {
       bones.spine2.rotation.x += breathWave * amplitude;
       if (bones.neck) bones.neck.rotation.x -= breathWave * amplitude * 0.4;
     }
+
+    restingHands.update(dt, resting && (!animation.gesture || animation.gesture === 'none') && !gestureLive);
 
     /* ---- examination gesture: world-space arm aiming ---- */
     state.hasPresentedHand = false;

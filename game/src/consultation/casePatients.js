@@ -291,7 +291,7 @@ function modularActor(profile, id) {
     },
     animation: { body: 'clinic-idle', expression: ['weary', 'sad'].includes(profile.clinical.affect) ? 'fatigued' : 'guarded', gaze: 'doctor', speaking: false },
     performanceStyle: 'responsive-consultation',
-    placement: { position: [0.45, 0.05, -1.7], rotation: [0, Math.PI, 0], scale: 1 },
+    placement: { position: [-0.45, 0.05, -1.7], rotation: [0, Math.PI, 0], scale: 1 },
   });
   recipe.restingFace = {};
   recipe.presentation.entrance = { from: [2.4, 0, 4.55] };

@@ -82,7 +82,7 @@ const recipe = patientToRendererCRecipe(profile, {
   animation: { body: 'clinic-idle', expression: 'guarded', gaze: 'doctor', speaking: false },
   // Use the same chair anchor and facing as the procedural female patients.
   // Asset-axis correction belongs on the model, not in its room placement.
-  placement: { position: [0.45, 0.22, -1.7], rotation: [0, Math.PI, 0], scale: 1.82 },
+  placement: { position: [-0.45, 0.22, -1.7], rotation: [0, Math.PI, 0], scale: 1.82 },
 });
 
 // Enter by the waiting-room door (south wall, consulting-office blueprint).

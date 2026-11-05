@@ -93,3 +93,74 @@ Generated patients use initials and silhouette fallbacks in the Casebook and
 appointment bar instead of requesting photographs that only authored patients
 have. Captures are in `artifacts/gameplay/main-final-park-verified/` and
 `artifacts/gameplay/main-final-patient-verified/`.
+
+## Patient seat contact
+
+The patient now follows the chair's live transform, with seat height fitted
+from the animated thighs instead of the asset's fixed root offset. Seated
+skirts and aprons also wrap around the cushion corners. Colour and shadow
+passes use the same correction; standing garments keep their original shape.
+
+Carmela, the young walking suit, and the broad male were checked in gameplay.
+The latter two also received standing and walking reviews from both sides and
+an oblique angle. Captures are in `artifacts/gameplay/seat-carmela-final/`,
+`seat-walking-suit-final/`, and `seat-broad-final/`. All replays completed without
+browser errors. The production build and all 815 game tests passed.
+
+The broad male still has visible waist and trouser mesh defects in low side
+views; this change does not repair those garments. The standing/walking review
+cues keep the actor at the chair anchor, so the chair intersects the legs in
+those inspection frames. The ordinary walking entrance is reviewed separately
+before these pose overrides.
+
+## Resting hands and closed doors
+
+Idle hands now fit to the visible lap surface. The fit excludes arm-weighted
+triangles, measures each hand's palm pad, preserves arm lengths, and allows
+the wrist to follow the lap slope. It releases during speech gestures,
+examinations and other directed gestures. The existing hat controller still
+owns the hand carrying a removed hat. Standing and walking clips keep their
+authored arm poses.
+
+Closed door panels now overlap their rails and stiles and cast shadows.
+This removes the bright gaps while preserving the recessed panel faces.
+
+The walking suit and original Carmela were reviewed at the wrists from both
+sides and an oblique angle in seated, standing and walking poses. Samuel's
+lean body completed conversation, wrist examination and return to rest.
+Captures are in `artifacts/gameplay/hands-doors-walking-suit-verified/`,
+`hands-doors-carmela-verified/`, and `hands-doors-lean-examination/`.
+All three replays completed without failed steps or browser errors. The
+production build and all 819 game tests passed, including arm-length, palm
+clearance, model-scale and gesture-release checks.
+
+Native coat cuts, some cuff borders and the rigid seated skirt shape still
+need garment cleanup. The contact fit does not repair missing cloth or change
+the authored finger curls. As in the seat review, stationary standing/walking
+inspection cues can intersect the chair because they keep its position.
+
+
+## Centered consultation chair
+
+Solo consultations now use one visitor chair, directly opposite the doctor's
+chair at x = -0.45. Authored, generated and technical patients share that
+position. The seat-contact transform moves with it. The default field of view
+is about 50 degrees; drag and wheel controls still allow manual inspection.
+The patient-seat replay now uses relative inspection cameras.
+
+Wilhelmina's entrance, seated dialogue, hand examination and return to dialogue
+were played and their PNGs inspected in
+`artifacts/gameplay/centered-consultation-wilhelmina-review/`. The face stays
+centered above the dialogue, and the examination keeps its patient target.
+Existing collar and cuff gaps remain visible. No rig or garment geometry was
+changed. The production build and all 819 game tests passed.
+
+Carmela's conversation replay also completed all nine steps, including its
+notebook assertions, in `artifacts/gameplay/centered-consultation-carmela/`.
+The seated and spoken-response PNGs were inspected. Her baked speaking clips
+still include large head turns; centering the chair does not change those.
+
+Both gameplay runs completed every action but exit nonzero because the existing
+atlas-prefetch loader plugin lacks a name and logs
+`THREE.GLTFLoader: Invalid plugin found: missing name`. This warning is also
+present in the committed renderer; it did not prevent the models from loading.

@@ -26,7 +26,7 @@ export const phase1Cast = Object.freeze([
       presentation: { outfitId: 'golden-dress' },
       animation: { body: 'clinic-idle', expression: 'neutral', gaze: 'doctor' },
       asset: { path: '/models/characters/renderer-c-women.glb?v=cast-opt-4' },
-      placement: { position: [0.45, 0, -1.7], rotation: [0, Math.PI, 0], scale: 1 },
+      placement: { position: [-0.45, 0, -1.7], rotation: [0, Math.PI, 0], scale: 1 },
     }),
   }),
   createActorInstance({
@@ -50,7 +50,7 @@ export const phase1Cast = Object.freeze([
       presentation: { outfitId: 'sack-suit' },
       animation: { body: 'sitting-talking', expression: 'guarded', gaze: 'away', speaking: false },
       asset: { path: '/models/characters/renderer-c-men.glb?v=cast-opt-4' },
-      placement: { position: [0.45, 0, -1.7], rotation: [0, Math.PI, 0], scale: 1 },
+      placement: { position: [-0.45, 0, -1.7], rotation: [0, Math.PI, 0], scale: 1 },
     }),
   }),
 ]);

@@ -9,11 +9,11 @@ import { examinationPresentation } from './examPresentation.js';
 const SEAT_EYE = [-0.45, 1.26, -3.4];
 const PATIENT_HEAD_HEIGHT = 1.02;
 
-// Zoom is a fraction of the fov range: 0 frames the patient close (the old
-// default), 1 takes in most of the room from the chair.
+// Start with a conversational view; the wheel can widen it to show the room.
+// Zoom is a fraction of the field-of-view range, from close to wide.
 const FOV_CLOSE = 44;
 const FOV_WIDE = 86;
-const DEFAULT_ZOOM = 0.38;
+const DEFAULT_ZOOM = 0.14;
 
 // Examination mode: the camera orbits the seated figure at a fixed field of
 // view. Drag swings the eye within clamped bounds; the wheel walks in and
@@ -31,7 +31,7 @@ let zoom = DEFAULT_ZOOM;
 let examZoom = EXAM_DEFAULT_ZOOM;
 
 export function seatFramingForPatient(patientPosition) {
-  const [x, , z] = patientPosition ?? [0.45, 0, -1.7];
+  const [x, , z] = patientPosition ?? [-0.45, 0, -1.7];
   return {
     position: SEAT_EYE,
     target: [x, PATIENT_HEAD_HEIGHT, z],

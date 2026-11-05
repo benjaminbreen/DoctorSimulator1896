@@ -328,29 +328,11 @@
       "mass": 13
     },
     {
-      "id": "patient-chair-w",
-      "kind": "furniture",
-      "model": "ChairSmall2",
-      "position": [
-        -1.1,
-        0,
-        -1.7
-      ],
-      "size": [
-        0.5602,
-        1.276,
-        0.7505
-      ],
-      "yaw": 3.1416,
-      "dynamic": true,
-      "mass": 7
-    },
-    {
       "id": "patient-chair-e",
       "kind": "furniture",
       "model": "ChairSmall2",
       "position": [
-        0.45,
+        -0.45,
         0,
         -1.7
       ],

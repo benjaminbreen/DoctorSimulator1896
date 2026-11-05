@@ -27,7 +27,7 @@ test('all three technical patients satisfy the consultation contract', () => {
     assert.equal(fixture.actor.recipe.identitySeed, fixture.profile.seed);
     assert.equal(fixture.actor.recipe.cohort, fixture.profile.identity.sex === 'male' ? 'men' : 'women');
     assert.deepEqual(validateConsultationPatient(fixture), []);
-    assert.equal(fixture.actor.recipe.placement.position[0], 0.45);
+    assert.equal(fixture.actor.recipe.placement.position[0], -0.45);
     assert.equal(fixture.actor.recipe.placement.position[2], -1.7);
     assert.equal(fixture.actor.recipe.placement.rotation[1], Math.PI);
   }
@@ -38,7 +38,7 @@ test('Samuel faces the doctor from the seated clinic pose with his tuned complex
   assert.equal(samuel.label, 'Mr. Samuel Taylor');
   assert.equal(samuel.actor.recipe.animation.body, 'clinic-idle');
   assert.deepEqual(samuel.actor.recipe.placement, {
-    position: [0.45, 0.22, -1.7],
+    position: [-0.45, 0.22, -1.7],
     rotation: [0, Math.PI, 0],
     scale: 1,
   });

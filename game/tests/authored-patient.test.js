@@ -87,7 +87,7 @@ test('Nora is in the authored pool and satisfies the authored contract', () => {
   assert.equal(patient.actor.recipe.asset.path, '/models/characters/nora-byrne.glb?v=4');
   assert.equal(patient.actor.recipe.asset.motionPath, '/models/characters/nora-byrne-motions.glb');
   assert.equal(patient.actor.recipe.asset.kind, 'authored-character');
-  assert.deepEqual(patient.actor.recipe.placement.position, [0.45, 0.22, -1.7]);
+  assert.deepEqual(patient.actor.recipe.placement.position, [-0.45, 0.22, -1.7]);
   assert.deepEqual(patient.actor.recipe.placement.rotation, [0, Math.PI, 0]);
   assert.equal(patient.actor.recipe.placement.scale, 1.82);
   assert.deepEqual(validateConsultationPatient(patient), []);

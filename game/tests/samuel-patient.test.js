@@ -59,7 +59,7 @@ test('Samuel is a complete patient in the authored pool', () => {
   assert.equal(patient.profileStatus, 'authored-composite');
   assert.equal(patient.sources.length, 4);
   assert.equal(patient.actor.recipe.values.skinTone, '#afa59b');
-  assert.deepEqual(patient.actor.recipe.placement.position, [0.45, 0.22, -1.57]);
+  assert.deepEqual(patient.actor.recipe.placement.position, [-0.45, 0.22, -1.57]);
   assert.deepEqual(validateConsultationPatient(patient), []);
 });
 

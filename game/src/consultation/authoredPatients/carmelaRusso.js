@@ -62,7 +62,7 @@ const recipe = patientToRendererCRecipe(profile, {
   },
   animation: { body: 'clinic-idle', expression: 'guarded', gaze: 'doctor', speaking: false },
   performanceStyle: 'responsive-consultation',
-  placement: { position: [0.45, 0.05, -1.7], rotation: [0, Math.PI, 0], scale: 1 },
+  placement: { position: [-0.45, 0.05, -1.7], rotation: [0, Math.PI, 0], scale: 1 },
 });
 recipe.restingFace = {};
 

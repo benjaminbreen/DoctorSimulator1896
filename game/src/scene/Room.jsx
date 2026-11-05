@@ -30,12 +30,13 @@ function DoorLeaf({ width, height, hinge, yaw }) {
   const t = 0.055;
   const stile = 0.13;
   const map = doorMap(width, height);
-  const panelWidth = width / 2 - stile - 0.045;
+  // Recessed panels overlap the rails and stiles so the leaf stays solid.
+  const panelWidth = width / 2 - stile - 0.05 + 0.02;
   const lockY = Math.min(1.0, height * 0.38);
   const upperY = (lockY + 0.07 + height - 0.14) / 2;
-  const upperH = height - 0.14 - lockY - 0.07 - 0.06;
+  const upperH = height - 0.14 - lockY - 0.07 + 0.02;
   const lowerY = (0.22 + lockY - 0.07) / 2;
-  const lowerH = lockY - 0.07 - 0.22 - 0.06;
+  const lowerH = lockY - 0.07 - 0.22 + 0.02;
   const frame = [
     { position: [stile / 2, height / 2, 0], size: [stile, height, t] },
     { position: [width - stile / 2, height / 2, 0], size: [stile, height, t] },
@@ -46,7 +47,7 @@ function DoorLeaf({ width, height, hinge, yaw }) {
   ];
   const panels = [];
   for (const side of [0, 1]) {
-    const x = side ? width - stile - panelWidth / 2 - 0.015 : stile + panelWidth / 2 + 0.015;
+    const x = side ? width - stile - panelWidth / 2 + 0.01 : stile + panelWidth / 2 - 0.01;
     panels.push({ position: [x, upperY, 0], size: [panelWidth, Math.max(upperH, 0.2), t * 0.5] });
     panels.push({ position: [x, lowerY, 0], size: [panelWidth, Math.max(lowerH, 0.2), t * 0.5] });
   }
@@ -59,7 +60,7 @@ function DoorLeaf({ width, height, hinge, yaw }) {
         </mesh>
       ))}
       {panels.map((part, index) => (
-        <mesh key={`panel-${index}`} position={part.position}>
+        <mesh key={`panel-${index}`} position={part.position} castShadow>
           <boxGeometry args={part.size} />
           <meshStandardMaterial map={map} color="#c9beb2" roughness={0.5} />
         </mesh>

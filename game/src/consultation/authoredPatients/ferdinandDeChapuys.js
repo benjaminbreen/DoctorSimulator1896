@@ -73,7 +73,7 @@ const recipe = patientToRendererCRecipe(profile, {
     },
   },
   animation: { body: 'clinic-idle', expression: 'guarded', gaze: 'doctor', speaking: false },
-  placement: { position: [0.45, 0.04, -1.57], rotation: [0, Math.PI, 0], scale: 1.78 },
+  placement: { position: [-0.45, 0.04, -1.57], rotation: [0, Math.PI, 0], scale: 1.78 },
 });
 
 // The model currently has seated and standing idles but no entrance clips.

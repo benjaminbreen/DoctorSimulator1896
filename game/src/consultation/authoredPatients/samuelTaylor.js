@@ -58,7 +58,7 @@ const generatedRecipe = patientToRendererCRecipe(profile, {
     },
   },
   animation: { body: 'clinic-idle', expression: 'discouraged', gaze: 'doctor', speaking: false },
-  placement: { position: [0.45, 0.22, -1.57], rotation: [0, Math.PI, 0], scale: 1.78 },
+  placement: { position: [-0.45, 0.22, -1.57], rotation: [0, Math.PI, 0], scale: 1.78 },
 });
 
 const recipe = {
@@ -76,7 +76,7 @@ if (reviewLook) {
       'sitting-talking':'SittingTalking','sitting-disbelief':'SittingDisbelief','sitting-disapproval':'SittingDisapproval',
       'sitting-distressed':'SittingSelfSoothing','sitting-self-soothing':'SittingSelfSoothing' },
   };
-  recipe.placement = { ...recipe.placement, position:[.45,.05,-1.7], scale:1 };
+  recipe.placement = { ...recipe.placement, position:[-.45,.05,-1.7], scale:1 };
   recipe.restingFace = {};
   recipe.presentation.hat = null;
   recipe.presentation.consultationZoom = .10;

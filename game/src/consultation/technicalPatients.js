@@ -105,7 +105,7 @@ function generatedActor(profile, id) {
     // Both current cohort masters share the same forward axis. ClinicIdle is
     // the seated pose; this places its hips on the consultation chair and
     // turns the patient toward the doctor across the desk.
-    placement: { position: [0.45, 0.22, -1.7], rotation: [0, Math.PI, 0], scale: 1 },
+    placement: { position: [-0.45, 0.22, -1.7], rotation: [0, Math.PI, 0], scale: 1 },
   });
   const samuel = profile.seed === 4819 && profile.identity.fullName === 'Mr. Samuel Taylor';
   const recipe = samuel
