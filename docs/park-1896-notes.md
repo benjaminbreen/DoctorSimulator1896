@@ -86,3 +86,9 @@ dialogue. Guesses are marked as guesses.
   and Central Park South blocks by 1896 is unverified.
 - Stair bulkheads and glass skylights over the stair well are generic
   details of flat-roofed houses of the period.
+- The four roofs west of the Plaza Hotel form a fictional traversal route.
+  Two iron maintenance ladders lead from the service alleys to the roofs.
+  The neighboring buildings' heights and gaps are tuned for play. The
+  [NYC Municipal Archives](https://www.nyc.gov/assets/records/pdf/DOB-Drawings_Finding-Aid_REC0074.pdf)
+  records a Bureau of Fire Escapes and Iron Work by 1874; that supports the
+  material and period, not the location or design of these particular ladders.

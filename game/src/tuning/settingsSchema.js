@@ -6,7 +6,7 @@ export const STARTING_ZONE = 'central-park';
 export const STARTING_TIME = 9.5;
 
 export const settingsSchema = {
-  version: 8,
+  version: 9,
   groups: [
     {
       id: 'world',
@@ -61,8 +61,8 @@ export const settingsSchema = {
         { id: 'walkSpeed', label: 'Walk speed', type: 'range', min: 0.5, max: 14, step: 0.05, default: 2.2 },
         { id: 'runSpeed', label: 'Run speed', type: 'range', min: 1, max: 20, step: 0.05, default: 5 },
         { id: 'gravity', label: 'Gravity', type: 'range', min: 4, max: 30, step: 0.1, default: 11.9 },
-        { id: 'groundAcceleration', label: 'Acceleration', type: 'range', min: 4, max: 60, step: 0.5, default: 47 },
-        { id: 'groundDeceleration', label: 'Deceleration', type: 'range', min: 4, max: 60, step: 0.5, default: 46.5 },
+        { id: 'groundAcceleration', label: 'Acceleration', type: 'range', min: 4, max: 60, step: 0.5, default: 16 },
+        { id: 'groundDeceleration', label: 'Deceleration', type: 'range', min: 4, max: 60, step: 0.5, default: 14 },
         { id: 'turnDamping', label: 'Turn damping', type: 'range', min: 4, max: 40, step: 0.5, default: 25.5 },
         { id: 'jumpVelocity', label: 'Jump velocity', type: 'range', min: 0, max: 12, step: 0.1, default: 6.8 },
         { id: 'coyoteTime', label: 'Coyote time', type: 'range', min: 0, max: 0.5, step: 0.01, default: 0.2 },

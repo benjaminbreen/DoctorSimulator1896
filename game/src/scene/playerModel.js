@@ -5,7 +5,7 @@
 
 import { shouldRecycleWebGLContextOnTravel } from './mobileGraphics.js';
 
-const VERSION = 'player-opt-2';
+const VERSION = 'player-motion-1';
 
 export function playerAvatarUrl() {
   const file = shouldRecycleWebGLContextOnTravel()

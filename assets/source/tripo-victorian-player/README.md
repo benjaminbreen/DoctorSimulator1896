@@ -5,6 +5,7 @@ Rebuild the web asset from the repository root with:
 
 ```sh
 npm run tripo-player:export
+node scripts/characters/optimize-tripo-player.mjs
 ```
 
 The playable export currently includes these Mixamo clips:
@@ -17,6 +18,12 @@ The playable export currently includes these Mixamo clips:
 - `Throw Object.fbx` → `Throw`
 - `Quick Formal Bow.fbx` → `FormalBow`
 - `Shaking Hands 2.fbx` → `Handshake`
+- `Run To Stop.fbx` → `RunStop`
+- `Vault Over Box.fbx` → `Vault` (the game uses the crossing, before the hide)
+- `Jogging Stumble.fbx` → `Stumble`
+- `Terrified.fbx` → `Startle` (the game uses the opening upper-body recoil)
 
-The other FBXs are retained here as source motions for later seated and
-interaction states. They are not included in the playable GLB yet.
+The build also includes the carriage ladder cycle, carrying and pickup motions,
+smoking, and the shared fall and recovery clips. The complete export list is in
+`scripts/characters/export_tripo_player.py`. The FBXs stay in the source tree;
+the game serves only the two optimized player GLBs.

@@ -20,6 +20,8 @@ import { normalizeNonmetallicCharacterMaterials } from './characterMaterials.js'
 import { getKTX2Loader } from './ktx2.js';
 import { BOARDING_CLIMB_SECONDS } from '../world/carriageBoarding.js';
 import { playerAvatarUrl } from './playerModel.js';
+import { airborneClipTime, JUMP_CONTACTS, locomotionBlend } from '../movement/playerLocomotion.js';
+import { createLadderGrip } from './ladderGrip.js';
 
 // The rigged player: a Tripo-authored figure with Mixamo idle and walk clips,
 // assembled by scripts/characters/export_tripo_player.py.
@@ -31,7 +33,6 @@ const MODEL = playerAvatarUrl();
 // Keep foot speed matched to the tuned walk and run. The old 1.3x ceiling
 // made the character slide at even the ordinary walking speed.
 const CLIP_SPEED = 1.4;
-const MAX_PLAYBACK = 2.0;
 const RUN_CLIP_SPEED = 3.2;
 const MAX_RUN_PLAYBACK = 2.0;
 // CarryWalk is a deliberately careful 2.9s cycle; speed it up enough to keep
@@ -58,6 +59,59 @@ const leftGripPosition = new THREE.Vector3();
 const gripDirection = new THREE.Vector3();
 const handRotation = new THREE.Quaternion();
 const heldOffset = new THREE.Vector3();
+
+function physicsJumpClip(source) {
+  const contacts = JUMP_CONTACTS[source.name];
+  const result = source.clone();
+  const hips = result.tracks.find((track) => /Hips\.position$/.test(track.name));
+  if (!hips || !contacts) return result;
+  const sample = hips.createInterpolant();
+  const takeoff = sample.evaluate(contacts.takeoff)[1];
+  const apex = sample.evaluate(contacts.apex)[1];
+  const contact = sample.evaluate(contacts.contact)[1];
+  const apexFraction = (contacts.apex - contacts.takeoff) / (contacts.contact - contacts.takeoff);
+  const height = apex - THREE.MathUtils.lerp(takeoff, contact, apexFraction);
+  // Remove the filmed body's airborne arc so it cannot lift the mesh a
+  // second time above the capsule. Keep its crouch and landing compression.
+  for (let index = 0; index < hips.times.length; index += 1) {
+    const time = hips.times[index];
+    const phase = time < contacts.apex
+      ? (time - contacts.takeoff) / (contacts.apex - contacts.takeoff)
+      : (contacts.contact - time) / (contacts.contact - contacts.apex);
+    hips.values[index * 3 + 1] -= height * Math.sin(THREE.MathUtils.clamp(phase, 0, 1) * Math.PI / 2);
+  }
+  return result;
+}
+
+function stagedMotion(source, name = source.name) {
+  if (name === 'Startle') {
+    const clip = THREE.AnimationUtils.subclip(source, name, 22, 51, 30);
+    clip.tracks = clip.tracks.filter(({ name }) => /(?:Spine|Shoulder|Arm|Hand|Head|Neck).*\.quaternion$/.test(name));
+    return THREE.AnimationUtils.makeClipAdditive(clip);
+  }
+  const clip = source.clone();
+  clip.name = name;
+  const hips = clip.tracks.find((track) => /Hips\.position$/.test(track.name));
+  if (!hips) return clip;
+  const [x, y] = hips.values;
+  // Mixamo's new exports carry a taller source pelvis and forward travel.
+  // Align the pelvis to the existing body and let the capsule own travel.
+  for (let i = 0; i < hips.values.length; i += 3) {
+    hips.values[i] = name === 'Ladder' ? x - hips.values[i] + 2.9 : hips.values[i] - x;
+    hips.values[i + 1] = (hips.values[i + 1] - y) * (name === 'Vault' ? 0.22 : 1)
+      + (name === 'Ladder' ? 56 : 53);
+    hips.values[i + 2] = 0.8;
+  }
+  if (name === 'Ladder') {
+    const rotation = clip.tracks.find((track) => /Hips\.quaternion$/.test(track.name));
+    const turn = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+    const pose = new THREE.Quaternion();
+    if (rotation) for (let i = 0; i < rotation.values.length; i += 4) {
+      pose.fromArray(rotation.values, i).premultiply(turn).toArray(rotation.values, i);
+    }
+  }
+  return clip;
+}
 
 function findMixamoBone(root, boneName) {
   const normalizedTarget = `mixamorig${boneName}`.toLowerCase();
@@ -88,9 +142,9 @@ export default function PlayerAvatar({ runtime, onReady }) {
   const {
     scene, mixer, idle, walk, run, carryIdle, carryWalk, carryRun, throwReady,
     jump, standingJump, smoking, throwAction, pickUpAction,
-    climbCarriage,
+    climbCarriage, ladder, vault, runStop, startle, stumble,
     edgeSlip, fallShoulder, fallGeneric, fallenIdle, riseFromFall,
-    rightHand, leftHand, rightMiddle, leftMiddle, fit,
+    rightHand, leftHand, rightMiddle, leftMiddle, fit, ladderGrip,
   } = useMemo(() => {
     // Used as loaded, not cloned: Object3D.clone leaves a SkinnedMesh bound to
     // the original bones, so the copy renders in bind pose while the clip
@@ -130,10 +184,16 @@ export default function PlayerAvatar({ runtime, onReady }) {
     const animations = new THREE.AnimationMixer(root);
     const clip = (name) => {
       const found = gltf.animations.find((entry) => entry.name === name);
-      return found ? animations.clipAction(found) : null;
+      return found ? animations.clipAction(JUMP_CONTACTS[name] ? physicsJumpClip(found) : found) : null;
+    };
+    const stage = (name, source = name) => {
+      const found = gltf.animations.find((entry) => entry.name === source);
+      return found ? animations.clipAction(stagedMotion(found, name)) : null;
     };
     const bounds = new THREE.Box3().setFromObject(root);
     const height = Math.max(0.01, bounds.max.y - bounds.min.y);
+    const rightHand = findMixamoBone(root, 'RightHand');
+    const leftHand = findMixamoBone(root, 'LeftHand');
     return {
       scene: root,
       mixer: animations,
@@ -150,6 +210,11 @@ export default function PlayerAvatar({ runtime, onReady }) {
       throwAction: clip('Throw'),
       pickUpAction: clip('PickUp'),
       climbCarriage: clip('ClimbCarriage'),
+      ladder: stage('Ladder', 'ClimbCarriage'),
+      vault: stage('Vault'),
+      runStop: stage('RunStop'),
+      startle: stage('Startle'),
+      stumble: stage('Stumble'),
       edgeSlip: clip('EdgeSlip'),
       fallShoulder: clip('FallShoulder'),
       fallGeneric: clip('FallGeneric'),
@@ -157,8 +222,9 @@ export default function PlayerAvatar({ runtime, onReady }) {
       riseFromFall: clip('RiseFromFall'),
       // GLTFLoader removes punctuation from node names, while Blender and the
       // source FBX preserve the colon. Match the semantic bone either way.
-      rightHand: findMixamoBone(root, 'RightHand'),
-      leftHand: findMixamoBone(root, 'LeftHand'),
+      rightHand,
+      leftHand,
+      ladderGrip: createLadderGrip(leftHand, rightHand),
       rightMiddle: findMixamoBone(root, 'RightHandMiddle1'),
       leftMiddle: findMixamoBone(root, 'LeftHandMiddle1'),
       fit: capsuleHeight / height,
@@ -185,7 +251,7 @@ export default function PlayerAvatar({ runtime, onReady }) {
     carryRun?.play().setEffectiveWeight(0);
     throwReady?.play().setEffectiveWeight(0);
     for (const action of [
-      jump, standingJump, throwAction, pickUpAction, climbCarriage,
+      jump, standingJump, throwAction, pickUpAction, climbCarriage, ladder, vault, runStop, startle, stumble,
       edgeSlip, fallShoulder, fallGeneric, riseFromFall,
     ]) {
       action?.setLoop(THREE.LoopOnce, 1);
@@ -195,7 +261,7 @@ export default function PlayerAvatar({ runtime, onReady }) {
     return () => mixer.stopAllAction();
   }, [
     mixer, idle, walk, run, carryIdle, carryWalk, carryRun, throwReady,
-    jump, standingJump, throwAction, pickUpAction, climbCarriage,
+    jump, standingJump, throwAction, pickUpAction, climbCarriage, ladder, vault, runStop, startle, stumble,
     edgeSlip, fallShoulder, fallGeneric, fallenIdle, riseFromFall,
   ]);
 
@@ -220,6 +286,14 @@ export default function PlayerAvatar({ runtime, onReady }) {
   const activeClimb = useRef(false);
   const lastClimbSerial = useRef(0);
   const wasShotPose = useRef(false);
+  const gaitPhase = useRef(0);
+  const previousSpeed = useRef(0);
+  const previousYaw = useRef(0);
+  const landingTime = useRef(null);
+  const movingLastFrame = useRef(false);
+  const activeStop = useRef(false);
+  const traversalAction = useRef(null);
+  const lastAction = useRef(null);
   useFrame((_, delta) => {
     const group = groupRef.current;
     if (!group) return;
@@ -234,11 +308,13 @@ export default function PlayerAvatar({ runtime, onReady }) {
     // locomotion state machine interpret those teleports as jumps or falls.
     const shotPose = gameDebug.shotPose === 'still';
     if (shotPose) {
+      group.rotation.x = 0;
+      group.rotation.z = 0;
       if (!wasShotPose.current) {
         for (const action of [
           walk, run, carryIdle, carryWalk, carryRun, throwReady,
           jump, standingJump, smoking, throwAction, pickUpAction,
-          climbCarriage, edgeSlip, fallShoulder, fallGeneric, fallenIdle,
+          climbCarriage, ladder, vault, runStop, startle, stumble, edgeSlip, fallShoulder, fallGeneric, fallenIdle,
           riseFromFall,
         ]) action?.stop();
         activeJump.current = null;
@@ -246,6 +322,8 @@ export default function PlayerAvatar({ runtime, onReady }) {
         activeThrow.current = false;
         activePickup.current = false;
         activeClimb.current = false;
+        activeStop.current = false;
+        traversalAction.current = null;
         idle?.reset().setEffectiveWeight(1).play();
         if (idle) {
           idle.time = Math.min(0.65, idle.getClip().duration * 0.35);
@@ -274,14 +352,16 @@ export default function PlayerAvatar({ runtime, onReady }) {
     }
 
     const reaction = getPlayer().reaction;
-    const reactionBusy = reaction.phase !== REACTION_PHASE.NORMAL;
+    const reactionBusy = reaction.phase !== REACTION_PHASE.NORMAL && reaction.variant !== 'startle';
     const reactionKey = `${reaction.phase}:${reaction.variant ?? ''}`;
     if (reactionKey !== activeReactionKey.current) {
       activeReactionKey.current = reactionKey;
       activeReaction.current?.fadeOut(0.1);
       activeReaction.current = null;
-      if (reactionBusy) {
+      if (reaction.phase !== REACTION_PHASE.NORMAL) {
         const actions = {
+          startle,
+          stumble,
           edgeSlip,
           fallShoulder,
           fallGeneric,
@@ -291,7 +371,8 @@ export default function PlayerAvatar({ runtime, onReady }) {
         const action = actions[reaction.variant];
         if (action) {
           const timeScale = REACTION_MOTION[reaction.variant]?.timeScale ?? 1;
-          action.reset().setEffectiveTimeScale(timeScale).fadeIn(0.08).play();
+          action.reset().setEffectiveWeight(1).setEffectiveTimeScale(timeScale).fadeIn(0.08).play();
+          if (action === stumble) action.time = 0.24;
           activeReaction.current = action;
         }
       }
@@ -358,26 +439,75 @@ export default function PlayerAvatar({ runtime, onReady }) {
     const grounded = gameDebug.player.grounded;
     const moving = speed > MOVING;
     const running = grounded && moving && gameDebug.player.running;
-    if (!reactionBusy && !grounded && wasGrounded.current) {
+    const traversal = gameDebug.player.traversal;
+    const requestedMove = gameDebug.player.moveRequested;
+    const actionBusy = reactionBusy || ritual || activeThrow.current || activePickup.current || activeClimb.current || Boolean(traversal);
+    const carrying = throwPlay.phase === 'held';
+    if (runStop && grounded && !actionBusy && !carrying && !preparingThrow
+      && movingLastFrame.current && !requestedMove && previousSpeed.current > runtime.values.walkSpeed + 0.65) {
+      activeStop.current = true;
+      runStop.reset().setEffectiveWeight(1).setEffectiveTimeScale(1.9).fadeIn(0.08).play();
+    }
+    if (activeStop.current && (!grounded || actionBusy || requestedMove || runStop.time > 0.66)) {
+      runStop.fadeOut(0.12);
+      activeStop.current = false;
+    }
+    movingLastFrame.current = requestedMove;
+
+    const traversalClip = traversal?.motion.item.type === 'ladder' ? ladder : traversal ? vault : null;
+    if (traversalClip !== traversalAction.current) {
+      traversalAction.current?.fadeOut(0.1);
+      traversalAction.current = traversalClip;
+      traversalClip?.reset().setEffectiveTimeScale(0).play();
+      if (traversalClip) {
+        activeJump.current?.fadeOut(0.08);
+        activeJump.current = null;
+      }
+    }
+    if (traversalClip) {
+      traversalClip.setEffectiveWeight(traversal.weight);
+      traversalClip.time = traversalClip === ladder
+        ? ((traversal.position[1] - traversal.motion.item.low[1]) / (2 * traversal.motion.item.rungSpacing) % 1 + 1) % 1 * ladder.getClip().duration
+        : 0.2 + traversal.progress * 1.4;
+    }
+
+    if (!actionBusy && !grounded && (wasGrounded.current || (!activeJump.current && velocity[1] < -0.8))) {
       const selected = moving ? jump : standingJump;
       activeJump.current?.stop();
       activeJump.current = selected;
-      selected?.reset().fadeIn(0.08).play();
+      landingTime.current = null;
+      selected?.reset().setEffectiveTimeScale(0).setEffectiveWeight(1).fadeIn(0.08).play();
     } else if (grounded && !wasGrounded.current && activeJump.current) {
-      activeJump.current.fadeOut(0.12);
-      activeJump.current = null;
+      landingTime.current = 0;
+      activeJump.current.fadeOut(0.22);
+    }
+    if (activeJump.current) {
+      const action = activeJump.current;
+      const contacts = JUMP_CONTACTS[action.getClip().name];
+      if (landingTime.current !== null) {
+        landingTime.current += Math.min(delta, 0.05);
+        action.time = Math.min(contacts.end, contacts.contact + landingTime.current * 2.2);
+        if (landingTime.current > 0.24) {
+          action.stop();
+          activeJump.current = null;
+          landingTime.current = null;
+        }
+      } else {
+        action.time = airborneClipTime(contacts, velocity[1], runtime.values.jumpVelocity);
+      }
     }
     wasGrounded.current = grounded;
 
-    if (walk && idle && run && carryIdle && carryWalk && carryRun && throwReady) {
+    if (walk && idle && run) {
       // Crossfade by hand because the weights follow continuously changing
       // movement speed rather than a single state transition.
-      const carrying = throwPlay.phase === 'held';
-      const busy = reactionBusy || ritual || activeThrow.current || activePickup.current || activeClimb.current;
+      const busy = actionBusy || activeStop.current;
       const occupied = carrying || preparingThrow;
-      const idleTarget = grounded && !moving && !occupied && !busy ? 1 : 0;
-      const walkTarget = grounded && moving && !running && !occupied && !busy ? 1 : 0;
-      const runTarget = running && !occupied && !busy ? 1 : 0;
+      const blend = locomotionBlend(speed, runtime.values.walkSpeed, runtime.values.runSpeed);
+      const idleTarget = traversal && !occupied ? 1 - traversal.weight
+        : grounded && !occupied && !busy ? blend.idle : 0;
+      const walkTarget = grounded && !occupied && !busy ? blend.walk : 0;
+      const runTarget = grounded && !occupied && !busy ? blend.run : 0;
       const carryIdleTarget = grounded && !moving && carrying && !busy ? 1 : 0;
       const carryWalkTarget = grounded && moving && !running && carrying && !busy ? 1 : 0;
       const carryRunTarget = running && carrying && !busy ? 1 : 0;
@@ -391,38 +521,66 @@ export default function PlayerAvatar({ runtime, onReady }) {
       run.setEffectiveWeight(
         THREE.MathUtils.damp(run.getEffectiveWeight(), runTarget, 12, delta),
       );
-      carryIdle.setEffectiveWeight(
-        THREE.MathUtils.damp(carryIdle.getEffectiveWeight(), carryIdleTarget, 12, delta),
+      carryIdle?.setEffectiveWeight(
+        THREE.MathUtils.damp(carryIdle?.getEffectiveWeight() ?? 0, carryIdleTarget, 12, delta),
       );
-      carryWalk.setEffectiveWeight(
-        THREE.MathUtils.damp(carryWalk.getEffectiveWeight(), carryWalkTarget, 12, delta),
+      carryWalk?.setEffectiveWeight(
+        THREE.MathUtils.damp(carryWalk?.getEffectiveWeight() ?? 0, carryWalkTarget, 12, delta),
       );
-      carryRun.setEffectiveWeight(
-        THREE.MathUtils.damp(carryRun.getEffectiveWeight(), carryRunTarget, 12, delta),
+      carryRun?.setEffectiveWeight(
+        THREE.MathUtils.damp(carryRun?.getEffectiveWeight() ?? 0, carryRunTarget, 12, delta),
       );
-      throwReady.setEffectiveWeight(
-        THREE.MathUtils.damp(throwReady.getEffectiveWeight(), throwReadyTarget, 12, delta),
+      throwReady?.setEffectiveWeight(
+        THREE.MathUtils.damp(throwReady?.getEffectiveWeight() ?? 0, throwReadyTarget, 12, delta),
       );
-      walk.setEffectiveTimeScale(Math.min(MAX_PLAYBACK, Math.max(0.6, speed / CLIP_SPEED)));
-      run.setEffectiveTimeScale(
-        Math.min(MAX_RUN_PLAYBACK, Math.max(0.75, speed / RUN_CLIP_SPEED)),
+      // One distance-driven phase keeps the same supporting foot through
+      // walk/run blends. Independent clocks crossed opposite leg poses.
+      const stride = THREE.MathUtils.lerp(
+        CLIP_SPEED * walk.getClip().duration,
+        RUN_CLIP_SPEED * run.getClip().duration,
+        blend.run,
       );
-      carryWalk.setEffectiveTimeScale(
+      if (grounded && !busy) gaitPhase.current = (gaitPhase.current + speed * Math.min(delta, 0.05) / stride) % 1;
+      walk.setEffectiveTimeScale(0);
+      run.setEffectiveTimeScale(0);
+      walk.time = gaitPhase.current * walk.getClip().duration;
+      run.time = gaitPhase.current * run.getClip().duration;
+      carryWalk?.setEffectiveTimeScale(
         Math.min(MAX_CARRY_WALK_PLAYBACK, Math.max(0.7, speed / CARRY_WALK_CLIP_SPEED)),
       );
-      carryRun.setEffectiveTimeScale(
+      carryRun?.setEffectiveTimeScale(
         Math.min(MAX_RUN_PLAYBACK, Math.max(0.75, speed / RUN_CLIP_SPEED)),
       );
     }
 
     group.position.set(x, y, z);
     group.rotation.y = gameDebug.player.yaw + FACING;
+    const bodyBusy = actionBusy || activeStop.current;
+    const dt = Math.min(delta, 0.05);
+    const acceleration = THREE.MathUtils.clamp((speed - previousSpeed.current) / Math.max(0.001, dt), -12, 12);
+    const turn = THREE.MathUtils.euclideanModulo(gameDebug.player.yaw - previousYaw.current + Math.PI, Math.PI * 2) - Math.PI;
+    group.rotation.x = THREE.MathUtils.damp(group.rotation.x, bodyBusy || !grounded ? 0 : acceleration * 0.006, 14, dt);
+    group.rotation.z = THREE.MathUtils.damp(group.rotation.z, bodyBusy || !grounded ? 0 : THREE.MathUtils.clamp(turn / Math.max(0.001, dt) * speed * 0.008, -0.1, 0.1), 10, dt);
+    group.rotation.order = 'YXZ';
+    previousSpeed.current = speed;
+    previousYaw.current = gameDebug.player.yaw;
+    const accent = traversal?.motion.item.type ?? reaction.variant ?? (activeStop.current ? 'braking' : null);
+    if (accent) lastAction.current = accent;
+    const phase = accent ?? (bodyBusy ? 'action' : activeJump.current
+      ? grounded ? 'landing' : velocity[1] > 0 ? 'rising' : 'falling'
+      : running ? 'run' : moving ? 'walk' : 'idle');
+    gameDebug.player.animation = {
+      speed, phase, lastAction: lastAction.current,
+      weights: { idle: idle?.getEffectiveWeight(), walk: walk?.getEffectiveWeight(), run: run?.getEffectiveWeight() },
+      jumpTime: activeJump.current?.time ?? null,
+    };
     group.visible = gameDebug.player.visible !== false;
     // Match the physics controller's hitch protection. Advancing a one-shot
     // by an entire stalled frame can skip its contact pose and make the body
     // appear to snap between upright, prone, pickup, or climbing states.
     mixer.update(Math.min(delta, 0.1));
     group.updateMatrixWorld(true);
+    ladderGrip(traversal);
 
     if (activeThrow.current && throwAction && !throwAction.isRunning()) {
       throwAction.fadeOut(0.14);
@@ -439,14 +597,14 @@ export default function PlayerAvatar({ runtime, onReady }) {
 
     const heldObject = heldObjectRef.current;
     const definition = throwableDefinition(throwPlay.heldType);
-    const carrying = (throwPlay.phase === 'picking-up' && throwPlay.pickupTaken)
+    const objectInHand = (throwPlay.phase === 'picking-up' && throwPlay.pickupTaken)
       || throwPlay.phase === 'held'
       || throwPlay.phase === 'charging'
       || throwPlay.phase === 'windup';
     if (rightHand) rightHand.getWorldPosition(handPosition);
     else handPosition.set(x, y + 1.2, z);
     if (heldObject) {
-      heldObject.visible = carrying && group.visible && Boolean(definition);
+      heldObject.visible = objectInHand && group.visible && Boolean(definition);
       if (heldObject.visible) {
         if (rightHand) rightHand.getWorldQuaternion(handRotation);
         else handRotation.identity();

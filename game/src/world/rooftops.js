@@ -7,6 +7,10 @@
 import { facadeEntranceLayout, facadeWidth, FACES } from './facade.js';
 import { streetItems } from './streetGrid.js';
 
+export function roofCapTop(item) {
+  return item.position[1] + item.size[1] / 2 + 0.5;
+}
+
 function hash01(seed) {
   const value = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
   return value - Math.floor(value);
@@ -33,9 +37,8 @@ export function rooftops(items = streetItems) {
     const faceToken = Object.keys(FACES).find((key) => FACES[key] === face) ?? token;
     const width = facadeWidth(item.size, faceToken);
     const depth = face.normal[2] !== 0 ? item.size[2] : item.size[0];
-    const [cx, cy, cz] = item.position;
-    // Top of the roof cap that Furniture.jsx lays over every mass.
-    const roof = cy + item.size[1] / 2 + 0.5;
+    const [cx, , cz] = item.position;
+    const roof = roofCapTop(item);
     const seed = idHash(item.id);
     const roll = (salt) => hash01(seed * 0.013 + salt);
     const at = (along, back) => [

@@ -15,6 +15,8 @@ export const REACTION_MOTION = Object.freeze({
   // Same clip, cut inside the opening recoil, well before the descent
   // begins. Ordinary shoulder bumps use this; only hard hits play the fall.
   flinch: Object.freeze({ clip: 'Collision Reaction', duration: 0.55, timeScale: 1 }),
+  startle: Object.freeze({ clip: 'Startle', duration: 0.65, timeScale: 1.5 }),
+  stumble: Object.freeze({ clip: 'Stumble', duration: 0.58, timeScale: 1.25 }),
   fallShoulder: Object.freeze({ clip: 'FallShoulder', duration: 2.58, timeScale: 1.2 }),
   fallGeneric: Object.freeze({ clip: 'FallGeneric', duration: 2.27, timeScale: 1 }),
   prone: Object.freeze({ clip: 'FallenIdle', duration: 1.5, timeScale: 1 }),
@@ -97,7 +99,7 @@ export function beginReaction(current, event, now, actor = {}) {
   const serial = (current?.serial ?? 0) + 1;
   const direction = normalizedDirection(event.direction);
 
-  if (response === 'stagger' || response === 'flinch') {
+  if (['stagger', 'flinch', 'startle', 'stumble'].includes(response)) {
     if (current.phase !== REACTION_PHASE.NORMAL) return current;
     return {
       serial,

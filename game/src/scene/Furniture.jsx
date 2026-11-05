@@ -8,6 +8,7 @@ import PropShape from './PropShape.jsx';
 import PropMaterial from './PropMaterial.jsx';
 import MetropolitanClub from './MetropolitanClub.jsx';
 import Rooftops from './Rooftops.jsx';
+import { roofCapTop } from '../world/rooftops.js';
 import GildedAgeLandmarks, { isGildedAgeLandmark } from './GildedAgeLandmarks.jsx';
 import { getInteraction, subscribe } from '../world/interaction.js';
 import { identifyLandmark } from '../world/landmarkInformation.js';
@@ -222,7 +223,7 @@ function ProceduralFacades({ items, facadeTextures }) {
       grouped.set(key, batch);
       roofCaps.push({
         id: `${item.id}-roof-cap`,
-        position: [item.position[0], item.position[1] + item.size[1] / 2 + 0.25, item.position[2]],
+        position: [item.position[0], roofCapTop(item) - 0.25, item.position[2]],
         size: [item.size[0] + 0.5, 0.5, item.size[2] + 0.5],
         // Match the crown to its stone family; brick keeps a painted cornice.
         color: ['#57453a','#4c4138','#9a8f7d','#4c433b','#b7af9e','#77746b'][item.facadeStyle??0],
@@ -231,7 +232,7 @@ function ProceduralFacades({ items, facadeTextures }) {
       // stays on the cap's edge and does not cover the whole roof.
       roofCaps.push({
         id: `${item.id}-roof`,
-        position: [item.position[0], item.position[1] + item.size[1] / 2 + 0.52, item.position[2]],
+        position: [item.position[0], roofCapTop(item) + 0.02, item.position[2]],
         size: [item.size[0] - 0.3, 0.05, item.size[2] - 0.3],
         color: hash01(idHash(item.id)) < 0.5 ? '#3d3a36' : '#45403a',
       });

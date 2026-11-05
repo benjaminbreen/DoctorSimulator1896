@@ -23,6 +23,8 @@ import {
 } from './centralPark.js';
 import { groundCoverItems, buildGroundCover } from './groundCover.js';
 import { streetItems, INTERIOR_BUILDINGS } from './streetGrid.js';
+import { PARK_TRAVERSAL, PARK_TRAVERSAL_ITEMS } from './parkTraversal.js';
+import { STREET_ROOF_ITEMS, STREET_ROOF_LADDERS } from './roofTraversal.js';
 import { generateInterior, interiorEntryTransitions, interiorZoneId } from './interiors.js';
 import {
   bookcase, vaseOfFlowers, fallenPetals, labeledBottle, reagentBottleRack, opiumPipe,
@@ -153,10 +155,10 @@ export const zones = {
   'central-park': {
     blueprint: parkBlueprint,
     lighting: parkLighting,
-    extraItems: [...parkItems, ...streetItems, ...groundCoverItems],
+    extraItems: [...parkItems, ...streetItems, ...PARK_TRAVERSAL_ITEMS, ...STREET_ROOF_ITEMS, ...groundCoverItems],
     extraTransitions: interiorEntryTransitions(INTERIOR_BUILDINGS),
     water: { outline: POND_OUTLINE, level: WATER_LEVEL },
-    motionAffordances: PARK_MOTION_AFFORDANCES,
+    motionAffordances: [...PARK_MOTION_AFFORDANCES, ...PARK_TRAVERSAL, ...STREET_ROOF_LADDERS],
     // Set dressing, resolved by scene/ZoneFeatures.jsx.
     features: [
       'backdrop',
@@ -212,7 +214,7 @@ function parkWithCover(values) {
     parkKey = key;
     parkZone = {
       ...zones['central-park'],
-      extraItems: [...parkItems, ...streetItems, ...buildGroundCover(values)],
+      extraItems: [...parkItems, ...streetItems, ...PARK_TRAVERSAL_ITEMS, ...STREET_ROOF_ITEMS, ...buildGroundCover(values)],
     };
   }
   return parkZone;

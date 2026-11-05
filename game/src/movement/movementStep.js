@@ -26,7 +26,12 @@ export function movementStep({ input, lookYaw, state, dt, tunables }) {
     targetZ = ((-cos * input.z - sin * input.x) / length) * speed * magnitude;
   }
 
-  const lambda = moving ? tunables.groundAcceleration : tunables.groundDeceleration;
+  // Give starts and braking time to read, while preserving some momentum in
+  // the air. Ground-strength steering made jumps change direction instantly.
+  const groundLambda = moving
+    ? tunables.groundAcceleration * (input.run ? 0.65 : 1)
+    : tunables.groundDeceleration;
+  const lambda = state.grounded ? groundLambda : moving ? groundLambda * 0.22 : 0.35;
   const [vx, vy, vz] = state.velocity;
 
   // Jump with coyote time and input buffering (Darwin's feel constants).
@@ -38,7 +43,8 @@ export function movementStep({ input, lookYaw, state, dt, tunables }) {
   let nextVy;
   const wantsJump = jumpPressed || jumpBufferTimer > 0;
   const canJump = state.grounded || coyoteTimer > 0;
-  if (wantsJump && canJump) {
+  const jumped = wantsJump && canJump;
+  if (jumped) {
     nextVy = tunables.jumpVelocity;
     jumpBufferTimer = 0;
     coyoteTimer = 0;
@@ -62,6 +68,7 @@ export function movementStep({ input, lookYaw, state, dt, tunables }) {
   }
 
   return {
+    jumped,
     desiredDelta: [velocity[0] * dt, velocity[1] * dt, velocity[2] * dt],
     state: {
       velocity,

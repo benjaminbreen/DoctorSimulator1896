@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { RigidBody, CapsuleCollider, useRapier } from '@react-three/rapier';
 import { movementStep, applySlide } from '../movement/movementStep.js';
+import { isRunningGait } from '../movement/playerLocomotion.js';
+import { advanceTraversal, beginTraversal, findTraversal } from '../movement/traversal.js';
 import { useCharacterController, handlesAlive } from '../physics/useCharacterController.js';
 import { requestTravel } from '../world/travel.js';
 import { gameDebug } from '../debug.js';
@@ -103,6 +105,8 @@ export default function PlayerRig({
   const colliderPosture = useRef('standing');
   const edgeRef = useRef({ candidateId: null, since: 0, armed: true, active: null, cooldownUntil: 0 });
   const climbRef = useRef(null);
+  const traversalRef = useRef(null);
+  const jumpStartY = useRef(null);
   const lastDialogueAgent = useRef(null);
   const carriageSupportRef = useRef(null);
   // So `__game.use('colour-wheel')` can open an instrument view without the
@@ -141,6 +145,8 @@ export default function PlayerRig({
   useEffect(() => {
     look.set(spawnYaw, look.look.pitch);
   }, [look, spawnYaw]);
+
+  useEffect(() => () => { gameDebug.player.traversal = null; }, []);
 
   useFrame((_, delta) => {
     const body = bodyRef.current;
@@ -228,12 +234,16 @@ export default function PlayerRig({
     }
 
     if (reactionLocksMovement(reaction)) {
+      jumpStartY.current = null;
+      traversalRef.current = null;
+      gameDebug.player.traversal = null;
       sunnyStrollExposure.current = 0;
       state.velocity = [0, 0, 0];
       gameDebug.player.velocity[0] = 0;
       gameDebug.player.velocity[1] = 0;
       gameDebug.player.velocity[2] = 0;
       gameDebug.player.running = false;
+      gameDebug.player.moveRequested = false;
       gameDebug.prompt = null;
       setReach(null);
       return;
@@ -276,11 +286,14 @@ export default function PlayerRig({
       gameDebug.pendingYaw = null;
     }
     if (gameDebug.pendingTeleport) {
+      jumpStartY.current = null;
       const [x, y, z] = gameDebug.pendingTeleport;
       gameDebug.pendingTeleport = null;
       state.velocity = [0, 0, 0];
       state.grounded = true;
       climbRef.current = null;
+      traversalRef.current = null;
+      gameDebug.player.traversal = null;
       carriageSupportRef.current = null;
       gameDebug.player.climbing = false;
       // Keep the public state in sync on the teleport frame. PlayerAvatar
@@ -294,8 +307,41 @@ export default function PlayerRig({
       gameDebug.player.velocity[2] = 0;
       gameDebug.player.grounded = true;
       gameDebug.player.running = false;
+      gameDebug.player.moveRequested = false;
+      gameDebug.player.yaw = state.yaw;
       gameDebug.player.posture = 'normal';
       body.setNextKinematicTranslation({ x, y, z });
+      return;
+    }
+
+    if (traversalRef.current) {
+      jumpStartY.current = null;
+      const next = advanceTraversal(traversalRef.current, dt);
+      const [x, y, z] = next.position;
+      const requested = { x: x - bodyPosition.x, y: y - bodyPosition.y, z: z - bodyPosition.z };
+      controller.disableSnapToGround();
+      controller.computeColliderMovement(collider, requested);
+      const allowed = controller.computedMovement();
+      // A body or object can cross the route after the player has started.
+      // Stop at contact and return to ordinary movement in that case.
+      const blocked = Math.hypot(allowed.x - requested.x, allowed.y - requested.y, allowed.z - requested.z) > 0.035;
+      const position = { x: bodyPosition.x + allowed.x, y: bodyPosition.y + allowed.y, z: bodyPosition.z + allowed.z };
+      body.setNextKinematicTranslation(position);
+      state.velocity = [0, 0, 0];
+      state.yaw = next.yaw;
+      state.grounded = !blocked && next.done;
+      state.coyoteTimer = 0;
+      state.jumpBufferTimer = 0;
+      state.jumpHeldLast = keyboard.state.jump;
+      traversalRef.current = blocked || next.done ? null : next.motion;
+      Object.assign(gameDebug.player, {
+        position: [position.x, position.y, position.z], velocity: state.velocity, yaw: state.yaw,
+        grounded: state.grounded, running: false, moveRequested: false,
+        traversal: traversalRef.current ? next : null,
+      });
+      setReach(null);
+      gameDebug.prompt = null;
+      if (!keyboard.state.interact) interactLatch.current = false;
       return;
     }
 
@@ -379,9 +425,22 @@ export default function PlayerRig({
     // Running is an outdoor gait. Clearing it here rather than in movementStep
     // keeps the run animation and the camera's speed boost in step with it.
     const rawInput = pickingUp || throwing ? stillInput : keyboard.moveInput();
-    const movementInput = rawInput.run && !isOutdoorZone(runtime.values.zone)
+    let movementInput = rawInput.run && !isOutdoorZone(runtime.values.zone)
       ? { ...rawInput, run: false }
       : rawInput;
+    if (reaction.variant === 'stumble') {
+      movementInput = { ...movementInput, x: movementInput.x * 0.55, z: movementInput.z * 0.55, run: false };
+    }
+    if (showAvatar && state.grounded && throwPlay.phase === 'empty'
+      && movementInput.z > 0 && movementInput.jump && !state.jumpHeldLast) {
+      const position = [bodyPosition.x, bodyPosition.y, bodyPosition.z];
+      const candidate = findTraversal(motionAffordances, position, state.yaw);
+      if (candidate?.item.type === 'vault') {
+        traversalRef.current = beginTraversal(candidate, position, state.yaw);
+        state.jumpHeldLast = true;
+        return;
+      }
+    }
     const result = movementStep({
       input: movementInput,
       // Movement is relative to the active camera's yaw (hero mode follows
@@ -392,6 +451,7 @@ export default function PlayerRig({
       tunables: runtime.values,
     });
     const wasGrounded = state.grounded;
+    if (result.jumped) jumpStartY.current = bodyPosition.y;
     const impactSpeed = Math.max(0, -result.state.velocity[1]);
     Object.assign(state, result.state);
     if (state.velocity[1] > 0) carriageSupportRef.current = null;
@@ -415,8 +475,15 @@ export default function PlayerRig({
     body.setNextKinematicTranslation(next);
     state.grounded = controller.computedGrounded();
     if (!wasGrounded && state.grounded) {
-      const effect = fallEffect(impactSpeed);
-      if (effect) harm(effect);
+      const jumpDrop = jumpStartY.current === null ? Infinity : jumpStartY.current - next.y;
+      const effect = fallEffect(impactSpeed, jumpDrop);
+      jumpStartY.current = null;
+      if (effect) {
+        harm(effect);
+        if (!effect.down && Math.hypot(state.velocity[0], state.velocity[2]) > 1) {
+          beginPlayerReaction({ response: 'stumble', cause: 'hard-landing' });
+        }
+      }
     }
     if (state.grounded && state.velocity[1] < 0) state.velocity[1] = -0.5;
 
@@ -430,8 +497,13 @@ export default function PlayerRig({
     for (let index = 0; index < controller.numComputedCollisions(); index += 1) {
       const normal = controller.computedCollision(index)?.normal1;
       if (!normal) continue;
+      if (normal.y < -0.65 && state.velocity[1] > 0) state.velocity[1] = 0;
       const horizontal = Math.hypot(normal.x, normal.z);
       if (horizontal > 0.5) {
+        const into = -(normal.x * state.velocity[0] + normal.z * state.velocity[2]) / horizontal;
+        if (state.grounded && Math.abs(normal.y) < 0.35 && into > 3.6 && movementInput.run) {
+          beginPlayerReaction({ response: 'stumble', cause: 'obstacle' });
+        }
         state.velocity = applySlide(state.velocity, [normal.x / horizontal, 0, normal.z / horizontal]);
       }
     }
@@ -448,8 +520,8 @@ export default function PlayerRig({
     gameDebug.player.velocity[2] = state.velocity[2];
     gameDebug.player.grounded = state.grounded;
     gameDebug.player.yaw = state.yaw;
-    gameDebug.player.running = Boolean(movementInput.run)
-      && Math.hypot(state.velocity[0], state.velocity[2]) >= 5.25;
+    gameDebug.player.running = isRunningGait(Math.hypot(state.velocity[0], state.velocity[2]), runtime.values);
+    gameDebug.player.moveRequested = Boolean(movementInput.x || movementInput.z);
 
     const horizontalSpeed = Math.hypot(state.velocity[0], state.velocity[2]);
     const stroll = sunnyStrollStep(
@@ -557,13 +629,15 @@ export default function PlayerRig({
     }
 
     const boardable = active ? null : findBoardable(gameDebug.player.position, state.yaw);
-    const dialogueAgent = active || boardable
+    const traversal = !active && !boardable && state.grounded && showAvatar
+      ? findTraversal(motionAffordances, gameDebug.player.position, state.yaw) : null;
+    const dialogueAgent = active || boardable || traversal
       ? null
       : findReachableDialogueAgent(gameDebug.player.position, state.yaw);
-    const item = active || boardable || dialogueAgent
+    const item = active || boardable || traversal || dialogueAgent
       ? null
       : findReachable(reachable, gameDebug.player.position, state.yaw);
-    const throwable = active || boardable || dialogueAgent || item
+    const throwable = active || boardable || traversal || dialogueAgent || item
       ? null
       : findReachableThrowable(gameDebug.player.position, state.yaw);
     const throwableLabel = throwableDefinition(throwable?.type)?.label.toLowerCase();
@@ -574,10 +648,15 @@ export default function PlayerRig({
       lastDialogueAgent.current = dialogueAgent?.id ?? null;
       if (dialogueAgent) inspectAgent(dialogueAgent, gameDebug.player.position[1]);
     }
+    const traversalLabel = traversal && (traversal.item.type === 'vault'
+      ? 'Vault the crate'
+      : traversal.down ? traversal.item.downLabel ?? 'Climb down the ladder' : traversal.item.upLabel ?? 'Climb the ladder');
     gameDebug.prompt = active
       ? active.label
       : boardable
         ? boardable.profile.label
+      : traversal
+        ? traversalLabel
       : dialogueAgent
         ? `Speak with ${dialogueAgent.dialogueName}`
       : item
@@ -587,9 +666,15 @@ export default function PlayerRig({
           : null;
 
     if (!keyboard.state.interact) interactLatch.current = false;
-    else if (!interactLatch.current && (active || boardable || dialogueAgent || item || throwable)) {
+    else if (!interactLatch.current && (active || boardable || traversal || dialogueAgent || item || throwable)) {
       interactLatch.current = true;
       if (active) requestTravel(runtime, active);
+      else if (traversal) {
+        traversalRef.current = beginTraversal(traversal, gameDebug.player.position, state.yaw);
+        carriageSupportRef.current = null;
+        setReach(null);
+        gameDebug.prompt = null;
+      }
       else if (boardable) {
         carriageSupportRef.current = null;
         climbRef.current = beginCarriageClimb(boardable, gameDebug.player.position);

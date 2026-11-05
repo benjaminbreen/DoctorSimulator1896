@@ -1,0 +1,17 @@
+{"type":"place-player","position":[69.07,1.325,100.75],"yaw":1.5707963267948966}
+{"type":"press","key":"KeyE","ms":100}
+{"type":"wait-motion","phase":"ladder","minY":8,"ms":20000}
+{"type":"camera","relativeToPlayer":true,"position":[3,1.9,-2.5],"target":[0,0.8,0],"fov":48}
+{"type":"wait-motion","phase":"idle","minY":25.38,"ms":25000}
+{"type":"camera","position":[76,30,93.5],"target":[44,23,104],"fov":48}
+{"type":"move","keys":["KeyW","ShiftLeft"],"ms":10000,"jumpAt":{"axis":"x","below":53.19},"until":{"axis":"x","below":48.75}}
+{"type":"wait-motion","phase":"idle","minY":24.61,"maxY":24.69}
+{"type":"move","keys":["KeyW","ShiftLeft"],"ms":10000,"jumpAt":{"axis":"x","below":43.97},"until":{"axis":"x","below":39.5}}
+{"type":"wait-motion","phase":"idle","minY":23.91,"maxY":23.99}
+{"type":"move","keys":["KeyW","ShiftLeft"],"ms":10000,"jumpAt":{"axis":"x","below":31.13},"until":{"axis":"x","below":26.7}}
+{"type":"wait-motion","phase":"idle","minY":23.21,"maxY":23.29}
+{"type":"camera","relativeToPlayer":true,"position":[3,2.4,2.8],"target":[0,0.8,0],"fov":54}
+{"type":"move","keys":["KeyW"],"ms":10000,"until":{"axis":"x","below":16.52}}
+{"type":"press","key":"KeyE","ms":100}
+{"type":"wait-motion","phase":"ladder","maxY":13,"ms":25000}
+{"type":"wait-motion","phase":"idle","maxY":1.38,"ms":25000}

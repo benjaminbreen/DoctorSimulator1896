@@ -177,6 +177,43 @@ JavaScript error, console error, or failed resource makes the process exit
 nonzero. Failed actions retain a capture when the page is still available.
 The expected local Vercel analytics 404 is ignored.
 
+The physician's movement replay checks the run and brake, a running jump, the
+maintenance crate vault, ladder ascent and descent, and reactions to a hard
+collision and a nearby Electrobat:
+
+```sh
+node game/scripts/gameplay-playtest.mjs --scenario=park --video \
+  --replay=game/scripts/playthroughs/player-traversal.jsonl
+```
+
+The maintenance platform is by Scholars' Gate. Face the ladder and press E;
+face outward at the top and press E again to descend. Face the crate and press
+E, or press Space while moving toward it when the vault prompt appears. Elsewhere
+Space is a normal jump. The ladder corrects the supporting hand's grip; boots
+still follow the captured cycle. The crate vault uses one authored obstacle.
+
+In the replay, `place-player` sets an inspection starting point and lines up the
+shoulder camera. `keys-down` and `keys-up` hold input across captures.
+`wait-motion` accepts a phase and optional `minY` or `maxY` to catch a traversal
+at a useful height. Use `recent:true` for a brief reaction that may finish
+before capture. `camera` can frame relative to the physician with
+`relativeToPlayer:true`. Each capture records gait weights and the motion phase.
+
+The Central Park South roof run starts on the east side of the doctor's
+building, in the alley just west of the Plaza Hotel. Face the iron ladder and
+press E. From the roof, follow the park side of the row. Hold Shift to sprint
+and press Space at each gap. The west ladder leads back to the street.
+
+```sh
+node game/scripts/gameplay-playtest.mjs --scenario=park --video \
+  --replay=game/scripts/playthroughs/roof-run.jsonl
+```
+
+This replay places the physician at the first ladder, then climbs, clears all
+three gaps with ordinary movement keys, and climbs back down. A `move` command
+can press Space at `jumpAt` and release its keys at `until`, using a world
+axis and an `above` or `below` position. The replay checks each landing height.
+
 ## Motion and continuous play
 
 Use `--video` to save a WebM and `--trace` for a Playwright trace. Both are

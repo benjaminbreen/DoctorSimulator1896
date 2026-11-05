@@ -125,8 +125,13 @@ function frontageRow(
   while (cursor < to - minWidth * 0.7) {
     let width = Math.min(minWidth + hash01(index * 3.1 + from) * (maxWidth - minWidth), to - cursor);
     if (to - cursor - width < minWidth * 0.7) width = to - cursor;
-    const height = family.height[0]
+    const regularHeight = family.height[0]
       + hash01(index * 7.7 + to + faceCoord * 0.13) * (family.height[1] - family.height[0]);
+    // Narrow service gaps and modest steps make this row a two-way roof run.
+    const roofRun = prefix === 'cps-south-b' && index >= 4;
+    const height = (roofRun ? [21.4, 22.1, 22.8][index - 4] : undefined) ?? regularHeight;
+    // The easternmost building owns the consulting office's street door.
+    const sideClearance = roofRun && index < 7 ? 2.8 : 0.3;
     const runIndex = Math.floor(index / (familyName === 'brownstone' ? 2 : 1));
     const facadeStyle = family.styles[runIndex % family.styles.length];
     const facadeTone = family.tones[runIndex % family.tones.length];
@@ -134,10 +139,11 @@ function frontageRow(
     const buildingFace = faceCoord + facing * family.setback;
     const [x, z, sx, sz] =
       axis === 'z'
-        ? [center, buildingFace + (facing * depth) / 2, width - 0.3, depth]
+        ? [center, buildingFace + (facing * depth) / 2, width - sideClearance, depth]
         : [buildingFace + (facing * depth) / 2, center, depth, width - 0.3];
     parcels.push(building(`${prefix}-${index}`, x, z, sx, height, sz, {
       frontageFamily: familyName,
+      roofRun,
       facadeStyle,
       facadeTone,
       windowFaces: [streetFace, rearFace],

@@ -6,6 +6,16 @@ you add a model. `scripts/models/convert-pack.mjs` copies the credit out of the
 source file into the pack manifest, and `tests/model-packs.test.js` fails if a
 converted piece has no redistributable licence.
 
+## Playable physician movement
+
+The physician keeps the project's Tripo model and Mixamo skeleton. Adobe Mixamo
+supplied **Run To Stop**, **Vault Over Box**, **Jogging Stumble**, and **Terrified**;
+the player also reuses the existing **Climbing Ladder** cycle. Adobe's
+[Mixamo FAQ](https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html) permits
+incorporating the animations royalty free into video games. The web build
+contains the motions on the game character, without the source FBXs. The park
+maintenance platform, ladder, and crate are project-authored geometry.
+
 ## Modular patient prototype — October 29, 2026
 
 Carmela Russo and the fictional seamstress head were generated in Ben Breen's

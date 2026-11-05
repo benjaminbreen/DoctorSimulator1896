@@ -389,8 +389,10 @@ export function sunnyStrollStep(exposure, seconds, active = true) {
 }
 
 /** Health and nervous strain from landing with a given downward speed. */
-export function fallEffect(impactSpeed) {
+export function fallEffect(impactSpeed, jumpDrop = Infinity) {
   const speed = Math.max(0, Number(impactSpeed) || 0);
+  // A prepared jump to a slightly lower roof can land faster than a stumble.
+  if (jumpDrop <= 0.9 && speed < 11) return null;
   if (speed < 8) return null;
   if (speed < 11) {
     return { amount: 4, neurasthenia: 3, source: 'fall', label: 'Landed hard' };

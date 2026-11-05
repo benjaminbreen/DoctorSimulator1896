@@ -49,6 +49,10 @@ CLIPS = (
     ("Running carrying object.fbx", "CarryRun"),
     ("Pick up object.fbx", "PickUp"),
     ("Climbing Ladder.fbx", "ClimbCarriage"),
+    ("Run To Stop.fbx", "RunStop"),
+    ("Vault Over Box.fbx", "Vault"),
+    ("Jogging Stumble.fbx", "Stumble"),
+    ("Terrified.fbx", "Startle"),
 )
 REACTION_CLIPS = (
     ("Edge Slip on heights.fbx", "EdgeSlip"),
@@ -304,7 +308,7 @@ def main():
                 clip_name,
                 rig,
                 target_contract,
-                in_place=clip_name == "ClimbCarriage",
+                in_place=clip_name in {"ClimbCarriage", "RunStop", "Stumble", "Startle"},
                 remove_vertical=clip_name == "ClimbCarriage",
                 lock_vertical=clip_name == "ClimbCarriage",
             )

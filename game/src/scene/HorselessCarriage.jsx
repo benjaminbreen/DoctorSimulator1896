@@ -23,7 +23,7 @@ import {
 } from '../world/pedestrianCatalog.js';
 import { takeCarriageProjectileHit } from '../world/carriageImpacts.js';
 import { queueActorImpact } from '../world/actorImpacts.js';
-import { getPlayer, harm } from '../world/player.js';
+import { beginPlayerReaction, getPlayer, harm } from '../world/player.js';
 import { listAgents, reportAgent, removeAgent } from '../world/agents.js';
 import { crossTrafficObstacles, streetTrafficAdvice, trafficAgentDetails } from '../world/streetTraffic.js';
 import {
@@ -542,15 +542,17 @@ export default function HorselessCarriage({ runtime, graphics }) {
           source: 'horseless-carriage',
           label: 'Approached too near a horseless carriage',
         });
+        if (!gameDebug.player.climbing && !gameDebug.player.traversal) {
+          beginPlayerReaction({ response: 'startle', cause: 'horseless-carriage' });
+        }
       }
     } else if (fright.near && nearestCarriageSq >= 6 ** 2) {
       fright.near = false;
     }
-    // Same-length fast path: the states are live references, so once the
-    // array exists there is nothing to rebuild per frame.
-    if (gameDebug.carriages.length !== fleet.length) {
-      gameDebug.carriages = fleet.map((unit) => unit.state);
-    }
+    // Each traffic step replaces the state object. Keep the debug array,
+    // but refresh its entries so a playtest can find a moving carriage.
+    gameDebug.carriages.length = fleet.length;
+    for (let index = 0; index < fleet.length; index += 1) gameDebug.carriages[index] = fleet[index].state;
     gameDebug.carriage = gameDebug.carriages[0];
     gameDebug.carriageMoods = fleet.map((unit) => unit.driver.mood);
     gameDebug.carriageDriverKinds = fleet.map((unit) => unit.driver.kind);

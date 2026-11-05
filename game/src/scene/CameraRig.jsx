@@ -293,6 +293,22 @@ export default function CameraRig({ room, runtime, look, keyboard, heightAt = nu
       return;
     }
 
+    const ladder = gameDebug.player.traversal?.motion.item;
+    if (ladder?.alleyViewZ !== undefined) {
+      // Look down the alley when the normal shoulder boom would sit in a wall.
+      const previous = smoothedRef.current;
+      const targetY = playerPos[1] + 1.45;
+      const y = previous?.ladderId === ladder.id ? damp(previous.eye[1], targetY, 16, dt) : targetY;
+      const eye = [ladder.low[0], y, ladder.alleyViewZ];
+      const target = [playerPos[0], playerPos[1] + 0.88, playerPos[2]];
+      const distance = Math.hypot(eye[0] - target[0], eye[1] - target[1], eye[2] - target[2]);
+      smoothedRef.current = { eye, look: target, distance, ladderId: ladder.id };
+      camera.position.set(...eye);
+      camera.lookAt(...target);
+      gameDebug.stats.cameraDistance = distance;
+      return;
+    }
+
     // Shoulder remains a direct mouse orbit. Hero holds a world-space yaw so
     // a manual orbit stays put, then recentres only after movement resumes.
     let yaw = look.look.yaw;

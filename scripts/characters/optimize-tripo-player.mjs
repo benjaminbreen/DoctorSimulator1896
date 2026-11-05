@@ -5,7 +5,7 @@
 // the mesh, texture resolution, rig, and every clip while reducing transfer,
 // parse, and GPU upload cost.
 //
-//   node scripts/characters/optimize-tripo-player.mjs
+//   node scripts/characters/optimize-tripo-player.mjs [raw-export.glb]
 
 
 import { rename, stat } from 'node:fs/promises';
@@ -47,11 +47,15 @@ const EXPECTED_CLIPS = Object.freeze([
   'PickUp',
   'RiseFromFall',
   'Run',
+  'RunStop',
   'Smoking',
   'StandingIdle',
   'StandingJump',
+  'Startle',
+  'Stumble',
   'Throw',
   'ThrowReady',
+  'Vault',
   'Walk',
 ]);
 
@@ -155,8 +159,9 @@ const io = new NodeIO()
     'meshopt.encoder': MeshoptEncoder,
   });
 
-const beforeBytes = (await stat(PLAYER)).size;
-const document = await io.read(PLAYER);
+const source = process.argv[2] ?? PLAYER;
+const beforeBytes = (await stat(source)).size;
+const document = await io.read(source);
 const expectedTriangles = triangleCount(document.getRoot());
 assertPlayer(document, expectedTriangles);
 

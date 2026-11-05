@@ -131,6 +131,26 @@ function duration(command, fallback = 500) {
   return ms;
 }
 
+function movementKeys(command) {
+  const keys = command.keys ?? ['KeyW'];
+  if (!Array.isArray(keys) || !keys.length
+    || keys.some((key) => !['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ShiftLeft', 'Space'].includes(key))) {
+    throw new Error('Movement keys must be WASD, ShiftLeft, or Space.');
+  }
+  return keys;
+}
+
+async function waitForPosition({ axis, below, above }, timeout) {
+  const index = ['x', 'y', 'z'].indexOf(axis);
+  if (index === -1 || (!Number.isFinite(below) && !Number.isFinite(above))) {
+    throw new Error('Position target needs an axis and a finite above or below value.');
+  }
+  await page.waitForFunction(({ index, below, above }) => {
+    const value = __game.player.position[index];
+    return value <= (below ?? Infinity) && value >= (above ?? -Infinity);
+  }, { index, below, above }, { timeout });
+}
+
 async function act(command) {
   switch (command.type) {
     case 'observe': case 'pause': case 'resume': case 'quit': return;
@@ -145,19 +165,53 @@ async function act(command) {
     case 'press': await page.keyboard.press(command.key,{delay:duration(command,100)}); return;
     case 'move': {
       const ms = duration(command);
-      const keys = command.keys ?? ['KeyW'];
-      if (!Array.isArray(keys) || !keys.length
-        || keys.some((key) => !['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ShiftLeft', 'Space'].includes(key))) {
-        throw new Error('move keys must be WASD, ShiftLeft, or Space.');
-      }
+      const keys = [...movementKeys(command)];
       try {
         for (const key of keys) await page.keyboard.down(key);
-        await page.waitForTimeout(ms);
+        if (command.jumpAt) {
+          await waitForPosition(command.jumpAt, ms);
+          if (!keys.includes('Space')) keys.push('Space');
+          await page.keyboard.down('Space');
+        }
+        if (command.until) await waitForPosition(command.until, ms);
+        else await page.waitForTimeout(ms);
       } finally {
         for (const key of keys) await page.keyboard.up(key);
       }
       return;
     }
+    case 'keys-down':
+    case 'keys-up':
+      for (const key of movementKeys(command)) await page.keyboard[command.type === 'keys-down' ? 'down' : 'up'](key);
+      return;
+    case 'place-player':
+      if (command.position?.length !== 3 || !command.position.every(Number.isFinite) || !Number.isFinite(command.yaw)) {
+        throw new Error('place-player needs a position and yaw.');
+      }
+      await page.evaluate(async ({ position, yaw, besideCarriage }) => {
+        // The orbit camera keeps its previous heading through a teleport.
+        // Shoulder mode lets the replay aim its next movement precisely.
+        __game.set('cameraMode', 'shoulder');
+        await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+        if (besideCarriage !== undefined) {
+          const car = __game.carriages[besideCarriage];
+          if (!car) throw new Error('No carriage to approach.');
+          const [side, y, forward] = position;
+          position = [car.x + Math.cos(car.yaw) * side + Math.sin(car.yaw) * forward, y,
+            car.z - Math.sin(car.yaw) * side + Math.cos(car.yaw) * forward];
+        }
+        __game.setLook(yaw, 0);
+        __game.pendingYaw = yaw;
+        __game.teleport(...position);
+      }, command);
+      return;
+    case 'wait-motion':
+      await page.waitForFunction(({ phase, minY, maxY, recent = false }) => {
+        const { animation, position } = __game.player;
+        return (recent ? animation?.lastAction : animation?.phase) === phase
+          && position[1] >= (minY ?? -Infinity) && position[1] <= (maxY ?? Infinity);
+      }, command, { timeout: duration(command, 10000) });
+      return;
     case 'look': {
       const { width, height } = page.viewportSize();
       await page.mouse.move(width / 2, height * 0.4);
@@ -236,6 +290,7 @@ async function capture(command, failure = null) {
       url: location.href,
       zone: game?.loadedZone,
       position: game ? [...game.player.position] : null,
+      player: game ? { grounded: game.player.grounded, yaw: game.player.yaw, ...game.player.animation } : null,
       prompt: game?.prompt ?? null,
       boot: game?.stats.boot,
       performances,
@@ -256,13 +311,18 @@ async function capture(command, failure = null) {
     };
   }, Object.keys(MODULAR_HAIR_STYLES));
   if (command.type === 'camera') {
-    await page.evaluate(({ position, target, fov = 50, relativeToPatient = false }) => {
+    await page.evaluate(({ position, target, fov = 50, relativeToPatient = false, relativeToPlayer = false }) => {
       const { camera, renderer, scene } = __game;
       if (relativeToPatient) {
         let patient;
         scene.traverse(root => { if (root.userData.patientId) patient = root; });
         if (!patient) throw new Error('No patient to inspect.');
         const origin = patient.getWorldPosition(patient.position.clone()).toArray();
+        position = position.map((value, axis) => value + origin[axis]);
+        target = target.map((value, axis) => value + origin[axis]);
+      }
+      if (relativeToPlayer) {
+        const origin = __game.player.position;
         position = position.map((value, axis) => value + origin[axis]);
         target = target.map((value, axis) => value + origin[axis]);
       }

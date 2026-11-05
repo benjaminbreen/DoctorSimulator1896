@@ -11,6 +11,7 @@ export const gameDebug = {
     position: [0, 0, 0], velocity: [0, 0, 0], grounded: false, yaw: 0,
     visible: true, running: false, posture: 'normal', cameraHeight: 1.45,
     climbing: false, climbSerial: 0,
+    moveRequested: false, traversal: null,
   },
   pendingTeleport: null,
   pendingYaw: null,
