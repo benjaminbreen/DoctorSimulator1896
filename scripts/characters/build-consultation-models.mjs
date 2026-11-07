@@ -92,7 +92,7 @@ for (const [cohort, definition] of Object.entries(manifest.cohorts)) {
     const name = `consultation/${cohort}-${index}.glb`;
     const target = new URL(name, directory);
     await io.write(fileURLToPath(target), doc);
-    definition.consultationPaths.push(`/models/characters/${name}?v=1`);
+    definition.consultationPaths.push(`/models/characters/${name}?v=2`);
     console.log(name, ((await stat(target)).size / 1048576).toFixed(2), 'MiB');
   }
 }

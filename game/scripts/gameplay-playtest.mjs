@@ -226,12 +226,11 @@ async function act(command) {
     case 'resize': await page.setViewportSize({ width: command.width, height: command.height }); return;
     case 'camera': return;
     case 'patient-pose':
-      if (!['clinic-idle', 'standing-idle', 'walk'].includes(command.body)) throw new Error('Unknown review pose.');
-      await page.evaluate(body => {
+      await page.evaluate(({ body, gesture = 'none', speaking = false }) => {
         __game.scene.traverse(root => {
-          if (root.userData.patientId) __game.cueActor(root.userData.patientId, { body, speaking: false });
+          if (root.userData.patientId) __game.cueActor(root.userData.patientId, { body, gesture, speaking });
         });
-      }, command.body);
+      }, command);
       return;
     case 'wait-seated':
       await page.waitForFunction(() => {

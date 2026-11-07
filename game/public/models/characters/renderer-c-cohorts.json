@@ -197,14 +197,14 @@
       "clips": 10,
       "path": "/models/characters/renderer-c-women.glb?v=cast-opt-4",
       "consultationPaths": [
-        "/models/characters/consultation/women-0.glb?v=1",
-        "/models/characters/consultation/women-1.glb?v=1",
-        "/models/characters/consultation/women-2.glb?v=1",
-        "/models/characters/consultation/women-3.glb?v=1",
-        "/models/characters/consultation/women-4.glb?v=1",
-        "/models/characters/consultation/women-5.glb?v=1",
-        "/models/characters/consultation/women-6.glb?v=1",
-        "/models/characters/consultation/women-7.glb?v=1"
+        "/models/characters/consultation/women-0.glb?v=2",
+        "/models/characters/consultation/women-1.glb?v=2",
+        "/models/characters/consultation/women-2.glb?v=2",
+        "/models/characters/consultation/women-3.glb?v=2",
+        "/models/characters/consultation/women-4.glb?v=2",
+        "/models/characters/consultation/women-5.glb?v=2",
+        "/models/characters/consultation/women-6.glb?v=2",
+        "/models/characters/consultation/women-7.glb?v=2"
       ]
     },
     "men": {

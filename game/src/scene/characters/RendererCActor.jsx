@@ -14,6 +14,7 @@ import {
 } from './rendererCController.js';
 import { createFaceController } from './faceController.js';
 import { createPatientMotion } from './patientMotion.js';
+import { createWristTwist } from './wristTwist.js';
 import { createPatientSeat } from './patientSeat.js';
 import {createHeadwear} from '../../../../shared/characters/headwearPerformance.js';
 import {headwearTexturesReady} from '../../../../shared/characters/headwearMaterials.js';
@@ -80,7 +81,7 @@ export default function RendererCActor({ recipe, manifest, onReady, onSettled, p
   const castLook = reviewing ? MODULAR_CAST_LOOKS.find(preset => preset.id === review.get('appearancePreset')) : null;
   const reviewSeed = reviewing ? review.get('appearanceSeed') : null;
   // Bump the review URL when an exported character's geometry changes.
-  const reviewVersion='20261103-neck-1';
+  const reviewVersion='20261107-arms-4';
   const bodyPath = castLook ? `/models/characters/${castLook.model}.glb?v=${reviewVersion}` : patientModelPath(recipe, manifest);
   prefetchClothingFabric(castLook?.look?.fabric || recipe.asset?.fabric || 'wool');
   const [gltf, motionGltf] = useLoader(GLTFLoader,
@@ -102,8 +103,24 @@ export default function RendererCActor({ recipe, manifest, onReady, onSettled, p
         }
       }
     }
+    // Mixamo seated clips were recorded on different chairs. Samuel's crying
+    // clip starts its hips ~25cm behind his idle, which pushed him through the
+    // chair back. Start every seated clip where the idle holds the hips.
+    const hipsTrack = (clip) => clip?.tracks.find((track) => /hips\.position$/i.test(track.name));
+    const idleHips = hipsTrack(merged.find((clip) => clip.name === (recipe.asset?.clipMap?.['clinic-idle'] || 'ClinicIdle')));
+    const seatedNames = new Set([...SHELL_SEATED_CUES].filter((cue) => cue !== 'sit-down')
+      .map((cue) => recipe.asset?.clipMap?.[cue] || BODY_CUE_CLIPS[cue]).concat('SittingKneeStrike'));
+    for (const clip of merged) {
+      const track = seatedNames.has(clip.name) ? hipsTrack(clip) : null;
+      if (!idleHips || !track || track === idleHips) continue;
+      const values = track.values;
+      for (let axis = 0; axis < 3; axis++) {
+        const offset = idleHips.values[axis] - values[axis];
+        for (let i = axis; i < values.length; i += 3) values[i] += offset;
+      }
+    }
     return merged;
-  }, [gltf, motionGltf, recipe.asset?.motionPath]);
+  }, [gltf, motionGltf, recipe.asset?.motionPath, recipe.asset?.clipMap]);
   const currentActionRef = useRef(null);
   const settledAnimationRef = useRef(null);
   const actor = useMemo(() => {
@@ -152,6 +169,7 @@ export default function RendererCActor({ recipe, manifest, onReady, onSettled, p
     // The original Samuel mesh includes its cap as part of the head.
     if(bodyPath.split('?')[0]==='/models/characters/samuel-taylor.glb')hatLook.hatStyle='none';
     const headwear=createHeadwear(root,hatLook);
+    const wristTwist=createWristTwist(root);
     const eyelashes=createModularEyelashes(root,{cohort:recipe.cohort,seed:recipe.appearanceSeed});
     eyelashes.updateLook(look);
     wardrobe.update({seated:false,outfit:look.outfit,apron:look.outfit==='work-apron',palette:look.palette,fabric:look.fabric,fabricScale:look.fabricScale,dt:0});
@@ -167,7 +185,7 @@ export default function RendererCActor({ recipe, manifest, onReady, onSettled, p
       lips.localToWorld(mouthAnchor);
       motion.bones.head.worldToLocal(mouthAnchor);
     }
-    return { root, mixer, face, motion, seat, headwear, eyelashes, accessories, hatLook, hatClock:0, hatAutomatic:false, wardrobe, identity, appearance, hair, look, mouthAnchor, mouthPoint:new THREE.Vector3() };
+    return { root, mixer, face, motion, seat, headwear, wristTwist, eyelashes, accessories, hatLook, hatClock:0, hatAutomatic:false, wardrobe, identity, appearance, hair, look, mouthAnchor, mouthPoint:new THREE.Vector3() };
   }, [
     gltf,
     manifest,
@@ -540,6 +558,7 @@ export default function RendererCActor({ recipe, manifest, onReady, onSettled, p
       updateShell(dt);
       actor.face.update(dt, recipe.animation);
       actor.headwear.update(dt);
+      actor.wristTwist.update();
       actor.eyelashes.update(camera,gl.domElement.height);actor.root.userData.eyelashes=actor.eyelashes.describe();
       actor.accessories.update(dt);actor.root.userData.accessories=actor.accessories.describe();
       actor.root.userData.headwear=actor.headwear.describe();
@@ -568,6 +587,7 @@ export default function RendererCActor({ recipe, manifest, onReady, onSettled, p
       if(recipe.presentation?.hat?.removeInside ?? (recipe.cohort==='men'))actor.headwear.request(false);
     }
     actor.headwear.update(dt,{followHand:animation.gesture==='extend-both-arms'});
+    actor.wristTwist.update();
     actor.eyelashes.update(camera,gl.domElement.height);actor.root.userData.eyelashes=actor.eyelashes.describe();
     actor.accessories.update(dt);actor.root.userData.accessories=actor.accessories.describe();
     actor.root.userData.headwear=actor.headwear.describe();

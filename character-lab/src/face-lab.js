@@ -48,7 +48,7 @@ const requested = new URLSearchParams(window.location.search).get('model');
 const CHARACTER = CHARACTERS.find((entry) => entry.id === requested) || CHARACTERS[0];
 const defaultCast=CHARACTER.head?MODULAR_CAST_LOOKS.find(preset=>preset.id===CHARACTER.id):null;
 const maleCharacter = CHARACTER.id.startsWith('male-') || ['samuel-taylor','wine-merchant'].includes(CHARACTER.id);
-const MODEL = CHARACTER.path+'?v=20261103-neck-1';
+const MODEL = CHARACTER.path+'?v=20261107-arms-4';
 document.querySelector('#panel h1').textContent = `Face Lab — ${CHARACTER.label}`;
 document.title = `Face Lab — ${CHARACTER.label}`;
 

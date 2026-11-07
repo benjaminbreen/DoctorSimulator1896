@@ -152,7 +152,13 @@ export function createHeadwear(root,initialLook={}){
     root.add(hat);hat.userData.fittedSize=size.toArray();
     hat.userData.fit={radiusX:fit.radiusX,radiusZ:fit.radiusZ,topY:fit.topY,bandY};
   }
-  function request(worn){if(!hat)return false;target=worn?0:1;running=Math.abs(target-lift)>.0001;return true;}
+  function request(worn){
+    if(!hat)return false;
+    // A rig without a full hand cannot grip the brim, and an unheld hat
+    // floats above the head mid-removal. Treat it as left in the hall.
+    if(!palmFrame(look.hatHand==='right'?'right':'left')){hat.visible=worn;lift=target=worn?0:1;running=false;return true;}
+    target=worn?0:1;running=Math.abs(target-lift)>.0001;return true;
+  }
   function sample(action,progress){
     running=false;lift=action==='replace'?1-clamp(progress):action==='remove'?clamp(progress):action==='held'?1:0;
     target=lift;update(0);
@@ -182,7 +188,10 @@ export function createHeadwear(root,initialLook={}){
     const desiredAcross=forward.clone().cross(normal).normalize();
     const desiredFrame=new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(desiredAcross,forward,normal));
     const handQuaternion=desiredFrame.multiply(palm.quaternion.clone().invert()).multiply(startQuaternion);
-    const pole=new THREE.Vector3(side==='right'?-1:1,.1,.3).applyQuaternion(rootQuaternion);
+    // A sideways elbow is right for a hand at the hip, but at the head it
+    // makes a raised chicken wing that folds the forearm through the sleeve.
+    const raised=clamp(wrist.clone().sub(position(upper)).dot(UP.clone().applyQuaternion(rootQuaternion))/.25+.5);
+    const pole=new THREE.Vector3((side==='right'?-1:1)*(1-.5*raised),.1-.8*raised,.3+.6*raised).applyQuaternion(rootQuaternion);
     solveArm(upper,lower,hand,wrist,pole);
     setWorldQuaternion(hand,hand.getWorldQuaternion(new THREE.Quaternion()).slerp(handQuaternion,weight));
     curlFingers(side,desiredAcross,grip*weight);

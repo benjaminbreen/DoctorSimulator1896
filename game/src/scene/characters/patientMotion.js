@@ -16,10 +16,12 @@ const BONE_SUFFIXES = {
   rightForeArm: 'rightforearm',
   rightHand: 'righthand',
   rightMiddle: 'righthandmiddle1',
+  rightIndex: 'righthandindex1',
   leftArm: 'leftarm',
   leftForeArm: 'leftforearm',
   leftHand: 'lefthand',
   leftMiddle: 'lefthandmiddle1',
+  leftIndex: 'lefthandindex1',
 };
 
 // Breathing display rates per expression, breaths per minute. Display only:

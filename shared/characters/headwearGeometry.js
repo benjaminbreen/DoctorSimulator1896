@@ -60,11 +60,14 @@ function cloth(color,kind,wear=0){
   return headwearMaterial(HEADWEAR_COLORS[color]||color||'#34302b',kind,wear);
 }
 
-function ribbonGeometry(points,width,segments=24,twist=0){
+// `hug` lays the ribbon flat against a head centred on the hat axis instead
+// of facing forward; a forward-facing tie reads as a dark band over the cheek.
+function ribbonGeometry(points,width,segments=24,twist=0,hug=false){
   const curve=new THREE.CatmullRomCurve3(points),positions=[],uvs=[],indices=[];
   for(let i=0;i<=segments;i++){
     const t=i/segments,p=curve.getPoint(t),tangent=curve.getTangent(t);
-    const across=new THREE.Vector3(0,0,1).cross(tangent).normalize();
+    const facing=hug?new THREE.Vector3(p.x,0,p.z).normalize():new THREE.Vector3(0,0,1);
+    const across=facing.cross(tangent).normalize();
     if(across.lengthSq()<.1)across.set(1,0,0);
     across.applyAxisAngle(tangent,twist*Math.sin(t*Math.PI));
     for(const sign of [-1,1]){positions.push(...p.clone().addScaledVector(across,width*.5*sign).toArray());uvs.push(sign===-1?0:width/.064,t*curve.getLength()/.064);}
@@ -288,12 +291,19 @@ export function buildHeadwear(look={}){
     add(g,new THREE.MeshStandardMaterial({color:'#25232a',map:surfaceTexture('net'),alphaTest:.4,side:THREE.DoubleSide,roughness:1}));
   }
   const ties=[];let tieBow=null;
+  // Ties run down in front of the ear, along the jaw, and meet under the
+  // chin. Released, they hang loose beside the face.
+  const tiePath=(side,amount)=>[
+    new THREE.Vector3(side*.087,-.020,.012),
+    new THREE.Vector3(side*(.084+.02*amount),-.088,.018-.01*amount),
+    new THREE.Vector3(side*(.055+.04*amount),-.145+.01*amount,.05-.03*amount),
+    new THREE.Vector3(side*(.008+.08*amount),-.168+.03*amount,.072-.05*amount)];
   if(style.fastener==='ties'){
     for(const side of [-1,1]){
-      const mesh=add(ribbonGeometry([new THREE.Vector3(side*.087,-.020,.012),new THREE.Vector3(side*.073,-.085,.055),new THREE.Vector3(side*.005,-.17,.075)],.018),band);
+      const mesh=add(ribbonGeometry(tiePath(side,0),.014,24,0,true),band);
       ties.push({mesh,side});
     }
-    tieBow=bow([0,-.17,.075],.018);
+    tieBow=bow([0,-.168,.074],.016);
   }
   if(['cap','peaked'].includes(style.form))group.userData.gripPoints={right:[-R*.96,.005,.027],left:[R*.96,.005,.027]};
   else{
@@ -310,8 +320,7 @@ export function buildHeadwear(look={}){
   group.userData.releaseTies=(amount)=>{
     if(tieBow){tieBow.scale.setScalar(1-smooth(0,.6,amount));tieBow.visible=amount<.6;}
     for(const {mesh,side} of ties){
-      const end=new THREE.Vector3(side*(.005+.085*amount),-.17+.035*amount,.075-.055*amount);
-      const geometry=ribbonGeometry([new THREE.Vector3(side*.087,-.020,.012),new THREE.Vector3(side*(.073+.026*amount),-.085,.055-.028*amount),end],.018);
+      const geometry=ribbonGeometry(tiePath(side,amount),.014,24,0,true);
       mesh.geometry.dispose();mesh.geometry=geometry;
     }
   };

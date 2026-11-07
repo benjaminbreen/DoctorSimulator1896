@@ -83,15 +83,21 @@ function palmVertices(root, hand) {
 
 export function createRestingHands(root, bones) {
   const surfaces = lapSurfaces(root);
+  const legs = {};
+  root.traverse(bone => {
+    const match = bone.isBone && bone.name.toLowerCase().replace(/^mixamorig:?/, '').match(/^(left|right)(upleg|leg)$/);
+    if (match) legs[match[1] + match[2]] = bone;
+  });
   const arms = ['left', 'right'].flatMap(side => {
     const upper = bones[`${side}Arm`], lower = bones[`${side}ForeArm`];
-    const hand = bones[`${side}Hand`], middle = bones[`${side}Middle`];
-    return upper && lower && hand && middle ? [{ upper, lower, hand, middle,
+    // Some rigs carry only thumb and index fingers.
+    const hand = bones[`${side}Hand`], middle = bones[`${side}Middle`] || bones[`${side}Index`];
+    return upper && lower && hand && middle ? [{ upper, lower, hand, middle, hip: legs[`${side}upleg`], knee: legs[`${side}leg`],
       palm: palmVertices(root, hand), clearance: null,
       upperPose: new THREE.Quaternion(), lowerPose: new THREE.Quaternion(), handPose: new THREE.Quaternion() }] : [];
   });
   const shoulder = new THREE.Vector3(), elbow = new THREE.Vector3(), wrist = new THREE.Vector3();
-  const knuckle = new THREE.Vector3(), direction = new THREE.Vector3(), bend = new THREE.Vector3();
+  const knuckle = new THREE.Vector3(), direction = new THREE.Vector3(), bend = new THREE.Vector3(), thigh = new THREE.Vector3();
   const target = new THREE.Vector3(), elbowTarget = new THREE.Vector3(), fingerTarget = new THREE.Vector3();
   const palmForward = new THREE.Vector3(), palmUp = new THREE.Vector3(), palmAcross = new THREE.Vector3(), palmPoint = new THREE.Vector3();
   const handWorld = new THREE.Quaternion(), parentWorld = new THREE.Quaternion();
@@ -153,9 +159,21 @@ export function createRestingHands(root, bones) {
           arm.clearance = found ? THREE.MathUtils.clamp(-bottom * palmUp.y + .002, handLength * .04, handLength * .24) : handLength * .18;
         }
         const clearance = arm.clearance;
-        const surface = heightAt(wrist, wrist.y + handLength * .8, wrist.y - handLength * 2);
+        target.copy(wrist);
+        // Some clips hang the hands beside a wide skirt, where the only cloth
+        // under the wrist is the skirt's outer slope. Draw a wrist that sits
+        // well outside its own thigh in over the thigh first.
+        if (arm.hip && arm.knee) {
+          arm.hip.getWorldPosition(thigh); arm.knee.getWorldPosition(bend);
+          thigh.lerp(bend, .6); thigh.y = wrist.y;
+          const reach = handLength * .5, distance = thigh.distanceTo(wrist);
+          if (distance > reach) target.lerp(thigh, 1 - reach / distance);
+        }
+        // A drawn-in wrist starts beside the lap, so it may rise further to meet it.
+        const moved = target.x !== wrist.x || target.z !== wrist.z;
+        const surface = heightAt(target, wrist.y + handLength * (moved ? 1.6 : .8), wrist.y - handLength * 2);
         if (surface === null) continue;
-        target.copy(wrist); target.y = surface + clearance;
+        target.y = surface + clearance;
         const a = shoulder.distanceTo(elbow), b = elbow.distanceTo(wrist);
         arm.upperPose.copy(upper.quaternion); arm.lowerPose.copy(lower.quaternion); arm.handPose.copy(hand.quaternion);
         hand.getWorldQuaternion(handWorld);

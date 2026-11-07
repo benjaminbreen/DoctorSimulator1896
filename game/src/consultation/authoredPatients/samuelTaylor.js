@@ -38,7 +38,7 @@ const generatedRecipe = patientToRendererCRecipe(profile, {
   // scripts/characters/export_samuel_taylor.py, so no axis correction here.
   asset: {
     kind: 'authored-character',
-    path: '/models/characters/samuel-taylor.glb?v=1',
+    path: '/models/characters/samuel-taylor.glb?v=2',
     applyRecipe: false,
     opaque: true,
     motionClips: [
@@ -58,7 +58,7 @@ const generatedRecipe = patientToRendererCRecipe(profile, {
     },
   },
   animation: { body: 'clinic-idle', expression: 'discouraged', gaze: 'doctor', speaking: false },
-  placement: { position: [-0.45, 0.22, -1.57], rotation: [0, Math.PI, 0], scale: 1.78 },
+  placement: { position: [-0.45, 0.22, -1.66], rotation: [0, Math.PI, 0], scale: 1.78 },
 });
 
 const recipe = {

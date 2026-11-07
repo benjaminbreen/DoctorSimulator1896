@@ -164,3 +164,20 @@ Both gameplay runs completed every action but exit nonzero because the existing
 atlas-prefetch loader plugin lacks a name and logs
 `THREE.GLTFLoader: Invalid plugin found: missing name`. This warning is also
 present in the committed renderer; it did not prevent the models from loading.
+
+## Generated-patient arm repairs
+
+A review of generated patients in the consulting room found three asset faults
+and one runtime fault. Each repair script rewrites the GLB in place; run
+`scripts/characters/share-character-textures.mjs` afterwards.
+
+- `fix-sleeve-wrists.mjs`: Renderer C women's sleeve ends carried hand
+  weights and pinched at the wrist.
+- `fix-coat-arm-weights.mjs`: the lean template's coat carried arm weight down
+  to the hip and tore open when he raised his hat. Applied to the lean template
+  only.
+- `fix-frock-shirt-chin.mjs`: both frock coats kept a scrap of shirt inside the
+  chin that showed at the jaw when the head turned.
+- `wristTwist.js` (runtime): the seated idle rolls the hand almost 180 degrees
+  about the forearm, which collapsed the wrist skin into a thin neck. Half the
+  roll now goes to the forearm.
