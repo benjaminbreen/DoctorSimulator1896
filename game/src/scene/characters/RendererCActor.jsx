@@ -170,7 +170,7 @@ export default function RendererCActor({ recipe, manifest, onReady, onSettled, p
     // theirs on indoors. (Draft history: awaiting Ben's check.)
     if(recipe.cohort==='men')hatLook.hatStyle='none';
     const headwear=createHeadwear(root,hatLook);
-    const wristTwist=createWristTwist(root);
+    const wristTwist=createWristTwist(root,{cohort:recipe.cohort});
     const eyelashes=createModularEyelashes(root,{cohort:recipe.cohort,seed:recipe.appearanceSeed});
     eyelashes.updateLook(look);
     wardrobe.update({seated:false,outfit:look.outfit,apron:look.outfit==='work-apron',palette:look.palette,fabric:look.fabric,fabricScale:look.fabricScale,dt:0});
@@ -550,7 +550,7 @@ export default function RendererCActor({ recipe, manifest, onReady, onSettled, p
           setEntranceDone(true);
         }
       }
-      actor.mixer.update(dt);
+      actor.mixer.update(dt);actor.wristTwist.scaleHands();
       if (entrance.phase === 'sit') {
         const t = Math.max(0, Math.min(1, (entrance.sitTime / entrance.sitDuration - .45) / .45));
         alignSeat(t * t * (3 - 2 * t));
@@ -567,7 +567,7 @@ export default function RendererCActor({ recipe, manifest, onReady, onSettled, p
       actor.root.userData.performance = recipe.animation;
       return;
     }
-    actor.mixer.update(dt);
+    actor.mixer.update(dt);actor.wristTwist.scaleHands();
     if (SHELL_SEATED_CUES.has(recipe.animation.body)) {
       if (group) actor.seat.anchor(group, recipe.placement);
       alignSeat();

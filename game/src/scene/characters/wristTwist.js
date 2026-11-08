@@ -14,7 +14,11 @@ function bindLocal(bone, mesh) {
   return new THREE.Quaternion().setFromRotationMatrix(parentWorld.invert().multiply(world));
 }
 
-export function createWristTwist(root) {
+// Wrist to middle fingertip, metres. The Tripo hands come out about a
+// quarter too long, which makes a normal wrist look pinched beneath them.
+const HAND_LENGTH = { men: .19, women: .175 };
+
+export function createWristTwist(root, { cohort = 'women' } = {}) {
   let mesh = null;
   root.traverse(object => { if (!mesh && object.isSkinnedMesh) mesh = object; });
   const bones = {};
@@ -26,7 +30,20 @@ export function createWristTwist(root) {
     if (rest) arms.push({ forearm, hand, rest, axis: hand.position.clone().normalize() });
   }
   const delta = new THREE.Quaternion(), roll = new THREE.Quaternion(), along = new THREE.Vector3();
+  const bindPosition = bone => new THREE.Vector3().setFromMatrixPosition(mesh.skeleton.boneInverses[mesh.skeleton.bones.indexOf(bone)].clone().invert());
+  const hands = [];
+  for (const { hand } of arms) {
+    const side = hand.name.toLowerCase().includes('left') ? 'left' : 'right';
+    const tip = bones[`${side}handmiddle4`] || bones[`${side}handmiddle3`];
+    if (!tip || mesh.skeleton.bones.indexOf(tip) < 0) continue;
+    const length = bindPosition(hand).distanceTo(bindPosition(tip)) + .012;
+    hands.push({ hand, scale: THREE.MathUtils.clamp((HAND_LENGTH[cohort] ?? HAND_LENGTH.women) / length, .75, 1) });
+  }
   return {
+    // Call after the mixer: the clips write a scale onto every hand bone.
+    scaleHands() {
+      for (const { hand, scale } of hands) hand.scale.setScalar(scale);
+    },
     update() {
       for (const { forearm, hand, rest, axis } of arms) {
         delta.copy(hand.quaternion).multiply(roll.copy(rest).invert());
