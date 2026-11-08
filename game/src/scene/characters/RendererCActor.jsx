@@ -81,7 +81,7 @@ export default function RendererCActor({ recipe, manifest, onReady, onSettled, p
   const castLook = reviewing ? MODULAR_CAST_LOOKS.find(preset => preset.id === review.get('appearancePreset')) : null;
   const reviewSeed = reviewing ? review.get('appearanceSeed') : null;
   // Bump the review URL when an exported character's geometry changes.
-  const reviewVersion='20261107-arms-4';
+  const reviewVersion='20261107-cuffs-1';
   const bodyPath = castLook ? `/models/characters/${castLook.model}.glb?v=${reviewVersion}` : patientModelPath(recipe, manifest);
   prefetchClothingFabric(castLook?.look?.fabric || recipe.asset?.fabric || 'wool');
   const [gltf, motionGltf] = useLoader(GLTFLoader,

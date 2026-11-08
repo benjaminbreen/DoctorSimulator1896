@@ -43,6 +43,15 @@ joints in standing, walking and seated clips and verify that protected wrist
 vertices stay still. They also check cuff closure, cloth-only materials and
 clearance for the covered skin.
 
+November 7: the round 4.6 cm wrist looked pinched under the hand, and the
+cuff's long axis ran across the wrist's thickness. The wrist is now fitted to
+a 6.2 x 4.4 cm ellipse across the palm, and the cuff follows the same axes.
+Under a coat sleeve the cuff ends 1.2 cm past the wrist instead of 2.4 cm.
+The cuff end ring has real UVs (one shared UV fanned the normal map), and coat
+slivers past the wrist (a grey-green fin) are cropped. After a rebuild, run
+`reencode-normal-maps.mjs` and then `share-character-textures.mjs` on the
+rebuilt models; on the lean model run `fix-coat-arm-weights.mjs` first.
+
 The initial cast review produced 128 close-ups. The repaired male templates
 were reviewed again in 44 close-ups, including body-size variants and a hat grip.
 Both male gameplay replays completed entrance, conversation and wrist examination

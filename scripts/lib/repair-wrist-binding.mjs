@@ -9,14 +9,17 @@ export function repairWristBinding(document){
     const mesh=node.getMesh(),skin=node.getSkin();
     if(!mesh||!skin)continue;
     const cuff=mesh.listPrimitives().some(p=>p.getMaterial()?.getName()==='Patient_FormalCuffFabric');
-    if(cuff?node.getExtras().cuffBindingVersion===1:node.getExtras().wristBindingVersion===4)continue;
+    if(cuff?node.getExtras().cuffBindingVersion===1:node.getExtras().wristBindingVersion>=4)continue;
     if(!cuff&&!mesh.listPrimitives().some(p=>p.getMaterial()?.getName()==='Patient_WristSkin'))continue;
     const previousFit=node.getExtras().wristBindingVersion===3;
     const joints=skin.listJoints(),bind=skin.getInverseBindMatrices();
     const hands=Object.fromEntries(['Left','Right'].map(side=>{
       const index=joints.findIndex(j=>name(j)==='mixamorig'+side+'Hand');
       const middle=joints.find(j=>name(j)==='mixamorig'+side+'HandMiddle1');
-      return [side,{index,forearm:joints.findIndex(j=>name(j)==='mixamorig'+side+'ForeArm'),inverse:new THREE.Matrix4().fromArray(bind.getElement(index,[])),forward:new THREE.Vector3().fromArray(middle.getTranslation()).normalize()}];
+      const forward=new THREE.Vector3().fromArray(middle.getTranslation()).normalize();
+      const knuckle=n=>new THREE.Vector3().fromArray(joints.find(j=>name(j)==='mixamorig'+side+'Hand'+n).getTranslation());
+      const palm=knuckle('Index1').sub(knuckle('Pinky1'));palm.addScaledVector(forward,-palm.dot(forward)).normalize();
+      return [side,{index,forearm:joints.findIndex(j=>name(j)==='mixamorig'+side+'ForeArm'),inverse:new THREE.Matrix4().fromArray(bind.getElement(index,[])),forward,palm}];
     }));
     let repaired=0,fittedVertices=0;
     for(const primitive of mesh.listPrimitives()){
@@ -32,9 +35,11 @@ export function repairWristBinding(document){
         const radial=local.clone().addScaledVector(hand.forward,-distance);
         if(previousFit)radial.divideScalar(.75+.25*THREE.MathUtils.smoothstep(distance,.010,.035));
         const fit=1-THREE.MathUtils.smoothstep(distance,.025,.065);
-        const radius=radial.length(),scale=THREE.MathUtils.lerp(1,Math.min(1,.023/Math.max(radius,.00001)),fit);
-        // Fit the covered wrist inside the cuff, fading back to the native palm.
-        // A percentage shrink still left the donor's oversized wrist outside it.
+        // Fit the wrist to a 6.2 x 4.4 cm ellipse inside the cuff, fading back to
+        // the native palm. A round 4.6 cm wrist looked pinched under the hand.
+        const radius=Math.max(radial.length(),.00001),across=radial.dot(hand.palm)/radius;
+        const target=1/Math.hypot(across/.031,Math.sqrt(Math.max(0,1-across*across))/.022);
+        const scale=THREE.MathUtils.lerp(1,Math.min(1,target/radius),fit);
         if(!cuff&&(scale<1||previousFit)){
           const fitted=hand.forward.clone().multiplyScalar(distance).addScaledVector(radial,scale).applyMatrix4(hand.inverse.clone().invert());
           if(!correctedPositions){correctedPositions=positions.clone().setArray(positions.getArray().slice());primitive.setAttribute('POSITION',correctedPositions);}
@@ -63,7 +68,7 @@ export function repairWristBinding(document){
         ids.setElement(i,entries.map(e=>e[0]));weights.setElement(i,entries.map(e=>e[1]/total));repaired++;
       }
     }
-    node.setExtras({...node.getExtras(),...(cuff?{cuffBindingVersion:1}:{wristBindingVersion:4})});reports.push({node:node.getName(),repairedVertices:repaired,fittedVertices});
+    node.setExtras({...node.getExtras(),...(cuff?{cuffBindingVersion:1}:{wristBindingVersion:5})});reports.push({node:node.getName(),repairedVertices:repaired,fittedVertices});
   }
   return reports;
 }

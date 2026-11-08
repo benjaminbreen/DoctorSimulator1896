@@ -9,7 +9,7 @@ const io=await createIO(),finger=/Hand(?:Thumb|Index|Middle|Ring|Pinky)/;
 for(const model of ['male-lean-template','male-broad-template'])test(`${model}: curling fingers cannot pull wrist skin through the cuff`,async()=>{
   const doc=await io.read(`game/public/models/characters/${model}.glb`),before=contract(doc);
   const body=doc.getRoot().listNodes().find(n=>n.getName()==='Patient_MaleBody'),skin=body.getSkin(),joints=skin.listJoints(),inverse=skin.getInverseBindMatrices();
-  assert.equal(body.getExtras().wristBindingVersion,4);
+  assert.equal(body.getExtras().wristBindingVersion,5);
   const formal=doc.getRoot().listNodes().find(n=>n.getName()==='Patient_FormalUpper');
   assert.ok(formal.getMesh().listPrimitives().every(p=>p.getMaterial().getName()!=='Patient_Hands'),'cuffs must not receive skin recolouring');
   assert.equal(formal.getExtras().cuffBindingVersion,1);
@@ -37,7 +37,10 @@ for(const model of ['male-lean-template','male-broad-template'])test(`${model}: 
       const side=joints[ids[weights.indexOf(Math.max(...weights))]].getName().includes('Left')?'Left':'Right';
       const hand=joints.findIndex(n=>n.getName().replace(':','')==='mixamorig'+side+'Hand'),middle=joints.find(n=>n.getName().replace(':','')==='mixamorig'+side+'HandMiddle1');
       const local=p.clone().applyMatrix4(new THREE.Matrix4().fromArray(inverse.getElement(hand,[]))),forward=new THREE.Vector3().fromArray(middle.getTranslation()).normalize(),distance=local.dot(forward);
-      if(distance<.0249)assert.ok(local.clone().addScaledVector(forward,-distance).length()<.0231,'covered skin lies outside the cuff clearance');
+      const knuckle=n=>new THREE.Vector3().fromArray(joints.find(j=>j.getName().replace(':','')==='mixamorig'+side+'Hand'+n).getTranslation());
+      const palm=knuckle('Index1').sub(knuckle('Pinky1'));palm.addScaledVector(forward,-palm.dot(forward)).normalize();
+      const radial=local.clone().addScaledVector(forward,-distance),across=radial.dot(palm),thick=Math.sqrt(Math.max(0,radial.lengthSq()-across*across));
+      if(distance<.0249)assert.ok(Math.hypot(across/.0312,thick/.0222)<1,'covered skin lies outside the cuff clearance');
       const fingerWeight=weights.reduce((sum,w,k)=>sum+(finger.test(joints[ids[k]].getName())?w:0),0);
       if(material==='Patient_WristSkin'||distance<=.035){assert.ok(fingerWeight<.0001,'finger-bound forearm vertex');protectedPoints.push({p,ids,weights});}
       if(distance>.08&&fingerWeight>.5)movingFingerPoints++;

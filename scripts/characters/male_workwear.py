@@ -174,13 +174,26 @@ def build(body, rig, clinic, height, output):
     # The donor's cuffs are fragmented into skin and shirt patches. Replace
     # them with closed cloth tubes, independent of hand colour and finger bones.
     def native_cuff(face):
-        centre=face.calc_center_median()
+        centre=face.center
         side=min(['Left','Right'],key=lambda side:(centre-rig.data.bones[f'mixamorig:{side}Hand'].head_local).length)
         wrist=rig.data.bones[f'mixamorig:{side}Hand'].head_local
         if (centre-wrist).length>=.15:return False
         axis=(wrist-rig.data.bones[f'mixamorig:{side}ForeArm'].head_local).normalized()
-        return face.material_index==1 or (face.material_index==3 and (centre-wrist).dot(axis)>-.055)
-    crop(formal,native_cuff)
+        reach=(centre-wrist).dot(axis)
+        if face.material_index==1 or (face.material_index==3 and reach>-.055):return True
+        if face.material_index!=0 or reach<-.08:return False
+        # Coat cloth past the wrist is a sliver that showed as a grey-green fin;
+        # coat faces painted with the donor's white cuff read as jagged spikes.
+        uv=sum((formal_uvs[i].uv for i in face.loop_indices),Vector((0,0)))/len(face.loop_indices)
+        return reach>0 or coat_pixels[int((uv.y%1)*(coat_pixels.shape[0]-1)),int((uv.x%1)*(coat_pixels.shape[1]-1)),:3].mean()>.5
+    formal_uvs=formal.data.uv_layers.active.data
+    coat_image=next(n.image for n in formal.data.materials[0].node_tree.nodes if n.type=='TEX_IMAGE' and n.image)
+    coat_pixels=np.array(coat_image.pixels[:],dtype=np.float32).reshape(coat_image.size[1],coat_image.size[0],4)
+    cut={face.index for face in formal.data.polygons if native_cuff(face)}
+    # Under a coat sleeve only a short band of shirt cuff should show.
+    coat=sum(face.material_index==0 and min((face.center-w).length for w in wrists)<.08 for face in formal.data.polygons)>40
+    tip=.012 if coat else .024
+    crop(formal,lambda face:face.index in cut)
     cuff_fabric=cloth('Patient_FormalCuffFabric',(.80,.78,.73),output)
     formal.data.materials.append(cuff_fabric)
     bm=bmesh.new();bm.from_mesh(formal.data)
@@ -196,13 +209,15 @@ def build(body, rig, clinic, height, output):
     for side in ['Left','Right']:
         wrist=rig.data.bones[f'mixamorig:{side}Hand'].head_local
         axis=(wrist-rig.data.bones[f'mixamorig:{side}ForeArm'].head_local).normalized()
-        front=Vector((0,-1,0));front=(front-axis*front.dot(axis)).normalized();across=axis.cross(front).normalized()
+        # A wrist is wider across the palm than it is thick; so is its cuff.
+        palm=rig.data.bones[f'mixamorig:{side}HandIndex1'].head_local-rig.data.bones[f'mixamorig:{side}HandPinky1'].head_local
+        front=(palm-axis*palm.dot(axis)).normalized();across=axis.cross(front).normalized()
         shells=[]
         for inner in [False,True]:
             rings=[]
             for row in range(9):
-                t=row/8;ring=[];centre=wrist+axis*(-.075+.099*t)
-                rx=.034+.004*(1-t);ry=.029+.004*(1-t)
+                t=row/8;ring=[];centre=wrist+axis*(-.075+(.075+tip)*t)
+                rx=.035+.005*(1-t);ry=.027+.006*(1-t)
                 if inner:rx-=.0015;ry-=.0015
                 for col in range(48):
                     angle=col/48*math.tau;position=centre+front*(rx*math.cos(angle))+across*(ry*math.sin(angle))
@@ -225,7 +240,8 @@ def build(body, rig, clinic, height, output):
                 nxt=(col+1)%48;outer,inside=shells[0][row],shells[1][row]
                 face=bm.faces.new((outer[col],inside[col],inside[nxt],outer[nxt]) if row==8 else (outer[nxt],inside[nxt],inside[col],outer[col]))
                 face.material_index=len(formal.data.materials)-1;face.smooth=True
-                for loop in face.loops:loop[uv_layer].uv=(col/48*3,row/8)
+                # A cap face with one shared UV has no tangent and fans the normal map.
+                for loop in face.loops:loop[uv_layer].uv=((col+(loop.vert in (outer[nxt],inside[nxt])))/48*3,row/8+.02*(loop.vert in inside))
     bmesh.ops.recalc_face_normals(bm,faces=list(bm.faces))
     bm.to_mesh(formal.data);bm.free()
     formal['formalCuffsVersion']=1
