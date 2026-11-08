@@ -166,8 +166,9 @@ export default function RendererCActor({ recipe, manifest, onReady, onSettled, p
     createModularBody(root).update(look);
     createModularFacialHair(root).update(look);
     const hatLook={hatStyle:recipe.presentation?.hat?.style||'none',hatColor:recipe.presentation?.hat?.color,hatBandColor:recipe.presentation?.hat?.band,...look};
-    // The original Samuel mesh includes its cap as part of the head.
-    if(bodyPath.split('?')[0]==='/models/characters/samuel-taylor.glb')hatLook.hatStyle='none';
+    // A man left his hat in the hall before seeing the doctor. Women kept
+    // theirs on indoors. (Draft history: awaiting Ben's check.)
+    if(recipe.cohort==='men')hatLook.hatStyle='none';
     const headwear=createHeadwear(root,hatLook);
     const wristTwist=createWristTwist(root);
     const eyelashes=createModularEyelashes(root,{cohort:recipe.cohort,seed:recipe.appearanceSeed});
@@ -584,7 +585,7 @@ export default function RendererCActor({ recipe, manifest, onReady, onSettled, p
     else if(animation.gesture==='put-on-hat'||animation.body==='stand-up')actor.headwear.request(true);
     else if(!actor.hatAutomatic&&actor.headwear.hat){
       actor.hatAutomatic=true;
-      if(recipe.presentation?.hat?.removeInside ?? (recipe.cohort==='men'))actor.headwear.request(false);
+      if(recipe.presentation?.hat?.removeInside)actor.headwear.request(false);
     }
     actor.headwear.update(dt,{followHand:animation.gesture==='extend-both-arms'});
     actor.wristTwist.update();

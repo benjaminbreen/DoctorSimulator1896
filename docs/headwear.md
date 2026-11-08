@@ -49,14 +49,16 @@ hand is left; the right wrist remains free for examination. During a two-arm
 examination a held hat follows the current left-hand pose rather than pulling
 the arm back to the hip.
 
-The game removes men's hats after the entrance completes. Women keep their
-hats by default. `presentation.hat.removeInside` overrides that convention;
+Men in the game wear no hat: a man would have left it in the hall or
+waiting room before seeing the doctor (draft history, awaiting Ben's check).
+Women keep their hats on. `presentation.hat.removeInside` makes a woman take
+hers off after the entrance;
 `remove-hat` and `put-on-hat` are explicit animation gestures. A `stand-up` body
 cue also requests replacement. This is an animation capability: a hat does
 not add a new conversation choice or decide a clinical outcome.
 
 The ordinary authored cast uses a work bonnet for Carmela, plain straw for
-Nora, soft felt hat for Ferdinand and the existing mourning-bonnet choice for
+Nora and the existing mourning-bonnet choice for
 Wilhelmina. Review presets can override these looks. Samuel's old one-piece
 asset has a fused cap, so it receives no second hat. His new worker/template
 review appearances have separate removable caps and hats.
