@@ -37,8 +37,10 @@ export function createModularWardrobe(root) {
     dispose(){apronFit.dispose();fabricSurface.dispose();},
     fabricAvailable:fabricSurface.available,
     fabricDescription:fabricSurface.describe,
+    // The work shirt and aprons on the formal templates were built by script,
+    // not by Tripo, and look crude beside the Tripo coat. Offer only the coat.
     available: Boolean(parts[0]) || materials.size > 0,
-    outfits: garmentStyle ? [garmentStyle] : formal ? ['tailored-clothes','work-shirt','canvas-apron','leather-apron'] : parts[0] ? ['day-dress', 'work-apron'] : root.getObjectByName('Patient_WorkerBody') ? ['work-shirt'] : ['tailored-clothes'],
+    outfits: garmentStyle ? [garmentStyle] : formal ? ['tailored-clothes'] : parts[0] ? ['day-dress', 'work-apron'] : root.getObjectByName('Patient_WorkerBody') ? ['work-shirt'] : ['tailored-clothes'],
     update({ seated, apron = false, outfit = 'tailored-clothes', palette = 'original', fabric='wool', fabricScale=1, dt = 0 }) {
       fabricSurface.update({fabric,fabricScale});
       const visible = [!seated, seated, !seated && apron, seated && apron];

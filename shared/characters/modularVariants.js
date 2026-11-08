@@ -23,7 +23,7 @@ export function createModularVariation(seed = 1, male = false) {
     hairTone: pick(['black', 'brown', 'chestnut', 'auburn', 'blond', 'mixedGray', 'silver']),
     eyeTone: pick(['brown', 'hazel', 'green', 'blue', 'gray']),
     palette: pick(['original', 'navy', 'forest', 'taupe']),
-    outfit: male ? pick(['tailored-clothes','work-shirt','canvas-apron','leather-apron']) : pick(['day-dress', 'work-apron']),
+    outfit: male ? 'tailored-clothes' : pick(['day-dress', 'work-apron']),
     hairStyle: pick(Object.keys(MODULAR_HAIR_STYLES).filter(id => male === ['short-side-part','receding-sweep','bald'].includes(id))),
     hairVolume: pick([-.2, 0, .25, .5]),
     hairWave: pick([-.2, 0, .3, .7]),

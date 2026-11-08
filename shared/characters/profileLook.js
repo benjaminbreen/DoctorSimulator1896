@@ -38,7 +38,7 @@ export function lookForProfile(profile) {
   let outfit;
   if (male) {
     if (HEAVY_WORK.test(trade)) [model, outfit] = ['male-worker-template', 'work-shirt'];
-    else if (TRADE.test(trade) || classId === 'sponsored') [model, outfit] = [random.pick(['male-lean-template', 'male-broad-template']), random.chance(.3) ? 'canvas-apron' : 'work-shirt'];
+    else if (TRADE.test(trade) || classId === 'sponsored') [model, outfit] = [random.pick(['male-lean-template', 'male-broad-template']), 'tailored-clothes'];
     else [model, outfit] = [wealthy && age >= 40 && random.chance(.6) ? 'male-broad-template' : random.pick(['male-lean-template', 'male-broad-template']), 'tailored-clothes'];
   } else {
     model = random.pick(['carmela-russo', 'seamstress-prototype']);

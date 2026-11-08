@@ -38,6 +38,8 @@ const BREATH_RATES = {
 const GESTURE_HOLD_SECONDS = 10;
 // How gently a presented forearm turns to show the inner wrist.
 const PRESENT_SUPINATION = 0.8;
+// Radians a gesture may turn from the patient's front toward the doctor.
+const MAX_GESTURE_TURN = 0.6;
 
 // Examination gestures, by cue id. Targets are fractions of the arm's own
 // segment lengths along world axes: `drop` down from the shoulder, `reach`
@@ -47,8 +49,8 @@ const PRESENT_SUPINATION = 0.8;
 const GESTURES = {
   'present-wrist': {
     sides: ['right'],
-    elbow: { drop: 0.38, reach: 0.62 },
-    hand: { reach: 1.0, lift: 0.14 },
+    elbow: { drop: 0.75, reach: 0.55 },
+    hand: { reach: 1.0, lift: 0.3 },
     spread: 0.25,
     supinate: true,
     watchHand: true,
@@ -222,6 +224,14 @@ export function createPatientMotion(root, recipe) {
         toward.y = 0;
         if (toward.lengthSq() < 1e-6) toward.set(0, 0, 1);
         else toward.normalize();
+        // A patient offers the arm in front of her, not out to the side when
+        // the camera stands beside the chair.
+        if (bones.rightArm && bones.leftArm) {
+          const forward = worldPositionOf(bones.rightArm, new THREE.Vector3()).sub(worldPositionOf(bones.leftArm, scratchVecB));
+          forward.crossVectors(WORLD_UP, forward).setY(0).normalize();
+          const angle = forward.angleTo(toward);
+          if (angle > MAX_GESTURE_TURN) toward.copy(forward).lerp(toward, MAX_GESTURE_TURN / angle).normalize();
+        }
         // Outward from the camera line, on this arm's own side.
         const lateral = new THREE.Vector3().crossVectors(toward, WORLD_UP);
         const sideSign = side === 'right' ? 1 : -1;
