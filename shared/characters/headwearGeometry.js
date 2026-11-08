@@ -307,7 +307,9 @@ export function buildHeadwear(look={}){
   }
   if(['cap','peaked'].includes(style.form))group.userData.gripPoints={right:[-R*.96,.005,.027],left:[R*.96,.005,.027]};
   else{
-    const angle=Math.atan2(R+brim*.55,.027);
+    // Take a brim at its front corner. A grip over the ear puts the wrist
+    // beside the shoulder and folds the elbow shut.
+    const angle=style.form==='bonnet'?Math.atan2(R+brim*.55,.027):.95;
     group.updateMatrixWorld(true);
     const grip=a=>{
       const target=brimPoint(.55,a),origin=target.clone().add(new THREE.Vector3(0,.05,0));

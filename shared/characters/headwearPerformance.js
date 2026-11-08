@@ -225,12 +225,15 @@ export function createHeadwear(root,initialLook={}){
       if(lift<.28){worldPosition.copy(wornPosition);}
       else if(lift<.53){worldPosition.lerpVectors(wornPosition,above,smooth(.28,.53,lift));}
       else{
-        const t=smooth(.53,1,lift),a=above.clone().addScaledVector(right,.22*unit*mirror),b=heldPosition.clone().addScaledVector(up,.28*unit);
+        // Carry the hat out in front of the chest. A path beside the head passes
+        // over the shoulder, which folds the forearm back inside the upper arm.
+        const t=smooth(.53,1,lift),a=above.clone().addScaledVector(right,.08*unit*mirror).addScaledVector(forward,.28*unit),b=heldPosition.clone().addScaledVector(up,.2*unit).addScaledVector(forward,.22*unit);
         worldPosition.copy(above).multiplyScalar((1-t)**3).addScaledVector(a,3*(1-t)**2*t).addScaledVector(b,3*(1-t)*t*t).addScaledVector(heldPosition,t**3);
         worldQuaternion.slerp(heldQuaternion,t);
       }
       const handForward=UP.clone().applyQuaternion(worldQuaternion).normalize();
-      const handNormal=new THREE.Vector3(mirror,0,0).applyQuaternion(worldQuaternion).normalize();
+      // The palm faces the crown from wherever the grip sits on the brim.
+      const handNormal=new THREE.Vector3(-gripLocal.x,0,-gripLocal.z).applyQuaternion(worldQuaternion).normalize();
       const contact=gripLocal.clone().applyQuaternion(worldQuaternion).add(worldPosition);
       if(hat.userData.fastener==='ties'&&lift<.24){
         const tieContact=wornPosition.clone().addScaledVector(up,-.17*unit).addScaledVector(forward,.08*unit);
