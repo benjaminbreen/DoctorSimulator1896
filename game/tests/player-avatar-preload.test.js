@@ -28,7 +28,7 @@ function inlinePreloadScript() {
 
 // Runs the inline script against a fake device and returns the href it asked
 // the browser to preload.
-function preloadedHref(device) {
+function preloadedHref(device, compressed) {
   let href = null;
   const link = {
     set href(value) { href = value; },
@@ -37,7 +37,7 @@ function preloadedHref(device) {
   const scope = {
     navigator: { maxTouchPoints: device.maxTouchPoints },
     screen: { width: device.width, height: device.height },
-    window: { matchMedia: (query) => ({ matches: query.includes('coarse') && device.coarse }) },
+    window: { DecompressionStream: compressed ? function () {} : undefined, matchMedia: (query) => ({ matches: query.includes('coarse') && device.coarse }) },
     document: {
       createElement: () => link,
       head: { appendChild: () => {} },
@@ -52,11 +52,12 @@ function preloadedHref(device) {
 }
 
 // playerAvatarUrl reads these off globalThis at call time.
-function moduleUrl(device) {
+function moduleUrl(device, compressed) {
   const saved = {
     navigator: globalThis.navigator,
     screen: globalThis.screen,
     matchMedia: globalThis.matchMedia,
+    DecompressionStream: globalThis.DecompressionStream,
   };
   try {
     Object.defineProperty(globalThis, 'navigator', {
@@ -65,17 +66,21 @@ function moduleUrl(device) {
     });
     globalThis.screen = { width: device.width, height: device.height };
     globalThis.matchMedia = (query) => ({ matches: query.includes('coarse') && device.coarse });
+    globalThis.DecompressionStream = compressed ? function () {} : undefined;
     return playerAvatarUrl();
   } finally {
     Object.defineProperty(globalThis, 'navigator', { value: saved.navigator, configurable: true });
     globalThis.screen = saved.screen;
     globalThis.matchMedia = saved.matchMedia;
+    globalThis.DecompressionStream = saved.DecompressionStream;
   }
 }
 
 test('the preload names the file PlayerAvatar loads, on every device shape', () => {
   for (const device of DEVICES) {
-    assert.equal(preloadedHref(device), moduleUrl(device), device.label);
+    for (const compressed of [false, true]) {
+      assert.equal(preloadedHref(device, compressed), moduleUrl(device, compressed), device.label);
+    }
   }
 });
 

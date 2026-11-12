@@ -19,7 +19,8 @@ import ThrowableVisual from './ThrowableVisual.jsx';
 import { normalizeNonmetallicCharacterMaterials } from './characterMaterials.js';
 import { getKTX2Loader } from './ktx2.js';
 import { BOARDING_CLIMB_SECONDS } from '../world/carriageBoarding.js';
-import { playerAvatarUrl } from './playerModel.js';
+import { playerAvatarUrl, playerDetailUrl, streamPlayerDetail } from './playerModel.js';
+import { prepareStage } from './prepareStage.js';
 import { airborneClipTime, JUMP_CONTACTS, locomotionBlend } from '../movement/playerLocomotion.js';
 import { createLadderGrip } from './ladderGrip.js';
 
@@ -29,6 +30,22 @@ import { createLadderGrip } from './ladderGrip.js';
 // subtree crashed React's dev logging on the model's circular scene graph — so
 // it follows the capsule from the debug handle instead of being parented to it.
 const MODEL = playerAvatarUrl();
+
+class OpeningAvatarLoader extends GLTFLoader {
+  load(url, onLoad, _onProgress, onError) {
+    fetch(url, { mode: 'cors', credentials: 'same-origin' }).then(async (response) => {
+      if (!response.ok) throw new Error(`Player asset returned ${response.status}`);
+      // Fetch decodes the body when the server sets Content-Encoding.
+      const binary = response.headers.get('Content-Encoding')
+        ? await response.arrayBuffer()
+        : await new Response(response.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+      return this.parseAsync(binary, THREE.LoaderUtils.extractUrlBase(url));
+    }).then(onLoad, onError);
+  }
+}
+
+const AvatarLoader = streamPlayerDetail() ? OpeningAvatarLoader : GLTFLoader;
+
 
 // Keep foot speed matched to the tuned walk and run. The old 1.3x ceiling
 // made the character slide at even the ordinary walking speed.
@@ -124,7 +141,27 @@ function findMixamoBone(root, boneName) {
   return match;
 }
 
-export default function PlayerAvatar({ runtime, onReady }) {
+function prepareAvatarMaterials(root) {
+  normalizeNonmetallicCharacterMaterials(root);
+  root.traverse((object) => {
+    if (!object.isMesh) return;
+    for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+      if (material.userData.fabricLift) continue;
+      material.userData.fabricLift = true;
+      material.onBeforeCompile = (shader) => {
+        shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
+          #include <map_fragment>
+          float clothLuma = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+          float darkCloth = 1.0 - smoothstep(0.015, 0.07, clothLuma);
+          diffuseColor.rgb += vec3(0.009, 0.010, 0.012) * darkCloth;
+        `);
+      };
+      material.customProgramCacheKey = () => 'player-dark-fabric-v1';
+    }
+  });
+}
+
+export default function PlayerAvatar({ runtime, onReady, loadDetail, shotMode }) {
   const groupRef = useRef();
   const heldObjectRef = useRef();
   const [heldType, setHeldType] = useState(() => getThrowablePlay().heldType);
@@ -133,7 +170,9 @@ export default function PlayerAvatar({ runtime, onReady }) {
     loader.setMeshoptDecoder(MeshoptDecoder);
     loader.setKTX2Loader(getKTX2Loader(gl));
   }, [gl]);
-  const gltf = useLoader(GLTFLoader, MODEL, configure);
+  const gltf = useLoader(AvatarLoader, MODEL, configure);
+  const camera = useThree(state => state.camera);
+  const worldScene = useThree(state => state.scene);
 
   // The master figure is 1.80m; the capsule it stands in is shorter. Match the
   // collider, so what you walk into is what you see.
@@ -164,23 +203,7 @@ export default function PlayerAvatar({ runtime, onReady }) {
       // A skinned figure's bounds are its bind pose, which the walk leaves.
       object.frustumCulled = false;
     });
-    normalizeNonmetallicCharacterMaterials(root);
-    root.traverse((object) => {
-      if (!object.isMesh) return;
-      for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
-        if (material.userData.fabricLift) continue;
-        material.userData.fabricLift = true;
-        material.onBeforeCompile = (shader) => {
-          shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
-            #include <map_fragment>
-            float clothLuma = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
-            float darkCloth = 1.0 - smoothstep(0.015, 0.07, clothLuma);
-            diffuseColor.rgb += vec3(0.009, 0.010, 0.012) * darkCloth;
-          `);
-        };
-        material.customProgramCacheKey = () => 'player-dark-fabric-v1';
-      }
-    });
+    prepareAvatarMaterials(root);
     const animations = new THREE.AnimationMixer(root);
     const clip = (name) => {
       const found = gltf.animations.find((entry) => entry.name === name);
@@ -230,6 +253,44 @@ export default function PlayerAvatar({ runtime, onReady }) {
       fit: capsuleHeight / height,
     };
   }, [gltf, capsuleHeight]);
+
+  useEffect(() => {
+    if (!loadDetail || !streamPlayerDetail()) return undefined;
+    const mesh = scene.getObjectByProperty('isSkinnedMesh', true);
+    if (!mesh || mesh.geometry.userData.playerDetail) return undefined;
+    let cancelled = false;
+    const loader = new GLTFLoader();
+    configure(loader);
+    loader.loadAsync(playerDetailUrl()).then(async ({ scene: detail }) => {
+      // Prepare the new vertex buffers at the next pause in locomotion.
+      while (!shotMode && !cancelled && (gameDebug.player.moveRequested || !gameDebug.player.grounded)) {
+        await new Promise(resolve => requestAnimationFrame(resolve));
+      }
+      if (cancelled) return;
+      const detailedMesh = detail.getObjectByProperty('isSkinnedMesh', true);
+      if (!detailedMesh) return;
+      prepareAvatarMaterials(detail);
+      const warmRoot = new THREE.Group();
+      warmRoot.add(detailedMesh.clone(false));
+      await prepareStage(gl, warmRoot, camera, worldScene, () => cancelled, true);
+      if (cancelled) return;
+      // Both meshes use the same joints. Swap only the render data and keep
+      // the animated bones, mixer, and phase of any action already playing.
+      mesh.geometry.dispose();
+      mesh.material.dispose();
+      mesh.geometry = detailedMesh.geometry;
+      mesh.material = detailedMesh.material;
+      mesh.boundingBox = null;
+      mesh.boundingSphere = null;
+      mesh.skeleton.boneInverses = detailedMesh.skeleton.boneInverses;
+      mesh.bindMatrix.copy(detailedMesh.bindMatrix);
+      mesh.geometry.userData.playerDetail = true;
+      performance.mark('player:detail-ready');
+    }).catch((error) => {
+      if (!cancelled) console.warn('Player detail could not be loaded', error);
+    });
+    return () => { cancelled = true; };
+  }, [loadDetail, scene, configure, gl, camera, shotMode, worldScene]);
 
   // The opium ritual needs the rig from outside: OpiumRitual hangs the pipe
   // from the hand bone and paces its smoke to the clip's own time.

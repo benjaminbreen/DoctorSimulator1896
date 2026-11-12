@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { RigidBody, CapsuleCollider, useRapier } from '@react-three/rapier';
@@ -141,6 +141,14 @@ export default function PlayerRig({
     [rapier],
   );
   const showAvatar = runtime.values.showAvatarGlb && !forcePlaceholder;
+
+  useLayoutEffect(() => {
+    // The first camera frame must start at this door, even when the renderer
+    // and its debug handle survive travel from a different coordinate space.
+    gameDebug.player.position = [...spawn];
+    gameDebug.player.yaw = spawnYaw;
+    gameDebug.player.grounded = false;
+  }, [spawn, spawnYaw]);
 
   useEffect(() => {
     look.set(spawnYaw, look.look.pitch);

@@ -1,15 +1,20 @@
-// The player avatar's URL, in one place. The opening reveal waits on this
-// file, so index.html preloads it before the bundle exists; a preload that
-// names a different file than PlayerAvatar asks for costs a second full
-// download instead of saving the first.
-
 import { shouldRecycleWebGLContextOnTravel } from './mobileGraphics.js';
 
-const VERSION = 'player-motion-1';
+export function streamPlayerDetail() {
+  return typeof globalThis.DecompressionStream === 'function';
+}
 
 export function playerAvatarUrl() {
-  const file = shouldRecycleWebGLContextOnTravel()
+  if (streamPlayerDetail()) return '/models/tripo-victorian-player-opening.glb.gz?v=1';
+  return `/models/${playerModelName()}.glb?v=player-motion-1`;
+}
+
+function playerModelName() {
+  return shouldRecycleWebGLContextOnTravel()
     ? 'tripo-victorian-player-mobile'
     : 'tripo-victorian-player';
-  return `/models/${file}.glb?v=${VERSION}`;
+}
+
+export function playerDetailUrl() {
+  return `/models/${playerModelName()}-detail.glb?v=1`;
 }

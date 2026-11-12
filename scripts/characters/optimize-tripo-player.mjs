@@ -219,3 +219,5 @@ console.log(
   `mobile player: ${mobileResult.triangles.toLocaleString()} tris, ${mobileResult.clips} clips, `
   + `${(mobileBytes / 1048576).toFixed(2)}MB`,
 );
+
+await import('./build-player-opening.mjs');
