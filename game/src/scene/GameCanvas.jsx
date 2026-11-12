@@ -733,7 +733,7 @@ function SceneContents({
               <CloudDome config={lighting} runtime={runtime} />
               <Terrain fullDetail={fullPark} />
               <FurnitureColliders items={parkColliders} />
-              <ParkShell districts={parkDistricts} ready={parkParts} />
+              <ParkShell districts={parkDistricts} ready={parkParts} textured={coreReady && avatarReady} runtime={runtime} />
               <PostedNpcs runtime={runtime} opening motionReady={parkParts.has('plaza:props:small_park_bench')} />
               <Pushcarts opening />
               <ExaminePicker room={room} zone={zone} />

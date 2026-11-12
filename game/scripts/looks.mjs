@@ -27,6 +27,7 @@ const VIEWPOINTS = [
   { id: 'carousel', zone: 'central-park', at: [14, -38], yaw: 0.45, pitch: 0.05 },
   { id: 'park-dusk', zone: 'central-park', at: [82, 68], yaw: 0.785, hour: 19.6 },
   { id: 'park-night', zone: 'central-park', at: [88, 78], yaw: -1.35, pitch: 0.2, hour: 22 },
+  { id: 'avenue-night', zone: 'central-park', at: [104, 40], yaw: -0.5, pitch: 0.1, hour: 22 },
   { id: 'office', zone: 'consulting-office', at: [1.2, 1.2], yaw: 0 },
   { id: 'office-back', zone: 'consulting-office', at: [1.2, 1.2], yaw: Math.PI },
   { id: 'office-evening', zone: 'consulting-office', at: [1.2, 1.2], yaw: 0, hour: 20.5 },

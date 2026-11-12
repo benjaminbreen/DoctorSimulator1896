@@ -1,17 +1,25 @@
-import { memo, useLayoutEffect, useMemo } from 'react';
+import { memo, Suspense, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { useFrame, useLoader, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import {
-  FACES, facadeEntranceLayout, facadeFaceRole, facadeLayoutForFace, facadeWidth, facadeWindowEntries,
+  FACES, facadeBrickFinish, facadeEntranceLayout, facadeFaceRole, facadeLayoutForFace, facadeWidth, facadeWindowEntries,
 } from '../world/facade.js';
 import TreeField from './TreeField.jsx';
 import { instanced } from './lib/instances.js';
 import { identifyLandmark } from '../world/landmarkInformation.js';
+import { solarRamps } from '../world/solar.js';
+import { createFacadeMaterial, FACADE_TEXTURE_URLS, prepareFacadeTextures } from './facadeMaterials.js';
+import { prepareStage } from './prepareStage.js';
 
 const box = new THREE.BoxGeometry();
 const trunk = new THREE.CylinderGeometry(.34, .55, 1, 7);
 const crown = new THREE.IcosahedronGeometry(1, 1);
 const surface = new THREE.MeshStandardMaterial({ roughness: .95 });
-const windows = new THREE.MeshStandardMaterial({ color: '#292926', roughness: .8 });
+// A little sheen at a glancing angle; a full sky reflection reads as paper.
+const windows = new THREE.MeshStandardMaterial({ color: '#23252a', roughness: .3, envMapIntensity: .18 });
+// A few rooms have the gas on after dark. Colour and night ramp match the
+// lit panes in WindowField.jsx; ParkShell sets the intensity each frame.
+const litWindows = new THREE.MeshStandardMaterial({ color: '#23252a', roughness: .3, envMapIntensity: .18, emissive: '#c8873e', emissiveIntensity: 0 });
 const leaves = new THREE.MeshStandardMaterial({ color: '#556a3d', roughness: 1 });
 const bark = new THREE.MeshStandardMaterial({ color: '#534734', roughness: 1 });
 const facadeColors = ['#958272', '#8a5f4c', '#b5aa96', '#766a60', '#c5b9a1', '#99948d'];
@@ -52,8 +60,35 @@ function addStreetDoor(trim, u, base, width, height, stone, door, panel, brass) 
   trim(u, y - .12, .093, [.048, .06, .06], brass);
 }
 
-function buildShell(items, treeGroups, propGroups, streetDetail) {
-  const walls = [], openings = [], facadeTrim = [], targets = [];
+// The same pane choice as WindowField.jsx, so a lamp does not move when the
+// detailed windows replace the shell.
+function windowLit(item, window) {
+  const seed = idHash(item.id);
+  const style = item.facadeStyle ?? seed % 4;
+  const value = Math.sin((seed + window.col * 11.7 + (window.floor ?? 9) * 5.3) * 127.1 + 311.7) * 43758.5453;
+  return value - Math.floor(value) < (style === 1 || style === 2 ? .1 : .05);
+}
+
+function idHash(id) {
+  let total = 0;
+  for (let i = 0; i < id.length; i += 1) total = (total * 31 + id.charCodeAt(i)) | 0;
+  return Math.abs(total);
+}
+
+// Same grouping and arguments as FacadeBatch in Furniture.jsx, so a far
+// building already wears the masonry it will have when its detail arrives.
+function facadeKey(item) {
+  return `${item.facadeStyle ?? 0}:${Number.isInteger(item.facadeTone) ? item.facadeTone : 'default'}:${facadeBrickFinish(item) ?? 'stone'}`;
+}
+
+function shellFacadeMaterial(facades, item) {
+  return createFacadeMaterial(facades, item.facadeStyle ?? 0, idHash(item.id), false,
+    item.position[1] - item.size[1] / 2, item.facadeTone ?? null, true, facadeBrickFinish(item) ?? 'smooth');
+}
+
+function buildShell(items, treeGroups, propGroups, streetDetail, facades) {
+  const walls = [], openings = [], litOpenings = [], facadeTrim = [], targets = [];
+  const masonry = new Map();
   const sash = tint('#756a51');
   const door = tint('#292821');
   const panel = tint('#403b2e');
@@ -65,9 +100,15 @@ function buildShell(items, treeGroups, propGroups, streetDetail) {
   const add = (name, meshes) => batches.push([name, meshes.filter(Boolean)]);
   for (const item of items) {
     if (item.render === false || item.dynamic || item.model || item.kind === 'tree') continue;
-    targets.push(item);
+    if (item.kind === 'backdrop' && facades) {
+      const key = facadeKey(item);
+      if (!masonry.has(key)) masonry.set(key, []);
+      masonry.get(key).push(item);
+    } else {
+      targets.push(item);
+    }
     if (item.kind === 'backdrop') {
-      walls.push({ p: item.position, s: item.size, color: tint(facadeColors[item.facadeStyle] ?? '#a49783') });
+      if (!facades) walls.push({ p: item.position, s: item.size, color: tint(facadeColors[item.facadeStyle] ?? '#a49783') });
       const [x, y, z] = item.position;
       const [width, height, depth] = item.size;
       const stone = tint(sillColors[item.facadeStyle] ?? '#b5a48c');
@@ -97,7 +138,7 @@ function buildShell(items, treeGroups, propGroups, streetDetail) {
           const h = window.h / layout.texH * height;
           const ground = window.floor === undefined;
           if (ground && hotelBay && Math.abs(u - hotelBay.along) < (w + hotelBay.width) / 2 + .23) continue;
-          openings.push(part(u, level, .025, [w, h, .035]));
+          (windowLit(item, window) ? litOpenings : openings).push(part(u, level, .025, [w, h, .035]));
           if (detail && (ground || window.floor === layout.floors - 2)) {
             addStreetWindow(trim, u, level, w, h, stone, sash);
           }
@@ -131,8 +172,17 @@ function buildShell(items, treeGroups, propGroups, streetDetail) {
       });
     }
   }
+  // Click targets follow the first mesh's instance order, so the flat walls
+  // stay first and each masonry batch carries its own buildings.
+  const masonryMeshes = [...masonry.values()].map((group) => {
+    const mesh = batch(box, shellFacadeMaterial(facades, group[0]), group.map(item => ({ p: item.position, s: item.size })));
+    mesh.userData.targets = group;
+    mesh.userData.ownsMaterial = true;
+    return mesh;
+  });
   add('structure', [
-    batch(box, surface, walls), batch(box, windows, openings, false), batch(box, surface, facadeTrim, false),
+    batch(box, surface, walls), ...masonryMeshes, batch(box, windows, openings, false), batch(box, litWindows, litOpenings, false),
+    batch(box, surface, facadeTrim, false),
   ]);
   for (const [species, trees] of Object.entries(treeGroups)) {
     const trunks = [], crowns = [];
@@ -178,25 +228,28 @@ function buildShell(items, treeGroups, propGroups, streetDetail) {
   return { batches, targets };
 }
 
-const DistrictShell = memo(function DistrictShell({ district, ready }) {
+const DistrictShell = memo(function DistrictShell({ district, ready, facades }) {
   const batches = useMemo(() => {
     const plaza = district.id === 'plaza';
-    const core = buildShell(district.structure, plaza ? {} : district.treeGroups, district.propGroups, false);
+    const core = buildShell(district.structure, plaza ? {} : district.treeGroups, district.propGroups, false, facades);
     const result = core.batches.map(([part, meshes]) => ({ part, meshes, targets: part === 'structure' ? core.targets : null }));
     if (plaza) for (const building of district.buildings) {
-      const { batches: [[, meshes]], targets } = buildShell([building], {}, {}, true);
+      const { batches: [[, meshes]], targets } = buildShell([building], {}, {}, true, facades);
       result.push({ part: 'structure:' + building.id, meshes, targets });
     }
     return result;
-  }, [district]);
-  useLayoutEffect(() => () => batches.forEach(({ meshes }) => meshes.forEach(mesh => mesh.dispose())), [batches]);
+  }, [district, facades]);
+  useLayoutEffect(() => () => batches.forEach(({ meshes }) => meshes.forEach(mesh => {
+    if (mesh.userData.ownsMaterial) mesh.material.dispose();
+    mesh.dispose();
+  })), [batches]);
   return <>
     {district.id === 'plaza' && !ready.has('plaza:trees') && <TreeField items={district.trees} preview />}
     {batches.map(({ part, meshes, targets }) => (
       <group key={part} visible={!ready.has(district.id + ':' + part)}>
         {meshes.map((mesh, index) => <primitive key={mesh.uuid} object={mesh}
-          onClick={targets && index === 0 ? (event) => {
-            const item = targets[event.instanceId];
+          onClick={mesh.userData.targets || (targets && index === 0) ? (event) => {
+            const item = (mesh.userData.targets ?? targets)[event.instanceId];
             if (item?.landmarkLabel) identifyLandmark(item, event);
           } : undefined} />)}
       </group>
@@ -204,8 +257,39 @@ const DistrictShell = memo(function DistrictShell({ district, ready }) {
   </>;
 });
 
-export default memo(function ParkShell({ districts, ready }) {
+// Loads the shared facade maps and compiles both shader shapes off screen,
+// so swapping the flat shells for masonry does not stall a frame.
+function ShellFacades({ onReady }) {
+  const sources = useLoader(THREE.TextureLoader, FACADE_TEXTURE_URLS);
+  const gl = useThree((state) => state.gl);
+  const scene = useThree((state) => state.scene);
+  const camera = useThree((state) => state.camera);
+  useEffect(() => {
+    let cancelled = false;
+    const facades = prepareFacadeTextures(sources);
+    const probe = new THREE.Group();
+    // Style 0 uses normal and roughness maps; smooth brick uses a bump map.
+    const materials = [0, 1].map(facadeStyle => shellFacadeMaterial(facades,
+      { id: 'probe', facadeStyle, brickFinish: 'smooth', position: [0, 0, 0], size: [1, 1, 1] }));
+    for (const material of materials) probe.add(instanced(box, material, [{ p: [0, -500, 0], s: [1, 1, 1] }]));
+    prepareStage(gl, probe, camera, scene, () => cancelled, true)
+      .catch((error) => console.error('Shell facade preparation failed', error))
+      .then(() => {
+        for (const material of materials) material.dispose();
+        if (!cancelled) onReady(facades);
+      });
+    return () => { cancelled = true; };
+  }, [camera, gl, onReady, scene, sources]);
+  return null;
+}
+
+export default memo(function ParkShell({ districts, ready, textured, runtime }) {
+  const [facades, setFacades] = useState(null);
+  useFrame(() => {
+    litWindows.emissiveIntensity = solarRamps(runtime.values.timeOfDay, runtime.values.dayOfYear).night * 1.3;
+  });
   return <group name="park district shells">
-    {districts.map(district => <DistrictShell key={district.id} district={district} ready={ready} />)}
+    {textured && <Suspense fallback={null}><ShellFacades onReady={setFacades} /></Suspense>}
+    {districts.map(district => <DistrictShell key={district.id} district={district} ready={ready} facades={facades} />)}
   </group>;
 });

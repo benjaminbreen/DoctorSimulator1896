@@ -490,3 +490,23 @@ warms the office shell. With the menu open for 2 s, the move from the park
 to the office was playable 0.50 s after selection. These runs verified
 movement after the ready signal. Results are in
 `artifacts/performance/faster-opening/`.
+
+## November 11 far buildings and a measurement correction
+
+The low-detail building shells that stand in until a district's detail
+arrives now use the same masonry materials as the detailed facades
+(`ParkShell.jsx`), with a few window panes lit after dark by the same rule as
+`WindowField.jsx`. The maps were already loaded for the hotel, so the cost is
+3 to 10 draw calls; frame time did not change measurably.
+
+Texture memory, estimated from image sizes and counting each shared image
+once: about 300 MB in the office, 320 MB at the park start and 420 MB on
+Fifth Avenue. Roughly half is textures embedded in prop and figure models.
+Counting texture objects instead of images doubles these figures and is
+wrong: clones share one GPU copy.
+
+Uncapped frame time on an M5 Pro varied between 4.5 and 12 ms for the same
+park view across runs, so single runs cannot rank small changes. The stable
+findings were relative: the pond view costs about three times the plaza
+(the reflection redraws the scene), and ambient occlusion is about 40% of the
+office frame.
