@@ -130,30 +130,55 @@ const scratchScale = new THREE.Vector3();
 const scratchColor = new THREE.Color();
 const UP = new THREE.Vector3(0, 1, 0);
 
-export default function TreeField({ items }) {
-  const gl = useThree((state) => state.gl);
-  const configure = useCallback((loader) => {
-    loader.setMeshoptDecoder(MeshoptDecoder);
-    loader.setKTX2Loader(getKTX2Loader(gl));
-  }, [gl]);
-  const gltfs = useLoader(GLTFLoader, [...TREE_MODEL_URLS, ...TREE_LOD_URLS], configure);
+const previewIndex = TREE_MODELS.indexOf('park-tree-broadleaf-0');
+const previewUrls = [TREE_MODEL_URLS[previewIndex], TREE_LOD_URLS[previewIndex]];
 
-  const meshes = useMemo(() => {
-    const models = gltfs.slice(0, TREE_MODEL_URLS.length).map((gltf) => extractParts(sharePackTextures(gltf)));
-    const distant = gltfs.slice(TREE_MODEL_URLS.length).map((gltf, index) => extractParts(gltf, models[index]));
-    const materials = new Map();
+function configureTrees(loader, renderer) {
+  loader.setMeshoptDecoder(MeshoptDecoder);
+  loader.setKTX2Loader(getKTX2Loader(renderer));
+}
+
+export function preloadOpeningTrees(renderer) {
+  useLoader.preload(GLTFLoader, previewUrls, loader => configureTrees(loader, renderer));
+}
+
+export default function TreeField({ items, preview = false }) {
+  const gl = useThree((state) => state.gl);
+  const configure = useCallback(loader => configureTrees(loader, gl), [gl]);
+  const choicesBySpecies = useMemo(() => {
     const bySpecies = new Map();
     TREE_MODELS.forEach((name, index) => {
       const species = treeSpecies(name);
       if (!bySpecies.has(species)) bySpecies.set(species, []);
       bySpecies.get(species).push(index);
     });
+    return bySpecies;
+  }, []);
+  const placements = useMemo(() => items.map(item => {
+    const choices = choicesBySpecies.get(item.tree?.species) ?? choicesBySpecies.get('broadleaf');
+    const variant = Math.floor(hash01(item.position[0] * 7.3 + item.position[2] * 13.7) * choices.length);
+    return { item, model: preview ? previewIndex : choices[variant] };
+  }), [choicesBySpecies, items, preview]);
+  const indices = useMemo(() => [...new Set(placements.map(entry => entry.model))].sort((a, b) => a - b), [placements]);
+  const urls = useMemo(() => preview ? previewUrls : [
+    ...indices.map(index => TREE_MODEL_URLS[index]),
+    ...indices.map(index => TREE_LOD_URLS[index]),
+  ], [indices, preview]);
+  const gltfs = useLoader(GLTFLoader, urls, configure);
+
+  const meshes = useMemo(() => {
+    const models = new Map();
+    const distant = new Map();
+    indices.forEach((index, slot) => {
+      const near = extractParts(sharePackTextures(gltfs[slot]));
+      models.set(index, near);
+      distant.set(index, extractParts(gltfs[indices.length + slot], near));
+    });
+    const materials = new Map();
 
     // Small geographic cells let both the eye and the sun cull whole groves.
     const buckets = new Map();
-    for (const item of items) {
-      const choices = bySpecies.get(item.tree?.species) ?? bySpecies.get('broadleaf');
-      const model = choices[Math.floor(hash01(item.position[0] * 7.3 + item.position[2] * 13.7) * choices.length)];
+    for (const { item, model } of placements) {
       const key = `${model}:${Math.floor(item.position[0] / 50)}:${Math.floor(item.position[2] / 50)}`;
       if (!buckets.has(key)) buckets.set(key, { model, trees: [] });
       buckets.get(key).trees.push(item);
@@ -161,7 +186,7 @@ export default function TreeField({ items }) {
 
     const built = [];
     for (const { model: key, trees } of buckets.values()) {
-      const model = models[key];
+      const model = models.get(key);
       for (const part of model.parts) {
         const leaf = isLeafMaterial(part.materialName);
         // The baked materials carry the textures, and the leaves are an alpha
@@ -179,10 +204,13 @@ export default function TreeField({ items }) {
         const mesh = new THREE.InstancedMesh(part.geometry, surface.material, trees.length);
         mesh.customDepthMaterial = surface.depth;
         mesh.name = `tree-cell-${key}`;
-        const farPart = distant[key].parts.find((candidate) => candidate.materialName === part.materialName);
-        mesh.userData.nearGeometry = part.geometry;
-        mesh.userData.farGeometry = farPart?.geometry ?? part.geometry;
-        mesh.userData.warmGeometries = [part.geometry, mesh.userData.farGeometry];
+        const farPart = distant.get(key).parts.find((candidate) => candidate.materialName === part.materialName);
+        // Object3D.clone serializes userData, including full geometry stored there.
+        mesh.warmGeometries = [part.geometry, farPart?.geometry ?? part.geometry];
+        if (preview) {
+          mesh.geometry = mesh.warmGeometries[1];
+          mesh.userData.preview = true;
+        }
         trees.forEach((item, index) => {
           const groundY = item.position[1] - item.size[1] / 2;
           const spin = (item.position[0] * 3.1 + item.position[2]) % Math.PI;
@@ -208,16 +236,16 @@ export default function TreeField({ items }) {
       }
     }
     return built;
-  }, [items, gltfs]);
+  }, [gltfs, indices, placements, preview]);
 
   useFrame(({ camera }) => {
     scratchPos.fromArray(gameDebug.player.position);
     for (const mesh of meshes) {
       const distance = camera.position.distanceTo(mesh.boundingSphere.center) - mesh.boundingSphere.radius;
-      const far = distance > (mesh.userData.far ? 30 : 38);
+      const far = mesh.userData.preview || distance > (mesh.userData.far ? 30 : 38);
       if (far !== mesh.userData.far) {
         mesh.userData.far = far;
-        mesh.geometry = far ? mesh.userData.farGeometry : mesh.userData.nearGeometry;
+        mesh.geometry = mesh.warmGeometries[far ? 1 : 0];
       }
       // Distant crowns retain their silhouette without another alpha-tested
       // draw into the nearby sun map. Large nearby groves still cast together.
@@ -228,8 +256,7 @@ export default function TreeField({ items }) {
   useEffect(() => () => {
     const resources = new Set();
     for (const mesh of meshes) {
-      resources.add(mesh.userData.nearGeometry);
-      resources.add(mesh.userData.farGeometry);
+      for (const geometry of mesh.warmGeometries) resources.add(geometry);
       resources.add(mesh.material);
       if (mesh.customDepthMaterial) resources.add(mesh.customDepthMaterial);
       mesh.dispose();

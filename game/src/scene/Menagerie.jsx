@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useFrame, useLoader } from '@react-three/fiber';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -442,6 +442,12 @@ function Elk() {
 }
 
 export default function Menagerie() {
+  const [showAnimals, setShowAnimals] = useState(false);
+  useFrame(({ camera }) => {
+    const distance = Math.hypot(camera.position.x - POOL.x, camera.position.z - POOL.z);
+    const nearby = distance < (showAnimals ? 90 : 75);
+    if (nearby !== showAnimals) setShowAnimals(nearby);
+  });
   const [planksCol, planksNrm] = useLoader(THREE.TextureLoader, ['/textures/planks_col.jpg', '/textures/planks_nrm.jpg']);
   const built = useMemo(() => {
     const col = planksCol.clone();
@@ -469,8 +475,12 @@ export default function Menagerie() {
       <group onClick={(event) => identifyLandmark(PARK_LANDMARKS.menagerie, event)}>
         {built.groups.map((group, index) => <primitive key={index} object={group} />)}
         <SeaLions />
-        <Bears />
-        <Elk />
+        {showAnimals && (
+          <Suspense fallback={null}><Bears /></Suspense>
+        )}
+        {showAnimals && (
+          <Suspense fallback={null}><Elk /></Suspense>
+        )}
       </group>
       <StaticColliders entries={colliders} />
     </>

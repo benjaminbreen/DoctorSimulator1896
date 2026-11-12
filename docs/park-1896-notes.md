@@ -45,7 +45,7 @@ dialogue. Guesses are marked as guesses.
 - Mallards on the Pond are plausible but unconfirmed for 1896. Swans and
   domestic ducks are other candidates worth checking.
 
-## Streets around the park (`world/streetWear.js`, `scene/CabRank.jsx`)
+## Streets around the park (`world/streetWear.js`)
 
 - Flagstone crossings at each corner, two slabs wide and laid in the walking
   direction, are drawn from general 1890s New York street photographs, not
@@ -53,12 +53,6 @@ dialogue. Guesses are marked as guesses.
 - Dung, stains and gutter straw are placed down the lanes and thickest near
   the corners. Their amount is a guess; Waring's street cleaning (from 1895)
   may mean Fifth Avenue was cleaner than most streets.
-- The cab stand on the Plaza apron (two hansoms and a brougham, the lead
-  horse at its nosebag) is plausible, since cabs waited at the park
-  entrances, but its exact place is invented.
-- The granite horse trough with a dog basin is generic. Check what kind of
-  trough, if any, stood at the Plaza in 1896; the well-known granite troughs
-  of the National Humane Alliance date from 1906 on and must not be copied.
 
 ## Street ironwork (`world/streetIronwork.js`, `scene/StreetIronwork.jsx`)
 

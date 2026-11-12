@@ -15,6 +15,8 @@ import {
   pointInPolygon,
 } from '../src/world/heroStreetLayout.js';
 import { constructedSurfaceAt } from '../src/world/constructedSurfaces.js';
+import { parkStreetChunks } from '../src/world/parkStreetChunks.js';
+import { streetIronwork } from '../src/world/streetIronwork.js';
 
 function overlapArea(a, b) {
   const x = Math.min(a.x + a.sx / 2, b.x + b.sx / 2) - Math.max(a.x - a.sx / 2, b.x - b.sx / 2);
@@ -33,6 +35,22 @@ test('street top planes partition crossings without coplanar overlap', () => {
     }
   }
 });
+
+test('streaming keeps each street surface and ironwork placement in one chunk', () => {
+  const chunks = parkStreetChunks();
+  for (const [type, original] of [['street-surfaces', STREET_SURFACES], ['street-ironwork', streetIronwork()]]) {
+    const local = chunks.filter(chunk => chunk.type === type);
+    assert.ok(local.length > 1);
+    for (const [kind, entries] of Object.entries(original)) {
+      assert.deepEqual(local.flatMap(chunk => chunk.layout[kind] ?? []).sort(compare), [...entries].sort(compare));
+    }
+  }
+  assert.equal(chunks.filter(chunk => chunk.apron).length, 1);
+});
+
+function compare(a, b) {
+  return JSON.stringify(a).localeCompare(JSON.stringify(b));
+}
 
 test('sidewalks stay out of roadbeds and do not double-cover corners', () => {
   const roadTop = [...STREET_SURFACES.roads, ...STREET_SURFACES.intersections];

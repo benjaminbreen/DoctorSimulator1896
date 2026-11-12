@@ -186,7 +186,6 @@ export const zones = {
       'swan-boat',
       'sheep-flock',
       'pond-ducks',
-      'cab-rank',
       'park-edging',
       'checkers-tables',
       'horseless-carriage',

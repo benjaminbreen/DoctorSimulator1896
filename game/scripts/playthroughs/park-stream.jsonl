@@ -1,0 +1,5 @@
+{"type":"move","keys":["KeyW"],"ms":23000}
+{"type":"place-player","position":[95.8,1.29,76],"yaw":-1.5707963267948966}
+{"type":"wait","ms":300}
+{"type":"press","key":"KeyE","ms":100}
+{"type":"assert","text":"Buy an apple"}

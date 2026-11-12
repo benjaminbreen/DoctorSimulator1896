@@ -118,6 +118,12 @@ export function terrainHeight(x, z) {
 }
 
 function baseHeight(x, z) {
+  // The pond bed replaces the land below the waterline.
+  const pond = pondDepth(x, z);
+  if (pond < 0) {
+    const bedWidth = .9 + valueNoise(x * .23 + 7, z * .23) * .65;
+    return -.42 - .55 * smooth(clamp(-pond * 7 / bedWidth, 0, 1)) + pond * 1.7;
+  }
   // The land climbs away from the Pond corner, toward the north and west.
   const base = (58 - z) * 0.012 + Math.max(0, -x - 20) * 0.008;
 
@@ -156,12 +162,8 @@ function baseHeight(x, z) {
 
   // A low earthen shelf meets the water, then rolls up into the lawn.
   // Varying its width avoids a continuous raised grass embankment.
-  const pond = pondDepth(x, z);
-  const bankWidth=4+valueNoise(x*.12+5,z*.12+8)*3;
-  if (pond < 0) {
-    const bedWidth=.9+valueNoise(x*.23+7,z*.23)*.65;
-    height = -.42-.55*smooth(clamp(-pond*7/bedWidth,0,1))+pond*1.7;
-  } else {
+  if (pond < 1) {
+    const bankWidth = 4 + valueNoise(x * .12 + 5, z * .12 + 8) * 3;
     const shore = smooth(clamp(pond*7/bankWidth, 0, 1));
     height = -.42 * (1 - shore) + height * shore;
   }

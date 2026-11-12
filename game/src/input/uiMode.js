@@ -12,6 +12,7 @@
 let typing = false;
 let blockingUi = false;
 let paused = false;
+let loadingZone = false;
 // Seated at the desk with a patient: gameplay keys rest, the clock runs.
 let consultation = false;
 
@@ -39,6 +40,10 @@ export function isGamePaused() {
   return paused;
 }
 
+export function setZoneLoading(value) {
+  loadingZone = Boolean(value);
+}
+
 export function setConsultationMode(value) {
   consultation = Boolean(value);
 }
@@ -48,5 +53,5 @@ export function isConsultationMode() {
 }
 
 export function isGameplayInputBlocked() {
-  return typing || blockingUi || consultation || paused;
+  return typing || blockingUi || consultation || paused || loadingZone;
 }

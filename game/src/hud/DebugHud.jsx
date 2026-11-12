@@ -133,11 +133,6 @@ export default function DebugHud({ showStats = false }) {
           </div>
         </div>
       )}
-      {!showStats && snapshot.loading && (
-        <div role="status" className="pointer-events-none absolute bottom-5 left-4 rounded bg-black/65 px-3 py-2 text-xs text-amber-100">
-          Preparing {snapshot.zone.split(' — ')[0] || 'the scene'}…
-        </div>
-      )}
       {contextualPrompt && (
         <div
           className="debug-prompt pointer-events-none absolute bottom-32 left-1/2 -translate-x-1/2 rounded border border-amber-300/40 bg-black/70 px-4 py-2 text-sm text-amber-100"

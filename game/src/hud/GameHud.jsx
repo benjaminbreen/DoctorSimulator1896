@@ -305,12 +305,17 @@ export default function GameHud({
   onSeePatient,
   quiet = false,
   hintsReady = true,
+  portraitsReady = true,
+  onTravelOpen,
 }) {
   const [time, setTime] = useState(() => worldClock.getSnapshot());
   const [place, setPlace] = useState('');
   // One overlay at a time; this state is the whole registry. Escape and
   // focus restore live in useDismissableOverlay inside each modal.
   const [overlay, setOverlay] = useState(null); // null | 'letters' | 'casebook' | 'day' | 'travel' | 'wallet' | 'items' | 'settings'
+  useEffect(() => {
+    if (overlay === 'travel') onTravelOpen?.();
+  }, [overlay, onTravelOpen]);
   const carrying = useSyncExternalStore(subscribeCarrying, isCarrying, isCarrying);
   // Letters UI state only: which are read/archived. The letter system that
   // delivers them replaces this, not the modal.
@@ -464,7 +469,7 @@ export default function GameHud({
         <div className="ghud-mono-wrap">
           {/* Keep the painted cartouche, then cover its old letter with the DS seal. */}
           <img className="ghud-monogram-img" src="/ui/monogram.png" alt="" draggable={false} />
-          <img className="ghud-monogram-mark" src="/icon-512.png" alt="" draggable={false} />
+          <img className="ghud-monogram-mark" src="/ui/seal.webp" alt="" draggable={false} />
         </div>
 
         <div className="ghud-plate ghud-plate--name">
@@ -534,7 +539,7 @@ export default function GameHud({
             {queue.slice(0, 5).map((entry, index) => (entry.patient ? (
               <PortraitCameo
                 key={entry.patient.id}
-                src={portraitPath(entry.patient)}
+                src={portraitsReady ? portraitPath(entry.patient) : null}
                 name={`${entry.patient.profile.identity.givenName} ${entry.patient.profile.identity.familyName}`}
                 age={entry.patient.profile.identity.age}
                 occupation={entry.patient.profile.social.occupation}

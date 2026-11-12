@@ -49,9 +49,11 @@ function profileSolid(points, width, bevel) {
   shape.moveTo(...points[0]);
   shape.splineThru(points.slice(1).map(([x, y]) => new THREE.Vector2(x, y)));
   shape.closePath();
+  // Spline resolution is per control point. These small castings keep their
+  // curved outline with far fewer segments, even viewed from the pavement.
   const geometry = new THREE.ExtrudeGeometry(shape, {
-    depth: width, curveSegments: 40, bevelEnabled: true,
-    bevelThickness: bevel, bevelSize: bevel * 0.7, bevelSegments: 3,
+    depth: width, curveSegments: 6, bevelEnabled: true,
+    bevelThickness: bevel, bevelSize: bevel * 0.7, bevelSegments: 2,
   });
   geometry.translate(0, 0, -width / 2);
   geometry.rotateY(-Math.PI / 2);
@@ -191,11 +193,17 @@ function embossed(drawHeight, size = 256, strength = 3) {
       const value = at(x, y);
       // Raised faces are worn bright by feet and wheels; hollows hold dirt.
       const shade = 26 + value * 34 + ((x * 7 + y * 13) % 5);
-      colourData.data.set([shade + 2, shade, shade - 2, 255], index);
+      colourData.data[index] = shade + 2;
+      colourData.data[index + 1] = shade;
+      colourData.data[index + 2] = shade - 2;
+      colourData.data[index + 3] = 255;
       const dx = (at(x + 1, y) - at(x - 1, y)) * strength;
       const dy = (at(x, y + 1) - at(x, y - 1)) * strength;
-      const length = Math.hypot(dx, dy, 1);
-      normalData.data.set([(-dx / length * 0.5 + 0.5) * 255, (dy / length * 0.5 + 0.5) * 255, (1 / length * 0.5 + 0.5) * 255, 255], index);
+      const length = Math.sqrt(dx * dx + dy * dy + 1);
+      normalData.data[index] = (-dx / length * 0.5 + 0.5) * 255;
+      normalData.data[index + 1] = (dy / length * 0.5 + 0.5) * 255;
+      normalData.data[index + 2] = (1 / length * 0.5 + 0.5) * 255;
+      normalData.data[index + 3] = 255;
     }
   }
   colour.getContext('2d').putImageData(colourData, 0, 0);
@@ -335,104 +343,129 @@ function repeatWrap(texture, color = false) {
   return texture;
 }
 
-export default function StreetIronwork() {
-  const [ironCol, ironNrm, ironRough, graniteCol, graniteNrm] = useLoader(THREE.TextureLoader, [
-    '/textures/street/iron_col.webp',
-    '/textures/street/iron_nrm.webp',
-    '/textures/street/iron_rough.webp',
-    '/textures/street/granite_col.webp',
-    '/textures/street/granite_nrm.webp',
-  ]);
+const IRONWORK_TEXTURES = [
+  '/textures/street/iron_col.webp',
+  '/textures/street/iron_nrm.webp',
+  '/textures/street/iron_rough.webp',
+  '/textures/street/granite_col.webp',
+  '/textures/street/granite_nrm.webp',
+];
 
+export function preloadStreetIronwork() {
+  useLoader.preload(THREE.TextureLoader, IRONWORK_TEXTURES);
+}
+
+let sharedIronwork;
+let mountedChunks = 0;
+
+function ironworkTemplates([ironCol, ironNrm, ironRough, graniteCol, graniteNrm]) {
+  if (sharedIronwork) return sharedIronwork;
+  repeatWrap(ironCol, true);
+  repeatWrap(ironNrm);
+  repeatWrap(ironRough);
+  repeatWrap(graniteCol, true);
+  repeatWrap(graniteNrm);
+  const iron = new THREE.MeshStandardMaterial({
+    map: ironCol, normalMap: ironNrm, roughnessMap: ironRough,
+    normalScale: new THREE.Vector2(0.6, 0.6), metalness: 0.3, roughness: 1,
+  });
+  // Painted pieces keep the wear in the normal and roughness maps only;
+  // the black colour map would drown the paint.
+  const paint = (color) => new THREE.MeshStandardMaterial({
+    color, normalMap: ironNrm, roughnessMap: ironRough,
+    normalScale: new THREE.Vector2(0.5, 0.5), metalness: 0.1, roughness: 1,
+  });
+  const granite = new THREE.MeshStandardMaterial({
+    map: graniteCol, normalMap: graniteNrm, color: '#8c8a85',
+    normalScale: new THREE.Vector2(0.8, 0.8), roughness: 0.9,
+  });
+  const face = (maps) => new THREE.MeshStandardMaterial({ ...maps, roughness: 0.6, metalness: 0.5, normalScale: new THREE.Vector2(1, 1) });
+  // Discs take the casting face on the top cap only: groups are side, top, bottom.
+  const capped = (maps) => [iron, face(maps), iron];
+  const materials = {
+    iron,
+    granite,
+    letterBody: paint('#2b3a2f'),
+    hydrant: paint('#3a4a37'),
+    letterFace: new THREE.MeshStandardMaterial({ map: letterFace(), roughness: 0.55, metalness: 0.2 }),
+    croton: capped(manholeFace('CROTON AQUEDUCT', 'N.Y.')),
+    sewer: capped(manholeFace('SEWER', 'N.Y.')),
+    coal: capped(coalHoleFace()),
+    grating: face(gratingFace()),
+  };
+  const geometries = {
+    hitch: hitchingPostGeometry(),
+    ball: ballPostGeometry(),
+    step: carriageStepGeometry(),
+    scraper: bootScraperGeometry(),
+    letter: letterBoxGeometry(),
+    hydrant: hydrantGeometry(),
+    letterFace: new THREE.PlaneGeometry(0.24, 0.27),
+    manhole: new THREE.CylinderGeometry(0.38, 0.38, 0.03, 40),
+    coal: new THREE.CylinderGeometry(0.23, 0.23, 0.03, 32),
+    grating: new THREE.BoxGeometry(0.95, 0.03, 0.4),
+  };
+
+  // Standing pieces touch the sidewalk; recessed covers use unstained iron.
+  materials.standingIron = groundStain(iron.clone(), { ground: WALK_TOP, height: 0.22 });
+  groundStain(materials.hydrant, { ground: WALK_TOP, height: 0.2 });
+  groundStain(granite, { ground: WALK_TOP, height: 0.14, strength: 0.5 });
+  sharedIronwork = { materials, geometries };
+  return sharedIronwork;
+}
+
+export default function StreetIronwork({ streetChunk }) {
+  const textures = useLoader(THREE.TextureLoader, IRONWORK_TEXTURES);
+  const { materials, geometries } = ironworkTemplates(textures);
   const built = useMemo(() => {
-    const layout = streetIronwork();
-    repeatWrap(ironCol, true);
-    repeatWrap(ironNrm);
-    repeatWrap(ironRough);
-    repeatWrap(graniteCol, true);
-    repeatWrap(graniteNrm);
-    const iron = new THREE.MeshStandardMaterial({
-      map: ironCol, normalMap: ironNrm, roughnessMap: ironRough,
-      normalScale: new THREE.Vector2(0.6, 0.6), metalness: 0.3, roughness: 1,
-    });
-    // Painted pieces keep the wear in the normal and roughness maps only;
-    // the black colour map would drown the paint.
-    const paint = (color) => new THREE.MeshStandardMaterial({
-      color, normalMap: ironNrm, roughnessMap: ironRough,
-      normalScale: new THREE.Vector2(0.5, 0.5), metalness: 0.1, roughness: 1,
-    });
-    const granite = new THREE.MeshStandardMaterial({
-      map: graniteCol, normalMap: graniteNrm, color: '#8c8a85',
-      normalScale: new THREE.Vector2(0.8, 0.8), roughness: 0.9,
-    });
-    const face = (maps) => new THREE.MeshStandardMaterial({ ...maps, roughness: 0.6, metalness: 0.5, normalScale: new THREE.Vector2(1, 1) });
-    // Discs take the casting face on the top cap only: groups are side, top, bottom.
-    const capped = (maps) => [iron, face(maps), iron];
-    const materials = {
-      iron,
-      granite,
-      letterBody: paint('#2b3a2f'),
-      hydrant: paint('#3a4a37'),
-      letterFace: new THREE.MeshStandardMaterial({ map: letterFace(), roughness: 0.55, metalness: 0.2 }),
-      croton: capped(manholeFace('CROTON AQUEDUCT', 'N.Y.')),
-      sewer: capped(manholeFace('SEWER', 'N.Y.')),
-      coal: capped(coalHoleFace()),
-      grating: face(gratingFace()),
-    };
-    const geometries = {
-      hitch: hitchingPostGeometry(),
-      ball: ballPostGeometry(),
-      step: carriageStepGeometry(),
-      scraper: bootScraperGeometry(),
-      letter: letterBoxGeometry(),
-      hydrant: hydrantGeometry(),
-      letterFace: new THREE.PlaneGeometry(0.24, 0.27),
-      manhole: new THREE.CylinderGeometry(0.38, 0.38, 0.03, 40),
-      coal: new THREE.CylinderGeometry(0.23, 0.23, 0.03, 32),
-      grating: new THREE.BoxGeometry(0.95, 0.03, 0.4),
-    };
+    const layout = streetChunk?.layout ?? streetIronwork();
+    const entries = (kind) => layout[kind] ?? [];
     const at = (list, y) => list.map((entry) => ({ p: [entry.x, y, entry.z], r: [0, entry.yaw, 0] }));
-    const letterFaces = layout.letterBoxes.map((entry) => ({
+    const letterFaces = entries('letterBoxes').map((entry) => ({
       p: [entry.x + Math.sin(entry.yaw) * 0.12, WALK_TOP + 1.08, entry.z + Math.cos(entry.yaw) * 0.12],
       r: [0, entry.yaw, 0],
     }));
-    // Separate copies for the standing pieces: the shared iron also edges
-    // the manhole covers, which sit below the walk and would stain through.
-    const standingIron = groundStain(iron.clone(), { ground: WALK_TOP, height: 0.22 });
-    materials.standingIron = standingIron;
-    groundStain(materials.hydrant, { ground: WALK_TOP, height: 0.2 });
-    groundStain(granite, { ground: WALK_TOP, height: 0.14, strength: 0.5 });
+    const batch = (geometry, material, placements, options) => placements.length
+      ? instanced(geometry, material, placements, options)
+      : null;
     const meshes = [
-      instanced(geometries.hitch, standingIron, at(layout.hitchingPosts, WALK_TOP)),
-      instanced(geometries.ball, standingIron, at(layout.ballPosts, WALK_TOP)),
-      instanced(geometries.hydrant, materials.hydrant, at(layout.hydrants, WALK_TOP)),
-      instanced(geometries.step, granite, at(layout.carriageSteps, WALK_TOP)),
-      instanced(geometries.scraper, standingIron, at(layout.bootScrapers, WALK_TOP)),
-      instanced(geometries.letter, materials.letterBody, at(layout.letterBoxes, WALK_TOP + 1.12)),
-      instanced(geometries.letterFace, materials.letterFace, letterFaces, { cast: false }),
-      instanced(geometries.manhole, materials.croton, at(layout.manholes.filter((entry) => entry.kind === 'croton'), ROAD_TOP - 0.003), { cast: false }),
-      instanced(geometries.manhole, materials.sewer, at(layout.manholes.filter((entry) => entry.kind === 'sewer'), ROAD_TOP - 0.003), { cast: false }),
-      instanced(geometries.coal, materials.coal, at(layout.coalHoles, WALK_TOP - 0.006), { cast: false }),
-      instanced(geometries.grating, materials.grating, at(layout.gratings, ROAD_TOP - 0.006), { cast: false }),
+      batch(geometries.hitch, materials.standingIron, at(entries('hitchingPosts'), WALK_TOP)),
+      batch(geometries.ball, materials.standingIron, at(entries('ballPosts'), WALK_TOP)),
+      batch(geometries.hydrant, materials.hydrant, at(entries('hydrants'), WALK_TOP)),
+      batch(geometries.step, materials.granite, at(entries('carriageSteps'), WALK_TOP)),
+      batch(geometries.scraper, materials.standingIron, at(entries('bootScrapers'), WALK_TOP)),
+      batch(geometries.letter, materials.letterBody, at(entries('letterBoxes'), WALK_TOP + 1.12)),
+      batch(geometries.letterFace, materials.letterFace, letterFaces, { cast: false }),
+      batch(geometries.manhole, materials.croton, at(entries('manholes').filter((entry) => entry.kind === 'croton'), ROAD_TOP - 0.003), { cast: false }),
+      batch(geometries.manhole, materials.sewer, at(entries('manholes').filter((entry) => entry.kind === 'sewer'), ROAD_TOP - 0.003), { cast: false }),
+      batch(geometries.coal, materials.coal, at(entries('coalHoles'), WALK_TOP - 0.006), { cast: false }),
+      batch(geometries.grating, materials.grating, at(entries('gratings'), ROAD_TOP - 0.006), { cast: false }),
     ];
     const colliders = [
-      ...[...layout.hitchingPosts, ...layout.ballPosts].map((entry) => ({ type: 'cylinder', p: [entry.x, WALK_TOP + 0.55, entry.z], radius: 0.08, height: 1.1 })),
-      ...layout.hydrants.map((entry) => ({ type: 'cylinder', p: [entry.x, WALK_TOP + 0.4, entry.z], radius: 0.2, height: 0.8 })),
-      ...layout.carriageSteps.map((entry) => ({ type: 'box', p: [entry.x, WALK_TOP + 0.2, entry.z], size: [0.95, 0.4, 0.7], yaw: entry.yaw })),
+      ...[...entries('hitchingPosts'), ...entries('ballPosts')].map((entry) => ({ type: 'cylinder', p: [entry.x, WALK_TOP + 0.55, entry.z], radius: 0.08, height: 1.1 })),
+      ...entries('hydrants').map((entry) => ({ type: 'cylinder', p: [entry.x, WALK_TOP + 0.4, entry.z], radius: 0.2, height: 0.8 })),
+      ...entries('carriageSteps').map((entry) => ({ type: 'box', p: [entry.x, WALK_TOP + 0.2, entry.z], size: [0.95, 0.4, 0.7], yaw: entry.yaw })),
     ];
-    return { meshes, colliders, materials, geometries };
-  }, [graniteCol, graniteNrm, ironCol, ironNrm, ironRough]);
+    return { meshes: meshes.filter(Boolean), colliders };
+  }, [geometries, materials, streetChunk]);
 
-  useEffect(() => () => {
-    Object.values(built.geometries).forEach((geometry) => geometry.dispose());
-    // The loaded maps are shared through the loader cache; only the canvas
-    // maps made here are disposed.
-    Object.values(built.materials).flat().forEach((material) => {
-      if (material.map?.isCanvasTexture) material.map.dispose();
-      if (material.normalMap?.isCanvasTexture) material.normalMap.dispose();
-      material.dispose();
-    });
-  }, [built]);
+  useEffect(() => {
+    mountedChunks += 1;
+    return () => {
+      mountedChunks -= 1;
+      for (const mesh of built.meshes) mesh.dispose();
+      queueMicrotask(() => {
+        if (mountedChunks || sharedIronwork?.materials !== materials) return;
+        Object.values(geometries).forEach(geometry => geometry.dispose());
+        for (const material of new Set(Object.values(materials).flat())) {
+          if (material.map?.isCanvasTexture) material.map.dispose();
+          if (material.normalMap?.isCanvasTexture) material.normalMap.dispose();
+          material.dispose();
+        }
+        sharedIronwork = null;
+      });
+    };
+  }, [built, geometries, materials]);
 
   return (
     <>

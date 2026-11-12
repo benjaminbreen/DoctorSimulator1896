@@ -100,27 +100,26 @@ export function warmParkAssets(groups, renderer) {
   return () => controller.abort();
 }
 
-// The working day leads from the park to the waiting room and the consulting
-// office, whose pack pieces and patient cohort models otherwise download at
-// the moment of travel — the first visit cost ~8s on a 20Mbps line.
 async function interiorWarmUrls() {
   const [{ zones }, { deriveRoom }] = await Promise.all([
     import('../world/zones.js'),
     import('../world/blueprint.js'),
   ]);
-  const urls = new Set();
-  for (const id of ['consulting-office', 'waiting-room']) {
-    const zone = zones[id];
-    if (!zone) continue;
-    const items = [...deriveRoom(zone.blueprint).furnitureBoxes, ...(zone.extraItems ?? [])];
-    for (const url of packUrls(items)) urls.add(url);
-  }
-  return [...urls];
+  const office = zones['consulting-office'];
+  const items = deriveRoom(office.blueprint).furnitureBoxes;
+  return packUrls(items.filter(item => ['desk', 'desk-chair', 'patient-chair-e', 'hearth'].includes(item.id)));
 }
 
-// Called once the park is fully up and the pipe is idle.
 export function warmInteriorAssets() {
   const controller = new AbortController();
+  Promise.all([
+    import('./Room.jsx'), import('../world/zones.js'),
+    import('./LightingRig.jsx'), import('./InteriorEnvironment.jsx'), import('./ExaminePicker.jsx'),
+  ]).then(([room, { zones }]) => {
+    if (controller.signal.aborted) return;
+    room.preloadRoom(zones['consulting-office'].lighting);
+    room.preloadRoom(zones['waiting-room'].lighting);
+  }).catch(() => {});
   runWarmPool(interiorWarmUrls(), controller.signal);
   return () => controller.abort();
 }

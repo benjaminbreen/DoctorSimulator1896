@@ -279,27 +279,34 @@ function Curb({ curb, material }) {
   return <mesh geometry={geometry} material={material} castShadow receiveShadow />;
 }
 
-export default function StreetSurfaces() {
+const SURFACE_TEXTURES = [
+  '/textures/street/carriage-setts_col.webp',
+  '/textures/street/carriage-setts_nrm.webp',
+  '/textures/street/carriage-setts_rough.webp',
+  '/textures/street/intersection-setts_col.webp',
+  '/textures/street/intersection-setts_nrm.webp',
+  '/textures/street/intersection-setts_rough.webp',
+  '/textures/street/sidewalk-flags_col.webp',
+  '/textures/street/sidewalk-flags_nrm.webp',
+  '/textures/street/sidewalk-flags_rough.webp',
+  '/textures/street/gutter-stones_col.webp',
+  '/textures/street/gutter-stones_nrm.webp',
+  '/textures/street/gutter-stones_rough.webp',
+  '/textures/street/granite_col.webp',
+  '/textures/street/granite_nrm.webp',
+];
+
+export function preloadStreetSurfaces() {
+  useLoader.preload(THREE.TextureLoader, SURFACE_TEXTURES);
+}
+
+export default function StreetSurfaces({ streetChunk }) {
+  const { layout = STREET_SURFACES, apron = !streetChunk, rails = !streetChunk } = streetChunk ?? {};
   const identifyFifthAvenuePlaza = (event) => identifyLandmark(
     PARK_LANDMARKS.fifthAvenuePlaza,
     event,
   );
-  const textures = useLoader(THREE.TextureLoader, [
-    '/textures/street/carriage-setts_col.webp',
-    '/textures/street/carriage-setts_nrm.webp',
-    '/textures/street/carriage-setts_rough.webp',
-    '/textures/street/intersection-setts_col.webp',
-    '/textures/street/intersection-setts_nrm.webp',
-    '/textures/street/intersection-setts_rough.webp',
-    '/textures/street/sidewalk-flags_col.webp',
-    '/textures/street/sidewalk-flags_nrm.webp',
-    '/textures/street/sidewalk-flags_rough.webp',
-    '/textures/street/gutter-stones_col.webp',
-    '/textures/street/gutter-stones_nrm.webp',
-    '/textures/street/gutter-stones_rough.webp',
-    '/textures/street/granite_col.webp',
-    '/textures/street/granite_nrm.webp',
-  ]);
+  const textures = useLoader(THREE.TextureLoader, SURFACE_TEXTURES);
   const maps = useMemo(() => ({
     road: {
       color: configureTexture(textures[0], true),
@@ -329,7 +336,7 @@ export default function StreetSurfaces() {
 
   const materials = useMemo(() => {
     const byRoad = new Map();
-    for (const surface of STREET_SURFACES.roads) {
+    for (const surface of layout.roads ?? []) {
       if (!byRoad.has(surface.roadId)) byRoad.set(surface.roadId, createMaterial(maps, 'road', surface));
     }
     return {
@@ -352,7 +359,7 @@ export default function StreetSurfaces() {
       edge: new THREE.MeshStandardMaterial({ color: '#696a66', roughness: 0.9 }),
       rail: new THREE.MeshStandardMaterial({ color: '#43464a', roughness: 0.42, metalness: 0.8 }),
     };
-  }, [maps]);
+  }, [layout, maps]);
 
   useEffect(() => () => {
     for (const material of materials.byRoad.values()) material.dispose();
@@ -363,7 +370,7 @@ export default function StreetSurfaces() {
 
   return (
     <RigidBody type="fixed" colliders={false}>
-      {STREET_SURFACES.roads.map((surface) => (
+      {(layout.roads ?? []).map((surface) => (
         <StreetPlane
           key={surface.id}
           surface={surface}
@@ -372,7 +379,7 @@ export default function StreetSurfaces() {
           material={materials.byRoad.get(surface.roadId)}
         />
       ))}
-      {STREET_SURFACES.intersections.map((surface) => (
+      {(layout.intersections ?? []).map((surface) => (
         <StreetPlane
           key={surface.id}
           surface={surface}
@@ -381,7 +388,7 @@ export default function StreetSurfaces() {
           material={materials.intersection}
         />
       ))}
-      {STREET_SURFACES.sidewalks.map((surface) => (
+      {(layout.sidewalks ?? []).map((surface) => (
         <StreetPlane
           key={surface.id}
           surface={surface}
@@ -390,7 +397,7 @@ export default function StreetSurfaces() {
           material={materials.sidewalk}
         />
       ))}
-      {STREET_SURFACES.gutters.map((surface) => (
+      {(layout.gutters ?? []).map((surface) => (
         <StreetPlane
           key={surface.id}
           surface={surface}
@@ -399,9 +406,9 @@ export default function StreetSurfaces() {
           material={surface.axis === 'x' ? materials.gutterVertical : materials.gutterHorizontal}
         />
       ))}
-      {STREET_SURFACES.curbs.map((curb) => <Curb key={curb.id} curb={curb} material={materials.curb} />)}
+      {(layout.curbs ?? []).map((curb) => <Curb key={curb.id} curb={curb} material={materials.curb} />)}
 
-      {STREET_SURFACES.corners.map((corner) => (
+      {(layout.corners ?? []).map((corner) => (
         <ShapeSurface
           key={`${corner.id}-road`}
           points={corner.road}
@@ -411,7 +418,7 @@ export default function StreetSurfaces() {
           collider
         />
       ))}
-      {STREET_SURFACES.corners.map((corner) => (
+      {(layout.corners ?? []).map((corner) => (
         <ShapeSurface
           key={`${corner.id}-walk`}
           points={corner.sidewalk}
@@ -421,7 +428,7 @@ export default function StreetSurfaces() {
           collider
         />
       ))}
-      {STREET_SURFACES.corners.map((corner) => (
+      {(layout.corners ?? []).map((corner) => (
         <ShapeSurface
           key={`${corner.id}-gutter`}
           points={corner.gutter}
@@ -430,7 +437,7 @@ export default function StreetSurfaces() {
           material={materials.gutterHorizontal}
         />
       ))}
-      {STREET_SURFACES.corners.map((corner) => (
+      {(layout.corners ?? []).map((corner) => (
         <ShapeSurface
           key={`${corner.id}-curb-top`}
           points={corner.curb}
@@ -439,7 +446,7 @@ export default function StreetSurfaces() {
           material={materials.curb}
         />
       ))}
-      {STREET_SURFACES.corners.map((corner) => (
+      {(layout.corners ?? []).map((corner) => (
         <StoneFace
           key={`${corner.id}-curb-face`}
           points={corner.sidewalk.slice(1)}
@@ -450,6 +457,7 @@ export default function StreetSurfaces() {
         />
       ))}
 
+      {apron && <>
       <RingSurface
         outer={GRAND_ARMY_APRON.outer}
         inner={GRAND_ARMY_APRON.inner}
@@ -500,7 +508,8 @@ export default function StreetSurfaces() {
         bottom={PLAZA_TOP - 0.1}
         material={materials.edge}
       />
-      <BeltLineRails material={materials.rail} />
+      </>}
+      {rails && <BeltLineRails material={materials.rail} />}
     </RigidBody>
   );
 }

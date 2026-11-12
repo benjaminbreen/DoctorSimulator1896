@@ -29,7 +29,6 @@ const FEATURES = {
   'street-wear': lazy(() => import('./StreetWear.jsx')),
   'street-ironwork': lazy(() => import('./StreetIronwork.jsx')),
   'ground-grime': lazy(() => import('./GroundGrime.jsx')),
-  'cab-rank': lazy(() => import('./CabRank.jsx')),
   carousel: lazy(() => import('./Carousel.jsx')),
   'swan-boat': lazy(() => import('./SwanBoat.jsx')),
   'sheep-flock': lazy(() => import('./SheepFlock.jsx')),
@@ -50,10 +49,11 @@ export default function ZoneFeatures({
   graphics,
   ids = zone.features ?? [],
   suspendTogether = false,
+  streetChunk,
 }) {
   const nodes = ids.map((id) => {
     const Feature = FEATURES[id];
-    return Feature ? <Feature key={id} runtime={runtime} zone={zone} graphics={graphics} /> : null;
+    return Feature ? <Feature key={id} runtime={runtime} zone={zone} graphics={graphics} streetChunk={streetChunk} /> : null;
   });
   if (suspendTogether) return nodes;
   return nodes.map((node, index) => (

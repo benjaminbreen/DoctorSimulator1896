@@ -664,7 +664,7 @@ export default function Pedestrians({ runtime, graphics }) {
       for (const entry of all.slice(first)) {
         entry.transforms = manageActorTransforms(entry.wrapper);
         entry.transforms.update();
-        for (const lod of entry.lodMeshes) lod.mesh.userData.warmGeometries = [lod.fullGeometry, lod.farGeometry];
+        for (const lod of entry.lodMeshes) lod.mesh.warmGeometries = [lod.fullGeometry, lod.farGeometry];
       }
     }));
 

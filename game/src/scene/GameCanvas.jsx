@@ -1,6 +1,7 @@
 import GroundContacts from './GroundContacts.jsx';
 import {
   lazy,
+  startTransition,
   Suspense,
   useCallback,
   useEffect,
@@ -15,11 +16,17 @@ import { Physics } from '@react-three/rapier';
 import PlayerRig from './PlayerRig.jsx';
 import CameraRig from './CameraRig.jsx';
 import SkyRig from './SkyRig.jsx';
+import HotelLampLights from './HotelLampLights.jsx';
 import SunDisc from './SunDisc.jsx';
 import MoonDisc from './MoonDisc.jsx';
 import StarField from './StarField.jsx';
 import CloudDome from './CloudDome.jsx';
-import Terrain from './Terrain.jsx';
+import TreeField, { preloadOpeningTrees } from './TreeField.jsx';
+import Terrain, { preloadTerrain } from './Terrain.jsx';
+import FurnitureColliders from './FurnitureColliders.jsx';
+import ParkShell from './ParkShell.jsx';
+import ParkStream from './ParkStream.jsx';
+import PostedNpcs, { preloadOpeningPeople } from './PostedNpcs.jsx';
 import PlayerStateStep from './PlayerStateStep.jsx';
 import AnnouncementAnchor from './AnnouncementAnchor.jsx';
 import NpcInspect from './NpcInspect.jsx';
@@ -27,6 +34,11 @@ import PlayerMeterEffects from './PlayerMeterEffects.jsx';
 import WorldClockStep from './WorldClockStep.jsx';
 import { zones, getZone } from '../world/zones.js';
 import { takeArrival } from '../world/travel.js';
+import { PARK_DISTRICTS, parkDistrictFor, isGroundCover } from '../world/parkDistricts.js';
+import { parkStreetChunks } from '../world/parkStreetChunks.js';
+import { GAPSTOW } from '../world/gapstow.js';
+import { SHELTERS } from '../world/rusticwork.js';
+import { SAILOR_BOY_ROUTE } from '../world/sailorBoy.js';
 import { terrainHeight } from '../world/terrain.js';
 import { deriveRoom, validateBlueprint } from '../world/blueprint.js';
 import { dressWindows } from '../world/windowDressing.js';
@@ -41,16 +53,16 @@ import {
   webGLContextKey,
 } from './mobileGraphics.js';
 import { createAdaptiveDprController } from './adaptiveDpr.js';
-import { warmInteriorAssets, warmParkAssets, warmPatient } from './parkPreload.js';
+import { warmPatient } from './parkPreload.js';
 import { prepareStage } from './prepareStage.js';
 import { createFrameTiming } from './frameTiming.js';
 
+const Pushcarts = lazy(() => import('./Pushcarts.jsx'));
 const Room = lazy(() => import('./Room.jsx'));
 const Furniture = lazy(() => import('./Furniture.jsx'));
 const PropModels = lazy(() => import('./PropModels.jsx'));
 const PlayerAvatar = lazy(() => import('./PlayerAvatar.jsx'));
 const SkyEnvironment = lazy(() => import('./SkyEnvironment.jsx'));
-const TreeField = lazy(() => import('./TreeField.jsx'));
 const WindowField = lazy(() => import('./WindowField.jsx'));
 const Water = lazy(() => import('./Water.jsx'));
 const ZoneFeatures = lazy(() => import('./ZoneFeatures.jsx'));
@@ -87,39 +99,42 @@ const TONE_MAPPINGS = {
   Linear: THREE.LinearToneMapping,
 };
 
-const PARK_STAGE_LABELS = [
-  'core',
-  'structure',
-  'props',
-  'trees',
-  'ground-cover',
-  'water-and-windows',
-  'landmarks',
-  'people-and-traffic',
-];
-// A consulting room is smaller than a park but arrives the same way: shell
-// first so the player can see and move, then dressing, then the loose props
-// and instruments, then whoever is waiting in it.
+// Landmark assets load near their sites. Traffic follows the adjacent
+// streets, while pond and menagerie models stay off the opening path.
+const PARK_FEATURE_DISTRICT = {
+  'schist-outcrops': 'pond', bees: 'pond', butterflies: 'pond', fireflies: 'pond',
+};
 const INTERIOR_STAGE_LABELS = ['core', 'dressing', 'props', 'cast'];
-const PARK_LIFE_FEATURES = new Set([
-  'pedestrians',
-  'dandies',
-  'street-speaker',
-  'park-gardener',
-  'hotel-doormen',
-  'street-police',
-  'posted-npcs',
-  'horseless-carriage',
-  'horse-drawn-traffic',
-  'pigeon-flock',
-  'swan-boat',
-  'sheep-flock',
-  'pond-ducks',
-  'cab-rank',
-  'bees',
-  'butterflies',
-  'fireflies',
-]);
+const OFFICE_STAGE_LABELS = ['core', 'essentials', 'dressing', 'props', 'study', 'study-props', 'cast'];
+const OFFICE_ESSENTIALS = new Set(['desk', 'desk-chair', 'patient-chair-e', 'desk-lamp', 'hearth', 'gasolier',
+  'sconce-mantel-n', 'sconce-mantel-s']);
+
+const HEAVY_FEATURES = new Set(['pedestrians', 'horse-drawn-traffic', 'horseless-carriage',
+  'hotel-doormen', 'street-police', 'street-wear', 'street-dressing',
+  'ground-grime', 'pushcarts']);
+const STREET_DETAIL_SITES = [{ bounds: [-100, 230, 83, 186] }, { bounds: [96, 230, -85, 83] }];
+const STREET_DETAIL = new Set(['ground-grime', 'pushcarts', 'street-wear', 'street-dressing']);
+
+const PARK_FEATURE_SITES = {
+  'gapstow-bridge': [[GAPSTOW.x, GAPSTOW.z]],
+  'sailor-boy': SAILOR_BOY_ROUTE,
+  'rustic-shelters': SHELTERS.map(({ x, z }) => [x, z]),
+  'park-gardener': [[32, -48], [62, -8], [-29, 69]],
+  'street-speaker': [[-34, 73]],
+  'swan-boat': [[0, 59]],
+  'pond-ducks': [[5, 44]],
+  'dairy-cottage': [[32, -48]],
+  arsenal: [[87, -44]],
+  menagerie: [[86, -66]],
+  carousel: [[6, -54]],
+  'sheep-flock': [[-30, -52]],
+  'checkers-tables': [[43, -55]],
+};
+function groupParkItems(items, keyOf) {
+  const groups = Object.create(null);
+  for (const item of items) (groups[keyOf(item)] ??= []).push(item);
+  return groups;
+}
 
 function RenderedStage({ stage, onRendered }) {
   const reported = useRef(false);
@@ -139,7 +154,7 @@ function RenderedStage({ stage, onRendered }) {
 
 // Start the browser's parallel shader compilation while the previous stage
 // remains visible. The group is revealed only after compilation completes.
-function CompiledStage({ stage, onRendered, children, final }) {
+function CompiledStage({ stage, onRendered, children, streaming }) {
   const group = useRef(null);
   const [compiled, setCompiled] = useState(false);
   const gl = useThree((state) => state.gl);
@@ -153,7 +168,7 @@ function CompiledStage({ stage, onRendered, children, final }) {
     let cancelled = false;
     object.userData.preparing = true;
     object.updateWorldMatrix(true, true);
-    const compilation = prepareStage(gl, final ? scene : object, camera, scene, () => cancelled);
+    const compilation = prepareStage(gl, object, camera, scene, () => cancelled, streaming);
     object.visible = false;
     const finish = () => {
       if (cancelled) return;
@@ -170,7 +185,7 @@ function CompiledStage({ stage, onRendered, children, final }) {
       delete object.userData.preparing;
       cancelled = true;
     };
-  }, [camera, gl, invalidate, scene, final]);
+  }, [camera, gl, invalidate, scene, streaming]);
 
   return (
     <group ref={group}>
@@ -183,19 +198,15 @@ function CompiledStage({ stage, onRendered, children, final }) {
 // One batch of a zone's arrival: suspends on its own assets, compiles its own
 // shaders, then reports so the next batch can start. Interiors and exteriors
 // both use it — a consulting room built in one go froze for as long as a park.
-function Stage({ active, stage, onRendered, children, final = false }) {
+function Stage({ active, stage, onRendered, children, streaming = false }) {
   if (!active) return null;
   return (
     <Suspense fallback={null}>
-      <CompiledStage stage={stage} onRendered={onRendered} final={final}>
+      <CompiledStage stage={stage} onRendered={onRendered} streaming={streaming}>
         {children}
       </CompiledStage>
     </Suspense>
   );
-}
-
-function isGroundCover(item) {
-  return item.id?.startsWith('cover-') || item.id?.startsWith('tuft-');
 }
 
 // Applies live renderer params each frame and wires mouse look to the canvas.
@@ -256,7 +267,7 @@ function FrameSettings({ runtime, look, exposureBase, exterior, graphicsQuality,
       camera.fov = values.fov;
       camera.updateProjectionMatrix();
     }
-    const measuring = Boolean(gameDebug.stats.boot.complete) && globalThis.document?.visibilityState !== 'hidden';
+    const measuring = Boolean(gameDebug.stats.boot.playable) && globalThis.document?.visibilityState !== 'hidden';
     if (measuring) {
       if (!wasMeasuring.current) frameTiming.current.reset();
       const timing = frameTiming.current.sample(delta);
@@ -266,7 +277,10 @@ function FrameSettings({ runtime, look, exposureBase, exterior, graphicsQuality,
       });
     }
     wasMeasuring.current = measuring;
-    const maxDpr = Math.min(globalThis.devicePixelRatio ?? 1, pixelRatioCap);
+    // Hopper flattens fine detail anyway, so it renders at reduced
+    // resolution and costs about what the plain picture does.
+    const painted = values.paintStyle === 'hopper';
+    const maxDpr = Math.min(globalThis.devicePixelRatio ?? 1, pixelRatioCap) * (painted ? values.hopperRenderScale : 1);
     if (graphicsQuality === 'auto') {
       adaptiveDpr.current.sample(
         gameDebug.stats.fps,
@@ -300,7 +314,7 @@ export default function GameCanvas({
   consultationActive = false,
   shotMode = false,
   rebuildVersion = 0,
-  onReadyForReveal,
+  onPlayable,
 }) {
   const values = runtime.values;
   const recycleOnTravel = useMemo(shouldRecycleWebGLContextOnTravel, []);
@@ -352,7 +366,7 @@ export default function GameCanvas({
         consultationActive={consultationActive}
         shotMode={shotMode}
         graphics={graphics}
-        onReadyForReveal={onReadyForReveal}
+        onPlayable={onPlayable}
       />
     </Canvas>
   );
@@ -379,12 +393,13 @@ function SceneContents({
   consultationActive,
   shotMode,
   graphics,
-  onReadyForReveal,
+  onPlayable,
 }) {
   // Rebuild params (zone included) are read once per mount; App remounts
   // these contents on change.
   const values = runtime.values;
-  const zone = getZone(values.zone, values) ?? zones['consulting-office'];
+  const zoneId = values.zone;
+  const zone = getZone(zoneId, values) ?? zones['consulting-office'];
   const { blueprint, lighting } = zone;
   const room = useMemo(() => {
     const errors = validateBlueprint(blueprint);
@@ -437,33 +452,136 @@ function SceneContents({
   const facing = arrival?.facing ?? blueprint.navigation.defaultFacing;
   const spawnYaw = arrival?.yaw ?? Math.atan2(-facing[0], -(facing.length === 2 ? facing[1] : facing[2]));
 
-  const parkModelGroups = useMemo(() => {
-    const models = room.furnitureBoxes.filter((item) => item.model);
-    return {
-      structural: models.filter((item) => !isGroundCover(item)),
-      cover: models.filter(isGroundCover),
-    };
+  const fullPark = shotMode || new URLSearchParams(location.search).has('fullPark');
+  const parkDistricts = useMemo(() => {
+    if (!room.exterior) return [];
+    const groups = new Map(PARK_DISTRICTS.map(district => [district.id, []]));
+    for (const item of room.furnitureBoxes) groups.get(parkDistrictFor(item.position).id).push(item);
+    return PARK_DISTRICTS.map(district => {
+      const items = groups.get(district.id);
+      const models = items.filter(item => item.model);
+      const trees = items.filter(item => item.kind === 'tree');
+      const buildings = items.filter(item => item.kind === 'backdrop');
+      return { ...district, items, trees, buildings,
+        structure: district.id === 'plaza' ? items.filter(item => item.kind !== 'backdrop') : items,
+        propGroups: groupParkItems(models.filter(item => !isGroundCover(item)), item => item.model),
+        treeGroups: groupParkItems(trees, item => item.tree.species ?? 'broadleaf'),
+        cover: models.filter(isGroundCover) };
+    });
   }, [room]);
-  const parkTrees = useMemo(
-    () => room.furnitureBoxes.filter((item) => item.kind === 'tree'),
-    [room],
-  );
-  const parkBackdrops = useMemo(
-    () => room.furnitureBoxes.filter((item) => item.kind === 'backdrop'),
-    [room],
-  );
-  const staticFeatures = useMemo(
-    () => (zone.features ?? []).filter((id) => !PARK_LIFE_FEATURES.has(id)),
-    [zone],
-  );
-  const lifeFeatures = useMemo(
-    () => (zone.features ?? []).filter((id) => PARK_LIFE_FEATURES.has(id)),
-    [zone],
-  );
+  const parkColliders = useMemo(() => room.exterior
+    ? [...room.furnitureBoxes, ...room.blockerBoxes, ...room.wallBoxes]
+    : [], [room]);
+  const [coreReady, setCoreReady] = useState(false);
+  const parkJobs = useMemo(() => {
+    if (!room.exterior || !coreReady) return [];
+    const jobs = [];
+    const byId = new Map(parkDistricts.map(district => [district.id, district]));
+    for (const district of parkDistricts) {
+      const { id, structure, propGroups, trees, treeGroups, cover, buildings } = district;
+      const add = (part, node, range, priority, options = {}) => jobs.push({
+        id: id + ':' + part, district, node, range, priority,
+        movement: id === 'plaza' ? 7 : 3, ...options,
+      });
+      const frontages = buildings.map(item => {
+        const [x, , z] = item.position;
+        const [width, , depth] = item.size;
+        return { bounds: [x - width / 2, x + width / 2, z - depth / 2, z + depth / 2] };
+      });
+      if (structure.length) {
+        add('structure', <Furniture items={structure} runtime={runtime} fixedColliders={false} />,
+          26, id === 'plaza' ? 14 : 20, id !== 'plaza' && frontages.length ? { sites: frontages } : {});
+      }
+      if (id === 'plaza') {
+        for (const [index, building] of buildings.entries()) {
+          const items = [building];
+          const sites = [frontages[index]];
+          const part = 'structure:' + building.id;
+          add(part, <Furniture items={items} runtime={runtime} fixedColliders={false} />, 26, 20, {
+            sites, warmKey: 'facade',
+            preload: () => import('./Furniture.jsx').then(module => module.preloadFurniture(items)),
+          });
+          add('windows:' + building.id, <WindowField items={items} runtime={runtime} />, 22, 33,
+            { sites, after: id + ':' + part });
+        }
+      }
+      if (id === 'plaza') {
+        add('trees', <TreeField items={trees} />, 8, 12, { stationary: true });
+      } else {
+        for (const [species, grove] of Object.entries(treeGroups)) {
+          add('trees:' + species, <TreeField items={grove} />, 30, 7);
+        }
+      }
+      for (const [model, props] of Object.entries(propGroups)) {
+        add('props:' + model, <PropModels items={props} />, 26, 10);
+      }
+      if (id !== 'plaza' && buildings.length) add('windows', <WindowField items={buildings} runtime={runtime} />, 22, 33,
+        { sites: frontages, after: id + ':structure' });
+      if (cover.length) add('cover', <PropModels items={cover} />, 23, 45);
+      if (id !== 'plaza') add('posted', <PostedNpcs runtime={runtime} district={id} />, 30, 12);
+    }
+    const pond = byId.get('pond');
+    if (zone.water) jobs.push({
+      id: 'pond:water', district: pond, range: 30, movement: 3, priority: 3,
+      node: <Water runtime={runtime} outline={zone.water.outline} level={zone.water.level}
+        reflectionEnabled={graphics.waterReflectionEnabled} reflectionSize={graphics.waterReflectionSize}
+        reflectionInterval={graphics.waterReflectionInterval} />,
+    });
+    for (const streetChunk of parkStreetChunks()) {
+      const { type, id, apron, rails } = streetChunk;
+      if (!zone.features?.includes(type)) continue;
+      const pavement = type === 'street-surfaces';
+      jobs.push({
+        id, sites: [streetChunk], range: pavement ? 17 : 12, movement: 4,
+        priority: apron ? 8 : pavement && !rails ? 15 : 32,
+        warmKey: type,
+        preload: pavement
+          ? () => import('./StreetSurfaces.jsx').then(module => module.preloadStreetSurfaces())
+          : () => import('./StreetIronwork.jsx').then(module => module.preloadStreetIronwork()),
+        node: <ZoneFeatures zone={zone} runtime={runtime} graphics={graphics} ids={[type]} streetChunk={streetChunk} suspendTogether />,
+      });
+    }
+    for (const id of zone.features ?? []) {
+      if (id === 'posted-npcs' || id === 'street-surfaces' || id === 'street-ironwork') continue;
+      const sites = PARK_FEATURE_SITES[id]?.map(([x, z]) => ({ bounds: [x, x, z, z] }));
+      const district = byId.get(PARK_FEATURE_DISTRICT[id]);
+      const heavy = HEAVY_FEATURES.has(id);
+      const streetDetail = STREET_DETAIL.has(id);
+      jobs.push({ id, district, sites: streetDetail ? STREET_DETAIL_SITES : sites,
+        range: streetDetail ? 10 : id === 'rustic-shelters' ? 18 : id === 'gapstow-bridge' ? 26 : 23,
+        movement: heavy ? 19 : 4, priority: heavy ? 52 : 24, stationary: heavy,
+        node: id === 'pushcarts' ? <Pushcarts remaining /> :
+          <ZoneFeatures zone={zone} runtime={runtime} graphics={graphics} ids={[id]} suspendTogether /> });
+    }
+    return jobs;
+  }, [coreReady, graphics, parkDistricts, room.exterior, runtime, zone]);
+
+  const consultingOffice = values.zone === 'consulting-office';
+  const office = useMemo(() => {
+    if (!consultingOffice) return null;
+    const study = room.furnitureBoxes.filter(item => item.id.startsWith('study-') || item.id === 'bookcase-study');
+    const front = room.furnitureBoxes.filter(item => !study.includes(item));
+    const models = front.filter(item => item.model);
+    return {
+      front, study,
+      essentials: models.filter(item => OFFICE_ESSENTIALS.has(item.id)),
+      dressing: models.filter(item => !OFFICE_ESSENTIALS.has(item.id)),
+      studyModels: study.filter(item => item.model),
+    };
+  }, [consultingOffice, room]);
+  const interiorStageLabels = office ? OFFICE_STAGE_LABELS : INTERIOR_STAGE_LABELS;
 
   const gl = useThree((state) => state.gl);
   const [stage, setStage] = useState(0);
-  const [coreReady, setCoreReady] = useState(false);
+  useEffect(() => {
+    if (!coreReady || !office) return undefined;
+    let cancel;
+    let left = false;
+    import('./PropModels.jsx').then(module => {
+      if (!left) cancel = module.warmPropModels([...office.essentials, ...office.dressing, ...office.studyModels], gl);
+    }).catch(() => {});
+    return () => { left = true; cancel?.(); };
+  }, [coreReady, gl, office]);
   const [bootComplete, setBootComplete] = useState(false);
   // A patient model is 6–10 MB. Fetched during boot it competes with the
   // room's own assets, so wait until the room is up.
@@ -477,40 +595,34 @@ function SceneContents({
   const bootStartedAt = useRef(globalThis.performance?.now?.() ?? Date.now());
   const advanceTimer = useRef(null);
   const revealReported = useRef(false);
-  const stageLabels = room.exterior ? PARK_STAGE_LABELS : INTERIOR_STAGE_LABELS;
+  const [parkParts, setParkParts] = useState(() => new Set());
+  const plazaHotel = parkDistricts.find(district => district.id === 'plaza')?.buildings
+    .find(item => item.landmarkModel === 'new-netherland-hotel');
   const bootTag = room.exterior ? 'park' : 'room';
 
-  // Downloads for the later stages start as soon as the first one is on
-  // screen; the stages themselves still mount one at a time below. Waiting for
-  // the first stage keeps 20MB of set dressing off the reveal's critical path
-  // on a slow connection.
-  useEffect(() => {
-    if (!room.exterior || !coreReady) return undefined;
-    return warmParkAssets(parkModelGroups, gl);
-  }, [coreReady, parkModelGroups, room.exterior, gl]);
+  useLayoutEffect(() => {
+    if (!room.exterior) return;
+    preloadTerrain(fullPark);
+    preloadOpeningPeople();
+    preloadOpeningTrees(gl);
+  }, [fullPark, gl, room.exterior]);
 
-  // Leave the connection and main thread to the park until it has settled.
-  useEffect(() => {
-    if (!room.exterior || !bootComplete) return undefined;
-    let abort;
-    const timer = setTimeout(() => { abort = warmInteriorAssets(); }, 15000);
-    return () => { clearTimeout(timer); abort?.(); };
-  }, [room.exterior, bootComplete]);
-
-  useEffect(() => {
+  useLayoutEffect(() => {
     bootStartedAt.current = globalThis.performance?.now?.() ?? Date.now();
     gameDebug.stats.boot = {
       zone: blueprint.id,
       stage: 'loading',
       elapsedMs: 0,
+      playable: false,
       complete: false,
     };
+    if (room.exterior) gameDebug.stats.parkStream = { active: null, ready: [] };
     globalThis.performance?.mark?.(`${bootTag}:boot:start`);
     console.info(`[${bootTag}-boot] loading 0ms`);
     return () => {
       if (advanceTimer.current !== null) clearTimeout(advanceTimer.current);
     };
-  }, [blueprint.id, bootTag]);
+  }, [blueprint.id, bootTag, room.exterior]);
 
   useEffect(() => {
     if (!room.exterior || !coreReady || !avatarReady || revealReported.current) return;
@@ -519,28 +631,53 @@ function SceneContents({
     const elapsedMs = Math.round(now - bootStartedAt.current);
     globalThis.performance?.mark?.('park:boot:reveal-ready');
     console.info(`[park-boot] reveal-ready ${elapsedMs}ms`);
-    onReadyForReveal?.(true);
-  }, [avatarReady, coreReady, onReadyForReveal, room.exterior]);
+    gameDebug.stats.boot = { zone: blueprint.id, stage: 'playable', elapsedMs, playable: true, complete: !fullPark };
+    onPlayable?.(zoneId);
+  }, [avatarReady, blueprint.id, coreReady, fullPark, onPlayable, room.exterior, zoneId]);
 
   const onAvatarReady = useCallback(() => setAvatarReady(true), []);
+  const [loadAvatarDetail, setLoadAvatarDetail] = useState(false);
+  useEffect(() => {
+    if (!coreReady || (room.exterior && !avatarReady)) return undefined;
+    const timer = setTimeout(() => setLoadAvatarDetail(true), shotMode ? 0 : 1400);
+    return () => clearTimeout(timer);
+  }, [avatarReady, coreReady, room.exterior, shotMode]);
 
   const onStageRendered = useCallback((rendered) => {
     const now = globalThis.performance?.now?.() ?? Date.now();
     const elapsedMs = Math.round(now - bootStartedAt.current);
-    const label = stageLabels[rendered] ?? `stage-${rendered}`;
-    const complete = rendered >= stageLabels.length - 1;
-    gameDebug.stats.boot = { zone: blueprint.id, stage: label, elapsedMs, complete };
+    const label = room.exterior ? 'core' : interiorStageLabels[rendered];
+    const complete = !room.exterior && rendered >= interiorStageLabels.length - 1;
+    gameDebug.stats.boot = { zone: blueprint.id, stage: label, elapsedMs, playable: !room.exterior, complete };
     globalThis.performance?.mark?.(`${bootTag}:boot:${label}`);
     console.info(`[${bootTag}-boot] ${label} ${elapsedMs}ms`);
-    if (rendered === 0) setCoreReady(true);
+    if (rendered === 0) {
+      setCoreReady(true);
+      if (!room.exterior) {
+        performance.mark('room:boot:playable');
+        onPlayable?.(zoneId);
+      }
+    }
+    if (room.exterior) return;
     if (complete) { setBootComplete(true); return; }
     if (advanceTimer.current !== null) clearTimeout(advanceTimer.current);
     // A short quiet frame between batches makes the progress visible and
     // stops React, model parsing, Rapier, and shader work piling up at once.
     advanceTimer.current = setTimeout(() => {
-      setStage((current) => (current === rendered ? rendered + 1 : current));
+      const advance = () => setStage(current => current === rendered ? rendered + 1 : current);
+      if (consultingOffice) startTransition(advance);
+      else advance();
     }, 120);
-  }, [blueprint.id, bootTag, stageLabels]);
+  }, [blueprint.id, bootTag, consultingOffice, interiorStageLabels, onPlayable, room.exterior, zoneId]);
+
+  const onParkJobReady = useCallback(id => {
+    if (/:(structure|trees|props)(:|$)/.test(id)) setParkParts(previous => new Set([...previous, id]));
+  }, []);
+  const onParkStreamComplete = useCallback(() => {
+    const elapsedMs = Math.round(performance.now() - bootStartedAt.current);
+    gameDebug.stats.boot = { zone: blueprint.id, stage: 'park-streamed', elapsedMs, playable: true, complete: true };
+    setBootComplete(true);
+  }, [blueprint.id]);
 
   useEffect(() => {
     gameDebug.zoneLabel = blueprint.label;
@@ -583,6 +720,8 @@ function SceneContents({
                 maxShadowDistance={graphics.maxOutdoorShadowDistance}
                 shadowUpdateInterval={graphics.shadowUpdateInterval}
               />
+              {plazaHotel && <HotelLampLights hotel={plazaHotel} runtime={runtime}
+                ready={parkParts.has('plaza:structure:' + plazaHotel.id)} />}
               {/* In stage 0 so every later stage's shader compile sees
                   scene.environment; compiled without it, each material
                   recompiles at first sight, which hitches mid-walk. */}
@@ -591,7 +730,12 @@ function SceneContents({
               <SunDisc runtime={runtime} />
               <MoonDisc runtime={runtime} />
               <CloudDome config={lighting} runtime={runtime} />
-              <Terrain />
+              <Terrain fullDetail={fullPark} />
+              <FurnitureColliders items={parkColliders} />
+              <ParkShell districts={parkDistricts} ready={parkParts} />
+              <PostedNpcs runtime={runtime} opening motionReady={parkParts.has('plaza:props:small_park_bench')} />
+              <Pushcarts opening />
+              <ExaminePicker room={room} zone={zone} />
               <GroundContacts />
               <PlayerRig
                 room={room}
@@ -614,63 +758,14 @@ function SceneContents({
               />
               </Stage>
 
-              <Stage active={stage >= 1} stage={1} onRendered={onStageRendered}>
-                <Room room={room} lighting={lighting} />
-                <Furniture items={room.furnitureBoxes} runtime={runtime} propsReady={stage >= 3} />
-              </Stage>
-
-              <Stage active={stage >= 2} stage={2} onRendered={onStageRendered}>
-                <PropModels items={parkModelGroups.structural} />
-                <ExaminePicker room={room} zone={zone} />
-              </Stage>
-
-              <Stage active={stage >= 3} stage={3} onRendered={onStageRendered}>
-                <TreeField items={parkTrees} />
-              </Stage>
-
-              <Stage active={stage >= 4} stage={4} onRendered={onStageRendered}>
-                <PropModels items={parkModelGroups.cover} />
-              </Stage>
-
-              <Stage active={stage >= 5} stage={5} onRendered={onStageRendered}>
-                <WindowField items={parkBackdrops} runtime={runtime} />
-                {zone.water && (
-                  <Water
-                    runtime={runtime}
-                    outline={zone.water.outline}
-                    level={zone.water.level}
-                    reflectionEnabled={graphics.waterReflectionEnabled}
-                    reflectionSize={graphics.waterReflectionSize}
-                    reflectionInterval={graphics.waterReflectionInterval}
-                  />
-                )}
-              </Stage>
-
-              <Stage active={stage >= 6} stage={6} onRendered={onStageRendered}>
-                <ZoneFeatures
-                  zone={zone}
-                  runtime={runtime}
-                  graphics={graphics}
-                  ids={staticFeatures}
-                  suspendTogether
-                />
-              </Stage>
-
-              <Stage final active={stage >= 7} stage={7} onRendered={onStageRendered}>
-                <ZoneFeatures
-                  zone={zone}
-                  runtime={runtime}
-                  graphics={graphics}
-                  ids={lifeFeatures}
-                  suspendTogether
-                />
-                <ColliderDebug room={room} runtime={runtime} />
-              </Stage>
+              <ParkStream jobs={parkJobs} full={fullPark} enabled={coreReady && avatarReady}
+                Stage={Stage} onReady={onParkJobReady} onComplete={onParkStreamComplete} />
+              <Suspense fallback={null}><ColliderDebug room={room} runtime={runtime} /></Suspense>
             </Physics>
           </Suspense>
           {values.showAvatarGlb && (
             <Suspense fallback={null}>
-              <PlayerAvatar runtime={runtime} onReady={onAvatarReady} />
+              <PlayerAvatar runtime={runtime} onReady={onAvatarReady} loadDetail={loadAvatarDetail} shotMode={shotMode} />
             </Suspense>
           )}
           {graphics.postEnabled && (
@@ -690,6 +785,12 @@ function SceneContents({
                 on it. Everything else arrives on top of a room already up. */}
             <Stage active stage={0} onRendered={onStageRendered}>
               <Room room={room} lighting={lighting} />
+              {office && <>
+                <FurnitureColliders items={room.furnitureBoxes} />
+                <ExaminePicker room={room} zone={zone} />
+                <InstrumentStage />
+                <Firebox items={room.furnitureBoxes} lightsOnly lit={stage >= 2} />
+              </>}
               <LightingRig
                 room={room}
                 config={lighting}
@@ -706,14 +807,16 @@ function SceneContents({
                 spawn={spawn}
                 spawnYaw={spawnYaw}
                 motionAffordances={zone.motionAffordances}
+                forcePlaceholder={values.showAvatarGlb && !avatarReady}
               />
               <CameraRig room={room} runtime={runtime} look={look} keyboard={keyboard} heightAt={null} />
             </Stage>
 
-            <Stage active={stage >= 1} stage={1} onRendered={onStageRendered}>
-              <Furniture items={room.furnitureBoxes} runtime={runtime} propsReady={stage >= 3} />
+            <Stage active={stage >= (office ? 2 : 1)} stage={office ? 2 : 1} onRendered={onStageRendered} streaming={office ? 24 : false}>
+              <Furniture items={office?.front ?? room.furnitureBoxes} runtime={runtime}
+                fixedColliders={!office} propsReady={stage >= 3} />
               <CeilingRose room={room} lighting={lighting} />
-              <WallArt items={room.furnitureBoxes} />
+              <WallArt items={office?.front ?? room.furnitureBoxes} />
               <SootStains room={room} />
               {/* A room placed in the built world sees the real thing; a
                   standalone one gets a procedural sky and skyline. */}
@@ -735,19 +838,28 @@ function SceneContents({
               <LightShafts room={room} runtime={runtime} dressing={dressing} />
             </Stage>
 
-            <Stage active={stage >= 2} stage={2} onRendered={onStageRendered}>
-              <PropModels items={room.furnitureBoxes.filter((item) => item.model)} />
-              <Firebox items={room.furnitureBoxes} />
-              <InstrumentStage />
-              <ExaminePicker room={room} zone={zone} />
+            <Stage active={stage >= (office ? 1 : 2)} stage={office ? 1 : 2} onRendered={onStageRendered} streaming={office ? 24 : false}>
+              <PropModels items={office?.essentials ?? room.furnitureBoxes.filter((item) => item.model)} />
+              <Firebox items={room.furnitureBoxes} visualsOnly={Boolean(office)} />
+              {!office && <><InstrumentStage /><ExaminePicker room={room} zone={zone} /></>}
               <ZoneFeatures zone={zone} runtime={runtime} graphics={graphics} />
               <ColliderDebug room={room} runtime={runtime} />
-              {blueprint.id === 'CONSULTING_OFFICE' && <OpiumRitual />}
+              {office && <OpiumRitual />}
             </Stage>
 
-            <Stage active={stage >= 3} stage={3} onRendered={onStageRendered}>
-
-            </Stage>
+            {office && <>
+              <Stage active={stage >= 3} stage={3} onRendered={onStageRendered} streaming={24}>
+                <PropModels items={office.dressing} />
+              </Stage>
+              <Stage active={stage >= 4} stage={4} onRendered={onStageRendered} streaming={24}>
+                <Furniture items={office.study} runtime={runtime} fixedColliders={false} deferBottleDetail />
+                <WallArt items={office.study} />
+              </Stage>
+              <Stage active={stage >= 5} stage={5} onRendered={onStageRendered} streaming={24}>
+                <PropModels items={office.studyModels} />
+              </Stage>
+            </>}
+            <Stage active={stage >= interiorStageLabels.length - 1} stage={interiorStageLabels.length - 1} onRendered={onStageRendered} />
 
             <Suspense fallback={null}>
               {blueprint.id === 'CONSULTING_OFFICE' && (actors.length > 0 || warmActor)
@@ -759,7 +871,7 @@ function SceneContents({
                 waits on it. */}
             {values.showAvatarGlb && (
               <Suspense fallback={null}>
-                <PlayerAvatar runtime={runtime} />
+                <PlayerAvatar runtime={runtime} onReady={onAvatarReady} loadDetail={loadAvatarDetail} shotMode={shotMode} />
               </Suspense>
             )}
             {shotMode && (

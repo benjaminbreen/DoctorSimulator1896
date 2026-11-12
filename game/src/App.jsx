@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import GameCanvas from './scene/GameCanvas.jsx';
 import Toasts from './hud/Toasts.jsx';
@@ -27,7 +27,7 @@ import { actorCueForConsultation, createConsultationRuntime } from './consultati
 import { renderLunaDialogue } from './consultation/lunaRenderer.js';
 import { cachedPatientVoice, requestPatientVoice } from './consultation/patientVoice.js';
 import { voiceCasePatient } from './consultation/casePatients.js';
-import { setConsultationMode, setGamePaused } from './input/uiMode.js';
+import { setConsultationMode, setGamePaused, setZoneLoading } from './input/uiMode.js';
 import { setExaminationPresentation } from './consultation/examPresentation.js';
 import { seatFramingForPatient, setConsultationSeat } from './consultation/seatFraming.js';
 import { createConsultationPatients } from './consultation/patients.js';
@@ -57,6 +57,7 @@ import {
 import NeurastheniaCrisis from './hud/NeurastheniaCrisis.jsx';
 
 const TuningPanel = lazy(() => import('./panel/TuningPanel.jsx'));
+const HopperPanel = lazy(() => import('./panel/HopperPanel.jsx'));
 const PropsPanel = lazy(() => import('./panel/PropsPanel.jsx'));
 const NpcPanel = lazy(() => import('./panel/NpcPanel.jsx'));
 const PatientPortraitPanel = lazy(() => import('./panel/PatientPortraitPanel.jsx'));
@@ -161,8 +162,39 @@ export default function App() {
   }, [consultationPatients]);
   const [actors, setActors] = useState(() => actorRuntime.get());
   const [zone, setZone] = useState(runtime.values.zone);
-  const [parkReady, setParkReady] = useState(false);
-  const [showParkIntro] = useState(() => !shotMode && runtime.values.zone === 'central-park');
+  const [readyZone, setReadyZone] = useState(null);
+  const [showParkIntro, setShowParkIntro] = useState(() => !shotMode && runtime.values.zone === 'central-park');
+  const dismissParkIntro = useCallback(() => setShowParkIntro(false), []);
+  const scenePlayable = readyZone === zone;
+  const practiceWarmup = useRef(null);
+  const warmPractice = useCallback(() => {
+    if (!practiceWarmup.current && runtime.values.zone === 'central-park') {
+      practiceWarmup.current = import('./scene/parkPreload.js')
+        .then(module => module.warmInteriorAssets()).catch(() => () => {});
+    }
+  }, [runtime]);
+  const markPlayable = useCallback((loaded) => {
+    if (runtime.values.zone === loaded) setReadyZone(loaded);
+  }, [runtime]);
+
+  useLayoutEffect(() => {
+    setZoneLoading(!shotMode && !scenePlayable);
+    return () => setZoneLoading(false);
+  }, [scenePlayable]);
+
+  useEffect(() => {
+    if (shotMode || zone !== 'central-park' || !scenePlayable) return undefined;
+    let timer = setTimeout(function warmWhenIdle() {
+      if (gameDebug.player.moveRequested || gameDebug.stats.parkStream?.active) {
+        timer = setTimeout(warmWhenIdle, 1000);
+      } else {
+        warmPractice();
+      }
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [scenePlayable, warmPractice, zone]);
+
+  useEffect(() => () => { practiceWarmup.current?.then(cancel => cancel()); }, []);
   // Rebuild-mode params remount the whole canvas via this key.
   const [rebuildVersion, setRebuildVersion] = useState(0);
   // `?prop=tachistoscope` opens the workbench straight onto a piece. This is
@@ -176,6 +208,7 @@ export default function App() {
   // The tuning rail is a development tool, not part of the game. Keep it out
   // of the default presentation; Shift+` opens it and its performance readout.
   const [tuningOpen, setTuningOpen] = useState(false);
+  const [hopperOpen, setHopperOpen] = useState(false);
   // Focused interactions hide the ordinary HUD. Seats are kept separate from
   // instruments so the touch Use control remains available to stand again.
   const [focusedInteraction, setFocusedInteraction] = useState(null);
@@ -209,6 +242,7 @@ export default function App() {
     // A cry raised in the park has nothing to do with the room you walk into.
     if (id === 'zone') {
       clearAnnouncements();
+      setReadyZone(current => current === value ? current : null);
       setZone(value);
     }
     if (id === 'timeOfDay') worldClock.setTimeOfDay(value);
@@ -263,7 +297,8 @@ export default function App() {
     daySchedule.markKept(state.patientId);
     if (state.stage === 'result' && state.result && !settledResultsRef.current.has(state.patientId)) {
       settledResultsRef.current.add(state.patientId);
-      addCents(Number(state.result.immediate?.paymentCents) || 0);
+      // The fee itself is paid by the outcome screen (settleFee), since the
+      // daybook variant lets the player bill or waive it.
       const satisfaction = state.result.immediate?.satisfaction ?? 50;
       const reputation = Number(state.result.immediate?.reputation) || 0;
       const delta = reputation !== 0 ? reputation : (satisfaction >= 70 ? 4 : satisfaction >= 43 ? 1 : -3);
@@ -363,8 +398,8 @@ export default function App() {
       return Boolean(actor);
     };
     gameDebug.cueActor = (id, cue) => actorRuntime.cue(id, cue);
-    // Shift+1 opens the props workbench. Matched on `code`, so it works
-    // whatever the layout puts on that key.
+    // Shift+1 opens the props workbench, Shift+2 NPC review, Shift+3 the
+    // Hopper sliders. Matched on `code`, so it works whatever the layout.
     const onKey = (event) => {
       if (event.shiftKey && event.code === 'Digit1') {
         event.preventDefault();
@@ -375,6 +410,10 @@ export default function App() {
         event.preventDefault();
         setPropsOpen(false);
         setNpcOpen((open) => !open);
+      }
+      if (event.shiftKey && event.code === 'Digit3') {
+        event.preventDefault();
+        setHopperOpen((open) => !open);
       }
       if (event.shiftKey && event.code === 'Backquote') {
         event.preventDefault();
@@ -408,6 +447,11 @@ export default function App() {
       offRebuild();
     };
   }, [runtime, keyboard, look, togglePause]);
+
+  const settleFee = useCallback(({ cents, standing, reason }) => {
+    if (cents > 0) addCents(cents);
+    if (standing) adjustStanding(standing, reason);
+  }, []);
 
   const clearConsultation = useCallback(() => {
     consultationRuntime.reset();
@@ -499,7 +543,7 @@ export default function App() {
           nextPatientRecipe={consultationPatients.find(patient => patient.id === daySchedule.next()?.patientId)?.actor.recipe}
           consultationActive={consultActive}
           shotMode={shotMode}
-          onReadyForReveal={setParkReady}
+          onPlayable={markPlayable}
         />
         {!shotMode && (
           <NeurastheniaCrisis
@@ -518,7 +562,9 @@ export default function App() {
                 schedule={daySchedule}
                 onSeePatient={seePatient}
                 quiet={Boolean(conversation) || (!devConsult && zone === 'consulting-office' && consultActive)}
-                hintsReady={zone !== 'central-park' || parkReady}
+                hintsReady={scenePlayable}
+                portraitsReady={!showParkIntro}
+                onTravelOpen={warmPractice}
               />
             )}
             {!usingInstrument && zone === 'consulting-office' && (
@@ -534,6 +580,7 @@ export default function App() {
                     onDismissPatient={() => actorRuntime.setSingle(null)}
                     onNextPatient={clearConsultation}
                     onLeaveConsultation={leaveConsultation}
+                    onLedger={settleFee}
                     hidden={dayCardOpen}
                   />
                 )}
@@ -596,11 +643,22 @@ export default function App() {
             )}
           </>
         )}
-        {showParkIntro && <ParkIntro ready={parkReady} />}
+        {showParkIntro && <ParkIntro ready={scenePlayable} onDismiss={dismissParkIntro} />}
+        {!shotMode && !showParkIntro && !scenePlayable && (
+          <div className="zone-loading" role="status">
+            {zone === 'central-park' ? 'Entering Central Park…'
+              : zone === 'consulting-office' ? 'Opening the consulting room…' : 'Opening the room…'}
+          </div>
+        )}
       </main>
       {!shotMode && tuningOpen && !usingInstrument && (
         <Suspense fallback={null}>
           <TuningPanel runtime={runtime} />
+        </Suspense>
+      )}
+      {!shotMode && hopperOpen && (
+        <Suspense fallback={null}>
+          <HopperPanel runtime={runtime} onClose={() => setHopperOpen(false)} />
         </Suspense>
       )}
       {propsOpen && (

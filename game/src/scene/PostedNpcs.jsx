@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { Suspense, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame, useLoader } from '@react-three/fiber';
 import { GLTFLoader } from './modelLoader.js';
@@ -21,10 +21,9 @@ import { dampAngle } from '../movement/mathUtils.js';
 import { hashString } from '../world/npcIdentity.js';
 import {
   POSTED_NPCS,
-  POSTED_NPC_MODEL_FILES,
-  POSTED_NPC_MOTION_FILES,
   postedNpcsForZone,
 } from '../world/postedNpcs.js';
+import { parkDistrictFor } from '../world/parkDistricts.js';
 import { normalizeNonmetallicCharacterMaterial } from './characterMaterials.js';
 import { restoreLoopingIdle } from './characterGestures.js';
 import { updateNpcAnimation } from './npcAnimationThrottle.js';
@@ -38,7 +37,7 @@ function withMeshopt(loader) {
   loader.setMeshoptDecoder(MeshoptDecoder);
 }
 
-function buildActor(spec, modelGltf, motionGltf) {
+function buildActor(spec, modelGltf) {
   const wrapper = new THREE.Group();
   const figure = cloneSkeleton(modelGltf.scene);
   figure.name = spec.id;
@@ -68,7 +67,7 @@ function buildActor(spec, modelGltf, motionGltf) {
   wrapper.rotation.y = spec.yaw;
 
   const mixer = new THREE.AnimationMixer(figure);
-  const clips = [...modelGltf.animations, ...motionGltf.animations];
+  const clips = modelGltf.animations;
   const actions = Object.fromEntries(clips.map((clip) => [clip.name, mixer.clipAction(clip)]));
   const idle = actions[spec.idleClip] ?? mixer.clipAction(clips[0]);
   idle.setLoop(THREE.LoopRepeat, Infinity).play();
@@ -93,13 +92,38 @@ function buildActor(spec, modelGltf, motionGltf) {
   };
 }
 
-export default function PostedNpcs({ runtime }) {
-  const modelGltfs = useLoader(GLTFLoader, POSTED_NPC_MODEL_FILES, withMeshopt);
-  const motionGltfs = useLoader(GLTFLoader, POSTED_NPC_MOTION_FILES, withMeshopt);
+const openingIds = new Set(['plaza-pushcart-vendor', 'central-park-south-hackman', 'scholars-gate-newsboy']);
+const openingPeople = POSTED_NPCS.filter(spec => openingIds.has(spec.id));
+const openingFiles = openingPeople.map(spec => spec.modelFile);
 
+export function preloadOpeningPeople() {
+  useLoader.preload(GLTFLoader, openingFiles, withMeshopt);
+}
+
+function PostedMotions({ actors, files }) {
+  const motions = useLoader(GLTFLoader, files, withMeshopt);
+  useEffect(() => {
+    actors.forEach((actor, index) => {
+      for (const clip of motions[index].animations) {
+        actor.actions[clip.name] ??= actor.mixer.clipAction(clip);
+      }
+    });
+  }, [actors, motions]);
+  return null;
+}
+
+export default function PostedNpcs({ runtime, opening = false, district, motionReady = true }) {
+  const specs = useMemo(() => {
+    if (opening) return openingPeople;
+    if (!district) return POSTED_NPCS;
+    return POSTED_NPCS.filter(spec => !openingIds.has(spec.id) && parkDistrictFor(spec.position).id === district);
+  }, [opening, district]);
+  const models = useMemo(() => opening ? openingFiles : specs.map(spec => spec.modelFile), [opening, specs]);
+  const motionFiles = useMemo(() => specs.map(spec => spec.motionFile), [specs]);
+  const modelGltfs = useLoader(GLTFLoader, models, withMeshopt);
   const actors = useMemo(
-    () => POSTED_NPCS.map((spec, index) => buildActor(spec, modelGltfs[index], motionGltfs[index])),
-    [modelGltfs, motionGltfs],
+    () => specs.map((spec, index) => buildActor(spec, modelGltfs[index])),
+    [modelGltfs, specs],
   );
 
   // Rebuilt only when the zone changes; a fresh Set every frame is exactly
@@ -306,7 +330,11 @@ export default function PostedNpcs({ runtime }) {
     }
   }, [actors]);
 
-  return actors.map((actor) => (
+  return <>
+    {motionReady && motionFiles.length > 0 && <Suspense fallback={null}>
+      <PostedMotions actors={actors} files={motionFiles} />
+    </Suspense>}
+    {actors.map((actor) => (
     <RigidBody
       key={actor.spec.id}
       ref={(node) => { actor.body = node; }}
@@ -320,5 +348,6 @@ export default function PostedNpcs({ runtime }) {
       <primitive object={actor.wrapper} />
       <CapsuleCollider args={[0.5, 0.26]} position={[0, 0.82, 0]} />
     </RigidBody>
-  ));
+    ))}
+  </>;
 }

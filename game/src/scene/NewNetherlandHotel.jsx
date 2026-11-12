@@ -4,6 +4,7 @@ import { useFrame, useLoader } from '@react-three/fiber';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { identifyLandmark } from '../world/landmarkInformation.js';
 import { solarRamps, smoothstep } from '../world/solar.js';
+import { hotelLampLayout } from './HotelLampLights.jsx';
 
 const TRIM_STONE = '#87624a';
 const GLASS = '#252d2c';
@@ -11,15 +12,6 @@ const IRON = '#222728';
 const DOOR = '#32251f';
 const LAMP_DAY_COLOR = new THREE.Color('#d8c6a5');
 const LAMP_DUSK_COLOR = new THREE.Color('#ffd28a');
-const HOTEL_LAMP_LIGHT_COLOR = '#ffc879';
-const HOTEL_LAMP_LIGHT_BUDGET = 4;
-const HOTEL_LAMP_LIGHT_DISTANCE = 11;
-const HOTEL_LAMP_LIGHT_CULL_DISTANCE = 46;
-// Each side has a wall lantern and a standard whose pools overlap. Four lower
-// intensities give the same warm fill without burning out the stonework.
-const HOTEL_LAMP_DAY_INTENSITY = 2.8;
-const HOTEL_LAMP_DUSK_INTENSITY = 7.5;
-
 // These facade pieces are already authored in hotel-local coordinates. Joining
 // pieces that share a material and shadow mode preserves their exact surfaces
 // while turning many small draw calls into one. Dispose the source buffers once
@@ -90,68 +82,6 @@ function InstancedBoxes({
       receiveShadow={receiveShadow}
       renderOrder={renderOrder}
     />
-  );
-}
-
-// Four fixed, shadowless lights keep the symmetrical entrance stable as the
-// camera moves. The set culls as one when the hotel is distant; reassigning a
-// smaller pool between fixtures made alternate lanterns visibly switch off.
-// They deliberately cast no shadows: a point-light shadow would render the
-// scene six extra times per fixture.
-function HotelLampLights({ fixtures, runtime }) {
-  const groupRef = useRef();
-  const lightRefs = useRef([]);
-  const cameraLocal = useMemo(() => new THREE.Vector3(), []);
-  const fixturePoints = useMemo(
-    () => fixtures.map((position) => new THREE.Vector3().fromArray(position)),
-    [fixtures],
-  );
-
-  useFrame(({ camera }) => {
-    const group = groupRef.current;
-    if (!group) return;
-    group.worldToLocal(cameraLocal.copy(camera.position));
-
-    let nearestDistanceSq = Infinity;
-    fixturePoints.forEach((point) => {
-      const distanceSq = cameraLocal.distanceToSquared(point);
-      nearestDistanceSq = Math.min(nearestDistanceSq, distanceSq);
-    });
-
-    let dusk = 0;
-    if (runtime) {
-      const { altitude, night } = solarRamps(runtime.values.timeOfDay, runtime.values.dayOfYear);
-      dusk = Math.max(1 - smoothstep(2, 10, altitude), night);
-    }
-    const intensity = THREE.MathUtils.lerp(HOTEL_LAMP_DAY_INTENSITY, HOTEL_LAMP_DUSK_INTENSITY, dusk);
-    // Culled by intensity, never by visibility: hiding a light changes the
-    // scene's light count, and every material then recompiles its program on
-    // the walk toward the hotel — a multi-hundred-ms hitch mid-street.
-    const near = nearestDistanceSq <= HOTEL_LAMP_LIGHT_CULL_DISTANCE ** 2;
-    fixturePoints.forEach((point, index) => {
-      const light = lightRefs.current[index];
-      if (!light) return;
-      light.position.copy(point);
-      light.intensity = near ? intensity : 0;
-    });
-  });
-
-  return (
-    <group ref={groupRef} name="fixed four-light hotel lantern pool">
-      {Array.from({ length: HOTEL_LAMP_LIGHT_BUDGET }, (_, index) => (
-        <pointLight
-          key={index}
-          ref={(light) => {
-            lightRefs.current[index] = light;
-          }}
-          color={HOTEL_LAMP_LIGHT_COLOR}
-          intensity={0}
-          distance={HOTEL_LAMP_LIGHT_DISTANCE}
-          decay={2}
-          castShadow={false}
-        />
-      ))}
-    </group>
   );
 }
 
@@ -1060,18 +990,7 @@ export default function NewNetherlandHotel({ item, runtime }) {
   const turretBottom = eave - 0.85;
   const turretHeight = 4.5;
   const turretTop = turretBottom + turretHeight;
-  const hotelLampFixtures = useMemo(() => [
-    // The projecting entrance lanterns.
-    { kind: 'wall', position: [westWall - 1.25, bottom + 3.12, -3.12] },
-    { kind: 'wall', position: [westWall - 1.25, bottom + 3.12, 0.92] },
-    // The two freestanding forecourt lamps.
-    { kind: 'post', position: [westWall - 1.75, bottom + 3.58, -4.05] },
-    { kind: 'post', position: [westWall - 1.75, bottom + 3.58, 1.85] },
-  ], [bottom, westWall]);
-  const hotelLampPositions = useMemo(
-    () => hotelLampFixtures.map((fixture) => fixture.position),
-    [hotelLampFixtures],
-  );
+  const hotelLampFixtures = useMemo(() => hotelLampLayout(sx, sy), [sx, sy]);
 
   const [brickMap, stoneMap, roofMap] = useLoader(THREE.TextureLoader, [
     '/textures/new-netherland/brick.webp',
@@ -1809,7 +1728,6 @@ export default function NewNetherlandHotel({ item, runtime }) {
       onClick={identify}
       userData={{ reconstructionPass: 'phase-2-material-and-ornament', source: 'new-netherlands-hero-render-mockup' }}
     >
-      <HotelLampLights fixtures={hotelLampPositions} runtime={runtime} />
       <group name="rounded masonry shell">
         <mesh geometry={geometry.podium} material={materials.base} castShadow receiveShadow />
         <mesh geometry={geometry.shellBrick} material={materials.brick} castShadow receiveShadow />

@@ -376,11 +376,12 @@ function Pushcart({ spec }) {
   );
 }
 
-export default function Pushcarts() {
+export default function Pushcarts({ opening, remaining = false }) {
+  const carts = PUSHCART_SPECS.filter(spec => opening ? spec.id === 'cart-plaza' : !remaining || spec.id !== 'cart-plaza');
   return (
     <>
-      {PUSHCART_SPECS.map((spec) => <Pushcart key={spec.id} spec={spec} />)}
-      <ThrowableProjectiles />
+      {carts.map((spec) => <Pushcart key={spec.id} spec={spec} />)}
+      {!remaining && <ThrowableProjectiles />}
     </>
   );
 }

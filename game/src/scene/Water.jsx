@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { use, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { solarRamps } from '../world/solar.js';
@@ -8,6 +8,7 @@ import { terrainHeight } from '../world/terrain.js';
 import { gameDebug } from '../debug.js';
 import { identifyLandmark } from '../world/landmarkInformation.js';
 import { PARK_LANDMARKS } from '../world/parkLandmarks.js';
+import { POND_DEPTH_RESOLUTION as DEPTH_RES, POND_DEPTH_RANGE as DEPTH_RANGE, samplePondDepth } from './pondDepth.js';
 
 // Pond surface. Bed depth is baked once into a texture (the bed never moves)
 // and drives absorption, the waterline fade, and shore foam per pixel. A
@@ -15,43 +16,35 @@ import { PARK_LANDMARKS } from '../world/parkLandmarks.js';
 // tile in world space and flatten with distance. Adapted from Darwin's
 // standing-water renderer, cut down to what one pond needs.
 
-const DEPTH_RES = 512;
-const DEPTH_RANGE = 2.5; // metres packed into one byte of the bake
-const MARGIN = 5; // bake/geometry margin beyond the outline, metres
 const CELL = 1.7; // surface grid cell, metres
 const MAX_IMPULSES = 8;
 const IMPULSE_LIFETIME = 5;
 
-function bakeDepth(outline, level) {
-  let minX = Infinity;
-  let maxX = -Infinity;
-  let minZ = Infinity;
-  let maxZ = -Infinity;
-  for (const [x, z] of outline) {
-    minX = Math.min(minX, x);
-    maxX = Math.max(maxX, x);
-    minZ = Math.min(minZ, z);
-    maxZ = Math.max(maxZ, z);
-  }
-  minX -= MARGIN;
-  maxX += MARGIN;
-  minZ -= MARGIN;
-  maxZ += MARGIN;
-  const width = maxX - minX;
-  const height = maxZ - minZ;
-  const depths = new Float32Array(DEPTH_RES * DEPTH_RES);
-  const data = new Uint8Array(DEPTH_RES * DEPTH_RES * 4);
-  for (let iz = 0; iz < DEPTH_RES; iz += 1) {
-    const z = minZ + (iz / (DEPTH_RES - 1)) * height;
-    for (let ix = 0; ix < DEPTH_RES; ix += 1) {
-      const x = minX + (ix / (DEPTH_RES - 1)) * width;
-      const depth = Math.min(DEPTH_RANGE, Math.max(0, level - terrainHeight(x, z)));
-      const i = iz * DEPTH_RES + ix;
-      depths[i] = depth;
-      data[i * 4] = Math.round((depth / DEPTH_RANGE) * 255);
-      data[i * 4 + 3] = 255;
-    }
-  }
+const pondBakes = new WeakMap();
+
+// The fixed pond needs the same depth field each visit. Keep the CPU data
+// and build it in a worker so the player can move while it is being sampled.
+export function preparePondDepth(outline, level) {
+  const cached = pondBakes.get(outline);
+  if (cached?.level === level) return cached.pending;
+  const pending = new Promise((resolve, reject) => {
+    const worker = new Worker(new URL('./pondDepth.worker.js', import.meta.url), { type: 'module' });
+    worker.onmessage = ({ data }) => {
+      worker.terminate();
+      resolve(data);
+    };
+    worker.onerror = (event) => {
+      event.preventDefault();
+      worker.terminate();
+      reject(event.error);
+    };
+    worker.postMessage({ outline, level });
+  }).catch(() => samplePondDepth(outline, level));
+  pondBakes.set(outline, { level, pending });
+  return pending;
+}
+
+function makeDepthTexture(data) {
   const texture = new THREE.DataTexture(data, DEPTH_RES, DEPTH_RES, THREE.RGBAFormat);
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
@@ -59,7 +52,7 @@ function bakeDepth(outline, level) {
   texture.wrapT = THREE.ClampToEdgeWrapping;
   texture.colorSpace = THREE.NoColorSpace;
   texture.needsUpdate = true;
-  return { texture, depths, minX, minZ, width, height };
+  return texture;
 }
 
 // Grid over the bake bounds, keeping only cells that touch water (plus one
@@ -326,15 +319,17 @@ const FRAGMENT = /* glsl */ `
 
     // Five stable taps soften the exact planar reflection. The separate scene
     // reflection control can hand more of the surface back to the sky grade.
-    vec2 reflUv = vReflCoord.xy / vReflCoord.w + slope * uReflectionDistortion;
-    vec2 blur = vec2(uReflectionBlur);
-    vec3 mirror = texture2D(uReflection, reflUv).rgb * 0.4;
-    mirror += texture2D(uReflection, reflUv + vec2(blur.x, 0.0)).rgb * 0.15;
-    mirror += texture2D(uReflection, reflUv - vec2(blur.x, 0.0)).rgb * 0.15;
-    mirror += texture2D(uReflection, reflUv + vec2(0.0, blur.y)).rgb * 0.15;
-    mirror += texture2D(uReflection, reflUv - vec2(0.0, blur.y)).rgb * 0.15;
-    vec3 skyRefl = mix(uSkyHorizon, uSkyZenith, clamp(reflect(-view, normal).y * 1.5, 0.0, 1.0));
-    vec3 refl = mix(skyRefl, mirror, uHasReflection * uMirrorStrength);
+    vec3 refl = mix(uSkyHorizon, uSkyZenith, clamp(reflect(-view, normal).y * 1.5, 0.0, 1.0));
+    if (uHasReflection > 0.0) {
+      vec2 reflUv = vReflCoord.xy / vReflCoord.w + slope * uReflectionDistortion;
+      vec2 blur = vec2(uReflectionBlur);
+      vec3 mirror = texture2D(uReflection, reflUv).rgb * 0.4;
+      mirror += texture2D(uReflection, reflUv + vec2(blur.x, 0.0)).rgb * 0.15;
+      mirror += texture2D(uReflection, reflUv - vec2(blur.x, 0.0)).rgb * 0.15;
+      mirror += texture2D(uReflection, reflUv + vec2(0.0, blur.y)).rgb * 0.15;
+      mirror += texture2D(uReflection, reflUv - vec2(0.0, blur.y)).rgb * 0.15;
+      refl = mix(refl, mirror, uHasReflection * uMirrorStrength);
+    }
 
     float reflShare = clamp((fresnel * 1.6 + 0.07) * uReflectivity, 0.0, 1.0);
     reflShare *= mix(0.38, 1.0, 1.0 - shore);
@@ -435,7 +430,8 @@ export default function Water({
   reflectionSize = 512,
   reflectionInterval = 4,
 }) {
-  const bake = useMemo(() => bakeDepth(outline, level), [outline, level]);
+  const depth = use(preparePondDepth(outline, level));
+  const bake = useMemo(() => ({ ...depth, texture: makeDepthTexture(depth.data) }), [depth]);
   const geometry = useMemo(() => buildSurface(bake), [bake]);
   const rippleTexture = useMemo(() => createRippleTexture(), []);
 
@@ -648,12 +644,19 @@ export default function Water({
     const now = performance.now() / 1000;
     const mesh = meshRef.current;
     if (!mesh) return;
-    const coverage = projectedWaterCoverage(mesh, camera);
-    if (coverage < .015) {
+    const dx = Math.max(bake.minX - camera.position.x, camera.position.x - bake.minX - bake.width, 0);
+    const dz = Math.max(bake.minZ - camera.position.z, camera.position.z - bake.minZ - bake.height, 0);
+    const distance = Math.hypot(dx, dz, camera.position.y - level);
+    // At a distance the rippled sky tint carries the pond. Rendering the
+    // scene twice from roofs costs a frame even when the pond looks tiny.
+    const nearby = 1 - THREE.MathUtils.smoothstep(distance, 20, 32);
+    const coverage = nearby > 0 ? projectedWaterCoverage(mesh, camera) : 0;
+    const blend = nearby * THREE.MathUtils.smoothstep(coverage, .02, .07);
+    if (blend <= 0) {
       material.uniforms.uHasReflection.value = 0;
       return;
     }
-    material.uniforms.uHasReflection.value = mirror.live ? 1 : 0;
+    material.uniforms.uHasReflection.value = mirror.live ? blend : 0;
     const interval = Math.max(reflectionInterval / 60, coverage < .12 ? .4 : coverage < .3 ? .2 : .1,
       Math.min(.5, mirror.lastCostMs / 1000 * 12));
     if (mirror.live && now - mirror.lastAt < interval) return;
@@ -758,7 +761,7 @@ export default function Water({
 
     if (!mirror.live) {
       mirror.live = true;
-      material.uniforms.uHasReflection.value = 1;
+      material.uniforms.uHasReflection.value = blend;
     }
   };
 

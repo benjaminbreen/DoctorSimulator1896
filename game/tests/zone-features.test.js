@@ -25,7 +25,6 @@ const KNOWN_FEATURES = [
   'street-wear',
   'street-ironwork',
   'ground-grime',
-  'cab-rank',
   'carousel',
   'swan-boat',
   'sheep-flock',

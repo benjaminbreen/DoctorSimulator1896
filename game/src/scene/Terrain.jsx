@@ -1,10 +1,11 @@
-import { useEffect,useMemo } from 'react';
+import { use, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { useLoader } from '@react-three/fiber';
+import { useFrame, useLoader } from '@react-three/fiber';
 import { RigidBody, HeightfieldCollider } from '@react-three/rapier';
 import { WORLD_BOUNDS } from '../world/streetGrid.js';
 import {buildTerrainSurface,TERRAIN_COLUMNS,TERRAIN_ROWS} from './terrainSurface.js';
 import { freezeStaticTransforms } from './lib/staticScene.js';
+import { gameDebug } from '../debug.js';
 
 const WIDTH = WORLD_BOUNDS.maxX - WORLD_BOUNDS.minX;
 const DEPTH = WORLD_BOUNDS.maxZ - WORLD_BOUNDS.minZ;
@@ -24,20 +25,85 @@ function loadRepeating(texture, colorSpace) {
   return texture;
 }
 
+const terrainTextures = [
+  '/textures/park-start/lawn.webp',
+  '/textures/park-start/lawn-normal-512.webp',
+  '/textures/park-start/dry-grass.webp',
+  '/textures/park-start/path-512.webp',
+  '/textures/park-start/rock.webp',
+  '/textures/park-start/street.webp',
+];
+const fullTerrainTextures = [
+  terrainTextures[0], '/textures/park-start/lawn-normal.webp', '/textures/grass_col.webp',
+  '/textures/path_col.webp', '/textures/rock_col.webp', '/textures/street/carriage-setts_col.webp',
+];
+const detailOrder = [3, 1, 2, 4, 5];
+let terrainPending;
+
+function prepareTerrain() {
+  terrainPending ??= new Promise((resolve, reject) => {
+    const worker = new Worker(new URL('./terrainSurface.worker.js', import.meta.url), { type: 'module' });
+    worker.onmessage = ({ data }) => {
+      worker.terminate();
+      resolve(data);
+    };
+    worker.onerror = (event) => {
+      event.preventDefault();
+      worker.terminate();
+      reject(event.error);
+    };
+  }).catch(() => {
+    const { geometry, heights } = buildTerrainSurface();
+    return {
+      attributes: Object.fromEntries(Object.entries(geometry.attributes).map(
+        ([name, attribute]) => [name, { array: attribute.array, size: attribute.itemSize }],
+      )),
+      indices: geometry.index.array,
+      heights,
+    };
+  });
+  return terrainPending;
+}
+
+export function preloadTerrain(fullDetail = false) {
+  useLoader.preload(THREE.TextureLoader, fullDetail ? fullTerrainTextures : terrainTextures);
+  void prepareTerrain();
+}
+
 // Splat-textured park ground: grass base, gravel on the paths, schist on the
 // outcrops, wet sand at the pond rim. Blend weights ride a vertex attribute;
 // the same masks that shape the terrain drive them.
-export default function Terrain() {
-  const [lawnCol, lawnNrm, grassCol, pathCol, rockCol, streetCol] = useLoader(THREE.TextureLoader, [
-    '/textures/lawn_col.webp',
-    '/textures/lawn_nrm.webp',
-    '/textures/grass_col.webp',
-    '/textures/path_col.webp',
-    '/textures/rock_col.webp',
-    '/textures/street/carriage-setts_col.webp',
-  ]);
-
-  const { geometry, heights } = useMemo(buildTerrainSurface, []);
+export default function Terrain({ fullDetail = false }) {
+  const data = use(prepareTerrain());
+  const [lawnCol, lawnNrm, grassCol, pathCol, rockCol, streetCol] = useLoader(
+    THREE.TextureLoader, fullDetail ? fullTerrainTextures : terrainTextures,
+  );
+  const revealTime = useRef(null);
+  const detailIndex = useRef(0);
+  const upgrading = useRef(false);
+  useFrame(({ clock }) => {
+    if (fullDetail || !gameDebug.stats.boot.complete || upgrading.current || detailIndex.current === detailOrder.length) return;
+    revealTime.current ??= clock.elapsedTime;
+    if (clock.elapsedTime - revealTime.current < 3 || gameDebug.stats.parkStream?.active) return;
+    const index = detailOrder[detailIndex.current++];
+    const texture = [lawnCol, lawnNrm, grassCol, pathCol, rockCol, streetCol][index];
+    if (texture.userData.fullDetail) return;
+    upgrading.current = true;
+    new THREE.ImageLoader().loadAsync(fullTerrainTextures[index]).then(image => {
+      texture.image = image;
+      texture.needsUpdate = true;
+      texture.userData.fullDetail = true;
+    }).catch(() => {}).finally(() => { upgrading.current = false; });
+  });
+  const { geometry, heights } = useMemo(() => {
+    const geometry = new THREE.BufferGeometry();
+    for (const [name, { array, size }] of Object.entries(data.attributes)) {
+      geometry.setAttribute(name, new THREE.BufferAttribute(array, size));
+    }
+    geometry.setIndex(new THREE.BufferAttribute(data.indices, 1));
+    geometry.computeBoundingSphere();
+    return { geometry, heights: data.heights };
+  }, [data]);
 
   const material = useMemo(() => {
     loadRepeating(lawnCol, THREE.SRGBColorSpace);

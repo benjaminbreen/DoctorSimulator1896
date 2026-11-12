@@ -52,12 +52,38 @@
   background: #050505;
   color: #eee7d7;
   opacity: 1;
-  transition: opacity 900ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 160ms ease-out;
 }
 
 .park-intro--leaving {
   pointer-events: none;
   opacity: 0;
+}
+
+.park-intro__skip {
+  margin-top: 1.25rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid #b2a28a;
+  border-radius: 4px;
+  color: #eee7d7;
+}
+
+.park-intro__loading {
+  position: absolute;
+  bottom: 1.4rem;
+  font-size: 0.9rem;
+  color: #d2c7b3;
+}
+
+.zone-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: #050505;
+  color: #eee7d7;
+  font-family: "Old Standard TT", Georgia, serif;
 }
 
 .park-intro__title-card {

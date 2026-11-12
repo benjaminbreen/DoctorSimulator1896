@@ -43,9 +43,31 @@ export function visitPreparationObjects(root, visit) {
   }
 }
 
+function preparationProxy(object, geometry, material) {
+  const proxy = object.isInstancedMesh
+    ? new THREE.InstancedMesh(geometry, material, 0)
+    : object.clone(false);
+  proxy.geometry = geometry;
+  proxy.material = material;
+  proxy.visible = true;
+  proxy.frustumCulled = false;
+  proxy.castShadow = false;
+  proxy.receiveShadow = object.receiveShadow;
+  proxy.layers.mask = object.layers.mask;
+  proxy.matrixAutoUpdate = false;
+  proxy.matrix.copy(object.matrixWorld);
+  if (object.isInstancedMesh) {
+    proxy.instanceMatrix = object.instanceMatrix;
+    proxy.instanceColor = object.instanceColor;
+    proxy.morphTexture = object.morphTexture;
+    proxy.count = Math.min(1, object.count);
+  }
+  return proxy;
+}
+
 // Compile against the final lights and render target, then upload offscreen.
 // compileAsync alone leaves textures, vertex buffers and shadow variants cold.
-export async function prepareStage(renderer, root, camera, scene, cancelled) {
+export async function prepareStage(renderer, root, camera, scene, cancelled, streaming = false) {
   const pending = [];
   root.traverse(object => { if (object.userData.preparation) pending.push(object.userData.preparation); });
   await Promise.all(pending);
@@ -57,28 +79,21 @@ export async function prepareStage(renderer, root, camera, scene, cancelled) {
   warmScene.environmentIntensity = scene.environmentIntensity;
   warmScene.fog = scene.fog;
   const lights = [];
-  scene.traverseVisible((object) => { if (object.isLight) lights.push(object); });
+  visitPreparationObjects(scene, (object) => { if (object.isLight) lights.push(object); });
+  warmScene.children = lights;
+  let changesLighting = false;
+  visitPreparationObjects(root, (object) => { if (object.isLight) changesLighting = true; });
   const proxies = [];
   const depthMaterials = new Map();
   const materials = new Set();
-  visitPreparationObjects(root, (object) => {
+  // New lights change the shader of everything already on screen.
+  visitPreparationObjects(changesLighting ? scene : root, (object) => {
     if (!object.isMesh && !object.isPoints && !object.isLine && !object.isSprite) return;
     const sourceMaterials = [].concat(object.material ?? []);
     for (const material of sourceMaterials) materials.add(material);
-    const geometries = object.userData.warmGeometries ?? [object.geometry];
+    const geometries = object.warmGeometries ?? [object.geometry];
     for (const geometry of new Set(geometries)) {
-      const proxy = object.clone(false);
-      proxy.geometry = geometry;
-      proxy.visible = true;
-      proxy.frustumCulled = false;
-      proxy.castShadow = false;
-      proxy.matrixAutoUpdate = false;
-      proxy.matrix.copy(object.matrixWorld);
-      if (object.isInstancedMesh) {
-        proxy.instanceMatrix = object.instanceMatrix;
-        proxy.instanceColor = object.instanceColor;
-        proxy.count = Math.min(1, object.count);
-      }
+      const proxy = preparationProxy(object, geometry, object.material);
       proxies.push({ proxy, object });
     }
     if (!object.isMesh) return;
@@ -96,17 +111,29 @@ export async function prepareStage(renderer, root, camera, scene, cancelled) {
   });
   const compileRoot = new THREE.Group();
   for (const { proxy } of proxies) compileRoot.add(proxy);
-  const compile = async () => {
-    const previous = renderer.getRenderTarget();
-    renderer.setRenderTarget(target);
-    let pending;
-    try { pending = renderer.compileAsync(compileRoot, camera, scene); }
-    finally { renderer.setRenderTarget(previous); }
-    await pending;
+  const streamBatchSize = typeof streaming === 'number' ? streaming : 8;
+  const compile = async (offscreen = true) => {
+    const all = compileRoot.children;
+    const size = streaming ? streamBatchSize : all.length || 1;
+    try {
+      for (let at = 0; at < all.length; at += size) {
+        if (streaming) await nextFrame();
+        if (cancelled()) return;
+        compileRoot.children = all.slice(at, at + size);
+        const previous = renderer.getRenderTarget();
+        if (offscreen) renderer.setRenderTarget(target);
+        let pending;
+        try { pending = renderer.compileAsync(compileRoot, camera, warmScene); }
+        finally { if (offscreen) renderer.setRenderTarget(previous); }
+        await pending;
+      }
+    } finally {
+      compileRoot.children = all;
+    }
   };
   try {
     await compile();
-    if (renderer.toneMapping !== THREE.NoToneMapping) await renderer.compileAsync(compileRoot, camera, scene);
+    if (renderer.toneMapping !== THREE.NoToneMapping) await compile(false);
     if (cancelled()) return;
     // Point-light distance shadows are left to interiors. Outdoor shadows
     // use these depth variants, including wind and skinned figures.
@@ -124,12 +151,7 @@ export async function prepareStage(renderer, root, camera, scene, cancelled) {
         const key = depthVariantKey(material);
         if (variants.has(key)) continue;
         variants.add(key);
-        const extra = proxy.clone(false);
-        if (proxy.isInstancedMesh) {
-          extra.instanceMatrix = proxy.instanceMatrix;
-          extra.instanceColor = proxy.instanceColor;
-        }
-        extra.material = additionalDepth(depth, material);
+        const extra = preparationProxy(object, proxy.geometry, additionalDepth(depth, material));
         compileRoot.add(extra);
         extraDepthProxies.push({ proxy: extra });
       }
@@ -143,17 +165,25 @@ export async function prepareStage(renderer, root, camera, scene, cancelled) {
       const uniforms = renderer.properties.get(material).uniforms ?? material.uniforms ?? {};
       for (const uniform of Object.values(uniforms)) if (uniform?.value?.isTexture) textures.add(uniform.value);
     }
+    let uploadDeadline = 0;
     for (const texture of textures) {
       if (cancelled()) return;
       if (!texture.image || texture.isRenderTargetTexture || renderer.properties.get(texture).__version === texture.version) continue;
-      await nextFrame();
-      if (!cancelled()) renderer.initTexture(texture);
+      // Small textures can share a frame. Yield after an expensive upload so
+      // preparation does not add a full frame of waiting per texture.
+      if (streaming || performance.now() >= uploadDeadline) {
+        await nextFrame();
+        if (cancelled()) return;
+        uploadDeadline = performance.now() + (streaming ? 2 : 4);
+      }
+      renderer.initTexture(texture);
     }
     const uploads = [...proxies, ...extraDepthProxies];
-    for (let at = 0; at < uploads.length; at += 32) {
+    const batchSize = streaming ? streamBatchSize : 32;
+    for (let at = 0; at < uploads.length; at += batchSize) {
       await nextFrame();
       if (cancelled()) return;
-      warmScene.children = [...lights, ...uploads.slice(at, at + 32).map(({ proxy }) => proxy)];
+      warmScene.children = [...lights, ...uploads.slice(at, at + batchSize).map(({ proxy }) => proxy)];
       const previousTarget = renderer.getRenderTarget();
       const shadowAuto = renderer.shadowMap.autoUpdate;
       const shadowNeeded = renderer.shadowMap.needsUpdate;

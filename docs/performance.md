@@ -413,3 +413,80 @@ What remains in the office's first load is mostly what the room shows: the
 player figure (5.2 MB, on screen at the reveal), the laboratory bench's wood
 (6.8 MB) and the bottles. Those textures are already lossy and detailed;
 smaller encodings lost visible quality.
+
+## November 5 park startup and frame pacing
+
+Scene preparation reuses the live instance buffers, keeps LOD geometry out
+of serialized object metadata, and warms existing shaders again only when a
+stage adds lights. Small texture uploads share a frame. A worker samples the
+pond depth while the early stages load. The bears and elk load as the camera
+approaches the menagerie, and the title card clears sooner once play is ready.
+
+The near sun map refreshes at up to 30 Hz during ordinary play, with an
+immediate update after a teleport or scenery change. The far sun map has its
+own schedule. The pond fades to sky reflections at a distance, avoiding a
+second scene render from the rooftops. Smaller castings use fewer polygons.
+
+| Local production benchmark | Before | After |
+| --- | ---: | ---: |
+| Title card gone | 8.9 s | 5.8 s |
+| All park stages ready | 49.7 s | 32.4 s |
+| Longest startup main-thread task | 3.51 s | 0.70 s |
+| Park pan, p95 frame interval | 83.3 ms | 50.1 ms |
+| Rooftop pan, p95 frame interval | 66.7 ms | 50.1 ms |
+
+Chrome/Metal at 1440 × 900, Quality preset, DPR 1.5. Startup used an empty
+cache and a simulated 20 Mbps connection. Frame samples ran for six seconds
+without the network throttle. These are single runs with live crowds and
+traffic. Camera pans still miss frames. Raw samples and captures are in
+`artifacts/performance/park-speed-before/` and
+`artifacts/performance/park-speed-final/`.
+
+## November 5 district streaming
+
+The opening frame includes the southeast entrance, the first block, its
+posted characters and the Plaza vendor. Terrain and fixed colliders are ready
+throughout the map. The rest of the scene starts with simple shapes that are
+replaced by detailed assets as the player approaches. The loader looks ahead
+along the direction of travel, prepares one group at a time, and waits for a
+pause in movement before starting the heaviest crowd and street jobs.
+
+Two cold production runs in Chrome on the Mac at 20 Mbps reached a playable
+opening in 5.65 and 5.62 seconds, with 11.3 MB transferred by that point. Both
+27-second walks crossed from the Plaza into the Pond district at 16.7–16.8 ms
+p95. The worst frame was 33.4 ms in each walk. This checks the default opening
+route. Results are in `artifacts/performance/park-stream-delivery/` and
+`artifacts/performance/park-stream-delivery-repeat/`.
+
+## November 5 Fifth Avenue and office follow-up
+
+Plaza façades replace their shells one building at a time. Pavement and
+ironwork load by street block, with texture requests starting ahead of the
+player. The hotel lanterns have a fixed light count from the opening frame,
+and streaming spreads shader preparation and texture uploads across frames.
+
+In desktop Chrome at 20 Mbps, the park opened in 5.09 s with 9.92 MB
+transferred, down from 5.72 s and 11.31 MB in the audit. A separate cold run
+opened in 5.23 s, and its Plaza-to-Pond crossing stayed at 16.8 ms or less
+per frame. On the Fifth Avenue
+route, the worst walking frame fell from 100 ms to 33 ms. The worst stopped
+frame was 50 ms, and the sprint peaked at 17 ms. The office reached its
+final loading stage in 8.04 s, down from 11.53 s. The bench keeps its full
+colour map at entry and upgrades its three 512 px detail maps to 2048 px
+when approached. Results are in `artifacts/performance/stream-detail-final/`.
+
+## November 5 time to first movement
+
+The park boots with a 1.48 MB player asset that retains all 24 clips.
+The detailed mesh and textures replace the opening mesh on the same rig
+when the player pauses. The intro can be skipped while loading, and the
+status clears once the scene accepts input.
+
+Desktop Chrome at 20 Mbps reached the park in 4.03 s with 7.08 MB transferred.
+The cold office accepted movement in 2.69 s. Its desk and chairs were ready
+at 4.19 s, and the last furnishing batch arrived at 9.11 s. The study
+loads fine bottle and bench textures on approach. Opening Fast Travel
+warms the office shell. With the menu open for 2 s, the move from the park
+to the office was playable 0.50 s after selection. These runs verified
+movement after the ready signal. Results are in
+`artifacts/performance/faster-opening/`.
