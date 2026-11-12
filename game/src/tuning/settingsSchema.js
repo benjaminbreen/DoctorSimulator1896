@@ -292,6 +292,7 @@ export const settingsSchema = {
         { id: 'paintStyle', label: 'Paint style', type: 'select', options: ['off', 'hopper-light', 'hopper', 'hopper-planes', 'hopper-strokes', 'seurat'], default: 'hopper-light' },
         // Rounded: every tree keeps its simple far shape at any distance.
         { id: 'treeStyle', label: 'Trees', type: 'select', options: ['rounded', 'detailed'], default: 'rounded', mode: 'rebuild' },
+        { id: 'buildingDetail', label: 'Street building detail', type: 'select', options: ['simple', 'full'], default: 'simple', mode: 'rebuild' },
       ],
     },
     {

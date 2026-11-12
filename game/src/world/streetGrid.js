@@ -392,7 +392,7 @@ function buildStreets() {
     }),
     building('bolkenhayn-apartments', 119, 120.4, 17.6, 22, 12.8, {
       facadeStyle: 2, roof: 'mansard', awnings: true,
-      landmarkLabel: 'The Bolkenhayn Apartments', landmarkModel: 'bolkenhayn-apartments',
+      landmarkLabel: 'The Bolkenhayn Apartments', landmarkModel: 'bolkenhayn-apartments', shellColor: '#7a5440',
       landmarkLocation: 'Fifth Avenue near East 58th Street',
       shadows: false, ...ALL_FACES,
     }),
@@ -423,7 +423,7 @@ function buildStreets() {
     // 57th and 58th. The compressed footprint preserves that urban role.
     building('vanderbilt-mansion', 84.8, 157, 22, 19, 27.6, {
       facadeStyle: 2, roof: 'mansard', frontageFamily: 'mansion',
-      landmarkLabel: 'Cornelius Vanderbilt II Mansion', landmarkModel: 'vanderbilt-mansion',
+      landmarkLabel: 'Cornelius Vanderbilt II Mansion', landmarkModel: 'vanderbilt-mansion', shellColor: '#b5aa96',
       landmarkLocation: 'Fifth Avenue between West 57th and 58th Streets',
       wikipediaTitle: 'Cornelius Vanderbilt II House',
       shadows: false, ...ALL_FACES,
@@ -434,13 +434,13 @@ function buildStreets() {
     // replace nine generic frontage colliders here.
     building('marble-row', 122.2, 149.5, 24, 15.5, 12.6, {
       facadeStyle: 4, frontageFamily: 'marble', rowCount: 4,
-      landmarkLabel: 'Marble Row', landmarkModel: 'marble-row',
+      landmarkLabel: 'Marble Row', landmarkModel: 'marble-row', shellColor: '#c5b9a1',
       landmarkLocation: 'Fifth Avenue between East 57th and 58th Streets',
       shadows: false, ...ALL_FACES,
     }),
     building('huntington-mansion', 122.2, 163.5, 24, 18.5, 14.8, {
       facadeStyle: 0, frontageFamily: 'mansion',
-      landmarkLabel: 'Collis P. Huntington Mansion', landmarkModel: 'huntington-mansion',
+      landmarkLabel: 'Collis P. Huntington Mansion', landmarkModel: 'huntington-mansion', shellColor: '#7d5a4c',
       landmarkLocation: 'Fifth Avenue at East 57th Street',
       shadows: false, ...ALL_FACES,
     }),
@@ -448,7 +448,7 @@ function buildStreets() {
     // Metropolitan Club, with the documented narrow service alley between.
     building('gerry-mansion', 122.5, 23.5, 24.6, 18.5, 12.6, {
       facadeStyle: 2, frontageFamily: 'mansion',
-      landmarkLabel: 'Elbridge T. Gerry Mansion', landmarkModel: 'gerry-mansion',
+      landmarkLabel: 'Elbridge T. Gerry Mansion', landmarkModel: 'gerry-mansion', shellColor: '#7d4234',
       landmarkLocation: 'Fifth Avenue at East 61st Street',
       wikipediaTitle: 'Elbridge T. Gerry Mansion',
       shadows: false, ...ALL_FACES,

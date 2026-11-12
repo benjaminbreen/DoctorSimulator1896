@@ -142,6 +142,10 @@ conflict. The plan and first results are in [case-cards.md](case-cards.md).
   are in the settings menu, and paint can be turned off. Park trees are simple
   rounded shapes by default, one outline per species. The styles are new looks
   made for the game, not claims about either painter.
+- Buildings do not change as the player approaches (2026-11-12). Ordinary
+  street buildings have one version, built when the park loads. Landmarks
+  are authored models: the three beside the plaza load with the park, the
+  other five straight after the first frame behind a plain stand-in.
 
 ## Open questions
 

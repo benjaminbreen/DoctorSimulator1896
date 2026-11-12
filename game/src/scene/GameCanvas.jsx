@@ -63,7 +63,8 @@ const Furniture = lazy(() => import('./Furniture.jsx'));
 const PropModels = lazy(() => import('./PropModels.jsx'));
 const PlayerAvatar = lazy(() => import('./PlayerAvatar.jsx'));
 const SkyEnvironment = lazy(() => import('./SkyEnvironment.jsx'));
-const WindowField = lazy(() => import('./WindowField.jsx'));
+const StreetBuildings = lazy(() => import('./StreetBuildings.jsx'));
+const Landmark = lazy(() => import('./StreetBuildings.jsx').then(module => ({ default: module.Landmark })));
 const Water = lazy(() => import('./Water.jsx'));
 const ZoneFeatures = lazy(() => import('./ZoneFeatures.jsx'));
 const Effects = lazy(() => import('./Effects.jsx'));
@@ -467,13 +468,25 @@ function SceneContents({
       const models = items.filter(item => item.model);
       const trees = items.filter(item => item.kind === 'tree');
       const buildings = items.filter(item => item.kind === 'backdrop');
-      return { ...district, items, trees, buildings,
-        structure: district.id === 'plaza' ? items.filter(item => item.kind !== 'backdrop') : items,
+      // Street buildings are built once at load (StreetBuildings.jsx). The
+      // landmarks beside the opening view load with them; the rest follow
+      // straight after the reveal, behind a plain stand-in.
+      const opening = district.id === 'plaza';
+      return { ...district, items, trees,
+        street: items.filter(item => item.kind === 'block-infill' || (item.kind === 'backdrop' && !item.landmarkModel)),
+        openingLandmarks: opening ? buildings.filter(item => item.landmarkModel) : [],
+        landmarks: opening ? [] : buildings.filter(item => item.landmarkModel),
+        structure: items.filter(item => item.kind !== 'backdrop' && item.kind !== 'block-infill'),
         propGroups: groupParkItems(models.filter(item => !isGroundCover(item)), item => item.model),
         treeGroups: groupParkItems(trees, item => item.tree.species ?? 'broadleaf'),
         cover: models.filter(isGroundCover) };
     });
   }, [room]);
+  const street = useMemo(() => ({
+    items: parkDistricts.flatMap(district => district.street),
+    groups: parkDistricts.map(district => district.street).filter(group => group.length),
+    landmarks: parkDistricts.flatMap(district => district.openingLandmarks),
+  }), [parkDistricts]);
   const parkColliders = useMemo(() => room.exterior
     ? [...room.furnitureBoxes, ...room.blockerBoxes, ...room.wallBoxes]
     : [], [room]);
@@ -483,32 +496,22 @@ function SceneContents({
     const jobs = [];
     const byId = new Map(parkDistricts.map(district => [district.id, district]));
     for (const district of parkDistricts) {
-      const { id, structure, propGroups, trees, treeGroups, cover, buildings } = district;
+      const { id, structure, propGroups, trees, treeGroups, cover, landmarks } = district;
       const add = (part, node, range, priority, options = {}) => jobs.push({
         id: id + ':' + part, district, node, range, priority,
         movement: id === 'plaza' ? 7 : 3, ...options,
       });
-      const frontages = buildings.map(item => {
-        const [x, , z] = item.position;
-        const [width, , depth] = item.size;
-        return { bounds: [x - width / 2, x + width / 2, z - depth / 2, z + depth / 2] };
-      });
       if (structure.length) {
         add('structure', <Furniture items={structure} runtime={runtime} fixedColliders={false} />,
-          26, id === 'plaza' ? 14 : 20, id !== 'plaza' && frontages.length ? { sites: frontages } : {});
+          26, id === 'plaza' ? 14 : 20);
       }
-      if (id === 'plaza') {
-        for (const [index, building] of buildings.entries()) {
-          const items = [building];
-          const sites = [frontages[index]];
-          const part = 'structure:' + building.id;
-          add(part, <Furniture items={items} runtime={runtime} fixedColliders={false} />, 26, 20, {
-            sites, warmKey: 'facade',
-            preload: () => import('./Furniture.jsx').then(module => module.preloadFurniture(items)),
-          });
-          add('windows:' + building.id, <WindowField items={items} runtime={runtime} />, 22, 33,
-            { sites, after: id + ':' + part });
-        }
+      // No range or movement rule: these start at the reveal, nearest first.
+      for (const item of landmarks) {
+        const [x, , z] = item.position;
+        const [width, , depth] = item.size;
+        add('landmark:' + item.id, <Landmark item={item} runtime={runtime} />, Infinity, -40, {
+          movement: 0, sites: [{ bounds: [x - width / 2, x + width / 2, z - depth / 2, z + depth / 2] }],
+        });
       }
       // Rounded trees are drawn by ParkShell and never swapped for leaf models.
       if (runtime.values.treeStyle === 'rounded') {
@@ -523,8 +526,6 @@ function SceneContents({
       for (const [model, props] of Object.entries(propGroups)) {
         add('props:' + model, <PropModels items={props} />, 26, 10);
       }
-      if (id !== 'plaza' && buildings.length) add('windows', <WindowField items={buildings} runtime={runtime} />, 22, 33,
-        { sites: frontages, after: id + ':structure' });
       if (cover.length) add('cover', <PropModels items={cover} />, 23, 45);
       if (id !== 'plaza') add('posted', <PostedNpcs runtime={runtime} district={id} />, 30, 12);
     }
@@ -604,8 +605,7 @@ function SceneContents({
   const advanceTimer = useRef(null);
   const revealReported = useRef(false);
   const [parkParts, setParkParts] = useState(() => new Set());
-  const plazaHotel = parkDistricts.find(district => district.id === 'plaza')?.buildings
-    .find(item => item.landmarkModel === 'new-netherland-hotel');
+  const plazaHotel = street.landmarks.find(item => item.landmarkModel === 'new-netherland-hotel');
   const bootTag = room.exterior ? 'park' : 'room';
 
   useLayoutEffect(() => {
@@ -679,7 +679,7 @@ function SceneContents({
   }, [blueprint.id, bootTag, consultingOffice, interiorStageLabels, onPlayable, room.exterior, zoneId]);
 
   const onParkJobReady = useCallback(id => {
-    if (/:(structure|trees|props)(:|$)/.test(id)) setParkParts(previous => new Set([...previous, id]));
+    if (/:(structure|trees|props|landmark)(:|$)/.test(id)) setParkParts(previous => new Set([...previous, id]));
   }, []);
   const onParkStreamComplete = useCallback(() => {
     const elapsedMs = Math.round(performance.now() - bootStartedAt.current);
@@ -728,8 +728,7 @@ function SceneContents({
                 maxShadowDistance={graphics.maxOutdoorShadowDistance}
                 shadowUpdateInterval={graphics.shadowUpdateInterval}
               />
-              {plazaHotel && <HotelLampLights hotel={plazaHotel} runtime={runtime}
-                ready={parkParts.has('plaza:structure:' + plazaHotel.id)} />}
+              {plazaHotel && <HotelLampLights hotel={plazaHotel} runtime={runtime} ready />}
               {/* In stage 0 so every later stage's shader compile sees
                   scene.environment; compiled without it, each material
                   recompiles at first sight, which hitches mid-walk. */}
@@ -740,7 +739,10 @@ function SceneContents({
               <CloudDome config={lighting} runtime={runtime} />
               <Terrain fullDetail={fullPark} />
               <FurnitureColliders items={parkColliders} />
-              <ParkShell districts={parkDistricts} ready={parkParts} textured={coreReady && avatarReady} runtime={runtime} />
+              <ParkShell districts={parkDistricts} ready={parkParts} runtime={runtime} />
+              <StreetBuildings items={street.items} groups={street.groups} runtime={runtime}
+                simple={values.buildingDetail !== 'full'} />
+              {street.landmarks.map(item => <Landmark key={item.id} item={item} runtime={runtime} />)}
               <PostedNpcs runtime={runtime} opening motionReady={parkParts.has('plaza:props:small_park_bench')} />
               <Pushcarts opening />
               <ExaminePicker room={room} zone={zone} />

@@ -567,3 +567,32 @@ resolution and its brush now takes 25 samples instead of 81. Seurat skips
 ambient occlusion, which is where its office saving comes from; the dots hide
 contact shading. Light Hopper keeps ambient occlusion (18% of its office
 frame) because that style still shows most of the plain picture.
+
+## November 12 buildings without a swap
+
+Before this change each street building had a low-detail shell that was
+replaced on approach by a detailed facade and, in a second step, by its
+windows. The shell and the detail often disagreed, and the swap was visible.
+
+Now `StreetBuildings.jsx` builds every ordinary building once, in the first
+stage of the park load: walls, roof caps, rooftops, and one `WindowField` per
+district in its `simple` mode (openings, the traced rooms behind the glass,
+sashes, stone surrounds, cornices, doorways; no shutters, awnings, planters,
+bays or areaway railings). The setting `buildingDetail: full` restores those.
+The eight landmark models no longer wait for the player to come near: the
+three in the plaza district load in the first stage and the other five are
+the first stream jobs after the reveal.
+
+Measured on the M5 Pro, headless, warm dev server:
+
+- First frame: about 1.8 s, against about 1.4–1.5 s before. Nearly all of
+  the difference is the three plaza landmarks.
+- Standing on Fifth Avenue, hiding all street buildings saves 0.5 ms of a
+  7.3 ms frame; at the pond 0.2 ms of 9.2 ms. Full detail costs 0.1 ms more.
+- A 67 s scripted walk (Fifth Avenue, 59th Street east, then south) dropped
+  4–9 frames past 33 ms in clean runs, the same as the old code. Some runs
+  of both versions were much worse straight after a code reload, so this
+  test did not reproduce the stutter reported in play.
+- No building or window jobs remain in the park stream, apart from the
+  five later landmarks.
+

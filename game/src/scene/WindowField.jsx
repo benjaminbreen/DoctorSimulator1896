@@ -515,6 +515,7 @@ function pushInstance(list, x, y, z, yaw, sx, sy, sz, color, tilt = 0, pitch = 0
 // One InstancedMesh from a list of {x,y,z,yaw,pitch,tilt,sx,sy,sz,color}
 // records. Euler YXZ keeps yaw mapping local X onto the face's right axis.
 function buildMesh(records, geometry, material, shadows = false, rooms = false) {
+  if (!records.length) return null;
   if (rooms) {
     // Panes without a room record (bays, transoms) get one sized to the pane.
     const data = new Float32Array(records.length * 4);
@@ -545,8 +546,13 @@ function jitterColor(base, seed, amount = 0.05) {
   return `#${scratchColor.getHexString()}`;
 }
 
-export default function WindowField({ items, runtime }) {
+// simple: the calmer set used for the street buildings. It keeps the
+// openings, the rooms behind the glass, sashes, stone surrounds, cornices and
+// doorways, and leaves out shutters, awnings, planters, bays and railings.
+// alley: also hang the back-lot laundry (one field per park does this).
+export default function WindowField({ items, runtime, simple = false, alley = true }) {
   const meshes = useMemo(() => {
+    const fancy = !simple;
     const openings = [];
     const recessShades = [];
     const sillWashes = [];
@@ -598,7 +604,7 @@ export default function WindowField({ items, runtime }) {
         // One column may carry a projecting oriel bay instead of flat windows.
         const bayRoll = hash01(seed * 0.51 + faceIndex * 3.3);
         const bayCol =
-          ornateFace && canShutter && faceWidth > 6.4 && layout.cols >= 3 && bayRoll < 0.3
+          fancy && ornateFace && canShutter && faceWidth > 6.4 && layout.cols >= 3 && bayRoll < 0.3
             ? (bayRoll < 0.15 ? 0 : layout.cols - 1)
             : -1;
 
@@ -612,9 +618,9 @@ export default function WindowField({ items, runtime }) {
           pushInstance(recessShades,...place(u,win.y+win.h/2,.007),face.yaw,wM*1.36,hM*1.22,1,'#ffffff');
           const roll = hash01(seed * 0.013 + faceIndex * 19.3 + (win.floor ?? -1) * 3.7 + win.col * 7.1);
 
-          const shuttered = ornateFace && canShutter && upperFloor && roll < 0.22;
+          const shuttered = fancy && ornateFace && canShutter && upperFloor && roll < 0.22;
           const shutClosed = shuttered && roll < 0.08;
-          const openSash = upperFloor && !shutClosed && roll > 0.34 && roll < 0.5;
+          const openSash = fancy && upperFloor && !shutClosed && roll > 0.34 && roll < 0.5;
           const lit = !shutClosed && hash01(seed + win.col * 11.7 + (win.floor ?? 9) * 5.3) < (hotel ? 0.1 : 0.05);
           const shadeRoll = hash01(seed * 0.59 + faceIndex * 13.7 + (win.floor ?? 8) * 4.1 + win.col * 6.3);
           const roomRoll = hash01(seed * 0.83 + faceIndex * 8.9 + (win.floor ?? 5) * 6.1 + win.col * 2.7);
@@ -680,7 +686,9 @@ export default function WindowField({ items, runtime }) {
           // Opaque dressing cards sit just in front of the composite glass and
           // behind the sash. They use the existing opening plane bucket: no
           // new draw call, no alpha blending, and no shadow-pass geometry.
-          if (upperFloor && !openSash && !shutClosed && shadeRoll < 0.18) {
+          if (!fancy) {
+            // No blinds, curtains or furniture cards.
+          } else if (upperFloor && !openSash && !shutClosed && shadeRoll < 0.18) {
             const shadeRatio = 0.24 + hash01(seed * 1.81 + win.col * 3.9 + win.floor) * 0.38;
             const shadeH = hM * shadeRatio;
             const shadeMid = win.y + win.h * shadeRatio * 0.5;
@@ -781,7 +789,7 @@ export default function WindowField({ items, runtime }) {
               outer + (serviceFace ? 0.06 : strongBrownstoneLintel ? 0.2 : 0.1), lintelH,
               serviceFace ? 0.11 : strongBrownstoneLintel ? 0.23 : 0.18, sillColor,
             );
-            if (ornateFace) {
+            if (fancy && ornateFace) {
               const [kx, , kz] = place(u, 0, 0.11);
               pushInstance(
                 trimBoxes, kx, lintelBase + lintelH + 0.025, kz, face.yaw,
@@ -805,7 +813,7 @@ export default function WindowField({ items, runtime }) {
           // Striped canvas awnings on the hotels: sparse, some furled, each
           // sagging a little differently, with iron side arms.
           const awningRoll = hash01(seed * 0.77 + faceIndex * 11.1 + win.floor * 2.9 + win.col * 5.7);
-          if (item.awnings && upperFloor && awningRoll < 0.2) {
+          if (fancy && item.awnings && upperFloor && awningRoll < 0.2) {
             if (awningRoll < 0.06) {
               // Furled: a rolled canvas bundle under the lintel.
               pushInstance(shutters, ...place(u, win.y + 3, 0.09), face.yaw, wM * 1.16, 0.1, 0.11, jitterColor('#b8a58d', seed + win.col, 0.08));
@@ -834,7 +842,7 @@ export default function WindowField({ items, runtime }) {
           // awning is already occupying the sill.
           const boxRoll = hash01(seed * 0.91 + faceIndex * 4.3 + (win.floor ?? 0) * 8.9 + win.col * 2.7);
           const awninged = item.awnings && upperFloor && awningRoll < 0.2;
-          if (ornateFace && upperFloor && !shutClosed && !awninged && boxRoll < 0.17) {
+          if (fancy && ornateFace && upperFloor && !shutClosed && !awninged && boxRoll < 0.17) {
             const boxW = wM * 0.84;
             const [px, py, pz] = place(u, win.y + win.h + 1, 0.13);
             pushInstance(
@@ -902,7 +910,7 @@ export default function WindowField({ items, runtime }) {
         }
 
         // Iron areaway railing along the front, broken at the stoop.
-        if (canShutter && streetFront) {
+        if (fancy && canShutter && streetFront) {
           const doorU = entrance?.u ?? 0.5;
           const gapU = entrance ? (entrance.stepWidth / 2 + 0.15) / faceWidth : 0;
           const railOut = 1.15;
@@ -932,7 +940,7 @@ export default function WindowField({ items, runtime }) {
             const [x,,z]=place(.5,0,out*crown);
             pushInstance(trimBoxes,x,cy+sy/2-drop,z,face.yaw,faceWidth+.12*crown,height,depth*crown,crownColor);
           }
-          const brackets = Math.max(3, Math.round(faceWidth / 1.15));
+          const brackets = fancy ? Math.max(3, Math.round(faceWidth / 1.15)) : 0;
           for (let b = 0; b < brackets; b += 1) {
             const [bx, by, bz] = place((b + 0.5) / brackets, 17, 0.13);
             pushInstance(trimBoxes, bx, by, bz, face.yaw, 0.14, 0.4, 0.26, sillColor);
@@ -994,16 +1002,16 @@ export default function WindowField({ items, runtime }) {
           // Panel rails, edge stiles, and the occasional centre stile all use
           // the ordinary trim batch rather than a door-specific material.
           const panelColor = jitterColor(frameColor, seed * 6.1, 0.05);
-          for (const y of panelRows) {
+          for (const y of fancy ? panelRows : []) {
             const [rx, , rz] = place(uDoor, 0, 0.075);
             pushInstance(trimBoxes, rx, doorBase + woodHeight * y, rz, face.yaw, doorW * 0.78, 0.055, 0.055, panelColor);
           }
-          for (const side of [-1, 1]) {
+          for (const side of fancy ? [-1, 1] : []) {
             const uStile = uDoor + (side * doorW * 0.39) / faceWidth;
             const [px, , pz] = place(uStile, 0, 0.075);
             pushInstance(trimBoxes, px, doorBase + woodHeight / 2, pz, face.yaw, 0.055, woodHeight * 0.9, 0.055, panelColor);
           }
-          if (panelColumns === 2) {
+          if (fancy && panelColumns === 2) {
             const [px, , pz] = place(uDoor, 0, 0.076);
             pushInstance(trimBoxes, px, doorBase + woodHeight / 2, pz, face.yaw, 0.05, woodHeight * 0.72, 0.055, panelColor);
           }
@@ -1029,7 +1037,7 @@ export default function WindowField({ items, runtime }) {
             pushInstance(trimBoxes, cx2, doorBase + doorHeight + headH + 0.06, cz2, face.yaw, headW + 0.2, 0.12, 0.3, stone);
           }
           // Raised panels between the rails, so the leaf is not a flat card.
-          const rails = [0, ...panelRows, 1].sort((a, b) => a - b);
+          const rails = fancy ? [0, ...panelRows, 1].sort((a, b) => a - b) : [];
           for (let row = 0; row < rails.length - 1; row += 1) {
             const low = rails[row] + 0.035;
             const high = rails[row + 1] - 0.035;
@@ -1059,11 +1067,11 @@ export default function WindowField({ items, runtime }) {
           // the existing ironwork batch, so their variety has no draw-call cost.
           const hardwareU = uDoor + (entrance.brassSide * doorW * 0.3) / faceWidth;
           const [hx, , hz] = place(hardwareU, 0, 0.095);
-          pushInstance(railings, hx, doorBase + woodHeight * 0.48, hz, face.yaw, 0.075, 0.2, 0.04, '#b59a54');
+          if (fancy) pushInstance(railings, hx, doorBase + woodHeight * 0.48, hz, face.yaw, 0.075, 0.2, 0.04, '#b59a54');
           const [knobX, , knobZ] = place(hardwareU, 0, 0.14);
           pushInstance(railings, knobX, doorBase + woodHeight * 0.45, knobZ, face.yaw, 0.06, 0.06, 0.07, '#d0b563');
 
-          if (entrance.bootScraper) {
+          if (fancy && entrance.bootScraper) {
             const scraperU = uDoor - (entrance.brassSide * stepWidth * 0.37) / faceWidth;
             for (const side of [-1, 1]) {
               const uLeg = scraperU + (side * 0.1) / faceWidth;
@@ -1088,7 +1096,7 @@ export default function WindowField({ items, runtime }) {
 
         // Laundry lines: strung between upper windows on the flagged rows,
         // sagging toward the middle, with a few pieces on the line.
-        if (item.laundry && streetFront && layout.cols >= 3) {
+        if (fancy && item.laundry && streetFront && layout.cols >= 3) {
           for (let floor = 1; floor < layout.floors - 1; floor += 1) {
             const roll = hash01(seed * 0.31 + faceIndex * 7.7 + floor * 3.3);
             if (roll > 0.32) continue;
@@ -1131,7 +1139,7 @@ export default function WindowField({ items, runtime }) {
 
     // Free-standing laundry in the back lots: wooden posts, a sagging line,
     // a few pieces per line. Anchors come hand-picked from the street grid.
-    for (const [lineIndex, line] of ALLEY_LINES.entries()) {
+    for (const [lineIndex, line] of alley ? ALLEY_LINES.entries() : []) {
       const dirX = Math.cos(line.yaw);
       const dirZ = Math.sin(line.yaw);
       const yawRec = -line.yaw;
@@ -1203,7 +1211,8 @@ export default function WindowField({ items, runtime }) {
       buildMesh(frames, plane, new THREE.MeshStandardMaterial({
         color: '#ffffff', map: frameTexture, alphaTest: 0.4, roughness: 0.85,
       })),
-      buildMesh(trimBoxes, box, weatherTrim(new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.9 }), trimGrain), true),
+      // Sills and lintels throw no shadow worth its cost on the whole street.
+      buildMesh(trimBoxes, box, weatherTrim(new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.9 }), trimGrain), fancy),
       buildMesh(cheekWalls, makeCheekGeometry(), weatherTrim(new THREE.MeshStandardMaterial({
         color: '#ffffff', roughness: 0.9,
       }), trimGrain, false), true),
@@ -1233,13 +1242,14 @@ export default function WindowField({ items, runtime }) {
       color: '#ffffff', map: makeAwningTexture('#4f6b52'), alphaTest: 0.4, side: THREE.DoubleSide, roughness: 0.9,
     }), true);
     built.push(clothMesh, awningRedMesh, awningGreenMesh);
+    const made = built.filter(Boolean);
     const flutter = [
       { mesh: awningRedMesh, records: awningsRed, amount: 0.022 },
       { mesh: awningGreenMesh, records: awningsGreen, amount: 0.022 },
       { mesh: clothMesh, records: cloths, amount: 0.05 },
-    ];
-    return { built, litMaterial, flutter, trimGrain };
-  }, [items]);
+    ].filter(({ mesh }) => mesh);
+    return { built: made, litMaterial, flutter, trimGrain };
+  }, [items, simple, alley]);
 
   useFrame((state) => {
     if (runtime) {

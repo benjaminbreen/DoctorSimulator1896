@@ -16,7 +16,7 @@ import { chromium } from 'playwright-core';
 import { ensureGame } from '../../tools/hopper/runner.mjs';
 
 // at: where the physician stands (x, z); the floor height is looked up.
-// yaw 0 faces north (-z), positive turns left (west). pitch is radians up.
+// yaw 0 faces north (-z), positive turns left (west). pitch is radians down.
 // hud: keep the interface in the picture. patient: open that consultation.
 const VIEWPOINTS = [
   { id: 'park-start', zone: 'central-park', at: [82, 68], yaw: 0.785 },
@@ -25,6 +25,9 @@ const VIEWPOINTS = [
   { id: 'plaza-hotel', zone: 'central-park', at: [88, 78], yaw: -1.35, pitch: 0.25 },
   { id: 'fifth-avenue', zone: 'central-park', at: [104, 40], yaw: -0.5, pitch: 0.1 },
   { id: 'park-edge', zone: 'central-park', at: [96, 30], yaw: 3.14, pitch: 0.08 },
+  { id: 'street-row', zone: 'central-park', at: [20, 91], yaw: 2.6, pitch: -0.12 },
+  { id: 'street-corner', zone: 'central-park', at: [128, 90], yaw: -1.2, pitch: -0.12 },
+  { id: 'roofline', zone: 'central-park', at: [24, 66], yaw: 2.9, pitch: -0.35 },
   { id: 'dairy', zone: 'central-park', at: [34, -30], yaw: 0.3, pitch: 0.05 },
   { id: 'carousel', zone: 'central-park', at: [14, -38], yaw: 0.45, pitch: 0.05 },
   { id: 'park-dusk', zone: 'central-park', at: [82, 68], yaw: 0.785, hour: 19.6 },
