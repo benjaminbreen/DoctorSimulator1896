@@ -137,6 +137,11 @@ conflict. The plan and first results are in [case-cards.md](case-cards.md).
   full-scene graphical regressions in two playtests and should not be
   reintroduced. Address shimmering through geometry, material, LOD, or a
   separately reviewed antialiasing method instead.
+- The game is drawn as a painting, not as a photograph. Light Hopper is the
+  default paint style; the others (full Hopper, flat planes, brushwork, Seurat)
+  are in the settings menu, and paint can be turned off. Park trees are simple
+  rounded shapes by default, one outline per species. The styles are new looks
+  made for the game, not claims about either painter.
 
 ## Open questions
 

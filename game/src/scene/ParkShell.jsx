@@ -10,18 +10,20 @@ import { identifyLandmark } from '../world/landmarkInformation.js';
 import { solarRamps } from '../world/solar.js';
 import { createFacadeMaterial, FACADE_TEXTURE_URLS, prepareFacadeTextures } from './facadeMaterials.js';
 import { prepareStage } from './prepareStage.js';
+import { crownGeometry, crownMaterial, roundedTree } from './roundedTrees.js';
+import { gameDebug } from '../debug.js';
 
 const box = new THREE.BoxGeometry();
 const trunk = new THREE.CylinderGeometry(.34, .55, 1, 7);
-const crown = new THREE.IcosahedronGeometry(1, 1);
+const crown = crownGeometry();
 const surface = new THREE.MeshStandardMaterial({ roughness: .95 });
 // A little sheen at a glancing angle; a full sky reflection reads as paper.
 const windows = new THREE.MeshStandardMaterial({ color: '#23252a', roughness: .3, envMapIntensity: .18 });
 // A few rooms have the gas on after dark. Colour and night ramp match the
 // lit panes in WindowField.jsx; ParkShell sets the intensity each frame.
 const litWindows = new THREE.MeshStandardMaterial({ color: '#23252a', roughness: .3, envMapIntensity: .18, emissive: '#c8873e', emissiveIntensity: 0 });
-const leaves = new THREE.MeshStandardMaterial({ color: '#556a3d', roughness: 1 });
-const bark = new THREE.MeshStandardMaterial({ color: '#534734', roughness: 1 });
+const leaves = crownMaterial();
+const bark = new THREE.MeshStandardMaterial({ roughness: 1 });
 const facadeColors = ['#958272', '#8a5f4c', '#b5aa96', '#766a60', '#c5b9a1', '#99948d'];
 const sillColors = ['#ad9982', '#b79b80', '#c5b69d', '#a08a74', '#d6c8af', '#b2a895'];
 // Keep the lightweight portals on the same bays as the full hotel models.
@@ -85,6 +87,9 @@ function shellFacadeMaterial(facades, item) {
   return createFacadeMaterial(facades, item.facadeStyle ?? 0, idHash(item.id), false,
     item.position[1] - item.size[1] / 2, item.facadeTone ?? null, true, facadeBrickFinish(item) ?? 'smooth');
 }
+
+// Changing the tree style remounts the canvas, so reading it once is enough.
+const roundedTrees = () => gameDebug.tuning?.treeStyle === 'rounded';
 
 function buildShell(items, treeGroups, propGroups, streetDetail, facades) {
   const walls = [], openings = [], litOpenings = [], facadeTrim = [], targets = [];
@@ -187,16 +192,9 @@ function buildShell(items, treeGroups, propGroups, streetDetail, facades) {
   for (const [species, trees] of Object.entries(treeGroups)) {
     const trunks = [], crowns = [];
     for (const item of trees) {
-      const [x, y, z] = item.position;
-      const height = item.tree.height;
-      const base = y - item.size[1] / 2;
-      const radius = Math.min(height * .28, 4.4);
-      const color = tint(item.color);
-      trunks.push({ p: [x, base + height * .27, z], s: [item.size[0], height * .54, item.size[0]] });
-      for (const [ox, oy, oz, scale] of [[0, .73, 0, 1], [.57, .65, -.24, .69], [-.49, .67, .32, .71]]) {
-        crowns.push({ p: [x + ox * radius, base + oy * height, z + oz * radius],
-          s: [radius * scale, height * .26 * scale, radius * scale], color, r: [0, x + z, 0] });
-      }
+      const tree = roundedTree(item);
+      trunks.push(tree.trunk);
+      crowns.push(...tree.crowns);
     }
     add('trees:' + species, [batch(trunk, bark, trunks), batch(crown, leaves, crowns)]);
   }
@@ -231,7 +229,8 @@ function buildShell(items, treeGroups, propGroups, streetDetail, facades) {
 const DistrictShell = memo(function DistrictShell({ district, ready, facades }) {
   const batches = useMemo(() => {
     const plaza = district.id === 'plaza';
-    const core = buildShell(district.structure, plaza ? {} : district.treeGroups, district.propGroups, false, facades);
+    // The Plaza shows leaf-model previews instead, unless trees stay rounded.
+    const core = buildShell(district.structure, plaza && !roundedTrees() ? {} : district.treeGroups, district.propGroups, false, facades);
     const result = core.batches.map(([part, meshes]) => ({ part, meshes, targets: part === 'structure' ? core.targets : null }));
     if (plaza) for (const building of district.buildings) {
       const { batches: [[, meshes]], targets } = buildShell([building], {}, {}, true, facades);
@@ -244,7 +243,7 @@ const DistrictShell = memo(function DistrictShell({ district, ready, facades }) 
     mesh.dispose();
   })), [batches]);
   return <>
-    {district.id === 'plaza' && !ready.has('plaza:trees') && <TreeField items={district.trees} preview />}
+    {district.id === 'plaza' && !roundedTrees() && !ready.has('plaza:trees') && <TreeField items={district.trees} preview />}
     {batches.map(({ part, meshes, targets }) => (
       <group key={part} visible={!ready.has(district.id + ':' + part)}>
         {meshes.map((mesh, index) => <primitive key={mesh.uuid} object={mesh}

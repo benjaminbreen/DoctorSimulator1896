@@ -145,7 +145,7 @@ export default function SkyEnvironment({ runtime }) {
     // 1.4: fill moved here from the outdoor flat ambient, which now runs
     // near zero (see SkyRig).
     // Hopper keeps less sky fill by day, matching SkyRig.
-    const hopperFill = values.paintStyle === 'hopper' ? 1 - values.hopperFillCut * palette.intensity : 1;
+    const hopperFill = values.paintStyle !== 'off' ? 1 - values.hopperFillCut * palette.intensity : 1;
     scene.environmentIntensity = values.envIntensity * 1.4 * palette.intensity * hopperFill;
     clock.current += delta;
     const shotChanged = shotRevision.current !== gameDebug.shotEnvironmentRevision;

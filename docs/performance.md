@@ -540,3 +540,30 @@ and three brush samples instead of four 15%.
 
 Measure with the display awake. Once it slept, single captures stalled for
 minutes and frame times drifted.
+
+## November 12 paint styles and rounded trees
+
+Light Hopper is now the default look, and trees are rounded by default: a
+trunk and a few lobes per tree, one outline per species
+(`game/src/scene/roundedTrees.js`), drawn by the park's low-detail layer. The
+leaf models are not loaded at all in that mode, which removes about 6 MB of
+tree files and every tree streaming job. `treeStyle: detailed` brings them back.
+
+Paint styles are presets over the paint sliders
+(`game/src/tuning/paintStyles.js`). Frame cost against light Hopper, same
+machine and method as the table above, display at 2x so paint renders at 1.5x:
+
+| Compared with light Hopper | Pond | Office |
+|---|---|---|
+| Paint off | 4-5% slower | 3-15% slower (two runs) |
+| Hopper, full | 12% slower | 35% slower |
+| Flat planes | 5% faster | 2% faster |
+| Brushwork | 11% faster | 2% faster |
+| Seurat | 9% faster | 28% faster |
+| Detailed trees | 17% slower | n/a |
+
+Light Hopper is cheaper than no paint because it renders at three-quarter
+resolution and its brush now takes 25 samples instead of 81. Seurat skips
+ambient occlusion, which is where its office saving comes from; the dots hide
+contact shading. Light Hopper keeps ambient occlusion (18% of its office
+frame) because that style still shows most of the plain picture.

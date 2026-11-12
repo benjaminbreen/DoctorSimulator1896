@@ -3,6 +3,7 @@
 
 import { schemaParameters, STARTING_TIME, STARTING_ZONE } from './settingsSchema.js';
 import { isOutdoorZone } from './zoneCategory.js';
+import { PAINT_STYLES, isPaintParameter } from './paintStyles.js';
 import outdoorPreset from './presets/outdoor.json' with { type: 'json' };
 import indoorPreset from './presets/indoor.json' with { type: 'json' };
 
@@ -74,6 +75,14 @@ const MIGRATIONS = {
     if (values.saturation === 1.14) values.saturation = 1;
     if (values.groundBounce === 0.4) values.groundBounce = 0.8;
   },
+  // Light Hopper is the default look. A profile that never turned paint on
+  // drops its unused paint values so it picks up the new defaults. One that
+  // had Hopper on keeps its own slider values.
+  12: (values) => {
+    if (values.paintStyle !== 'off') return;
+    values.paintStyle = 'hopper-light';
+    for (const id of Object.keys(values)) if (isPaintParameter(id)) delete values[id];
+  },
 };
 
 export function migrateStoredTuning(stored, schema) {
@@ -140,6 +149,16 @@ export function createTuningRuntime(schema) {
     if (id === 'zone' && isOutdoorZone(values.zone) !== outdoorNow) {
       outdoorNow = !outdoorNow;
       applyCategoryPreset(outdoorNow ? outdoorPreset : indoorPreset);
+    }
+    // A paint style is a preset over the paint sliders: defaults first, then
+    // the style's own values.
+    const style = id === 'paintStyle' ? PAINT_STYLES[values.paintStyle] : null;
+    if (style) {
+      for (const parameter of definitions) {
+        if (!isPaintParameter(parameter.id)) continue;
+        values[parameter.id] = coerce(parameter, style.values[parameter.id] ?? parameter.default);
+        for (const listener of changeListeners) listener(parameter.id, values[parameter.id]);
+      }
     }
     for (const listener of changeListeners) listener(id, values[id]);
     if (definition.mode === 'rebuild') for (const listener of rebuildListeners) listener(id);

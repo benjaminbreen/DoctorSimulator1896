@@ -14,6 +14,9 @@ import { hopperFigure, hopperSurface } from './hopperShading.js';
 // grade: crisp edges, smooth planes, broad lit and shaded tones.
 // The filter follows Kyprianidis et al., "Image and Video Abstraction by
 // Anisotropic Kuwahara Filtering" (2009), with polynomial sector weights.
+// Step 4 has two alternatives, chosen by the paintMethod setting: 'planes'
+// (smoothing along and across edges, far fewer samples) and 'strokes'
+// (separate dabs on a screen grid). 'dots' is seuratPaint.js.
 
 // Picked by eye from his street and interior paintings. A new style, not a
 // historical claim. Matched on hue; each pixel keeps its own lightness.
@@ -101,24 +104,167 @@ void strokeFrame(vec3 g, out vec2 tangent, out float anisotropy) {
 }
 `;
 
-const KUWAHARA = /* glsl */ `
+export const NOISE = /* glsl */ `
+// Arithmetic hash (Hoskins, "Hash without Sine"): sin is slow and this runs
+// about thirty times a pixel.
+float hash(vec2 p) {
+  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
+}
+float noise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+    mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+`;
+
+// OKLab, from linear sRGB.
+export const LAB = /* glsl */ `
+vec3 toLab(vec3 c) {
+  vec3 lms = vec3(
+    dot(c, vec3(0.4122214708, 0.5363325363, 0.0514459929)),
+    dot(c, vec3(0.2119034982, 0.6806995451, 0.1073969566)),
+    dot(c, vec3(0.0883024619, 0.2817188376, 0.6299787005)));
+  lms = pow(max(lms, 0.0), vec3(1.0 / 3.0));
+  return vec3(
+    dot(lms, vec3(0.2104542553, 0.793617785, -0.0040720468)),
+    dot(lms, vec3(1.9779984951, -2.428592205, 0.4505937099)),
+    dot(lms, vec3(0.0259040371, 0.7827717662, -0.808675766)));
+}
+vec3 fromLab(vec3 lab) {
+  vec3 lms = vec3(
+    lab.x + 0.3963377774 * lab.y + 0.2158037573 * lab.z,
+    lab.x - 0.1055613458 * lab.y - 0.0638541728 * lab.z,
+    lab.x - 0.0894841775 * lab.y - 1.291485548 * lab.z);
+  lms = lms * lms * lms;
+  return vec3(
+    dot(lms, vec3(4.0767416621, -3.3077115913, 0.2309699292)),
+    dot(lms, vec3(-1.2684380046, 2.6097574011, -0.3413193965)),
+    dot(lms, vec3(-0.0041960863, -0.7034186147, 1.707614701)));
+}
+`;
+
+// Brush spacing shared by the three filters: wider with distance, finer on figures.
+const SPACING = /* glsl */ `
 #include <packing>
-uniform sampler2D inputBuffer;
-uniform sampler2D tensorBuffer;
 uniform sampler2D depthBuffer;
 uniform sampler2D figureBuffer;
 uniform float figureAmount;
 uniform float figureBrush;
-uniform vec2 halfTexel;
-uniform vec2 brush; // grid spacing in half-res pixels: near, far
+uniform vec2 brush; // near, far
 uniform float farDistance;
+uniform float cameraNear;
+uniform float cameraFar;
+float brushSpacing(vec2 uv) {
+  float viewZ = perspectiveDepthToViewZ(texture2D(depthBuffer, uv).r, cameraNear, cameraFar);
+  return mix(brush.x, brush.y, smoothstep(10.0, farDistance, -viewZ))
+    * mix(1.0, figureBrush, texture2D(figureBuffer, uv).r * figureAmount);
+}
+`;
+
+// 'planes': a bilateral blur run twice, first across the edge direction and
+// then along it. Flat fields with hard edges for about a fifth of the samples.
+const PLANES = /* glsl */ `
+uniform sampler2D inputBuffer;
+uniform sampler2D tensorBuffer;
+uniform vec2 halfTexel;
+uniform float radius;
+uniform float hardness;
+uniform float along;
+varying vec2 vUv;
+${ORIENTATION}
+${SPACING}
+void main() {
+  vec2 t;
+  float A;
+  strokeFrame(texture2D(tensorBuffer, vUv).xyz, t, A);
+  vec2 stepUv = (along > 0.5 ? t : vec2(-t.y, t.x)) * halfTexel * brushSpacing(vUv);
+  // Along an edge colours already agree, so the colour test can be loose.
+  float range = hardness * hardness * (along > 0.5 ? 0.6 : 3.0);
+  vec3 centre = sqrt(clamp(texture2D(inputBuffer, vUv).rgb, 0.0, 1.0));
+  vec4 sum = vec4(centre, 1.0);
+  for (int k = 1; k <= 6; k++) {
+    if (float(k) > radius) break;
+    float falloff = exp(-float(k * k) / (radius * radius * 0.5));
+    for (int side = -1; side <= 1; side += 2) {
+      vec3 c = sqrt(clamp(texture2D(inputBuffer, vUv + stepUv * float(k * side)).rgb, 0.0, 1.0));
+      vec3 d = c - centre;
+      float w = falloff * exp(-dot(d, d) * range);
+      sum += vec4(c * w, w);
+    }
+  }
+  vec3 c = sum.rgb / sum.a;
+  gl_FragColor = vec4(c * c, 1.0);
+}
+`;
+
+// 'strokes': one dab per cell of a screen grid, jittered, turned to follow
+// the picture, coloured from its own centre. The grid has three sizes, picked
+// by distance. Dabs stay put on screen while the scene moves under them.
+const STROKES = /* glsl */ `
+uniform sampler2D inputBuffer;
+uniform sampler2D tensorBuffer;
+uniform vec2 resolution;
+uniform float pixelRatio;
+uniform float strokeLength;
+varying vec2 vUv;
+${ORIENTATION}
+${SPACING}
+${NOISE}
+void main() {
+  vec2 css = vUv * resolution / pixelRatio;
+  // brush is in CSS pixels here. Snap to three sizes so a grid exists.
+  float size = brushSpacing(vUv);
+  float level = floor(clamp((size - brush.x) / max(brush.y - brush.x, 1e-3), 0.0, 0.999) * 3.0);
+  size = 2.0 * mix(brush.x, brush.y, min(level, 2.0) / 2.0);
+  vec2 p = css / size;
+  vec2 cell = floor(p);
+  // 3x3 cells is exact while a dab reaches under 1.2 cells from its centre.
+  float len = min(0.5 * strokeLength, 1.15);
+  float wid = len / strokeLength;
+  float best = -1.0;
+  float cover = 0.0;
+  vec3 colour = texture2D(inputBuffer, (cell + 0.5) * size * pixelRatio / resolution).rgb;
+  for (int j = -1; j <= 1; j++) {
+    for (int i = -1; i <= 1; i++) {
+      vec2 id = cell + vec2(i, j) + level * 37.0;
+      float h = hash(id);
+      vec2 centre = cell + vec2(i, j) + 0.5 + (vec2(h, hash(id + 19.7)) - 0.5) * 0.6;
+      vec2 uv = centre * size * pixelRatio / resolution;
+      vec2 t;
+      float A;
+      strokeFrame(texture2D(tensorBuffer, uv).xyz, t, A);
+      // Where the picture has no direction, each dab takes its own.
+      float angle = h * 6.2832;
+      t = normalize(mix(vec2(cos(angle), sin(angle)), t, smoothstep(0.05, 0.4, A)));
+      vec2 d = p - centre;
+      float inside = 1.0 - length(vec2(dot(d, t) / len, dot(d, vec2(-t.y, t.x)) / wid));
+      float priority = hash(id + 7.3);
+      if (inside > 0.0 && priority > best) {
+        best = priority;
+        cover = smoothstep(0.0, 0.25, inside);
+        // A dab is not one flat colour: a little lighter or darker than its neighbours.
+        colour = mix(colour, texture2D(inputBuffer, uv).rgb * (0.94 + 0.12 * priority), cover);
+      }
+    }
+  }
+  gl_FragColor = vec4(colour, 1.0);
+}
+`;
+
+const KUWAHARA = /* glsl */ `
+uniform sampler2D inputBuffer;
+uniform sampler2D tensorBuffer;
+uniform vec2 halfTexel;
 uniform float radius; // kernel radius in grid steps
 uniform float stretch;
 uniform float hardness;
-uniform float cameraNear;
-uniform float cameraFar;
 varying vec2 vUv;
 ${ORIENTATION}
+${SPACING}
 void main() {
   vec2 t;
   float A;
@@ -133,10 +279,7 @@ void main() {
   int maxY = int(sqrt(a * a * sp * sp + b * b * cp * cp));
 
   // Wider strokes with distance: Hopper leaves the far field nearly blank.
-  float viewZ = perspectiveDepthToViewZ(texture2D(depthBuffer, vUv).r, cameraNear, cameraFar);
-  float spacing = mix(brush.x, brush.y, smoothstep(10.0, farDistance, -viewZ))
-    * mix(1.0, figureBrush, texture2D(figureBuffer, vUv).r * figureAmount);
-  vec2 stepUv = halfTexel * spacing;
+  vec2 stepUv = halfTexel * brushSpacing(vUv);
 
   // Sector weights; 0.58 is the zero crossing from the paper.
   float ZETA = 2.0 / (radius * 0.5);
@@ -222,44 +365,8 @@ uniform vec3 palette[${PALETTE.length}];
 varying vec2 vUv;
 ${ORIENTATION}
 
-// Arithmetic hash (Hoskins, "Hash without Sine"): sin is slow and this runs
-// about thirty times a pixel.
-float hash(vec2 p) {
-  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-  p3 += dot(p3, p3.yzx + 33.33);
-  return fract((p3.x + p3.y) * p3.z);
-}
-float noise(vec2 p) {
-  vec2 i = floor(p);
-  vec2 f = fract(p);
-  vec2 u = f * f * (3.0 - 2.0 * f);
-  return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
-    mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
-}
-
-vec3 toLab(vec3 c) {
-  vec3 lms = vec3(
-    dot(c, vec3(0.4122214708, 0.5363325363, 0.0514459929)),
-    dot(c, vec3(0.2119034982, 0.6806995451, 0.1073969566)),
-    dot(c, vec3(0.0883024619, 0.2817188376, 0.6299787005)));
-  lms = pow(max(lms, 0.0), vec3(1.0 / 3.0));
-  return vec3(
-    dot(lms, vec3(0.2104542553, 0.793617785, -0.0040720468)),
-    dot(lms, vec3(1.9779984951, -2.428592205, 0.4505937099)),
-    dot(lms, vec3(0.0259040371, 0.7827717662, -0.808675766)));
-}
-vec3 fromLab(vec3 lab) {
-  vec3 lms = vec3(
-    lab.x + 0.3963377774 * lab.y + 0.2158037573 * lab.z,
-    lab.x - 0.1055613458 * lab.y - 0.0638541728 * lab.z,
-    lab.x - 0.0894841775 * lab.y - 1.291485548 * lab.z);
-  lms = lms * lms * lms;
-  return vec3(
-    dot(lms, vec3(4.0767416621, -3.3077115913, 0.2309699292)),
-    dot(lms, vec3(-1.2684380046, 2.6097574011, -0.3413193965)),
-    dot(lms, vec3(-0.0041960863, -0.7034186147, 1.707614701)));
-}
-
+${NOISE}
+${LAB}
 void main() {
   // Screen-fixed, in CSS pixels, so it reads as the canvas and not the scene.
   vec2 css = gl_FragCoord.xy / pixelRatio;
@@ -350,7 +457,7 @@ const COMPOSITE_SETTINGS = {
 // Runs straight after the scene render, before bloom: copies the figure mark
 // out of alpha into a half-res mask, then turns the Hopper shading off for
 // the rest of the frame.
-class FigureMaskPass extends Pass {
+export class FigureMaskPass extends Pass {
   constructor(target) {
     super('FigureMaskPass');
     this.needsSwap = false;
@@ -371,13 +478,13 @@ class FigureMaskPass extends Pass {
   }
 }
 
-function material(fragmentShader, uniforms) {
+export function material(fragmentShader, uniforms) {
   return new ShaderMaterial({
     vertexShader: VERTEX, fragmentShader, uniforms, depthTest: false, depthWrite: false, toneMapped: false,
   });
 }
 
-function halfTarget() {
+export function halfTarget() {
   return new WebGLRenderTarget(1, 1, {
     type: HalfFloatType, minFilter: LinearFilter, magFilter: LinearFilter, depthBuffer: false,
   });
@@ -402,7 +509,8 @@ export class HopperPaintPass extends Pass {
     this.blurMaterial = material(BLUR, {
       source: new Uniform(null), direction: new Uniform(new Vector2()),
     });
-    this.kuwaharaMaterial = material(KUWAHARA, {
+    // The three filters share the brush uniforms, so one object serves all.
+    const brush = {
       inputBuffer: new Uniform(null),
       tensorBuffer: new Uniform(null),
       depthBuffer: new Uniform(null),
@@ -413,10 +521,15 @@ export class HopperPaintPass extends Pass {
       brush: new Uniform(new Vector2()),
       farDistance: new Uniform(90),
       radius: new Uniform(4),
-      stretch: new Uniform(0.7),
       hardness: new Uniform(8),
       cameraNear: new Uniform(0.1),
       cameraFar: new Uniform(1000),
+    };
+    this.brush = brush;
+    this.kuwaharaMaterial = material(KUWAHARA, { ...brush, stretch: new Uniform(0.7) });
+    this.planesMaterial = material(PLANES, { ...brush, along: new Uniform(0) });
+    this.strokesMaterial = material(STROKES, {
+      ...brush, resolution: new Uniform(new Vector2()), pixelRatio: new Uniform(1), strokeLength: new Uniform(2),
     });
     this.compositeMaterial = material(COMPOSITE, {
       paintBuffer: new Uniform(this.paint.texture),
@@ -434,7 +547,7 @@ export class HopperPaintPass extends Pass {
   }
 
   setDepthTexture(depthTexture) {
-    this.kuwaharaMaterial.uniforms.depthBuffer.value = depthTexture;
+    this.brush.depthBuffer.value = depthTexture;
   }
 
   setSize(width, height) {
@@ -443,8 +556,9 @@ export class HopperPaintPass extends Pass {
     for (const target of [this.tensorA, this.tensorB, this.paint, this.figures]) target.setSize(w, h);
     this.compositeMaterial.uniforms.figureTexel.value.set(1 / w, 1 / h);
     this.tensorMaterial.uniforms.texel.value.set(1.5 / width, 1.5 / height);
-    this.kuwaharaMaterial.uniforms.halfTexel.value.set(1 / w, 1 / h);
+    this.brush.halfTexel.value.set(1 / w, 1 / h);
     this.compositeMaterial.uniforms.resolution.value.set(width, height);
+    this.strokesMaterial.uniforms.resolution.value.set(width, height);
     this.halfSize = [w, h];
   }
 
@@ -471,19 +585,37 @@ export class HopperPaintPass extends Pass {
     blur.direction.value.set(0, 1 / h);
     this.draw(renderer, this.blurMaterial, this.tensorA);
     // The smoothed tensor ends in A; the brush and the grain both read it.
-    const kuwahara = this.kuwaharaMaterial.uniforms;
-    kuwahara.inputBuffer.value = inputBuffer.texture;
-    kuwahara.tensorBuffer.value = this.tensorA.texture;
-    kuwahara.brush.value.set(values.hopperBrushNear * perStep, values.hopperBrushFar * perStep);
-    kuwahara.farDistance.value = values.hopperFarDistance;
-    kuwahara.radius.value = values.hopperKernel;
-    kuwahara.stretch.value = values.hopperAnisotropy;
-    kuwahara.hardness.value = values.hopperSharpness;
-    kuwahara.figureAmount.value = values.hopperFigureAmount;
-    kuwahara.figureBrush.value = values.hopperFigureBrush;
-    kuwahara.cameraNear.value = this.viewCamera.near;
-    kuwahara.cameraFar.value = this.viewCamera.far;
-    this.draw(renderer, this.kuwaharaMaterial, this.paint);
+    const brush = this.brush;
+    const method = values.paintMethod;
+    brush.inputBuffer.value = inputBuffer.texture;
+    brush.tensorBuffer.value = this.tensorA.texture;
+    brush.farDistance.value = values.hopperFarDistance;
+    brush.radius.value = values.hopperKernel;
+    brush.hardness.value = values.hopperSharpness;
+    brush.figureAmount.value = values.hopperFigureAmount;
+    brush.figureBrush.value = values.hopperFigureBrush;
+    brush.cameraNear.value = this.viewCamera.near;
+    brush.cameraFar.value = this.viewCamera.far;
+    if (method === 'strokes') {
+      // Dab width in CSS pixels; the shader lays its own grid.
+      brush.brush.value.set(values.hopperBrushNear, values.hopperBrushFar);
+      this.strokesMaterial.uniforms.pixelRatio.value = pixelRatio;
+      this.strokesMaterial.uniforms.strokeLength.value = values.hopperStrokeLength;
+      this.draw(renderer, this.strokesMaterial, this.paint);
+    } else {
+      brush.brush.value.set(values.hopperBrushNear * perStep, values.hopperBrushFar * perStep);
+      if (method === 'planes') {
+        // tensorB is free once the tensor blur has finished.
+        this.planesMaterial.uniforms.along.value = 0;
+        this.draw(renderer, this.planesMaterial, this.tensorB);
+        brush.inputBuffer.value = this.tensorB.texture;
+        this.planesMaterial.uniforms.along.value = 1;
+        this.draw(renderer, this.planesMaterial, this.paint);
+      } else {
+        this.kuwaharaMaterial.uniforms.stretch.value = values.hopperAnisotropy;
+        this.draw(renderer, this.kuwaharaMaterial, this.paint);
+      }
+    }
     const composite = this.compositeMaterial.uniforms;
     composite.tensorBuffer.value = this.tensorA.texture;
     composite.inputBuffer.value = inputBuffer.texture;
@@ -496,6 +628,6 @@ export class HopperPaintPass extends Pass {
   dispose() {
     for (const target of [this.tensorA, this.tensorB, this.paint, this.figures]) target.dispose();
     this.maskPass.dispose();
-    for (const m of [this.tensorMaterial, this.blurMaterial, this.kuwaharaMaterial, this.compositeMaterial]) m.dispose();
+    for (const m of [this.tensorMaterial, this.blurMaterial, this.kuwaharaMaterial, this.planesMaterial, this.strokesMaterial, this.compositeMaterial]) m.dispose();
   }
 }

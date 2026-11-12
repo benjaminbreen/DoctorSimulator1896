@@ -22,7 +22,11 @@ const GRAPHICS_QUALITY = [
 
 const PAINT_STYLES = [
   { value: 'off', label: 'Off' },
+  { value: 'hopper-light', label: 'Light' },
   { value: 'hopper', label: 'Hopper' },
+  { value: 'hopper-planes', label: 'Planes' },
+  { value: 'hopper-strokes', label: 'Brush' },
+  { value: 'seurat', label: 'Seurat' },
 ];
 
 const HOURS = [

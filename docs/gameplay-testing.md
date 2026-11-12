@@ -139,7 +139,10 @@ node game/scripts/looks.mjs              # after it
 This captures a fixed list of viewpoints (park, streets, dusk, night, the
 rooms, one consultation) in about two minutes and writes
 `artifacts/looks/index.html`, with the baseline on the left and the current
-picture on the right. `--only=pond,office` captures a few. The list is at the
+picture on the right. `--only=pond,office` captures a few.
+`--set=paintStyle=seurat,treeStyle=detailed` applies settings after each load,
+and `--out=seurat` writes to its own folder under `artifacts/looks/` so several
+styles can be kept side by side. The list is at the
 top of the script; add a viewpoint when a new place is worth watching. The
 pictures are not compared by machine: crowds, clouds and leaves move, so look
 at them.

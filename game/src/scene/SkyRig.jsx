@@ -243,7 +243,7 @@ void main() {`,
       const anchorX = Math.round(player[0] / texel) * texel;
       const anchorZ = Math.round(player[2] / texel) * texel;
       const daylightStrength = config.sun.intensity * values.sunIntensity * daylight
-        * (values.paintStyle === 'hopper' ? values.hopperSunBoost : 1);
+        * (values.paintStyle !== 'off' ? values.hopperSunBoost : 1);
       const moonStrength = config.sun.intensity * 0.14 * moonLight;
       const moonIsKey = moonStrength > daylightStrength;
       const keyDirection = moonIsKey ? moon.direction : direction;
@@ -316,7 +316,7 @@ void main() {`,
     // Ambient stays a small fraction of the slider: just enough to preserve
     // cloth and foliage detail while the hemisphere keeps shade directional.
     // Hopper's light is hard sun against little fill, by day.
-    const hopperFill = values.paintStyle === 'hopper' ? 1 - values.hopperFillCut * daylight : 1;
+    const hopperFill = values.paintStyle !== 'off' ? 1 - values.hopperFillCut * daylight : 1;
     if (ambientRef.current) {
       ambientRef.current.intensity = hopperFill * values.ambientIntensity * 0.17
         * (0.72 + 0.28 * daylight + moonLight * 0.18)

@@ -8,6 +8,7 @@ import {
 import { getInteraction, subscribe } from '../world/interaction.js';
 import { examinationFocus, subscribeExamination } from '../consultation/examPresentation.js';
 import { HopperPaintPass } from './hopperPaint.js';
+import { SeuratPaintPass } from './seuratPaint.js';
 import { hopperFigure, hopperSurface } from './hopperShading.js';
 
 // The authored warm cast: period-photograph warmth without disturbing the HDR
@@ -101,21 +102,27 @@ function useExamineFocus() {
   return focus;
 }
 
-// Paint style is switched from the settings menu, which does not re-render
-// this component, so it listens for the change itself.
-function usePaintStyle(runtime) {
-  const [style, setStyle] = useState(runtime.values.paintStyle);
-  useEffect(() => runtime.onChange((id, value) => { if (id === 'paintStyle') setStyle(value); }), [runtime]);
-  return style;
+// Paint settings are switched from the settings menu, which does not
+// re-render this component, so it listens for the change itself.
+function useTuning(runtime, id) {
+  const [value, setValue] = useState(runtime.values[id]);
+  useEffect(() => runtime.onChange((changed, next) => { if (changed === id) setValue(next); }), [runtime, id]);
+  return value;
 }
 
 export default function Effects({ runtime, indoors }) {
   const composerRef = useRef();
   const examineFocus = useExamineFocus();
-  const hopper = usePaintStyle(runtime) === 'hopper';
+  const painted = useTuning(runtime, 'paintStyle') !== 'off';
+  const dots = useTuning(runtime, 'paintMethod') === 'dots';
   const dpr = useThree((state) => state.viewport.dpr);
   const camera = useThree((state) => state.camera);
-  const hopperPass = useMemo(() => (hopper ? new HopperPaintPass(camera, runtime) : null), [hopper, camera, runtime]);
+  // Named for Hopper, but Seurat's pass stands in here too: both carry a
+  // maskPass and both want the scene-side shading switched on.
+  const hopperPass = useMemo(() => {
+    if (!painted) return null;
+    return dots ? new SeuratPaintPass(runtime) : new HopperPaintPass(camera, runtime);
+  }, [painted, dots, camera, runtime]);
   useEffect(() => () => hopperPass?.dispose(), [hopperPass]);
   // Retina rendering already supersamples the image. Extra MSAA there adds
   // substantial bandwidth and resolve work without a visible edge benefit.
@@ -193,13 +200,16 @@ export default function Effects({ runtime, indoors }) {
     // the composer's internal targets (n8ao's especially) keep their old
     // resolution, and stale half-res AO smears dark ghosts on the walls.
     // Steps are rare by design, so a rebuild per step is cheap.
-    <EffectComposer key={dpr} ref={composerRef} multisampling={multisampling}>
+    // Keyed on the paint pass too: swapping one pass object for another in a
+    // live composer leaves the new one out of the chain.
+    <EffectComposer key={`${dpr}:${painted && dots}`} ref={composerRef} multisampling={multisampling}>
       {/* Each effect is switched in and out of the chain rather than turned
           down to zero: a pass that still runs still costs its full-screen
           work, which is the whole point when measuring where frames go. */}
       {/* First: reads the figure mark from the raw scene's alpha. */}
       {hopperPass ? <primitive object={hopperPass.maskPass} /> : <></>}
-      {(indoors || runtime.values.aoOutdoors) && runtime.values.aoEnabled ? (
+      {/* Not under Seurat: the dabs average away contact shading. */}
+      {(indoors || runtime.values.aoOutdoors) && runtime.values.aoEnabled && !(painted && dots) ? (
         // Half the default sample count and a plain upsample: measured at 3 ms
         // of an 11 ms office frame, with no visible change in the room.
         <N8AO distanceFalloff={1} halfRes aoSamples={8} depthAwareUpsampling={false} color="#120d08" />

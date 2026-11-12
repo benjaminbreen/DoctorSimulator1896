@@ -230,3 +230,23 @@ test('performance and lighting defaults migrate while custom settings survive', 
   assert.equal(migrate({zone:'central-park',outdoorShadowDistance:50}).outdoorShadowDistance,32);
   assert.equal(migrate({zone:'central-park',outdoorShadowDistance:40}).outdoorShadowDistance,40);
 });
+
+test('choosing a paint style resets the paint sliders to that style', () => {
+  const runtime = createTuningRuntime(settingsSchema);
+  runtime.set('paintStyle', 'seurat');
+  assert.equal(runtime.values.paintMethod, 'dots');
+  runtime.set('hopperMix', 0.9);
+  runtime.set('paintStyle', 'hopper-light');
+  assert.equal(runtime.values.paintMethod, 'kuwahara');
+  assert.equal(runtime.values.hopperMix, 0.45);
+  // Off leaves the sliders alone, so the last look is still there to return to.
+  runtime.set('hopperMix', 0.9);
+  runtime.set('paintStyle', 'off');
+  assert.equal(runtime.values.hopperMix, 0.9);
+});
+
+test('a stored profile with paint off moves to the light Hopper default', () => {
+  const migrate = values => migrateStoredTuning({ schemaVersion: 11, values }, settingsSchema).values;
+  assert.deepEqual(migrate({ paintStyle: 'off', hopperMix: 0.7, walkSpeed: 3 }), { paintStyle: 'hopper-light', walkSpeed: 3 });
+  assert.equal(migrate({ paintStyle: 'hopper', hopperMix: 0.3 }).hopperMix, 0.3);
+});

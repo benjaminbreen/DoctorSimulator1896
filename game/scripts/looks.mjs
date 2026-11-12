@@ -5,6 +5,8 @@
 //   node game/scripts/looks.mjs --baseline     save the "before" set
 //   node game/scripts/looks.mjs                capture "after", write the page
 //   node game/scripts/looks.mjs --only=pond,office-desk
+//   node game/scripts/looks.mjs --set=paintStyle=seurat,treeStyle=detailed
+//   node game/scripts/looks.mjs --out=seurat    write to artifacts/looks/seurat
 //
 // Output is artifacts/looks/index.html. See docs/gameplay-testing.md.
 import { mkdir, readdir, writeFile } from 'node:fs/promises';
@@ -38,7 +40,10 @@ const VIEWPOINTS = [
 
 const arg = (name, fallback) => process.argv.find((value) => value.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const only = arg('only', null)?.split(',');
-const set = process.argv.includes('--baseline') ? 'baseline' : 'current';
+const set = process.argv.includes('--baseline') ? 'baseline' : arg('out', 'current');
+// Tuning values applied after each load. Through __game.set, so choosing a
+// paint style also applies its preset.
+const tuning = (arg('set', '') || '').split(',').filter(Boolean).map((pair) => pair.split('='));
 const root = resolve(fileURLToPath(new URL('../..', import.meta.url)), 'artifacts/looks');
 const wanted = VIEWPOINTS.filter((view) => !only || only.includes(view.id));
 if (!wanted.length) throw new Error(`No such viewpoint. Choose from: ${VIEWPOINTS.map((view) => view.id).join(', ')}`);
@@ -70,6 +75,14 @@ async function open(zone) {
   for (const [key, value] of Object.entries({ playtest: 1, seed: 4, zone, parkNear: 1 })) url.searchParams.set(key, value);
   await page.goto(url.href, { waitUntil: 'domcontentloaded' });
   await ready();
+  if (tuning.length) {
+    await page.evaluate((pairs) => {
+      for (const [id, value] of pairs) __game.set(id, Number.isNaN(Number(value)) ? value : Number(value));
+    }, tuning);
+    // A rebuild setting remounts the canvas.
+    await page.waitForTimeout(800);
+    await ready();
+  }
   loaded = zone;
 }
 

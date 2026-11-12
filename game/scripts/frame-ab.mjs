@@ -5,7 +5,7 @@
 //
 //   node game/scripts/frame-ab.mjs consulting-office 1.2,1.2,0 set:aoEnabled:false
 //   node game/scripts/frame-ab.mjs central-park 38,62,1.2 hide:instanced set:shadowsEnabled:false
-//   PRE='set:paintStyle:"hopper"' node game/scripts/frame-ab.mjs ... (applied to both sides)
+//   PRE='set:paintStyle:"off"' node game/scripts/frame-ab.mjs ... (applied to both sides)
 //
 // Needs the dev server on 5175 and the display awake: with the display
 // asleep, headless Chrome stalls and the numbers mean nothing.
@@ -31,6 +31,6 @@ if (process.env.PRE) { for (const spec of process.env.PRE.split(' ')) await appl
 const med = (a) => [...a].sort((x, y) => x - y)[Math.floor(a.length / 2)];
 console.log(zone, at, await p.evaluate(() => JSON.stringify({ dpr: __game.stats.pixelRatio, draws: __game.stats.draws, tris: __game.stats.triangles, reflMs: +(__game.stats.reflectionMs || 0).toFixed(1) })));
 for (const spec of conds) { const A = [], B = [];
-  for (let i = 0; i < 4; i += 1) { A.push(await sample()); await apply(spec, true); await p.waitForTimeout(1200); B.push(await sample()); await apply(spec, false); await p.waitForTimeout(1200); }
+  for (let i = 0; i < 4; i += 1) { A.push(await sample()); await apply(spec, true); await p.waitForTimeout(1200); await ready(); B.push(await sample()); await apply(spec, false); await p.waitForTimeout(1200); await ready(); }
   console.log(`  ${spec.padEnd(34)} base ${med(A).toFixed(2)}ms  with ${med(B).toFixed(2)}ms  saves ${(med(A) - med(B)).toFixed(2)}ms (${Math.round((1 - med(B) / med(A)) * 100)}%)`); }
 await b.close();

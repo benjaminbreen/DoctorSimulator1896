@@ -279,8 +279,12 @@ function FrameSettings({ runtime, look, exposureBase, exterior, graphicsQuality,
     wasMeasuring.current = measuring;
     // Hopper flattens fine detail anyway, so it renders at reduced
     // resolution and costs about what the plain picture does.
-    const painted = values.paintStyle === 'hopper';
-    const maxDpr = Math.min(globalThis.devicePixelRatio ?? 1, pixelRatioCap) * (painted ? values.hopperRenderScale : 1);
+    const painted = values.paintStyle !== 'off';
+    const fullDpr = Math.min(globalThis.devicePixelRatio ?? 1, pixelRatioCap);
+    // Seurat's dots are drawn in the final pass and go soft below one device
+    // pixel per CSS pixel, so that style is not scaled under it.
+    const floor = painted && values.paintMethod === 'dots' ? Math.min(1, fullDpr) : 0;
+    const maxDpr = Math.max(floor, fullDpr * (painted ? values.hopperRenderScale : 1));
     if (graphicsQuality === 'auto') {
       adaptiveDpr.current.sample(
         gameDebug.stats.fps,
@@ -506,7 +510,10 @@ function SceneContents({
             { sites, after: id + ':' + part });
         }
       }
-      if (id === 'plaza') {
+      // Rounded trees are drawn by ParkShell and never swapped for leaf models.
+      if (runtime.values.treeStyle === 'rounded') {
+        // Nothing to load.
+      } else if (id === 'plaza') {
         add('trees', <TreeField items={trees} />, 8, 12, { stationary: true });
       } else {
         for (const [species, grove] of Object.entries(treeGroups)) {
@@ -605,8 +612,8 @@ function SceneContents({
     if (!room.exterior) return;
     preloadTerrain(fullPark);
     preloadOpeningPeople();
-    preloadOpeningTrees(gl);
-  }, [fullPark, gl, room.exterior]);
+    if (runtime.values.treeStyle !== 'rounded') preloadOpeningTrees(gl);
+  }, [fullPark, gl, room.exterior, runtime]);
 
   useLayoutEffect(() => {
     bootStartedAt.current = globalThis.performance?.now?.() ?? Date.now();
