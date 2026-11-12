@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 // The park's simple trees: a trunk and a few rounded lobes, one outline per
-// species. ParkShell draws them. With the 'rounded' tree style they are the
-// only trees; with 'detailed' they stand in until the leaf models load.
+// species. ParkShell draws them. With the 'rounded' and 'clustered' tree
+// styles they are the only trees; with 'detailed' they stand in until the
+// leaf models load.
 //
 // spread: crown radius as a fraction of height. trunk: bare trunk, same unit.
 // lobes: [x, height, z, width, depth]; x, z and width in crown radii, height
@@ -58,8 +59,63 @@ function hash01(seed) {
 
 const paint = new THREE.Color();
 
+// The 'clustered' style: a shorter tree whose crown is a bunch of round
+// balls starting low on the trunk, instead of a few flat lobes held high.
+// Conifers and poplars keep their stacked outline and only lose height.
+const STACKED = new Set(['pine', 'cypress', 'poplar']);
+const FLAT_TOPPED = new Set(['elm', 'old-elm', 'compound', 'ailanthus']);
+
+function clusteredTree(item, shape) {
+  const [x, y, z] = item.position;
+  const base = y - item.size[1] / 2;
+  // Tall trees are brought down toward the rest; the tallest stay tallest.
+  const height = item.tree.height > 10 ? 10 + (item.tree.height - 10) * .4 : item.tree.height;
+  // The trunk thins with the lost height. Its collider keeps the old width.
+  const girth = item.size[0] * Math.max(.6, height / item.tree.height);
+  const seed = x * 3.7 + z * 1.3;
+  const turn = hash01(seed) * Math.PI * 2;
+  paint.set(LEAF_BY_NAME[item.tree.name] ?? shape.leaf).offsetHSL((hash01(seed + 2) - .5) * .03, 0, (hash01(seed + 1) - .5) * .06);
+  const leaf = paint.clone();
+  const shade = (lift) => { paint.copy(leaf).offsetHSL(0, 0, lift); return [paint.r, paint.g, paint.b]; };
+  paint.set(shape.bark);
+  const bark = [paint.r, paint.g, paint.b];
+  const species = item.tree.species;
+  if (STACKED.has(species)) {
+    const radius = Math.min(height * shape.spread, 6);
+    return {
+      trunk: { p: [x, base + height * shape.trunk / 2, z], s: [girth, height * shape.trunk, girth], color: bark },
+      crowns: shape.lobes.map(([, oy, , width, depth], index) => ({
+        p: [x, base + oy * height, z], s: [radius * width, height * depth * 1.25, radius * width],
+        color: shade(index * .012), r: [0, turn + index, 0],
+      })),
+    };
+  }
+  const trunkTop = height * Math.min(shape.trunk * .62, .36);
+  const radius = Math.min(height * shape.spread * 1.08, 5.5);
+  const flat = FLAT_TOPPED.has(species) ? .8 : 1;
+  const tall = (height - trunkTop) * .5 * flat;
+  const centre = base + trunkTop + tall * .92;
+  const ball = (angle, out, up, size, squash, lift) => ({
+    p: [x + Math.cos(angle) * out * radius, centre + up * tall, z + Math.sin(angle) * out * radius],
+    s: [radius * size, Math.min(radius * size * squash, tall * 1.05), radius * size],
+    color: shade(lift), r: [0, angle * 2.3, 0],
+  });
+  const crowns = [ball(0, 0, 0, .78, .95, 0), ball(turn, .12, .52, .56, .9, .02)];
+  const count = species === 'willow' ? 6 : 5;
+  for (let index = 0; index < count; index += 1) {
+    const angle = turn + index / count * Math.PI * 2 + (hash01(seed + index * 3.3) - .5) * .5;
+    const up = species === 'willow' ? -.35 : (hash01(seed + index * 7.1) - .55) * .7;
+    crowns.push(ball(angle, .52 + hash01(seed + index * 1.9) * .1, up, .46 + hash01(seed + index * 5.1) * .14,
+      species === 'willow' ? 1.5 : .9, up * .03));
+  }
+  // The trunk runs up into the crown, so no gap shows from below.
+  const trunkHeight = trunkTop + tall * .5;
+  return { trunk: { p: [x, base + trunkHeight / 2, z], s: [girth, trunkHeight, girth], color: bark }, crowns };
+}
+
 // Instance entries (see lib/instances.js) for one tree item.
-export function roundedTree(item) {
+export function roundedTree(item, clustered = false) {
+  if (clustered) return clusteredTree(item, SHAPES[item.tree.species] ?? SHAPES.broadleaf);
   const shape = SHAPES[item.tree.species] ?? SHAPES.broadleaf;
   const [x, y, z] = item.position;
   const height = item.tree.height;
@@ -88,28 +144,30 @@ export function roundedTree(item) {
 // Crowns are lit from above and dark underneath, which gives each lobe its
 // volume without a texture. Lobes only turn about the vertical, so the
 // geometry's own normal says which way is up.
-export function crownMaterial() {
+// soft: a paler underside, for the 'clustered' style.
+export function crownMaterial(soft = false) {
   const material = new THREE.MeshStandardMaterial({ roughness: 1 });
   material.onBeforeCompile = (shader) => {
     shader.vertexShader = 'varying float vCrownUp;\n' + shader.vertexShader.replace(
       '#include <begin_vertex>', '#include <begin_vertex>\n  vCrownUp = normal.y;');
     shader.fragmentShader = 'varying float vCrownUp;\n' + shader.fragmentShader.replace(
-      '#include <color_fragment>', '#include <color_fragment>\n  diffuseColor.rgb *= mix(0.55, 1.12, smoothstep(-0.7, 0.6, vCrownUp));');
+      '#include <color_fragment>', '#include <color_fragment>\n  diffuseColor.rgb *= mix(' + (soft ? '0.7, 1.1' : '0.55, 1.12') + ', smoothstep(-0.7, 0.6, vCrownUp));');
   };
-  material.customProgramCacheKey = () => 'rounded-crown-v1';
+  material.customProgramCacheKey = () => 'rounded-crown-v1-' + soft;
   return material;
 }
 
 // A ball with a few broad swellings, so a crown is not a perfect sphere and
 // each lobe looks different once it is turned.
-export function crownGeometry() {
-  const geometry = new THREE.IcosahedronGeometry(1, 2);
+// detail 3 and a smaller swell give the smoother ball of the 'clustered' style.
+export function crownGeometry(detail = 2, amount = .22) {
+  const geometry = new THREE.IcosahedronGeometry(1, detail);
   const position = geometry.attributes.position;
   const point = new THREE.Vector3();
   for (let i = 0; i < position.count; i += 1) {
     point.fromBufferAttribute(position, i).normalize();
     const swell = Math.sin(point.x * 3.1 + 1.3) * Math.sin(point.y * 2.7 + .4) * Math.sin(point.z * 3.4 + 2.1);
-    point.multiplyScalar(1 + swell * .22);
+    point.multiplyScalar(1 + swell * amount);
     position.setXYZ(i, point.x, point.y, point.z);
   }
   // Icosahedron triangles do not share vertices, so join them first or each

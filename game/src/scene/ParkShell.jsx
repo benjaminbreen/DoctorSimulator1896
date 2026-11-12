@@ -12,12 +12,14 @@ import { gameDebug } from '../debug.js';
 const box = new THREE.BoxGeometry();
 const trunk = new THREE.CylinderGeometry(.34, .55, 1, 7);
 const crown = crownGeometry();
+const smoothCrown = crownGeometry(3, .14);
 const surface = new THREE.MeshStandardMaterial({ roughness: .95 });
 // A little sheen at a glancing angle; a full sky reflection reads as paper.
 const windows = new THREE.MeshStandardMaterial({ color: '#23252a', roughness: .3, envMapIntensity: .18 });
 // A few rooms have the gas on after dark; ParkShell sets the intensity each frame.
 const litWindows = new THREE.MeshStandardMaterial({ color: '#23252a', roughness: .3, envMapIntensity: .18, emissive: '#c8873e', emissiveIntensity: 0 });
 const leaves = crownMaterial();
+const softLeaves = crownMaterial(true);
 const bark = new THREE.MeshStandardMaterial({ roughness: 1 });
 const paint = new THREE.Color();
 
@@ -41,13 +43,15 @@ function idHash(id) {
 }
 
 // Changing the tree style remounts the canvas, so reading it once is enough.
-const roundedTrees = () => gameDebug.tuning?.treeStyle === 'rounded';
+const roundedTrees = () => gameDebug.tuning?.treeStyle !== 'detailed';
+const clusteredTrees = () => gameDebug.tuning?.treeStyle === 'clustered';
 
 // items: park structures, and any landmark still waiting for its model.
 // Ordinary street buildings are not here; StreetBuildings.jsx draws them.
 function buildShell(items, treeGroups, propGroups) {
   const walls = [], openings = [], litOpenings = [], targets = [];
   const batches = [];
+  const clustered = clusteredTrees();
   const batch = (geometry, material, entries, cast = true) => entries.length
     ? instanced(geometry, material, entries, { cast })
     : null;
@@ -91,11 +95,11 @@ function buildShell(items, treeGroups, propGroups) {
   for (const [species, trees] of Object.entries(treeGroups)) {
     const trunks = [], crowns = [];
     for (const item of trees) {
-      const tree = roundedTree(item);
+      const tree = roundedTree(item, clustered);
       trunks.push(tree.trunk);
       crowns.push(...tree.crowns);
     }
-    add('trees:' + species, [batch(trunk, bark, trunks), batch(crown, leaves, crowns)]);
+    add('trees:' + species, [batch(trunk, bark, trunks), batch(clustered ? smoothCrown : crown, clustered ? softLeaves : leaves, crowns)]);
   }
   for (const [model, placements] of Object.entries(propGroups)) {
     const props = [];

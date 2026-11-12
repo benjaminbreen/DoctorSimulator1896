@@ -514,7 +514,7 @@ function SceneContents({
         });
       }
       // Rounded trees are drawn by ParkShell and never swapped for leaf models.
-      if (runtime.values.treeStyle === 'rounded') {
+      if (runtime.values.treeStyle !== 'detailed') {
         // Nothing to load.
       } else if (id === 'plaza') {
         add('trees', <TreeField items={trees} />, 8, 12, { stationary: true });
@@ -612,7 +612,7 @@ function SceneContents({
     if (!room.exterior) return;
     preloadTerrain(fullPark);
     preloadOpeningPeople();
-    if (runtime.values.treeStyle !== 'rounded') preloadOpeningTrees(gl);
+    if (runtime.values.treeStyle === 'detailed') preloadOpeningTrees(gl);
   }, [fullPark, gl, room.exterior, runtime]);
 
   useLayoutEffect(() => {

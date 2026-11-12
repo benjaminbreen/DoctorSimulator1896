@@ -290,8 +290,9 @@ export const settingsSchema = {
         // Choosing a style writes its preset over the paint sliders below
         // (tuning/paintStyles.js). 'hopper-light' is the schema defaults.
         { id: 'paintStyle', label: 'Paint style', type: 'select', options: ['off', 'hopper-light', 'hopper', 'hopper-planes', 'hopper-strokes', 'seurat'], default: 'hopper-light' },
-        // Rounded: every tree keeps its simple far shape at any distance.
-        { id: 'treeStyle', label: 'Trees', type: 'select', options: ['rounded', 'detailed'], default: 'rounded', mode: 'rebuild' },
+        // Rounded and clustered: simple trees that never swap for leaf models.
+        // Clustered is shorter, with a crown of round balls set low on the trunk.
+        { id: 'treeStyle', label: 'Trees', type: 'select', options: ['rounded', 'clustered', 'detailed'], default: 'rounded', mode: 'rebuild' },
         { id: 'buildingDetail', label: 'Street building detail', type: 'select', options: ['simple', 'full'], default: 'simple', mode: 'rebuild' },
       ],
     },
