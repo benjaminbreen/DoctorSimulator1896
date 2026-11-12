@@ -12,10 +12,11 @@ function distanceToJob(position, job) {
 
 // One mounted job at a time keeps file decoding and GPU preparation from
 // competing with each other. Completed districts stay mounted to keep state.
-export default function ParkStream({ jobs, full, enabled, Stage, onReady, onComplete }) {
+// Eager (playtests) runs several at once: frame pacing does not matter there.
+export default function ParkStream({ jobs, full, eager, enabled, Stage, onReady, onComplete }) {
   const [started, setStarted] = useState([]);
   const finished = useRef(new Set());
-  const active = useRef(null);
+  const active = useRef(new Set());
   const nextAt = useRef(0);
   const nextWarmAt = useRef(0);
   const warmed = useRef(new Set());
@@ -42,22 +43,25 @@ export default function ParkStream({ jobs, full, enabled, Stage, onReady, onComp
         target.preload().catch(() => {});
       }
     }
-    if (active.current || clock.elapsedTime < nextAt.current) return;
+    if (active.current.size >= (eager ? 6 : 1) || (!eager && clock.elapsedTime < nextAt.current)) return;
     let next;
     let best = Infinity;
     for (const job of schedule) {
-      if (finished.current.has(job.id) || (job.after && !finished.current.has(job.after))) continue;
+      if (finished.current.has(job.id) || active.current.has(job.id) || (job.after && !finished.current.has(job.after))) continue;
       const distance = distanceToJob(position, job);
-      if (!full && (distance > job.range || (job.stationary && !settled)
-        || (movement < job.movement && !idleDetail))) continue;
+      // Eager keeps the range rule and drops the movement rules, so a playtest
+      // capture shows the settled view without walking about first.
+      if (!full && (distance > job.range || (!eager && ((job.stationary && !settled)
+        || (movement < job.movement && !idleDetail))))) continue;
       const forecastDistance = distanceToJob(ahead, job);
       const rank = Math.min(distance, forecastDistance) + forecastDistance * .3 + (job.priority ?? 0);
       if (rank >= best) continue;
       best = rank;
       next = job;
     }
+    gameDebug.stats.parkStream.idle = !next && active.current.size === 0;
     if (!next) return;
-    active.current = next.id;
+    active.current.add(next.id);
     gameDebug.stats.parkStream.active = next.id;
     setStarted(current => [...current, next.index]);
   });
@@ -68,8 +72,8 @@ export default function ParkStream({ jobs, full, enabled, Stage, onReady, onComp
     finished.current.add(job.id);
     gameDebug.stats.parkStream.ready = [...finished.current];
     performance.mark('park:stream:' + job.id);
-    gameDebug.stats.parkStream.active = null;
-    active.current = null;
+    active.current.delete(job.id);
+    gameDebug.stats.parkStream.active = [...active.current].at(-1) ?? null;
     nextAt.current = time.current + .12;
     onReady(job.id);
     if (finished.current.size === schedule.length) onComplete();

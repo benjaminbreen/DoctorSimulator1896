@@ -4,4 +4,4 @@
 {"type":"click","name":"Return to the office"}
 {"type":"wait","ms":3000}
 {"type":"assert","selector":".ghud-travel-menu","visible":false}
-{"type":"assert","selector":".gcon-continue"}
+{"type":"assert","text":"Ask about her symptoms","exact":false}

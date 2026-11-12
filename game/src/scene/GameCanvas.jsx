@@ -453,6 +453,7 @@ function SceneContents({
   const spawnYaw = arrival?.yaw ?? Math.atan2(-facing[0], -(facing.length === 2 ? facing[1] : facing[2]));
 
   const fullPark = shotMode || new URLSearchParams(location.search).has('fullPark');
+  const eagerPark = new URLSearchParams(location.search).has('parkNear');
   const parkDistricts = useMemo(() => {
     if (!room.exterior) return [];
     const groups = new Map(PARK_DISTRICTS.map(district => [district.id, []]));
@@ -616,7 +617,7 @@ function SceneContents({
       playable: false,
       complete: false,
     };
-    if (room.exterior) gameDebug.stats.parkStream = { active: null, ready: [] };
+    gameDebug.stats.parkStream = room.exterior ? { active: null, ready: [], idle: false } : null;
     globalThis.performance?.mark?.(`${bootTag}:boot:start`);
     console.info(`[${bootTag}-boot] loading 0ms`);
     return () => {
@@ -758,7 +759,7 @@ function SceneContents({
               />
               </Stage>
 
-              <ParkStream jobs={parkJobs} full={fullPark} enabled={coreReady && avatarReady}
+              <ParkStream jobs={parkJobs} full={fullPark} eager={eagerPark} enabled={coreReady && avatarReady}
                 Stage={Stage} onReady={onParkJobReady} onComplete={onParkStreamComplete} />
               <Suspense fallback={null}><ColliderDebug room={room} runtime={runtime} /></Suspense>
             </Physics>

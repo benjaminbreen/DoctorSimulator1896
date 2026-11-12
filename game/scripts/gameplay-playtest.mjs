@@ -22,7 +22,7 @@ const scenarios = {
 if (process.argv.includes('--help')) {
   console.log(`Usage: node game/scripts/gameplay-playtest.mjs [--scenario=park] [--seed=4]
   [--output=DIR] [--url=URL] [--headed] [--continuous] [--video] [--trace] [--offline]
-  [--quality=auto|quality|performance] [--streaming] [--text] [--lowgfx]
+  [--quality=auto|quality|performance] [--full-park] [--streaming] [--text] [--lowgfx]
   [--replay=actions.jsonl]
 
 Scenarios: ${Object.keys(scenarios).join(', ')}
@@ -62,12 +62,13 @@ const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 const output = resolve(arg('output', resolve(repoRoot, `artifacts/gameplay/${new Date().toISOString().replaceAll(':', '-')}`)));
 const continuous = process.argv.includes('--continuous');
 const offline = process.argv.includes('--offline');
+const fullPark = process.argv.includes('--full-park');
 const streaming = process.argv.includes('--streaming');
 const quality = arg('quality', continuous ? 'auto' : 'quality');
 if (!['auto', 'quality', 'performance'].includes(quality)) throw new Error('Unknown graphics quality.');
 const textOnly = process.argv.includes('--text');
 const lowgfx = process.argv.includes('--lowgfx');
-const config = { scenario: scenarioName, seed, continuous, offline, streaming, quality, textOnly, lowgfx, output };
+const config = { scenario: scenarioName, seed, continuous, offline, fullPark, streaming, quality, textOnly, lowgfx, output };
 await mkdir(output, { recursive: true });
 // Do not overwrite a previous run: its actions must remain a usable replay.
 await writeFile(resolve(output, 'actions.jsonl'), '', { flag: 'wx' });
@@ -120,6 +121,7 @@ async function pauseBrowser() {
 async function waitForScene() {
   await page.waitForFunction(() => window.__game?.stats.boot.complete
     && __game.loadedZone === __game.tuning.zone
+    && (__game.stats.parkStream?.idle ?? true)
     && __game.actors.requested.every((id) => __game.actors.loaded.includes(id)), null, { timeout: 180000 });
   await page.locator('.park-intro').waitFor({ state: 'detached', timeout: 60000 });
   await page.locator('textarea[aria-label="Ask in your own words"]:disabled')
@@ -464,7 +466,11 @@ try {
   if (!continuous) await page.clock.install();
   const url = new URL(server.url);
   url.searchParams.set('playtest', '1');
-  if (!streaming) url.searchParams.set('fullPark', '1');
+  // The park loads what is in range of the player, as in the game. Loading
+  // every district takes about 90 seconds; --full-park asks for that.
+  // --streaming keeps the game's own pacing, which waits for the player to move.
+  if (fullPark) url.searchParams.set('fullPark', '1');
+  else if (!streaming) url.searchParams.set('parkNear', '1');
   url.searchParams.set('seed', String(seed));
   url.searchParams.set('zone', scenario.zone);
   await page.goto(url.href, { waitUntil: 'domcontentloaded' });

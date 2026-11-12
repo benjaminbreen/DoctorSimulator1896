@@ -70,7 +70,7 @@ export default function RendererCActor({ recipe, manifest, onReady, onSettled, p
     // R3F may reuse one loader per type, so register the plugin only once.
     if (!loader.userData?.atlasPrefetch) {
       loader.userData = { ...loader.userData, atlasPrefetch: true };
-      loader.register((parser) => ({ beforeRoot() {
+      loader.register((parser) => ({ name: 'atlasPrefetch', beforeRoot() {
         for (const image of parser.json.images ?? []) prefetchClothingAtlas(image.name);
         return null;
       } }));
