@@ -67,6 +67,13 @@ const MIGRATIONS = {
     if (values.contrast === 1) values.contrast = 1.06;
     if (values.saturation === 1.08) values.saturation = 1.14;
   },
+  // Neutral grade outdoors, and more warm bounce into shade.
+  11: (values) => {
+    if (!isOutdoorZone(values.zone)) return;
+    if (values.contrast === 1.06) values.contrast = 1;
+    if (values.saturation === 1.14) values.saturation = 1;
+    if (values.groundBounce === 0.4) values.groundBounce = 0.8;
+  },
 };
 
 export function migrateStoredTuning(stored, schema) {

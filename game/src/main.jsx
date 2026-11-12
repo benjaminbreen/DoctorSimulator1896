@@ -1,3 +1,5 @@
+// Must run before any material or shader exists.
+import './scene/hopperShading.js';
 import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
 import './styles.css';

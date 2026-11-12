@@ -15,7 +15,9 @@ const SUN_NIGHT = new THREE.Color('#41618f');
 const MOON_LIGHT = new THREE.Color('#9cbce8');
 const SUN_DAY = new THREE.Color('#ffe6b8');
 const SUN_GOLDEN = new THREE.Color('#ff9b4d');
-const HEMI_SKY = { night: new THREE.Color('#3b5274'), day: new THREE.Color('#b9dfef'), golden: new THREE.Color('#9cc4ea') };
+// Day sky fill is a smoky grey-blue, not clear cyan. The sky probe already adds
+// the blue, and the fill ignores street canyons, so a cyan fill made shade navy.
+const HEMI_SKY = { night: new THREE.Color('#3b5274'), day: new THREE.Color('#c8d0d6'), golden: new THREE.Color('#9cc4ea') };
 // Day ground is sunlit grass and gravel, the main source of bounce light into
 // shade. Kept earth-warm: an olive bounce tints every shadow green-grey.
 const HEMI_GROUND = { night: new THREE.Color('#1b2533'), day: new THREE.Color('#968a6a'), golden: new THREE.Color('#c2915d') };
@@ -34,10 +36,9 @@ const HAZE_LINEAR = 0.2;
 const HAZE_SUN_EXPONENT = 6;
 const HAZE_SUN_GLOW = 0.35;
 const HAZE_FLOOR = 0.05;
-// Cloud shadows: blobs about 70 m across, darkening sunlit ground by up to
-// 0.38 in linear light. Drift follows the cloud dome's own direction.
+// Ground cloud shadows are off by default. The sky dome uses its own settings.
 const CLOUD_SHADE_METRES = 70;
-const CLOUD_SHADE_STRENGTH = 0.38;
+const CLOUD_SHADE_STRENGTH = 0;
 const CLOUD_DRIFT = [0.96, 0.27];
 const cloudDrift = [0, 0];
 // One coarse shadow map over the whole world (330 x 271 m) for everything
@@ -58,12 +59,13 @@ export default function SkyRig({
   const farSunRef = useRef();
   // Redrawn only when the sun has moved, with a slow fallback for scenery
   // that loads late. Takes three frames: let distant trees cast, draw, stop.
-  const farUpdate = useRef({ direction: [0, 0, 0], elapsed: 0, stage: 0, drawn: false });
+  const farUpdate = useRef({ direction: [0, 0, 0], elapsed: 0, stage: 0 });
   const ambientRef = useRef();
   const hemisphereRef = useRef();
   const shadowExtentRef = useRef(0);
   const shadowFrameRef = useRef(0);
-  const shadowElapsed=useRef(1),shadowPlayer=useRef(new THREE.Vector3(Infinity,0,0));
+  const shadowElapsed = useRef(Infinity);
+  const shadowAnchor = useRef(new THREE.Vector3(Infinity, 0, 0));
   const shadowCullKey = useRef(null);
   // The sun's map covers 50m against an interior light's few metres, so it
   // needs the extra rank to resolve thin casters. A bench is slats and iron
@@ -179,16 +181,8 @@ void main() {`,
 
   useFrame((state, delta) => {
     shadowFrameRef.current += 1;
-    shadowElapsed.current+=delta;
-    const player=gameDebug.player.position;
-    const moved=Math.hypot(player[0]-shadowPlayer.current.x,player[2]-shadowPlayer.current.z)>.035;
-    // Keep moving shadows responsive; a stationary view only needs a 30 Hz
-    // refresh for foliage wind and the slowly changing sun.
-    if (shadowFrameRef.current % shadowUpdateInterval === 0
-      && (moved||!gameDebug.stats.boot.complete||shadowElapsed.current>=1/30-.0001)) {
-      gl.shadowMap.needsUpdate = true;
-      shadowElapsed.current%=1/30;shadowPlayer.current.set(...player);
-    }
+    shadowElapsed.current += delta;
+    const player = gameDebug.player.position;
     const values = runtime.values;
     const ramps = solarRamps(
       values.timeOfDay,
@@ -241,13 +235,15 @@ void main() {`,
       }
       const texel = (shadowExtent * 2) / shadowMapSize;
       const cullKey = `${gameDebug.stats.boot.stage}:${texel}`;
-      if (shadowCullKey.current !== cullKey) {
+      const sceneryChanged = shadowCullKey.current !== cullKey;
+      if (sceneryChanged) {
         shadowCullKey.current = cullKey;
         gameDebug.stats.shadowCulled = cullSubTexelShadowCasters(state.scene, texel);
       }
       const anchorX = Math.round(player[0] / texel) * texel;
       const anchorZ = Math.round(player[2] / texel) * texel;
-      const daylightStrength = config.sun.intensity * values.sunIntensity * daylight;
+      const daylightStrength = config.sun.intensity * values.sunIntensity * daylight
+        * (values.paintStyle === 'hopper' ? values.hopperSunBoost : 1);
       const moonStrength = config.sun.intensity * 0.14 * moonLight;
       const moonIsKey = moonStrength > daylightStrength;
       const keyDirection = moonIsKey ? moon.direction : direction;
@@ -259,8 +255,20 @@ void main() {`,
       );
       sunTarget.position.set(anchorX, 0, anchorZ);
       sun.intensity = keyStrength;
+      const wasCasting = sun.castShadow;
       sun.castShadow = values.shadowsEnabled && keyStrength > 0.02;
       sun.shadow.radius = values.sunShadowRadius;
+      const anchor = shadowAnchor.current;
+      const movedFar = Math.abs(anchorX - anchor.x) > 2 || Math.abs(anchorZ - anchor.z) > 2;
+      // Render the scene at full speed while reusing the near map between
+      // updates. Teleports and new scenery need fresh shadows immediately.
+      if (sun.castShadow && (!wasCasting || sceneryChanged || movedFar
+        || (shadowElapsed.current >= 1 / 30 - 0.001 && shadowFrameRef.current % shadowUpdateInterval === 0))) {
+        anchor.set(anchorX, 0, anchorZ);
+        shadowElapsed.current = 0;
+        sun.shadow.needsUpdate = true;
+        gl.shadowMap.needsUpdate = true;
+      }
       if (moonIsKey) scratch.copy(MOON_LIGHT);
       else scratch.copy(SUN_NIGHT).lerp(SUN_DAY, daylight).lerp(SUN_GOLDEN, golden * 0.95);
       sun.color.copy(scratch);
@@ -271,6 +279,7 @@ void main() {`,
         update.elapsed += delta;
         if (!far.castShadow) {
           update.stage = 0;
+          far.shadow.needsUpdate = false;
           farShadowState.casting = false;
         } else if (update.stage === 0) {
           const last = update.direction;
@@ -287,24 +296,29 @@ void main() {`,
           );
           far.updateMatrixWorld();
           far.shadow.needsUpdate = true;
+          gl.shadowMap.needsUpdate = true;
           update.direction = [...keyDirection];
           update.elapsed = 0;
           update.stage = 2;
-          update.drawn = true;
+        } else if (far.shadow.needsUpdate) {
+          // During startup the light can still be hidden for preparation.
+          gl.shadowMap.needsUpdate = true;
         } else {
           farShadowState.casting = false;
           update.stage = 0;
         }
         // Off until the first draw: an empty map would read as all shade or none.
-        hazeUniforms.farShadow.value.set([far.castShadow && update.drawn ? 1 : 0, anchorX, anchorZ, shadowExtent]);
+        hazeUniforms.farShadow.value.set([far.castShadow && far.shadow.map ? 1 : 0, anchor.x, anchor.z, shadowExtent]);
       }
     }
     // Golden hour trades fill for key: ambient and hemisphere drop as the
     // sun warms, which is what makes a low sun read as contrast. The flat
     // Ambient stays a small fraction of the slider: just enough to preserve
     // cloth and foliage detail while the hemisphere keeps shade directional.
+    // Hopper's light is hard sun against little fill, by day.
+    const hopperFill = values.paintStyle === 'hopper' ? 1 - values.hopperFillCut * daylight : 1;
     if (ambientRef.current) {
-      ambientRef.current.intensity = values.ambientIntensity * 0.17
+      ambientRef.current.intensity = hopperFill * values.ambientIntensity * 0.17
         * (0.72 + 0.28 * daylight + moonLight * 0.18)
         * (daylight + (1 - daylight) * values.nightSkyBrightness)
         * (1 - golden * 0.35)
@@ -313,8 +327,8 @@ void main() {`,
     }
     if (hemisphereRef.current) {
       const hemisphere = hemisphereRef.current;
-      hemisphere.intensity =
-        config.hemisphere.intensity * values.skyFill
+      hemisphere.intensity = hopperFill
+        * config.hemisphere.intensity * values.skyFill
         * (0.58 + 0.42 * daylight + moonLight * 0.12)
         * (daylight + (1 - daylight) * values.nightSkyBrightness)
         * (1 - golden * 0.25);
@@ -351,17 +365,17 @@ void main() {`,
       const glow = daylight * HAZE_SUN_GLOW * (1 + golden * 0.6);
       const sunColor = sunRef.current?.color ?? SUN_DAY;
       hazeUniforms.hazeSunColor.value.set([sunColor.r * glow, sunColor.g * glow, sunColor.b * glow]);
-      // Shadows need direct sun through broken cloud: none under a clear sky
-      // or a closed deck, and they fade as the sun drops.
-      const broken = Math.min(1, values.cloudCover / 0.3) * Math.max(0, 1 - Math.max(0, values.cloudCover - 0.75) / 0.25);
-      const sunUp = THREE.MathUtils.smoothstep(direction[1], 0.05, 0.2);
-      const frequency = 1 / CLOUD_SHADE_METRES;
-      const step = 7 * values.cloudSpeed * frequency * Math.min(delta, 0.1);
-      cloudDrift[0] = (cloudDrift[0] + CLOUD_DRIFT[0] * step) % 1024;
-      cloudDrift[1] = (cloudDrift[1] + CLOUD_DRIFT[1] * step) % 1024;
-      hazeUniforms.cloudShade.value.set([CLOUD_SHADE_STRENGTH * broken * sunUp * daylight * (1 - golden * 0.5), frequency, cloudDrift[0], cloudDrift[1]]);
-      // More cover shades more ground; the fbm spreads about 0.2 around 0.5.
-      hazeUniforms.cloudShade2.value.set([0.66 - values.cloudCover * 0.22, 0.09]);
+      if (CLOUD_SHADE_STRENGTH > 0) {
+        // Ground shadows need direct sun through broken cloud.
+        const broken = Math.min(1, values.cloudCover / 0.3) * Math.max(0, 1 - Math.max(0, values.cloudCover - 0.75) / 0.25);
+        const sunUp = THREE.MathUtils.smoothstep(direction[1], 0.05, 0.2);
+        const frequency = 1 / CLOUD_SHADE_METRES;
+        const step = 7 * values.cloudSpeed * frequency * Math.min(delta, 0.1);
+        cloudDrift[0] = (cloudDrift[0] + CLOUD_DRIFT[0] * step) % 1024;
+        cloudDrift[1] = (cloudDrift[1] + CLOUD_DRIFT[1] * step) % 1024;
+        hazeUniforms.cloudShade.value.set([CLOUD_SHADE_STRENGTH * broken * sunUp * daylight * (1 - golden * 0.5), frequency, cloudDrift[0], cloudDrift[1]]);
+        hazeUniforms.cloudShade2.value.set([0.66 - values.cloudCover * 0.22, 0.09]);
+      }
     }
     // environmentIntensity belongs to SkyEnvironment, which owns the probe.
   });
@@ -382,6 +396,7 @@ void main() {`,
         color={config.sun.color}
         target={sunTarget}
         castShadow
+        shadow-autoUpdate={false}
         shadow-mapSize-width={shadowMapSize}
         shadow-mapSize-height={shadowMapSize}
         shadow-camera-near={1}

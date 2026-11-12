@@ -6,7 +6,7 @@ export const STARTING_ZONE = 'central-park';
 export const STARTING_TIME = 9.5;
 
 export const settingsSchema = {
-  version: 10,
+  version: 11,
   groups: [
     {
       id: 'world',
@@ -287,6 +287,64 @@ export const settingsSchema = {
         { id: 'contrast', label: 'Contrast', type: 'range', min: 0.5, max: 1.8, step: 0.02, default: 1 },
         // White is a no-op multiplier; anything else tints the finished image.
         { id: 'gradeTint', label: 'Tint', type: 'color', default: '#ffffff' },
+        { id: 'paintStyle', label: 'Paint style', type: 'select', options: ['off', 'hopper'], default: 'off' },
+      ],
+    },
+    {
+      // Read live by hopperPaint.js, SkyRig, SkyEnvironment and FrameSettings.
+      // Shift+3 opens these on their own over the game.
+      id: 'hopper',
+      label: 'Hopper paint',
+      parameters: [
+        { id: 'hopperMix', label: 'Paint amount', type: 'range', min: 0, max: 1, step: 0.01, default: 0.7 },
+        { id: 'hopperRenderScale', label: 'Render scale', type: 'range', min: 0.5, max: 1, step: 0.05, default: 0.75 },
+        { id: 'hopperKernel', label: 'Brush samples (cost)', type: 'range', min: 2, max: 6, step: 1, default: 4 },
+        { id: 'hopperTextureBlur', label: 'Texture blur', type: 'range', min: 0, max: 6, step: 0.1, default: 3.5 },
+        { id: 'hopperFlatten', label: 'Flatten bumps', type: 'range', min: 0, max: 1, step: 0.01, default: 0.6 },
+        { id: 'hopperMatte', label: 'Matte surfaces', type: 'range', min: 0, max: 1, step: 0.01, default: 0.5 },
+        { id: 'hopperBrushNear', label: 'Brush size near (px)', type: 'range', min: 1, max: 12, step: 0.5, default: 5 },
+        { id: 'hopperBrushFar', label: 'Brush size far (px)', type: 'range', min: 1, max: 24, step: 0.5, default: 11 },
+        { id: 'hopperFarDistance', label: 'Far brush at (m)', type: 'range', min: 20, max: 200, step: 5, default: 90 },
+        { id: 'hopperSharpness', label: 'Edge sharpness', type: 'range', min: 1, max: 16, step: 0.5, default: 7 },
+        { id: 'hopperAnisotropy', label: 'Stroke stretch', type: 'range', min: 0, max: 1.5, step: 0.05, default: 0.8 },
+        { id: 'hopperDetail', label: 'Detail kept', type: 'range', min: 0, max: 1, step: 0.01, default: 0.02 },
+        { id: 'hopperGrain', label: 'Stroke grain', type: 'range', min: 0, max: 0.3, step: 0.005, default: 0.03 },
+        { id: 'hopperWeave', label: 'Canvas weave', type: 'range', min: 0, max: 0.05, step: 0.0005, default: 0 },
+        { id: 'hopperWobble', label: 'Edge wobble (px)', type: 'range', min: 0, max: 6, step: 0.1, default: 2.4 },
+        { id: 'hopperContrast', label: 'Light contrast', type: 'range', min: 0, max: 1, step: 0.01, default: 0.5 },
+        { id: 'hopperLift', label: 'Sunlit lift', type: 'range', min: 0, max: 0.15, step: 0.005, default: 0.02 },
+        { id: 'hopperSteps', label: 'Value steps', type: 'range', min: 2, max: 12, step: 1, default: 7 },
+        { id: 'hopperStepStrength', label: 'Value step strength', type: 'range', min: 0, max: 1, step: 0.01, default: 0.45 },
+        { id: 'hopperWarm', label: 'Warm light', type: 'range', min: 0, max: 2, step: 0.05, default: 1 },
+        { id: 'hopperCool', label: 'Cool shade', type: 'range', min: 0, max: 2, step: 0.05, default: 1 },
+        { id: 'hopperSnap', label: 'Palette pull (colours)', type: 'range', min: 0, max: 1, step: 0.01, default: 0.65 },
+        { id: 'hopperSnapGrey', label: 'Palette pull (greys)', type: 'range', min: 0, max: 1, step: 0.01, default: 0.65 },
+        { id: 'hopperSnapSoftness', label: 'Palette softness', type: 'range', min: 0.0005, max: 0.01, step: 0.0005, default: 0.002 },
+        { id: 'hopperSunBoost', label: 'Sun boost ×', type: 'range', min: 1, max: 1.6, step: 0.02, default: 1.16 },
+        { id: 'hopperFillCut', label: 'Sky fill cut', type: 'range', min: 0, max: 0.8, step: 0.01, default: 0.45 },
+      ],
+    },
+    {
+      // People and animals (skinned meshes): Hopper paints them more
+      // smoothly and crisply than the scenery around them.
+      id: 'hopperFigures',
+      label: 'Hopper figures',
+      parameters: [
+        { id: 'hopperFigureAmount', label: 'Figure treatment', type: 'range', min: 0, max: 1, step: 0.01, default: 0.74 },
+        { id: 'hopperFigureTextureBlur', label: 'Texture blur', type: 'range', min: 0, max: 4, step: 0.1, default: 0.2 },
+        { id: 'hopperFigureFlatten', label: 'Flatten bumps', type: 'range', min: 0, max: 1, step: 0.01, default: 1 },
+        { id: 'hopperFigureSplit', label: 'Light/shade split', type: 'range', min: 0, max: 1, step: 0.01, default: 0.72 },
+        { id: 'hopperFigureSplitSoftness', label: 'Split softness', type: 'range', min: 0.01, max: 0.6, step: 0.01, default: 0.15 },
+        { id: 'hopperFigureMix', label: 'Paint amount', type: 'range', min: 0, max: 1, step: 0.01, default: 0.67 },
+        { id: 'hopperFigureBrush', label: 'Brush size ×', type: 'range', min: 0.1, max: 1, step: 0.05, default: 0.65 },
+        { id: 'hopperFigureDetail', label: 'Detail kept', type: 'range', min: 0, max: 1, step: 0.01, default: 0.32 },
+        { id: 'hopperFigureGrain', label: 'Grain ×', type: 'range', min: 0, max: 1, step: 0.05, default: 0 },
+        { id: 'hopperFigureContrast', label: 'Light contrast', type: 'range', min: 0, max: 1, step: 0.01, default: 0.68 },
+        { id: 'hopperFigureSteps', label: 'Tone steps', type: 'range', min: 2, max: 8, step: 0.5, default: 4.5 },
+        { id: 'hopperFigureStepStrength', label: 'Tone step strength', type: 'range', min: 0, max: 1, step: 0.01, default: 0.54 },
+        { id: 'hopperFigureSaturation', label: 'Saturation', type: 'range', min: 0.5, max: 2, step: 0.05, default: 1.35 },
+        { id: 'hopperFigurePull', label: 'Palette pull', type: 'range', min: 0, max: 1, step: 0.01, default: 0.18 },
+        { id: 'hopperFigureEdge', label: 'Silhouette edge', type: 'range', min: 0, max: 1, step: 0.01, default: 0.08 },
       ],
     },
   ],

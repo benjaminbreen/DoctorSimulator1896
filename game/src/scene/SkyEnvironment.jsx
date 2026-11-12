@@ -113,7 +113,9 @@ export default function SkyEnvironment({ runtime }) {
       probe.uniforms.uTop.value.fromArray(palette.top);
       probe.uniforms.uHorizon.value.fromArray(palette.horizon);
       probe.uniforms.uGround.value.fromArray(palette.ground);
-      probe.uniforms.uCloud.value = Math.min(1, runtime.values.cloudCover * 0.35);
+      // A base share of grey for coal-smoke haze, so the light the sky casts
+      // is paler than the sky drawn overhead.
+      probe.uniforms.uCloud.value = Math.min(1, 0.3 + runtime.values.cloudCover * 0.35);
       const next = generator.fromScene(probe.source, 0, 1, 100, { size: PROBE_SIZE });
       target?.dispose();
       target = next;
@@ -142,7 +144,9 @@ export default function SkyEnvironment({ runtime }) {
     const palette = environmentPalette(values.timeOfDay, values.dayOfYear, values);
     // 1.4: fill moved here from the outdoor flat ambient, which now runs
     // near zero (see SkyRig).
-    scene.environmentIntensity = values.envIntensity * 1.4 * palette.intensity;
+    // Hopper keeps less sky fill by day, matching SkyRig.
+    const hopperFill = values.paintStyle === 'hopper' ? 1 - values.hopperFillCut * palette.intensity : 1;
+    scene.environmentIntensity = values.envIntensity * 1.4 * palette.intensity * hopperFill;
     clock.current += delta;
     const shotChanged = shotRevision.current !== gameDebug.shotEnvironmentRevision;
     // Swap the stand-in gradient for the dome as soon as it exists, checking

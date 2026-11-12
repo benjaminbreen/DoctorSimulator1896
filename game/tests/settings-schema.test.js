@@ -82,7 +82,7 @@ test('Central Park starts with the approved outdoor art direction', () => {
   assert.equal(runtime.values.skyTurbidity, 6.45);
   assert.equal(runtime.values.skySaturation, 0.75);
   assert.equal(runtime.values.skyFill, 1.6);
-  assert.equal(runtime.values.groundBounce, 0.4);
+  assert.equal(runtime.values.groundBounce, 0.8);
   assert.equal(runtime.values.outdoorShadowDistance, 32);
   assert.equal(runtime.values.exposure, 1.0);
   assert.equal(runtime.values.toneMapping, 'AgX');
@@ -103,7 +103,7 @@ test('reset restores the outdoor preset without changing the game clock', () => 
   assert.equal(runtime.values.toneMapping, 'AgX');
   assert.equal(runtime.values.sunIntensity, 1.25);
   assert.equal(runtime.values.skyFill, 1.6);
-  assert.equal(runtime.values.groundBounce, 0.4);
+  assert.equal(runtime.values.groundBounce, 0.8);
   assert.equal(runtime.values.outdoorShadowDistance, 32);
   assert.equal(runtime.values.exposure, 1.0);
   assert.equal(runtime.values.timeOfDay, 12.3);

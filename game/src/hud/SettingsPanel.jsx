@@ -12,12 +12,17 @@ import './settings.css';
 
 // The tuning parameters this panel owns. Restore Defaults resets these and
 // nothing else, so a player cannot wreck the dev tuning from here.
-const TUNING_IDS = ['graphicsQuality', 'exposure', 'contrast', 'vignetteAmount', 'fov', 'shadowsEnabled', 'lookSensitivity', 'invertY'];
+const TUNING_IDS = ['graphicsQuality', 'paintStyle', 'exposure', 'contrast', 'vignetteAmount', 'fov', 'shadowsEnabled', 'lookSensitivity', 'invertY'];
 
 const GRAPHICS_QUALITY = [
   { value: 'auto', label: 'Auto' },
   { value: 'performance', label: 'Performance' },
   { value: 'quality', label: 'Quality' },
+];
+
+const PAINT_STYLES = [
+  { value: 'off', label: 'Off' },
+  { value: 'hopper', label: 'Hopper' },
 ];
 
 const HOURS = [
@@ -163,6 +168,12 @@ export default function SettingsPanel({ open, onClose, runtime, worldClock }) {
               value={values.graphicsQuality}
               choices={GRAPHICS_QUALITY}
               onChange={tune('graphicsQuality')}
+            />
+            <ChoiceRow
+              label="Paint style"
+              value={values.paintStyle}
+              choices={PAINT_STYLES}
+              onChange={tune('paintStyle')}
             />
             <SliderRow
               label="Brightness"

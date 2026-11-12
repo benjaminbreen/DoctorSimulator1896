@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Color, Uniform, Vector3 } from 'three';
 import { BloomEffect, Effect, ToneMappingMode, VignetteEffect } from 'postprocessing';
@@ -7,6 +7,8 @@ import {
 } from '@react-three/postprocessing';
 import { getInteraction, subscribe } from '../world/interaction.js';
 import { examinationFocus, subscribeExamination } from '../consultation/examPresentation.js';
+import { HopperPaintPass } from './hopperPaint.js';
+import { hopperFigure, hopperSurface } from './hopperShading.js';
 
 // The authored warm cast: period-photograph warmth without disturbing the HDR
 // balance that bloom reads from. Outdoors only — the gaslit interiors are
@@ -14,6 +16,10 @@ import { examinationFocus, subscribeExamination } from '../consultation/examPres
 // second full-screen pass would cost as much as this one does and buy nothing.
 const WARM_TINT = new Vector3(1.045, 1.0, 0.945);
 
+// The input is linear light. Contrast pivoting at 0.5 there subtracted a fixed
+// amount from every channel, which zeroed red and green in the shade and left
+// it indigo. It now acts on luminance in a rough gamma-2 space, pivoting at
+// mid-grey, and scales the colour by the change, so hue is never touched.
 class WarmGradeEffect extends Effect {
   constructor() {
     super(
@@ -25,9 +31,10 @@ class WarmGradeEffect extends Effect {
         + '  vec3 c = inputColor.rgb * tint;'
         // Rec. 709 luma: desaturating toward plain average green would go muddy.
         + '  float luma = dot(c, vec3(0.2126, 0.7152, 0.0722));'
-        + '  c = mix(vec3(luma), c, saturation);'
-        + '  c = (c - 0.5) * contrast + 0.5;'
-        + '  outputColor = vec4(max(c, 0.0), inputColor.a);'
+        + '  c = max(mix(vec3(luma), c, saturation), 0.0);'
+        + '  float graded = max((sqrt(luma) - 0.43) * contrast + 0.43, 0.0);'
+        + '  c *= graded * graded / max(luma, 1e-5);'
+        + '  outputColor = vec4(c, inputColor.a);'
         + '}',
       {
         uniforms: new Map([
@@ -94,10 +101,22 @@ function useExamineFocus() {
   return focus;
 }
 
+// Paint style is switched from the settings menu, which does not re-render
+// this component, so it listens for the change itself.
+function usePaintStyle(runtime) {
+  const [style, setStyle] = useState(runtime.values.paintStyle);
+  useEffect(() => runtime.onChange((id, value) => { if (id === 'paintStyle') setStyle(value); }), [runtime]);
+  return style;
+}
+
 export default function Effects({ runtime, indoors }) {
   const composerRef = useRef();
   const examineFocus = useExamineFocus();
+  const hopper = usePaintStyle(runtime) === 'hopper';
   const dpr = useThree((state) => state.viewport.dpr);
+  const camera = useThree((state) => state.camera);
+  const hopperPass = useMemo(() => (hopper ? new HopperPaintPass(camera, runtime) : null), [hopper, camera, runtime]);
+  useEffect(() => () => hopperPass?.dispose(), [hopperPass]);
   // Retina rendering already supersamples the image. Extra MSAA there adds
   // substantial bandwidth and resolve work without a visible edge benefit.
   // Do not substitute FXAA here: it has twice caused a substantial full-scene
@@ -124,6 +143,14 @@ export default function Effects({ runtime, indoors }) {
     }
 
     const values = runtime.values;
+    // Only for this frame's scene render; the mask pass zeroes them again
+    // (hopperShading.js).
+    const on = hopperPass ? 1 : 0;
+    hopperSurface.value.set([values.hopperTextureBlur * on, values.hopperFlatten * on, values.hopperMatte * on, on]);
+    hopperFigure.value.set([
+      values.hopperFigureTextureBlur * on, values.hopperFigureFlatten * on,
+      values.hopperFigureSplit * on, values.hopperFigureSplitSoftness,
+    ]);
     if (bloom) {
       bloom.intensity = values.bloomIntensity;
       bloom.luminanceMaterial.threshold = values.bloomThreshold;
@@ -170,6 +197,8 @@ export default function Effects({ runtime, indoors }) {
       {/* Each effect is switched in and out of the chain rather than turned
           down to zero: a pass that still runs still costs its full-screen
           work, which is the whole point when measuring where frames go. */}
+      {/* First: reads the figure mark from the raw scene's alpha. */}
+      {hopperPass ? <primitive object={hopperPass.maskPass} /> : <></>}
       {(indoors || runtime.values.aoOutdoors) && runtime.values.aoEnabled ? (
         <N8AO distanceFalloff={1} halfRes color="#120d08" />
       ) : (
@@ -194,6 +223,9 @@ export default function Effects({ runtime, indoors }) {
           it, and the vignette darkens the finished image. Exposure rides in on
           the renderer, which FrameSettings keeps current. */}
       <ToneMapping mode={TONE_MAPPING_MODES[runtime.values.toneMapping] ?? ToneMappingMode.AGX} />
+      {/* After the tone map: palette and value steps are judged on the
+          finished picture. A Pass, so it splits the effect chain here. */}
+      {hopperPass ? <primitive object={hopperPass} /> : <></>}
       {/* Mounted indoors too so the settings menu's contrast slider works
           everywhere; at default contrast the indoor pass is a no-op. */}
       {runtime.values.gradeEnabled ? <WarmGrade /> : <></>}
