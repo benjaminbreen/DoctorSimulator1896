@@ -109,21 +109,31 @@ function DoorLeaves({ hole }) {
 
 // Seamless wall/floor images from the Victorian pack, when a room names
 // them. Both slots always load together so the hook order stays stable.
-function useLoaderMaps(wallName, floorName) {
-  const packWallName = wallName?.startsWith('procedural/') ? null : wallName;
-  const packFloorName = floorName?.startsWith('procedural/') ? null : floorName;
-  const urls = [
-    packWallName ? surfaceUrl(packWallName) : surfaceUrl('victorian/Plaster01'),
-    packFloorName ? surfaceUrl(packFloorName) : surfaceUrl('victorian/WoodenFloor_01'),
+function packTexture(name) {
+  return name?.startsWith('procedural/') ? null : name;
+}
+
+function roomTextureUrls(wallName, floorName) {
+  return [
+    surfaceUrl(packTexture(wallName) || 'victorian/Plaster01'),
+    surfaceUrl(packTexture(floorName) || 'victorian/WoodenFloor_01'),
   ];
-  const [wall, floor] = useLoader(THREE.TextureLoader, urls);
+}
+
+export function preloadRoom(lighting) {
+  const { wallTexture, floorTexture } = lighting.materials;
+  useLoader.preload(THREE.TextureLoader, roomTextureUrls(wallTexture, floorTexture));
+}
+
+function useLoaderMaps(wallName, floorName) {
+  const [wall, floor] = useLoader(THREE.TextureLoader, roomTextureUrls(wallName, floorName));
   return useMemo(() => {
     for (const texture of [wall, floor]) {
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
     }
-    return { wall: packWallName ? wall : null, floor: packFloorName ? floor : null };
-  }, [wall, floor, packWallName, packFloorName]);
+    return { wall: packTexture(wallName) ? wall : null, floor: packTexture(floorName) ? floor : null };
+  }, [wall, floor, wallName, floorName]);
 }
 
 // Joinery around an opening. Not a flat band: a period casing is a wide
@@ -205,9 +215,10 @@ export default function Room({ room, lighting }) {
     const mosaic =
       colors.floorTexture === 'procedural/lobby-mosaic' ||
       colors.floorTexture === 'procedural/netherland-mosaic';
-    const mosaicSource =
-      colors.floorTexture === 'procedural/netherland-mosaic' ? netherlandMosaicTexture() : lobbyMosaicTexture();
-    const texture = (mosaic ? mosaicSource : (packMaps.floor ?? woodTexture(colors.floor))).clone();
+    const source = mosaic
+      ? colors.floorTexture === 'procedural/netherland-mosaic' ? netherlandMosaicTexture() : lobbyMosaicTexture()
+      : packMaps.floor ?? woodTexture(colors.floor);
+    const texture = source.clone();
     texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
     texture.needsUpdate = true;
     // The pack's parquet tile is about 1.6m across; the canvas fallback was

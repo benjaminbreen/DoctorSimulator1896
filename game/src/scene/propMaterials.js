@@ -534,6 +534,10 @@ const sized = new Map();
 const laboratoryBenchMaps = new Map();
 const bottleSurfaceSets = new Map();
 let laboratoryBenchSource = null;
+let laboratoryBenchPreview = null;
+let laboratoryDetailRequested = false;
+let studyBottleDetailRequested = false;
+const surfaceDetailQueue = [];
 let labelPaperImage = null;
 
 function mapsFor(spec, size) {
@@ -622,8 +626,9 @@ function metclubMaps(name, size) {
   return metclubSized.get(key);
 }
 
-function laboratoryBenchSourceMaps() {
-  if (laboratoryBenchSource) return laboratoryBenchSource;
+function laboratoryBenchSourceMaps(preview = false) {
+  const cached = preview ? laboratoryBenchPreview : laboratoryBenchSource;
+  if (cached) return cached;
   const loader = new THREE.TextureLoader();
   const load = (file, color = false) => {
     const texture = loader.load(`/textures/props/laboratory-bench/${file}`);
@@ -633,13 +638,53 @@ function laboratoryBenchSourceMaps() {
     if (color) texture.colorSpace = THREE.SRGBColorSpace;
     return texture;
   };
-  laboratoryBenchSource = {
+  const tier = preview ? '' : '-512';
+  const maps = {
     map: load('pale-deal-albedo.webp', true),
-    roughnessMap: load('pale-deal-roughness.webp'),
-    normalMap: load('pale-deal-normal.webp'),
-    aoMap: load('pale-deal-ao.webp'),
+    roughnessMap: load(`pale-deal-roughness${tier}.webp`),
+    normalMap: load(`pale-deal-normal${tier}.webp`),
+    aoMap: load(`pale-deal-ao${tier}.webp`),
   };
-  return laboratoryBenchSource;
+  if (preview) laboratoryBenchPreview = maps;
+  else laboratoryBenchSource = maps;
+  return maps;
+}
+
+function queueSurfaceDetail(url, apply) {
+  new THREE.ImageLoader().load(url, image => surfaceDetailQueue.push(() => apply(image)), undefined, () => {});
+}
+
+export function startLaboratoryBenchDetail(studyBottles) {
+  if (!laboratoryDetailRequested) {
+    laboratoryDetailRequested = true;
+    for (const [slot, channel] of Object.entries({ normalMap: 'normal', roughnessMap: 'roughness', aoMap: 'ao' })) {
+      queueSurfaceDetail(`/textures/props/laboratory-bench/pale-deal-${channel}.webp`, image => {
+        const texture = laboratoryBenchSourceMaps()[slot];
+        // Texture clones share the image but have individual upload versions.
+        texture.image = image;
+        texture.needsUpdate = true;
+        for (const maps of laboratoryBenchMaps.values()) maps[slot].needsUpdate = true;
+      });
+    }
+  }
+  if (studyBottles && !studyBottleDetailRequested) {
+    studyBottleDetailRequested = true;
+    for (const name of ['cork', 'paper']) {
+      for (const [slot, channel] of Object.entries({ normalMap: 'normal', roughnessMap: 'roughness' })) {
+        queueSurfaceDetail(`/textures/props/labeled-bottle/${name}-${channel}.webp`, image => {
+          for (const [key, maps] of bottleSurfaceSets) {
+            if (!key.startsWith(`study:${name}:`)) continue;
+            maps[slot].image = image;
+            maps[slot].needsUpdate = true;
+          }
+        });
+      }
+    }
+  }
+}
+
+export function updateLaboratoryBenchDetail() {
+  surfaceDetailQueue.shift()?.();
 }
 
 // ImageGen supplies the de-lit colour source. The other channels are derived
@@ -649,7 +694,7 @@ function mapsForLaboratoryBench(item) {
   // Contact sheets can show several differently sized procedural assets at
   // once. Reuse one source set there instead of cloning four 2K textures for
   // every distinct board dimension.
-  if (item.texturePreview) return laboratoryBenchSourceMaps();
+  if (item.texturePreview) return laboratoryBenchSourceMaps(true);
   const tile = item.textureScale ?? 0.42;
   const rotation = item.grainRotation ?? 0;
   const offset = item.textureOffset ?? [0, 0];
@@ -681,12 +726,13 @@ function mapsForLaboratoryBench(item) {
   return laboratoryBenchMaps.get(key);
 }
 
-function bottleSurfaceMaps(name, repeat = [1, 1]) {
-  const key = `${name}:${repeat[0]}:${repeat[1]}`;
+function bottleSurfaceMaps(name, repeat = [1, 1], deferDetail = false) {
+  const key = `${deferDetail ? 'study:' : ''}${name}:${repeat[0]}:${repeat[1]}`;
   if (bottleSurfaceSets.has(key)) return bottleSurfaceSets.get(key);
   const loader = new THREE.TextureLoader();
   const load = (channel, color = false) => {
-    const texture = loader.load(`/textures/props/labeled-bottle/${name}-${channel}.webp`);
+    const tier = deferDetail && !color ? '-256' : '';
+    const texture = loader.load(`/textures/props/labeled-bottle/${name}-${channel}${tier}.webp`);
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
     texture.repeat.set(repeat[0], repeat[1]);
@@ -695,7 +741,7 @@ function bottleSurfaceMaps(name, repeat = [1, 1]) {
     return texture;
   };
   const set = {
-    map: load('albedo', true),
+    map: name === 'cork' ? load('albedo', true) : null,
     roughnessMap: load('roughness'),
     normalMap: load('normal'),
   };
@@ -913,9 +959,9 @@ export function labelTexture(spec) {
  * Material props for an item or part. PropMaterial chooses the corresponding
  * standard or physical Three.js material in every renderer.
  */
-export function materialFor(item) {
+export function materialFor(item, deferBottleDetail = false) {
   if (item.label) {
-    const paper = item.label.surface === 'agedPaper' ? bottleSurfaceMaps('paper') : null;
+    const paper = item.label.surface === 'agedPaper' ? bottleSurfaceMaps('paper', undefined, deferBottleDetail) : null;
     return {
       map: labelTexture(item.label),
       ...(paper ? {
@@ -975,7 +1021,7 @@ export function materialFor(item) {
     };
   }
   if (item.finish === 'bottleCork') {
-    const cork = bottleSurfaceMaps('cork', [2, 1.35]);
+    const cork = bottleSurfaceMaps('cork', [2, 1.35], deferBottleDetail);
     return {
       color: item.tint ?? '#ffffff',
       map: cork.map,

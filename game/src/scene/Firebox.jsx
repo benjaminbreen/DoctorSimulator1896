@@ -205,8 +205,22 @@ function buildFlames(disposables) {
   return { node, sprites };
 }
 
+function flickerAt(time, phase) {
+  return 0.82 + 0.12 * Math.sin(time * 9.1 + phase) + 0.06 * Math.sin(time * 23.7 + phase * 3);
+}
+
+function HearthLight({ item, index, lit }) {
+  const ref = useRef();
+  useFrame(({ clock }) => {
+    if (ref.current) ref.current.intensity = lit ? 1.5 * flickerAt(clock.elapsedTime, index * 2.4) : 0;
+  });
+  const [x, y, z] = item.position;
+  const yaw = item.yaw ?? 0;
+  return <pointLight ref={ref} color="#ff8033" intensity={0} distance={5} decay={2}
+    position={[x + Math.sin(yaw) * 0.3, y + 0.55, z + Math.cos(yaw) * 0.3]} />;
+}
+
 function Hearth({ item, index }) {
-  const lightRef = useRef();
   const built = useMemo(() => {
     const disposables = [];
     const scale = item.modelScale ?? 1;
@@ -229,10 +243,7 @@ function Hearth({ item, index }) {
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
     const phase = index * 2.4;
-    const flicker = 0.82
-      + 0.12 * Math.sin(t * 9.1 + phase)
-      + 0.06 * Math.sin(t * 23.7 + phase * 3);
-    if (lightRef.current) lightRef.current.intensity = 1.5 * flicker;
+    const flicker = flickerAt(t, phase);
     for (const material of built.embers) material.emissiveIntensity = 0.7 + 0.8 * flicker;
     built.sprites.forEach((sprite, i) => {
       const base = sprite.userData.baseScale ?? 1;
@@ -245,29 +256,15 @@ function Hearth({ item, index }) {
     });
   });
 
-  return (
-    <>
-      <primitive object={built.group} />
-      <pointLight
-        ref={lightRef}
-        color="#ff8033"
-        intensity={1.5}
-        distance={5}
-        decay={2}
-        position={[
-          item.position[0] + Math.sin(item.yaw ?? 0) * 0.3,
-          item.position[1] + 0.55,
-          item.position[2] + Math.cos(item.yaw ?? 0) * 0.3,
-        ]}
-      />
-    </>
-  );
+  return <primitive object={built.group} />;
 }
 
-export default function Firebox({ items }) {
-  const hearths = items.filter((item) => item.model === 'Fireplace');
-  if (hearths.length === 0) return null;
+export default function Firebox({ items, lightsOnly = false, visualsOnly = false, lit = true }) {
+  const hearths = items.filter(item => item.model === 'Fireplace');
   return hearths.map((item, index) => (
-    <Hearth key={item.id ?? index} item={item} index={index} />
+    <group key={item.id ?? index}>
+      {!visualsOnly && <HearthLight item={item} index={index} lit={lit} />}
+      {!lightsOnly && <Hearth item={item} index={index} />}
+    </group>
   ));
 }

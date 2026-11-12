@@ -109,6 +109,17 @@ function groupBounds(group) {
 // park set dressing alike. Every converter recentres a piece with its base at
 // the origin, so a position is the model's ground-contact point. Repeated
 // anchored pieces are instanced; loose ones get their own body.
+export function warmPropModels(items, gl) {
+  const controller = new AbortController();
+  const loader = new GLTFLoader();
+  loader.background = true;
+  loader.signal = controller.signal;
+  loader.setMeshoptDecoder(MeshoptDecoder);
+  loader.setKTX2Loader(getKTX2Loader(gl));
+  for (const url of new Set(items.map(urlFor))) loader.loadAsync(url).catch(() => {});
+  return () => controller.abort();
+}
+
 export default function PropModels({ items }) {
   const urls = useMemo(() => {
     const set = new Set();

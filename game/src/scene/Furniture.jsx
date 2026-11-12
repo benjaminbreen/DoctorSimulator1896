@@ -1,11 +1,14 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { useLoader } from '@react-three/fiber';
+import { useFrame, useLoader } from '@react-three/fiber';
 import { RigidBody, CuboidCollider, CylinderCollider } from '@react-three/rapier';
 import { useFurnitureSound } from './useFurnitureSound.js';
-import { itemBoxes, boxDensity, rotateOffset } from '../physics/propBodies.js';
+import { itemBoxes, boxDensity } from '../physics/propBodies.js';
+import FurnitureColliders from './FurnitureColliders.jsx';
 import PropShape from './PropShape.jsx';
 import PropMaterial from './PropMaterial.jsx';
+import { startLaboratoryBenchDetail, updateLaboratoryBenchDetail } from './propMaterials.js';
+import { gameDebug } from '../debug.js';
 import MetropolitanClub from './MetropolitanClub.jsx';
 import Rooftops from './Rooftops.jsx';
 import { roofCapTop } from '../world/rooftops.js';
@@ -303,7 +306,7 @@ function ItemGeometry({ item }) {
 // The shapes that make up one built piece, each at its own local offset. Both
 // the loose bodies and the fixed props draw them: a glove left on a bench is
 // the same list of parts as a vase, minus the falling over.
-function ItemParts({ parts }) {
+function ItemParts({ parts, deferBottleDetail }) {
   return parts.map((part, index) => (
     <mesh
       key={index}
@@ -314,43 +317,8 @@ function ItemParts({ parts }) {
       receiveShadow={part.receiveShadow ?? true}
     >
       <ItemGeometry item={part} />
-      <PropMaterial item={part} />
+      <PropMaterial item={part} deferBottleDetail={deferBottleDetail} />
     </mesh>
-  ));
-}
-
-function ItemCollider({ item }) {
-  if (item.shape === 'cylinder' || item.shape === 'tree') {
-    return <CylinderCollider args={[item.size[1] / 2, item.size[0] / 2]} position={item.position} />;
-  }
-  if (item.colliderQuaternion) {
-    return (
-      <CuboidCollider
-        args={[item.size[0] / 2, item.size[1] / 2, item.size[2] / 2]}
-        position={item.position}
-        quaternion={item.colliderQuaternion}
-      />
-    );
-  }
-  // Tilted props (planks, awnings) keep a single box: the compound offsets
-  // below only rotate about Y.
-  if (item.rotation) {
-    return (
-      <CuboidCollider
-        args={[item.size[0] / 2, item.size[1] / 2, item.size[2] / 2]}
-        position={item.position}
-        rotation={item.rotation}
-      />
-    );
-  }
-  const yaw = item.yaw ?? 0;
-  return itemBoxes(item).map((box, index) => (
-    <CuboidCollider
-      key={index}
-      args={box.half}
-      position={rotateOffset(item.position, box.center, yaw)}
-      rotation={[0, yaw, 0]}
-    />
   ));
 }
 
@@ -401,7 +369,41 @@ function DynamicItem({ item, material, frozen }) {
 // Placeholder props: box, cylinder, sphere, or cone per blueprint entry, mesh
 // and collider from the same data. `collider: false` marks decor, `dynamic`
 // marks a piece loose enough to push around.
-export default function Furniture({ items, runtime, propsReady = true }) {
+function surfaceNeeds(items) {
+  return {
+    bark: items.some(item => item.kind === 'tree' && item.shape === 'cylinder'),
+    brick: items.some(item => item.texture === 'brick'),
+    paving: items.some(item => ['paving', 'road', 'blockstone'].includes(item.texture)),
+    facades: items.some(item => item.kind === 'backdrop' || item.landmarkModel),
+  };
+}
+
+function surfaceUrls(needs) {
+  return [
+    ...(needs.bark ? ['/textures/bark_col.webp', '/textures/bark_nrm.webp'] : []),
+    ...(needs.brick ? ['/textures/brick_col.webp'] : []),
+    ...(needs.paving ? ['/textures/paving_col.webp'] : []),
+    ...(needs.facades ? FACADE_TEXTURE_URLS : []),
+  ];
+}
+
+export function preloadFurniture(items) {
+  useLoader.preload(THREE.TextureLoader, surfaceUrls(surfaceNeeds(items)));
+}
+
+function LaboratoryBenchDetail({ positions, studyBottles }) {
+  useFrame(() => {
+    if (!gameDebug.stats.boot.complete) return;
+    const [x, y, z] = gameDebug.player.position;
+    if (positions.some(([px, py, pz]) => Math.hypot(x - px, y - py, z - pz) < 3.5)) {
+      startLaboratoryBenchDetail(studyBottles);
+    }
+    updateLaboratoryBenchDetail();
+  });
+  return null;
+}
+
+export default function Furniture({ items, runtime, propsReady = true, fixedColliders = true, deferBottleDetail = false }) {
   const hiddenGroup = useHiddenGroup();
   // No dependency list: any re-render may mount static pieces (the ritual
   // hides and restores a group), and new mounts need composing before the
@@ -410,18 +412,8 @@ export default function Furniture({ items, runtime, propsReady = true }) {
   useEffect(() => freezeStaticTransforms(staticRef.current));
   // Load only the surfaces this room uses. An interior has no trees, street
   // or facades, and those maps were 7 MB of its first load.
-  const needs = useMemo(() => ({
-    bark: items.some((item) => item.kind === 'tree' && item.shape === 'cylinder'),
-    brick: items.some((item) => item.texture === 'brick'),
-    paving: items.some((item) => ['paving', 'road', 'blockstone'].includes(item.texture)),
-    facades: items.some((item) => item.kind === 'backdrop' || item.landmarkModel),
-  }), [items]);
-  const loaded = useLoader(THREE.TextureLoader, [
-    ...(needs.bark ? ['/textures/bark_col.webp', '/textures/bark_nrm.webp'] : []),
-    ...(needs.brick ? ['/textures/brick_col.webp'] : []),
-    ...(needs.paving ? ['/textures/paving_col.webp'] : []),
-    ...(needs.facades ? FACADE_TEXTURE_URLS : []),
-  ]);
+  const needs = useMemo(() => surfaceNeeds(items), [items]);
+  const loaded = useLoader(THREE.TextureLoader, surfaceUrls(needs));
   const maps = useMemo(() => {
     const queue = [...loaded];
     const take = (needed, count) => (needed ? queue.splice(0, count) : []);
@@ -442,9 +434,11 @@ export default function Furniture({ items, runtime, propsReady = true }) {
 
   // Dynamic pieces carry their own body, so they stay out of the shared
   // fixed one; the catalog models among them belong to VictorianProps.
-  const solid = items.filter((item) => item.collider !== false && !item.dynamic);
   const loose = items.filter((item) => item.dynamic && !item.model);
   const pavingClones = useMemo(() => new Map(), [maps]);
+  const benchPositions = useMemo(() => items.filter(item => (
+    item.finish === 'laboratoryDeal' || item.parts?.some(part => part.finish === 'laboratoryDeal')
+  )).map(item => item.position), [items]);
 
   function materialFor(item) {
     if (item.kind === 'tree' && item.shape === 'cylinder') {
@@ -511,12 +505,9 @@ export default function Furniture({ items, runtime, propsReady = true }) {
 
   return (
     <group>
-      <GildedAgeLandmarks items={items} facadeTextures={maps.facades} runtime={runtime} />
-      <RigidBody type="fixed" colliders={false}>
-        {solid.map((item) => (
-          <ItemCollider key={item.id} item={item} />
-        ))}
-      </RigidBody>
+      {benchPositions.length > 0 && <LaboratoryBenchDetail positions={benchPositions} studyBottles={deferBottleDetail} />}
+      {items.some(isGildedAgeLandmark) && <GildedAgeLandmarks items={items} facadeTextures={maps.facades} runtime={runtime} />}
+      {fixedColliders && <FurnitureColliders items={items} />}
       {loose.map((item) => {
         // Loose pieces hide with their group too: the pipe leaves the table
         // while the ritual's working copy is in the player's hand.
@@ -563,7 +554,7 @@ export default function Furniture({ items, runtime, propsReady = true }) {
         if (item.parts?.length) {
           return (
             <group key={item.id} position={item.position} rotation={[0, item.yaw ?? 0, 0]}>
-              <ItemParts parts={item.parts} />
+              <ItemParts parts={item.parts} deferBottleDetail={deferBottleDetail} />
             </group>
           );
         }
