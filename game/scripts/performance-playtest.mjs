@@ -91,8 +91,7 @@ try {
     await page.waitForFunction(() => __game.actors.requested.every((id) => __game.actors.loaded.includes(id)));
     boot.patientReadyMs = await page.evaluate(() => performance.now());
     await page.waitForTimeout(12000);
-    await page.getByRole('button', { name: 'Continue', exact: true }).click();
-    await page.getByRole('button', { name: 'I should ask what happens before, during, and after each attack.', exact: false }).click();
+    await page.getByRole('button', { name: 'Ask how the attacks start', exact: false }).waitFor();
     await sample('consultation-idle');
     if (!process.argv.includes('--no-screenshots')) await page.screenshot({ path: `${output}/consultation.png` });
     await page.getByRole('button', { name: 'Examine. Physical assessment', exact: true }).click();

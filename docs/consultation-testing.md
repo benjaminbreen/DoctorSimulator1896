@@ -45,8 +45,8 @@ defines them as such.
 
 ## Dynamic patient answers
 
-Carmela now discusses the prescription before the case note. Select a treatment,
-choose **Discuss the plan**, respond to her concern, and then write the record.
+Carmela discusses the prescription before signing. Select a treatment,
+choose **Discuss the plan**, respond to her concern, and then sign.
 The coca-wine discussion supports a trial off the wine, a gradual return to the
 counter, or a short period of help before returning. These agreements change
 the immediate account, recovery, household cost, and later patient dialogue.
@@ -176,6 +176,10 @@ npm --prefix game test
 `fetch`. It never calls the real API.
 
 ## Headless design playtest
+
+To play a consultation or a whole day interactively as text, or to run many
+playthroughs with random or model players, use the runners in
+[agent-play.md](agent-play.md). The script below runs fixed routes.
 
 The consultation can be played without the 3D app. This is the fastest way to
 inspect affordances, action costs, disclosure, and outcomes:

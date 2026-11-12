@@ -20,20 +20,18 @@ older consultation notes.
 ## Core loop: the consultation
 
 1. A patient arrives. The later social simulation decides who comes.
-2. A fixed arrival panel describes the patient's bearing and gives their short
-   opening complaint. The player continues when ready; no model call is required.
-3. The next panel presents one required rumination: take a history,
-   examine first, or begin with a provisional diagnosis. Afterward, Ruminate
-   is optional and never interrupts the consultation automatically.
-4. The player takes a history through three deterministic questions plus an
+2. The consultation opens straight into the interview: the patient's bearing
+   and opening complaint sit above the first questions. Ruminate is optional.
+3. The player takes a history through three deterministic questions plus an
    optional custom question handled by GPT-5.6 Luna.
-5. The player examines the patient. Observations and facts come from the fixed
+4. The player examines the patient. Observations and facts come from the fixed
    patient record.
-6. The player selects a period diagnosis, treatment, and directions, then
-   writes the case note.
-7. The visit ends with the patient's immediate reaction. This affects payment,
+5. The player selects a period diagnosis and treatment, talks the plan
+   through if the patient has concerns, and signs. The case record fills
+   itself from what was uncovered.
+6. The visit ends with the patient's immediate reaction. This affects payment,
    recommendation, complaints, and reputation.
-8. When the player ends the run, the game advances one month and reports
+7. When the player ends the run, the game advances one month and reports
    health, reputation, finances, a William James assessment, and a separate
    modern explanation.
 

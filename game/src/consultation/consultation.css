@@ -2925,3 +2925,96 @@
   background: transparent;
   cursor: pointer;
 }
+
+/* ---------------- motion and finish ----------------
+   Cards deal in one after another, a new reply settles in rather than
+   swapping, and signing draws a pen stroke before the result arrives. */
+
+.gcon-options > *,
+.gcon-exam-choices > *,
+.gcon-shelf-grid > * {
+  animation: gcon-deal .34s cubic-bezier(.2, .75, .25, 1) both;
+}
+.gcon-options > :nth-child(2), .gcon-exam-choices > :nth-child(2), .gcon-shelf-grid > :nth-child(2) { animation-delay: 45ms; }
+.gcon-options > :nth-child(3), .gcon-exam-choices > :nth-child(3), .gcon-shelf-grid > :nth-child(3) { animation-delay: 90ms; }
+.gcon-options > :nth-child(4), .gcon-exam-choices > :nth-child(4), .gcon-shelf-grid > :nth-child(4) { animation-delay: 135ms; }
+.gcon-options > :nth-child(5), .gcon-exam-choices > :nth-child(5), .gcon-shelf-grid > :nth-child(5) { animation-delay: 180ms; }
+.gcon-options > :nth-child(n+6), .gcon-exam-choices > :nth-child(n+6), .gcon-shelf-grid > :nth-child(n+6) { animation-delay: 225ms; }
+
+.gcon-card:not(:disabled):hover { transform: translateY(-1px); }
+.gcon-card { transition: border-color .18s ease, box-shadow .18s ease, background .18s ease, color .18s ease, transform .18s ease; }
+
+.gcon-quote { animation: gcon-reply .5s cubic-bezier(.2, .75, .25, 1) both; }
+
+.gcon-arrival-line {
+  max-width: 760px;
+  margin: 0 auto 6px;
+  text-align: center;
+  font: italic clamp(13px, 1cqw, 16px)/1.5 var(--gc-serif);
+  color: var(--gc-cream-dim);
+  text-wrap: balance;
+  animation: gcon-reply .6s ease both;
+}
+.gcon-arrival-line span {
+  display: block;
+  margin-bottom: 2px;
+  font: 600 11px/1.4 var(--gc-sc);
+  font-style: normal;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--gc-gold-soft);
+}
+
+.gcon-shelf-or { margin-top: 14px; }
+.gcon-shelf-grid--considered { grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 720px; }
+.gcon-shelf-grid--considered .gcon-shelf-tile { min-height: 92px; padding-top: 8px; }
+.gcon-shelf-grid--considered .gcon-shelf-art { min-height: 36px; }
+.gcon-shelf-grid--considered .gcon-shelf-art img { width: 38px; height: 38px; }
+.gcon-shelf-grid--compact { max-width: 720px; }
+.gcon-shelf-grid--compact { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.gcon-shelf-grid--compact .gcon-shelf-tile { min-height: 0; padding: 7px 6px; flex-direction: row; justify-content: flex-start; gap: 8px; border-radius: 10px; }
+.gcon-shelf-grid--compact .gcon-shelf-art { width: 26px; min-height: 0; flex: none; }
+.gcon-shelf-grid--compact .gcon-shelf-art img { width: 26px; height: 26px; }
+.gcon-shelf-grid--compact .gcon-shelf-name { font-size: 12.5px; text-align: left; }
+.gcon-shelf-grid--compact .gcon-shelf-note { display: none; }
+@container (max-width: 470px) {
+  .gcon-shelf-grid--compact,
+  .gcon-shelf-grid--considered { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.gcon-sign { position: relative; overflow: hidden; }
+.gcon-signature {
+  position: absolute;
+  inset: 4px 12px;
+  width: calc(100% - 24px);
+  height: calc(100% - 8px);
+  pointer-events: none;
+  opacity: 0;
+}
+.gcon-signature path {
+  stroke: #f2f9f2;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+.gcon-sign.is-signing strong,
+.gcon-sign.is-signing kbd { opacity: 0; transition: opacity .12s ease; }
+.gcon-sign.is-signing .gcon-signature { opacity: 1; }
+.gcon-sign.is-signing .gcon-signature path { animation: gcon-sign-stroke .62s cubic-bezier(.45, .1, .35, 1) forwards; }
+
+@keyframes gcon-deal {
+  from { opacity: 0; transform: translateY(8px) scale(.985); }
+}
+@keyframes gcon-reply {
+  from { opacity: 0; transform: translateY(5px); filter: blur(2px); }
+}
+@keyframes gcon-sign-stroke {
+  to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gcon-options > *, .gcon-exam-choices > *, .gcon-shelf-grid > *, .gcon-quote, .gcon-arrival-line { animation: none; }
+  .gcon-card:not(:disabled):hover { transform: none; }
+}

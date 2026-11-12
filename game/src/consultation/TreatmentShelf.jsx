@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { TREATMENT_CATEGORIES, resolveTreatment, searchTreatments, treatmentsInCategory } from './treatments.js';
+import { TREATMENT_CATEGORIES, TREATMENT_LIBRARY, resolveTreatment, searchTreatments, treatmentsInCategory } from './treatments.js';
 
 // What a patient of this standing can meet without the fee becoming the problem.
 const AFFORDABLE_CENTS = 400;
@@ -34,6 +34,26 @@ export default function TreatmentShelf({ patient, state, runtime }) {
   const chosen = state.treatmentIds || [];
   const category = TREATMENT_CATEGORIES.find((item) => item.id === categoryId) || null;
 
+  // The remedies a doctor would weigh for this complaint, good and bad alike,
+  // so most visits are one click. Library order, so the case author's
+  // ordering gives nothing away. The full cabinet stays a click away.
+  const considered = useMemo(() => {
+    const ids = new Set(Object.keys(patient.treatmentOverrides || {}));
+    return TREATMENT_LIBRARY.filter((item) => ids.has(item.id)).map((item) => resolveTreatment(patient, item.id));
+  }, [patient]);
+  const tileFor = (item) => (
+    <Tile
+      key={item.id}
+      icon={item.icon || TREATMENT_CATEGORIES.find((entry) => entry.id === item.categoryId)?.icon}
+      name={item.label}
+      badge={money(item.feeCents)}
+      dear={item.feeCents > AFFORDABLE_CENTS}
+      chosen={chosen.includes(item.id)}
+      onClick={() => runtime.dispatch({ type: 'select-treatment', id: item.id })}
+      onPreview={() => setPreview(item)}
+    />
+  );
+
   const items = useMemo(() => (
     searching ? searchTreatments(patient, query) : category
       ? treatmentsInCategory(category.id).map((base) => resolveTreatment(patient, base.id))
@@ -45,7 +65,7 @@ export default function TreatmentShelf({ patient, state, runtime }) {
     [chosen, patient],
   );
   const total = chosenTreatments.reduce((sum, item) => sum + (item.feeCents || 0), 0);
-  const shown = preview && items.find((item) => item.id === preview.id) ? preview : null;
+  const shown = preview && [...items, ...considered].some((item) => item.id === preview.id) ? preview : null;
 
   return (
     <div className="gcon-shelf">
@@ -56,8 +76,15 @@ export default function TreatmentShelf({ patient, state, runtime }) {
       </label>
       {!category && !searching && (
         <>
-          <p className="gcon-eyebrow">Course of Treatment</p>
-          <div className="gcon-shelf-grid">
+          {considered.length > 0 && (
+            <>
+              <p className="gcon-eyebrow">Commonly given for this complaint</p>
+              <div className="gcon-shelf-grid gcon-shelf-grid--considered">{considered.map(tileFor)}</div>
+              <p className="gcon-eyebrow gcon-shelf-or">Or look through the cabinet</p>
+            </>
+          )}
+          {!considered.length && <p className="gcon-eyebrow">Course of Treatment</p>}
+          <div className={`gcon-shelf-grid${considered.length ? ' gcon-shelf-grid--compact' : ''}`}>
             {TREATMENT_CATEGORIES.filter((item) => !item.custom).map((item) => (
               <Tile
                 key={item.id}
@@ -79,20 +106,7 @@ export default function TreatmentShelf({ patient, state, runtime }) {
             </button>
             <h3>{searching ? `${items.length} matching treatment${items.length === 1 ? '' : 's'}` : category.label}</h3>
           </div>
-          <div className="gcon-shelf-grid">
-              {items.map((item) => (
-                <Tile
-                  key={item.id}
-                  icon={item.icon || TREATMENT_CATEGORIES.find((entry) => entry.id === item.categoryId)?.icon}
-                  name={item.label}
-                  badge={money(item.feeCents)}
-                  dear={item.feeCents > AFFORDABLE_CENTS}
-                  chosen={chosen.includes(item.id)}
-                  onClick={() => runtime.dispatch({ type: 'select-treatment', id: item.id })}
-                  onPreview={() => setPreview(item)}
-                />
-              ))}
-          </div>
+          <div className="gcon-shelf-grid">{items.map(tileFor)}</div>
           {searching && !items.length && <p className="gcon-empty-state" role="status">No treatments match. Try a shorter name or browse the cabinet.</p>}
         </>
       )}
@@ -100,7 +114,7 @@ export default function TreatmentShelf({ patient, state, runtime }) {
       <div className="gcon-shelf-readout">
         {shown
           ? <span><b>{shown.label}.</b> {shown.detail}</span>
-          : <span className="is-faint">{category ? category.lede : 'Choose where to begin.'}</span>}
+          : <span className="is-faint">{category ? category.lede : 'Point at a remedy to read about it.'}</span>}
         {shown && <span className="gcon-shelf-fee">{money(shown.feeCents)}</span>}
       </div>
 

@@ -148,6 +148,15 @@ function trustAfterResponse(trust, stance, appraisal) {
   return Math.max(0, Math.min(100, trust + registerChange + stanceChange - appraisal.decorumBreach * 12));
 }
 
+// Required findings the doctor actually uncovered come first, then anything
+// else on record, up to the case note's limit.
+function autoRecordFactIds(patient, state) {
+  const known = state.disclosedFactIds;
+  const required = new Set(patient.caseNote?.requiredFactIds || []);
+  const ordered = [...known.filter((id) => required.has(id)), ...known.filter((id) => !required.has(id))];
+  return ordered.slice(0, patient.caseNote?.maximumEvidenceSelections ?? 3);
+}
+
 export function startConsultation(patient) {
   const errors = validateConsultationPatient(patient);
   if (errors.length) throw new Error(`Invalid consultation patient: ${errors.join('; ')}`);
@@ -383,6 +392,18 @@ export function consultationTransition(state, patient, action) {
         disclosedFactIds: addUnique(state.disclosedFactIds, step.discloseFactIds),
       }, { kind: 'discussion', ...step, disclosedNow: step.discloseFactIds || [] });
       return { ...state, stage: 'case-note', caseRecordFactIds: [] };
+    }
+    // The player's one way to finish: discuss the plan if the patient has
+    // concerns, otherwise sign. The case record fills itself from what was
+    // found, so a thin inquiry shows up as a thin record.
+    case 'conclude': {
+      const next = consultationTransition(state, patient, { type: 'begin-case-note' });
+      if (next.stage !== 'case-note') return next;
+      return consultationTransition(
+        { ...next, caseRecordFactIds: autoRecordFactIds(patient, next) },
+        patient,
+        { type: 'submit-case-note' },
+      );
     }
     case 'revise-treatment': {
       const error = requireStage(state, 'treatment-discussion');

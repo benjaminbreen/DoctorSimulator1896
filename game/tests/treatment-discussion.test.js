@@ -122,3 +122,16 @@ test('the return visit preserves the result, time, original transcript and one c
   assert.ok(visits[0].observations.some(entry => entry.label === 'One-month review (look ahead)'));
   assert.match(visits[0].agreedPlan, /one customer/);
 });
+
+test('conclude discusses the plan first, then signs with the findings actually uncovered', () => {
+  let state = act(prescribe(), 'conclude');
+  assert.equal(state.stage, 'treatment-discussion');
+  assert.equal(act(state, 'conclude').stage, 'treatment-discussion');
+  state = agree(state, ['work', 'gradual']);
+  state = act(state, 'conclude');
+  assert.equal(state.stage, 'result');
+  const required = new Set(patient.caseNote.requiredFactIds);
+  const found = state.disclosedFactIds.filter((id) => required.has(id)).slice(0, 3);
+  assert.ok(found.length > 0);
+  assert.deepEqual(state.caseRecordFactIds.slice(0, found.length), found);
+});

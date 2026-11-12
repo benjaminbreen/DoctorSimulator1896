@@ -8,6 +8,8 @@ import { buildCaseNotebook } from './caseNotebook.js';
 import { consultationTiming } from './engine.js';
 import { renderJamesLetter } from './lunaRenderer.js';
 import TreatmentShelf from './TreatmentShelf.jsx';
+import DaybookResult from './DaybookResult.jsx';
+import { collectAccount } from './settlement.js';
 import { treatmentDiscussionStep } from './treatmentDiscussion.js';
 import {
   availableDiagnoses,
@@ -119,6 +121,19 @@ function Knot() {
       <path d="M19 2.6 21.9 6 19 9.4 16.1 6Z" fill="none" stroke="currentColor" strokeWidth="1" />
     </svg>
   );
+}
+
+// Drawn across the sign button while the signature plays.
+function SignatureStroke() {
+  return (
+    <svg className="gcon-signature" viewBox="0 0 160 36" fill="none" aria-hidden="true">
+      <path pathLength="1" d="M6 26c8-14 14-20 17-18s-5 18-1 18 9-15 13-15-2 13 2 13 8-11 12-11-1 10 3 10 10-14 15-14-3 15 2 15 11-9 16-9 3 6 8 6 12-6 19-8 18-2 33-4" />
+    </svg>
+  );
+}
+
+function prefersReducedMotion() {
+  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 function Ornament() {
@@ -361,6 +376,55 @@ function splitSignature(text) {
   return match ? { body: match[1].trim(), signature: match[2] } : { body: text, signature: '' };
 }
 
+// A/B test of the outcome screen: A is the report card, B the daybook with a
+// settling-up choice. Remembered per browser so a playtest stays on one.
+const OUTCOME_VARIANT_KEY = 'ghosts.outcomeVariant';
+function readOutcomeVariant() {
+  try { return localStorage.getItem(OUTCOME_VARIANT_KEY) === 'b' ? 'b' : 'a'; } catch { return 'a'; }
+}
+
+const OUTCOME_LABELS = {
+  improved: 'Improved',
+  'little-change': 'Little change',
+  worse: 'Worsened',
+  harmed: 'Harmed',
+};
+
+// Shared by both variants. B slots its account line in as children.
+function MonthReport({ result, james, onReturnVisit, children }) {
+  const month = result?.oneMonth || {};
+  const letter = splitSignature(james.text);
+  return (
+    <div className="gcon-reveal" key="month">
+      <div className={`gcon-outcome-stamp is-${month.band || 'neutral'}`} style={{ '--step': 0 }}>
+        {OUTCOME_LABELS[month.band] || 'Outcome recorded'}
+      </div>
+      <p className="gcon-result-narrative" style={{ '--step': 1 }}>{month.narrative}</p>
+      {children}
+      {result.returnVisit && <button type="button" className="gcon-return-start" onClick={onReturnVisit}>Talk to Carmela one month later</button>}
+      <article className="gcon-james" style={{ '--step': 2 }}>
+        <header className="gcon-james-head">
+          <span>By the morning post · Cambridge, Mass.</span>
+          <h3>A letter from William James</h3>
+        </header>
+        {james.status === 'writing' ? (
+          <p className="gcon-james-waiting">The envelope is still sealed<i className="gcon-james-dots" aria-hidden="true" /></p>
+        ) : (
+          <div className="gcon-james-page">
+            <p className="gcon-james-body">{letter.body}</p>
+            {letter.signature && <p className="gcon-james-signature">{letter.signature}</p>}
+          </div>
+        )}
+        <small className="gcon-james-note">{result.james?.disclaimer}</small>
+      </article>
+      <details className="gcon-debrief" style={{ '--step': 3 }}>
+        <summary>Modern debrief</summary>
+        <p>{result.modernDebrief}</p>
+      </details>
+    </div>
+  );
+}
+
 function ResultModal({
   active = true,
   result,
@@ -369,25 +433,53 @@ function ResultModal({
   patientLabel,
   view,
   setView,
+  onLedger = () => {},
   onNextPatient,
   onWaitingRoom,
   onStreet,
   onReturnVisit,
 }) {
-  const immediate = result?.immediate || {};
-  const summary = result?.summary || {};
-  const satisfaction = Math.max(0, Math.min(10, immediate.satisfactionOutOfTen ?? (immediate.satisfaction || 0) / 10));
-  const satisfactionBand = satisfaction >= 7 ? 'high' : satisfaction >= 4.5 ? 'mid' : 'low';
-  const month = result?.oneMonth || {};
-  const fee = useCountUp(Number(immediate.paymentCents) || 0, 420);
-  // Memoised so the count-up's re-renders don't rebuild the piece list.
-  const pieces = useMemo(() => feePieces(immediate.paymentCents), [immediate.paymentCents]);
-  // The month report is a look ahead, so it costs a deliberate click rather
-  // than sitting in the header as an equal tab. A real time gate belongs at
-  // end of run, once the game advances a month.
-  const [seal, setSeal] = useState('sealed');
-  const primaryRef = useRef(null);
-  const breakTimer = useRef(null);
+  const [variant, setVariant] = useState(readOutcomeVariant);
+  const chooseVariant = (next) => {
+    setVariant(next);
+    try { localStorage.setItem(OUTCOME_VARIANT_KEY, next); } catch { /* private mode */ }
+  };
+
+  // The fee reaches the purse once, through whichever variant settles it.
+  // Leaving without a choice (or by another route) settles in cash.
+  const [settlement, setSettlement] = useState(null);
+  const settledRef = useRef(null);
+  const latest = useRef({ onLedger, result, patientLabel });
+  latest.current = { onLedger, result, patientLabel };
+  const settle = (option) => {
+    if (settledRef.current) return;
+    settledRef.current = option;
+    setSettlement(option);
+    latest.current.onLedger({ cents: option.cents, standing: option.standing, reason: `the fee from ${patientLabel}` });
+  };
+  const settleCash = () => settle({ id: 'cash', cents: Number(result?.immediate?.paymentCents) || 0, standing: 0 });
+  useEffect(() => () => {
+    if (settledRef.current) return;
+    const { onLedger: ledger, result: last } = latest.current;
+    ledger({ cents: Number(last?.immediate?.paymentCents) || 0, standing: 0, reason: '' });
+  }, []);
+  // An account comes due when the month is read. A stand-in until the game
+  // advances a month at end of run.
+  const [collected, setCollected] = useState(null);
+  const collectedRef = useRef(null);
+  const collect = () => {
+    if (collectedRef.current || settledRef.current?.id !== 'account') return;
+    const due = collectAccount(patient, result);
+    collectedRef.current = due;
+    setCollected(due);
+    onLedger({ cents: due.cents, standing: due.standing, reason: `the account of ${patientLabel}` });
+  };
+  const offerPieces = useMemo(() => feePieces(result?.immediate?.paymentCents), [result]);
+  const exits = {
+    onNextPatient: () => { settleCash(); onNextPatient(); },
+    onWaitingRoom: () => { settleCash(); onWaitingRoom(); },
+    onStreet: () => { settleCash(); onStreet(); },
+  };
 
   // James writes while the player reads the immediate view; by the time the
   // month is unsealed the letter has usually arrived. The templated letter in
@@ -403,6 +495,80 @@ function ResultModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result]);
 
+  if (!result || !active) return null;
+  const abSwitch = (
+    <div className="gcon-ab" role="group" aria-label="Outcome screen version">
+      {['a', 'b'].map((id) => (
+        <button key={id} type="button" aria-pressed={variant === id} onClick={() => chooseVariant(id)}>
+          {id.toUpperCase()}
+        </button>
+      ))}
+    </div>
+  );
+  const month = <MonthReport result={result} james={james} onReturnVisit={onReturnVisit} />;
+  if (variant === 'b') {
+    return (
+      <>
+        <DaybookResult
+          result={result}
+          patient={patient}
+          patientLabel={patientLabel}
+          offerPieces={offerPieces}
+          settlement={settlement}
+          collected={collected}
+          onSettle={settle}
+          onOpenMonth={collect}
+          renderMonth={(extra) => <MonthReport result={result} james={james} onReturnVisit={onReturnVisit}>{extra}</MonthReport>}
+          {...exits}
+        />
+        {abSwitch}
+      </>
+    );
+  }
+  return (
+    <>
+      <ReportCardResult
+        result={result}
+        patientLabel={patientLabel}
+        view={view}
+        setView={setView}
+        settlement={settlement}
+        monthReport={month}
+        {...exits}
+      />
+      {abSwitch}
+    </>
+  );
+}
+
+// Variant A: the original report-card outcome screen.
+function ReportCardResult({
+  result,
+  patientLabel,
+  view,
+  setView,
+  settlement,
+  monthReport,
+  onNextPatient,
+  onWaitingRoom,
+  onStreet,
+}) {
+  const immediate = result?.immediate || {};
+  const summary = result?.summary || {};
+  const satisfaction = Math.max(0, Math.min(10, immediate.satisfactionOutOfTen ?? (immediate.satisfaction || 0) / 10));
+  const satisfactionBand = satisfaction >= 7 ? 'high' : satisfaction >= 4.5 ? 'mid' : 'low';
+  // Shows what was settled if the player already chose in variant B.
+  const paidCents = settlement ? settlement.cents : Number(immediate.paymentCents) || 0;
+  const fee = useCountUp(paidCents, 420);
+  // Memoised so the count-up's re-renders don't rebuild the piece list.
+  const pieces = useMemo(() => feePieces(paidCents), [paidCents]);
+  // The month report is a look ahead, so it costs a deliberate click rather
+  // than sitting in the header as an equal tab. A real time gate belongs at
+  // end of run, once the game advances a month.
+  const [seal, setSeal] = useState('sealed');
+  const primaryRef = useRef(null);
+  const breakTimer = useRef(null);
+
   const openMonth = () => {
     if (seal === 'open') return setView('month');
     if (seal === 'breaking') return undefined;
@@ -416,11 +582,10 @@ function ResultModal({
   useEffect(() => () => clearTimeout(breakTimer.current), []);
 
   useEffect(() => {
-    if (active) primaryRef.current?.focus({ preventScroll: true });
-  }, [active]);
+    primaryRef.current?.focus({ preventScroll: true });
+  }, []);
 
   useEffect(() => {
-    if (!active) return undefined;
     const onKey = (event) => {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       // Enter on a focused button is that button's own business.
@@ -432,15 +597,8 @@ function ResultModal({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [active, onNextPatient, onWaitingRoom, onStreet]);
+  }, [onNextPatient, onWaitingRoom, onStreet]);
 
-  if (!result || !active) return null;
-  const outcomeLabel = {
-    improved: 'Improved',
-    'little-change': 'Little change',
-    worse: 'Worsened',
-    harmed: 'Harmed',
-  }[month.band] || 'Outcome recorded';
   return (
     <div className="gcon-result-backdrop" role="presentation">
       <section className="gcon-result-modal gcon-frame gcon-paper" role="dialog" aria-modal="true" aria-labelledby="gcon-result-title">
@@ -473,7 +631,7 @@ function ResultModal({
               <div className="gcon-result-payment" style={{ '--step': 2 }}>
                 <div className="gcon-result-payment-label">
                   <span>Fee received</span>
-                  <small>{immediate.paymentLabel}</small>
+                  <small>{{ account: 'Put on account', waive: 'Fee waived' }[settlement?.id] || immediate.paymentLabel}</small>
                 </div>
                 <div className="gcon-result-money" aria-hidden="true">
                   {pieces.map((piece, index) => (
@@ -517,34 +675,7 @@ function ResultModal({
                 )}
               </div>
             </div>
-          ) : (
-            <div className="gcon-reveal" key="month">
-              <div className={`gcon-outcome-stamp is-${month.band || 'neutral'}`} style={{ '--step': 0 }}>{outcomeLabel}</div>
-              <p className="gcon-result-narrative" style={{ '--step': 1 }}>{month.narrative}</p>
-              {result.returnVisit && <button type="button" className="gcon-return-start" onClick={onReturnVisit}>Talk to Carmela one month later</button>}
-              <article className="gcon-james" style={{ '--step': 2 }}>
-                <header className="gcon-james-head">
-                  <span>By the morning post · Cambridge, Mass.</span>
-                  <h3>A letter from William James</h3>
-                </header>
-                {james.status === 'writing' ? (
-                  <p className="gcon-james-waiting">The envelope is still sealed<i className="gcon-james-dots" aria-hidden="true" /></p>
-                ) : (
-                  <div className="gcon-james-page">
-                    <p className="gcon-james-body">{splitSignature(james.text).body}</p>
-                    {splitSignature(james.text).signature && (
-                      <p className="gcon-james-signature">{splitSignature(james.text).signature}</p>
-                    )}
-                  </div>
-                )}
-                <small className="gcon-james-note">{result.james?.disclaimer}</small>
-              </article>
-              <details className="gcon-debrief" style={{ '--step': 3 }}>
-                <summary>Modern debrief</summary>
-                <p>{result.modernDebrief}</p>
-              </details>
-            </div>
-          )}
+          ) : monthReport}
         </div>
         <footer className="gcon-result-footer">
           <p>Where will you go now?</p>
@@ -592,6 +723,8 @@ export default function ConsultationView({
   onDismissPatient,
   onNextPatient = () => runtime.reset(),
   onLeaveConsultation = () => runtime.reset(),
+  // Money and standing from settling the fee: { cents, standing, reason }.
+  onLedger,
   // A DayFlow card is up: the consultation hides rather than stacking beneath it.
   hidden = false,
 }) {
@@ -599,9 +732,9 @@ export default function ConsultationView({
   const patients = runtime.patients();
   const patient = patients.find((candidate) => candidate.id === state?.patientId) || null;
 
-  // The opening rumination is required once. After that, Interview and
-  // Examination continue until the player opens Ruminate deliberately.
-  const [phase, setPhase] = useState('thought');
+  // The visit opens straight into the interview. Ruminate stays available
+  // in the rail but is never required.
+  const [phase, setPhase] = useState('speech');
   const [cursor, setCursor] = useState(-1);
   const [bookOpen, setBookOpen] = useState(false);
   const [playerNotes, setPlayerNotes] = useState([]);
@@ -643,7 +776,7 @@ export default function ConsultationView({
   }, [history, examPresenting]);
 
   useEffect(() => {
-    setPhase('thought');
+    setPhase('speech');
     setBookOpen(false);
     setPlayerNotes(patient ? loadPatientNotes(patient) : []);
     setNoteEditor(null);
@@ -664,6 +797,12 @@ export default function ConsultationView({
   }, [noteEditor]);
 
   useEffect(() => setCursor(-1), [phase, stage, state?.mode, state?.patientId, decisionStep]);
+
+  // The arrival panel was a click with nothing to decide; its description now
+  // sits above the first questions instead.
+  useEffect(() => {
+    if (stage === 'opening') runtime.dispatch({ type: 'begin-inquiry' });
+  }, [stage, runtime]);
 
   // Surface an engine rejection briefly, then let it go.
   const seenErrors = useRef(0);
@@ -695,15 +834,8 @@ export default function ConsultationView({
   const examined = new Set(state?.observedFactIds ?? []);
   const examinations = useMemo(() => (patient && state ? availableExaminations(patient, state) : []), [patient, state]);
   const diagnoses = useMemo(() => (patient && state && !showAllDecisions ? availableDiagnoses(patient, state) : patient?.diagnoses || []), [patient, state, showAllDecisions]);
-  const recordFacts = useMemo(
-    () => (patient && state && stage === 'case-note'
-      ? patient.facts.filter((fact) => state.disclosedFactIds.includes(fact.id))
-      : []),
-    [patient, state, stage],
-  );
   const timing = patient && state ? consultationTiming(patient, state, previewMinutes) : null;
   const currentTiming = patient && state ? consultationTiming(patient, state) : null;
-  const hasRuminated = noted.size > 0 || (state?.customInterpretations?.length ?? 0) > 0;
   const clueTokens = useMemo(() => {
     if (!patient || !state) return [];
     const known = new Set(state.disclosedFactIds);
@@ -782,17 +914,29 @@ export default function ConsultationView({
     setPhase('thought');
   };
 
-  const beginInquiry = () => {
-    if (stage !== 'opening') return;
-    runtime.dispatch({ type: 'begin-inquiry' });
-    setPhase('thought');
-  };
-
   const toDecision = () => {
     if (stage === 'inquiry') {
       runtime.dispatch({ type: 'begin-decision' });
       setDecisionStep(state.diagnosisId ? 'treatment' : 'diagnosis');
     }
+  };
+
+  // Signing finishes the visit. The pen stroke plays first so the result
+  // arrives as the consequence of a signature, not a page swap.
+  const [signing, setSigning] = useState(false);
+  const signTimer = useRef(null);
+  useEffect(() => () => clearTimeout(signTimer.current), []);
+  const conclude = () => {
+    if (signing) return;
+    if (treatmentDiscussionStep(patient, state) || prefersReducedMotion()) {
+      runtime.dispatch({ type: 'conclude' });
+      return;
+    }
+    setSigning(true);
+    signTimer.current = setTimeout(() => {
+      setSigning(false);
+      runtime.dispatch({ type: 'conclude' });
+    }, 720);
   };
 
   const beginNote = (note = null) => {
@@ -849,10 +993,7 @@ export default function ConsultationView({
   /* ------- the one keyboard map: arrows rove, return commits ------- */
 
   const nav = { count: 0, cols: 1, select: () => {} };
-  if (stage === 'opening') {
-    nav.count = 1;
-    nav.select = beginInquiry;
-  } else if (stage === 'inquiry' && phase === 'thought') {
+  if (stage === 'inquiry' && phase === 'thought') {
     nav.count = interpretations.length;
     nav.cols = interpretations.length || 1;
     nav.select = (index) => chooseThought(interpretations[index]);
@@ -875,14 +1016,14 @@ export default function ConsultationView({
     nav.commit = () => { if (state.diagnosisId) setDecisionStep('treatment'); };
   } else if (stage === 'decision') {
     nav.commit = () => {
-      if (state.diagnosisId && state.treatmentIds?.length > 0) runtime.dispatch({ type: 'begin-case-note' });
+      if (state.diagnosisId && state.treatmentIds?.length > 0) conclude();
     };
   } else if (stage === 'treatment-discussion') {
     const choices = treatmentDiscussionStep(patient, state)?.choices || [];
     nav.count = choices.length;
     nav.cols = choices.length || 1;
     nav.select = index => runtime.dispatch({ type: 'respond-treatment', id: choices[index].id });
-    if (state.treatmentAgreement) nav.commit = () => runtime.dispatch({ type: 'begin-case-note' });
+    if (state.treatmentAgreement) nav.commit = conclude;
   } else if (stage === 'return-visit') {
     const visit = state.result.returnVisit;
     const choices = state.returnVisit.phase === 'questions'
@@ -891,17 +1032,6 @@ export default function ConsultationView({
     nav.count = choices.length;
     nav.cols = choices.length || 1;
     nav.select = index => runtime.dispatch({ type: state.returnVisit.phase === 'questions' ? 'ask-return-visit' : 'agree-return-plan', id: choices[index].id });
-  } else if (stage === 'case-note') {
-    nav.count = recordFacts.length;
-    nav.cols = 3;
-    nav.select = (index) => runtime.dispatch({ type: 'select-record-fact', id: recordFacts[index].id });
-    // Enter always signs here — a hovered card must not swallow it. The roved
-    // card toggles with Space instead.
-    nav.enterCommits = true;
-    nav.commit = () => {
-      const minimum = patient.caseNote?.minimumEvidenceSelections ?? 0;
-      if ((state.caseRecordFactIds || []).length >= minimum) runtime.dispatch({ type: 'submit-case-note' });
-    };
   }
 
   const navRef = useRef(nav);
@@ -1013,7 +1143,7 @@ export default function ConsultationView({
       title: 'Interview',
       sub: `Ask about ${possessive(patient.profile)} symptoms`,
       active: stage === 'inquiry' && phase === 'speech' && state.mode === 'patient',
-      disabled: stage !== 'inquiry' || !hasRuminated,
+      disabled: stage !== 'inquiry',
       act: toInterview,
     },
     {
@@ -1021,7 +1151,7 @@ export default function ConsultationView({
       title: 'Examine',
       sub: 'Physical assessment',
       active: stage === 'inquiry' && phase === 'exam',
-      disabled: stage !== 'inquiry' || !hasRuminated || Boolean(state.pendingResponseId),
+      disabled: stage !== 'inquiry' || Boolean(state.pendingResponseId),
       act: toExamination,
     },
     {
@@ -1034,8 +1164,8 @@ export default function ConsultationView({
     },
     {
       id: 'treatment',
-      title: 'Consider Treatment',
-      sub: stage === 'inquiry' && inquiryCount === 0 ? 'Speak with the patient first' : 'Plan next steps',
+      title: 'Diagnose & Prescribe',
+      sub: stage === 'inquiry' && inquiryCount === 0 ? 'Speak with the patient first' : 'Name it and treat it',
       active: ['decision', 'treatment-discussion', 'case-note'].includes(stage),
       disabled: stage !== 'inquiry' || inquiryCount === 0 || Boolean(state.pendingResponseId),
       act: toDecision,
@@ -1046,20 +1176,6 @@ export default function ConsultationView({
 
   const renderStage = () => {
     if (!state || !patient) return null;
-
-    if (stage === 'opening') {
-      return (
-        <div className="gcon-arrival">
-          <p className="gcon-eyebrow">{patient.label}</p>
-          <p className="gcon-arrival-description">{patient.opening.behavior}</p>
-          <blockquote className="gcon-quote">{markedQuote(patient.opening.dialogue, [])}</blockquote>
-          <Ornament />
-          <footer className="gcon-hint gcon-hint--arrival">
-            <button type="button" className="gcon-continue" onClick={beginInquiry}>Continue</button>
-          </footer>
-        </div>
-      );
-    }
 
     if (stage === 'inquiry' && currentTiming?.deadlineReached && !state.pendingResponseId && !state.awaitingApology) {
       return (
@@ -1080,7 +1196,7 @@ export default function ConsultationView({
       return (
         <>
           {utterance && (
-            <blockquote className={`gcon-quote${utterance.observation ? ' gcon-quote--observation' : ''}`}>
+            <blockquote key={utterance.text} className={`gcon-quote${utterance.observation ? ' gcon-quote--observation' : ''}`}>
               {markedQuote(utterance.text, clueTokens)}
             </blockquote>
           )}
@@ -1121,9 +1237,7 @@ export default function ConsultationView({
               <span>
                 Choose an approach,{' '}
                 <button type="button" className="gcon-hint-link" onClick={() => setCustomThoughtOpen(true)}>suggest your own</button>
-                {hasRuminated && (
-                  <>{', or '}<button type="button" className="gcon-hint-link" onClick={toInterview}>return to the consultation</button></>
-                )}
+                {', or '}<button type="button" className="gcon-hint-link" onClick={toInterview}>return to the consultation</button>
               </span>
             )}
           </footer>
@@ -1136,8 +1250,11 @@ export default function ConsultationView({
         <>
           {state.awaitingApology && <p className="gcon-response-prompt" role="status">The patient is upset. You can apologize before continuing.</p>}
           {state.pendingResponseId && <p className="gcon-response-prompt" role="status">{patient.profile.identity.displayName} is waiting for your answer.</p>}
+          {inquiryCount === 0 && patient.opening.behavior && (
+            <p className="gcon-arrival-line"><span>{patient.label}</span>{patient.opening.behavior}</p>
+          )}
           {utterance && (
-            <blockquote className={`gcon-quote${utterance.observation ? ' gcon-quote--observation' : ''}`}>
+            <blockquote key={utterance.text} className={`gcon-quote${utterance.observation ? ' gcon-quote--observation' : ''}`}>
               {markedQuote(utterance.text, clueTokens)}
             </blockquote>
           )}
@@ -1278,11 +1395,12 @@ export default function ConsultationView({
             </span>
             <button
               type="button"
-              className="gcon-sign"
+              className={`gcon-sign${signing ? ' is-signing' : ''}`}
               disabled={!state.diagnosisId || !(state.treatmentIds?.length > 0)}
-              onClick={() => runtime.dispatch({ type: 'begin-case-note' })}
+              onClick={conclude}
             >
-              <strong>{patient.treatmentDiscussion && !state.treatmentAgreement ? 'Discuss the plan' : 'Write the case note'}</strong>
+              <SignatureStroke />
+              <strong>{treatmentDiscussionStep(patient, state) ? 'Discuss the plan' : 'Sign the prescription'}</strong>
               <kbd aria-hidden="true">⏎</kbd>
             </button>
           </footer>
@@ -1301,7 +1419,7 @@ export default function ConsultationView({
               <p className="gcon-plan-summary">{state.treatmentAgreement.summary}</p>
               <footer className="gcon-record-signoff">
                 <button type="button" className="gcon-hint-link" onClick={() => runtime.dispatch({ type: 'revise-treatment' })}>Change the prescription</button>
-                <button type="button" className="gcon-sign" onClick={() => runtime.dispatch({ type: 'begin-case-note' })}><strong>Write the case note</strong><kbd>⏎</kbd></button>
+                <button type="button" className={`gcon-sign${signing ? ' is-signing' : ''}`} onClick={conclude}><SignatureStroke /><strong>Sign the prescription</strong><kbd>⏎</kbd></button>
               </footer>
             </>
           ) : (
@@ -1329,64 +1447,6 @@ export default function ConsultationView({
             <button type="button" className="gcon-hint-link" onClick={() => runtime.dispatch({ type: 'end-return-visit' })}>Back to one-month report</button>
             {review.phase === 'questions' && review.asked.length > 0 && <button type="button" className="gcon-sign" onClick={() => runtime.dispatch({ type: 'discuss-return-plan' })}><strong>Discuss next steps</strong></button>}
             {review.phase === 'complete' && <span className="gcon-plan-summary">Next steps recorded.</span>}
-          </footer>
-        </>
-      );
-    }
-
-    if (stage === 'case-note') {
-      const minimumEvidence = patient.caseNote.minimumEvidenceSelections ?? 0;
-      const maximumEvidence = patient.caseNote.maximumEvidenceSelections ?? 3;
-      const selectedEvidence = state.caseRecordFactIds || [];
-      const canSign = selectedEvidence.length >= minimumEvidence;
-      const cited = selectedEvidence.length === 0
-        ? 'No findings selected'
-        : selectedEvidence.length === 1 ? '1 finding selected' : `${selectedEvidence.length} findings selected`;
-      return (
-        <>
-          <p className="gcon-eyebrow">Sign the Case Record</p>
-          <p className="gcon-record-instruction">
-            {minimumEvidence > 0
-              ? `Select up to ${maximumEvidence} findings that support your diagnosis, then sign. A written note is optional.`
-              : `You can select up to ${maximumEvidence} findings and add a note. Both are optional.`}
-          </p>
-          <div className="gcon-record-facts">
-            {recordFacts.map((fact, index) => (
-              <button
-                key={fact.id}
-                type="button"
-                className={`${selectedEvidence.includes(fact.id) ? 'is-selected' : ''}${cursor === index ? ' is-hot' : ''}`}
-                aria-pressed={selectedEvidence.includes(fact.id)}
-                {...cardMouse(index)}
-                onClick={() => runtime.dispatch({ type: 'select-record-fact', id: fact.id })}
-              >
-                <strong>{fact.label}</strong><span>{fact.value}</span>
-              </button>
-            ))}
-          </div>
-          <textarea
-            className="gcon-notefield"
-            placeholder="Optional note…"
-            value={state.caseNote}
-            onChange={(event) => runtime.dispatch({ type: 'write-case-note', text: event.target.value })}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && canSign) {
-                event.preventDefault();
-                runtime.dispatch({ type: 'submit-case-note' });
-              }
-            }}
-          />
-          <footer className="gcon-record-signoff">
-            <span className="gcon-record-count">{cited}</span>
-            <button
-              type="button"
-              className="gcon-sign"
-              disabled={!canSign}
-              onClick={() => runtime.dispatch({ type: 'submit-case-note' })}
-            >
-              <strong>Sign and close the case</strong>
-              <kbd aria-hidden="true">⏎</kbd>
-            </button>
           </footer>
         </>
       );
@@ -1649,6 +1709,7 @@ export default function ConsultationView({
           patientLabel={patient.label}
           view={resultView}
           setView={setResultView}
+          onLedger={onLedger}
           onNextPatient={onNextPatient}
           onWaitingRoom={() => onLeaveConsultation('waiting-room')}
           onStreet={() => onLeaveConsultation('street')}

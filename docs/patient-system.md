@@ -182,13 +182,14 @@ that agreement and uses it in the later outcome. The one-month panel can open
 a playable return-visit preview based on that outcome; it does not advance the
 current appointment or charge another fee.
 
-When the player selects **Consider Treatment**, the three diagnoses most
+When the player selects **Diagnose & Prescribe**, the three diagnoses most
 relevant to discovered evidence are shown first, with the complete list still
-available. Treatments come from a shared library of eight categories, opened as
-a cabinet of nine tiles. A plan may hold up to three treatments; their effects
-are summed. The player chooses a diagnosis and a plan, then signs the record by
-selecting two or three findings that best support the decision. Free prose is optional for authored cases that use this concise
-record format.
+available. The treatment panel opens on the remedies the patient record
+names (its treatment overrides, helpful and harmful alike, in library order),
+with the full cabinet of eight categories below. A plan may hold up to three
+treatments; their effects are summed. Signing fills the case record from the
+findings the doctor uncovered, required findings first, so a thin inquiry
+produces a thin record without a separate selection step.
 
 The case notebook begins with name, age, and residence. It adds only information
 earned through player actions:

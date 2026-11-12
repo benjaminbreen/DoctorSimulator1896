@@ -1,0 +1,19 @@
+{"type":"click","name":"Ask how the attacks start, how long they last, and what she feels.","exact":false}
+{"type":"click","name":"Ask what she fears and what she now avoids.","exact":false}
+{"type":"click","name":"I cannot tell yet. Breathe slowly while I examine you.","exact":false}
+{"type":"click","name":"Ask what medicines, tonics, and stimulants she uses.","exact":false}
+{"type":"click","name":"Ask about fainting, pain during exertion, swelling, and an irregular heartbeat.","exact":false}
+{"type":"click","name":"Examine. Physical assessment"}
+{"type":"click","name":"Examine heart, pulse, and breathing","exact":false}
+{"type":"press","key":"Escape"}
+{"type":"click","name":"Ask how closing the shop would affect her family.","exact":false}
+{"type":"click","name":"Make a diagnosis"}
+{"type":"click","name":"Nervous palpitation aggravated by coca","exact":false}
+{"type":"fill","label":"Search treatments","value":"coca wine"}
+{"type":"click","name":"Stop the coca wine","exact":false}
+{"type":"click","name":"Discuss the plan","exact":false}
+{"type":"click","name":"Leave off the wine. Let’s work out how you can manage at the shop.","exact":false}
+{"type":"click","name":"Keep the shop open. Start with one customer, with Elena beside you.","exact":false}
+{"type":"click","name":"Sign the prescription","exact":false}
+{"type":"wait","ms":1800}
+{"type":"assert","text":"Fee paid in full","exact":false}

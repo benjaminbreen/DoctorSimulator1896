@@ -81,6 +81,9 @@ conflict. The plan and first results are in [case-cards.md](case-cards.md).
 - The current playable perspective is the doctor role in consultation view.
 - The final interface and case-notebook behavior are part of
   [patient-system.md](patient-system.md), not separate decision records here.
+- Every consultation screen must hold a decision (2026-11-09). The arrival
+  panel, the required first rumination, and the case-record selection were
+  removed for that reason; the record now fills itself from what was found.
 
 ## Time and outcomes
 

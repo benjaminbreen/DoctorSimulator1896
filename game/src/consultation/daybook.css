@@ -1,0 +1,307 @@
+/* Variant B outcome screen: a page of the doctor's day book. Ruled paper,
+   one entry written in ink, and the fee still lying on the desk until the
+   player decides what to do with it. Rules that override the shared result
+   modal are prefixed .gcon-result-modal.gdb, since consultation.css loads
+   after this file. */
+
+.gcon-result-modal.gdb {
+  --gdb-ink: #2a2017;
+  --gdb-ink-soft: rgba(42, 32, 23, .72);
+  --gdb-rule: rgba(70, 110, 150, .16);
+  --gdb-red: rgba(168, 52, 44, .55);
+  --gdb-green: #1f5138;
+
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(100%, 52rem);
+  text-align: left;
+}
+
+.gdb-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 3px double var(--gdb-red);
+  font: 600 var(--r-label)/1 var(--gc-sc);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--gdb-ink-soft);
+}
+.gdb-book { font-size: calc(var(--r-label) + 3px); color: var(--gdb-ink); }
+
+.gdb-body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 2px 6px;
+}
+
+/* ---------------- the entry ---------------- */
+
+.gdb-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 7.5rem;
+  margin-top: var(--r-gutter);
+  /* faint blue ledger rules every 30px, with the red money column on the right */
+  background:
+    linear-gradient(90deg, transparent calc(100% - 7.5rem - 2px), var(--gdb-red) 0 calc(100% - 7.5rem - 1px), transparent 0 calc(100% - 7.5rem + 2px), var(--gdb-red) 0 calc(100% - 7.5rem + 3px), transparent 0),
+    repeating-linear-gradient(180deg, transparent 0 29px, var(--gdb-rule) 29px 30px);
+}
+.gdb-lines { padding: 0 14px 4px 0; min-width: 0; }
+
+.gdb-ink {
+  margin: 0;
+  color: var(--gdb-ink);
+  /* written left to right, a line at a time */
+  animation: gdb-write .8s cubic-bezier(.4, .1, .3, 1) both;
+}
+.gcon-result-modal.gdb .gdb-name {
+  margin: 0;
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  color: var(--gdb-ink);
+  font: 700 clamp(36px, 1.6rem + 2vw, 52px)/1 'Tangerine', cursive;
+  animation-delay: .25s;
+}
+.gdb-who {
+  font: italic 500 calc(var(--r-body) + 3px)/30px 'Cormorant', Georgia, serif;
+  color: var(--gdb-ink-soft);
+  animation-delay: .75s;
+}
+.gdb-rx {
+  font: italic 600 calc(var(--r-body) + 4px)/30px 'Cormorant', Georgia, serif;
+  animation-delay: 1.15s;
+}
+.gdb-rx b {
+  margin-right: 8px;
+  font: 400 1.25em/1 Georgia, serif;
+  font-style: normal;
+  color: var(--gdb-red);
+}
+
+.gdb-amount {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  justify-items: end;
+  padding: 0 4px 0 12px;
+}
+.gdb-col-head {
+  font: 600 var(--r-label)/1.4 var(--gc-sc);
+  letter-spacing: .14em;
+  color: var(--gdb-red);
+}
+.gdb-figure {
+  align-self: center;
+  font: 700 clamp(30px, 1.3rem + 1.6vw, 42px)/1 'Tangerine', cursive;
+  white-space: nowrap;
+  animation: gdb-write .55s cubic-bezier(.4, .1, .3, 1) both;
+}
+.gdb-figure.is-paid { color: var(--gdb-ink); }
+.gdb-figure.is-account { color: #22406b; }
+.gdb-figure.is-waived { color: #9a3328; }
+
+.gdb-words {
+  margin: var(--r-gutter) 0 6px;
+  color: #241d12;
+  font: italic var(--r-quote)/1.4 Georgia, serif;
+  text-wrap: balance;
+}
+.gdb-narrative {
+  max-width: 64ch;
+  margin: 0 0 var(--r-gutter);
+  color: rgba(51, 45, 37, .8);
+  font: var(--r-body)/1.6 Georgia, serif;
+  text-wrap: pretty;
+}
+
+/* ---------------- settling the fee ---------------- */
+
+.gdb-settle {
+  padding-top: 14px;
+  border-top: 1px solid rgba(62, 78, 66, .2);
+}
+.gdb-desk {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 58px;
+}
+.gdb-desk p {
+  margin: 0;
+  color: #241d12;
+  font: italic calc(var(--r-body) + 2px)/1.45 Georgia, serif;
+}
+.gdb-coins {
+  display: flex;
+  flex: none;
+  align-items: center;
+  transition: transform .5s cubic-bezier(.5, 0, .3, 1), opacity .5s ease;
+}
+.gdb-coins img {
+  margin-left: -14px;
+  filter: drop-shadow(0 2px 2px rgba(40, 28, 12, .35));
+  animation: gdb-drop .45s cubic-bezier(.2, .8, .3, 1.2) both;
+  animation-delay: calc(1.5s + var(--i) * 90ms);
+}
+.gdb-coins img:first-child { margin-left: 0; }
+.gdb-coins img.is-note { width: 78px; transform: rotate(-4deg); }
+.gdb-coins img.is-coin { width: 34px; }
+/* Taken: the money slides toward you. Billed or waived: it goes back. */
+.gdb-coins.is-cash { transform: translateY(26px) scale(.8); opacity: 0; }
+.gdb-coins.is-account,
+.gdb-coins.is-waive { transform: translateY(-22px) scale(.9); opacity: 0; }
+
+.gdb-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.gdb-options button {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 12px 14px 13px;
+  border: 1px solid rgba(62, 78, 66, .26);
+  border-radius: 5px;
+  background: linear-gradient(180deg, #fffdf7, #f1eadb);
+  color: #241d12;
+  text-align: left;
+  cursor: pointer;
+  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+.gdb-options button:hover,
+.gdb-options button:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(44, 107, 77, .6);
+  box-shadow: 0 6px 16px rgba(60, 44, 20, .14);
+  outline: none;
+}
+.gdb-options strong { font: 600 calc(var(--r-body) + 2px)/1.2 Georgia, serif; }
+.gdb-options span { color: rgba(51, 45, 37, .66); font: italic var(--r-body)/1.4 Georgia, serif; }
+.gdb-options kbd,
+.gdb-exits kbd {
+  font: 10px/1 Georgia, serif;
+  padding: 2px 5px;
+  border: 1px solid rgba(62, 78, 66, .3);
+  border-radius: 3px;
+  color: rgba(51, 45, 37, .6);
+}
+.gdb-options kbd { position: absolute; top: 9px; right: 9px; }
+
+.gdb-purse {
+  margin: 10px 0 0;
+  color: rgba(51, 45, 37, .6);
+  font: 600 var(--r-label)/1 var(--gc-sc);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  animation: gcon-result-rise .5s ease both .2s;
+}
+.gdb-purse strong {
+  margin-left: 6px;
+  color: var(--gdb-green);
+  font: 400 calc(var(--r-body) + 4px)/1 Georgia, serif;
+  letter-spacing: 0;
+}
+
+/* ---------------- month page ---------------- */
+
+.gcon-result-modal.gdb .gcon-outcome-stamp { margin-inline: 0; }
+.gcon-result-modal.gdb .gcon-result-narrative { margin-inline: 0; }
+.gdb-account {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 var(--r-gutter);
+  padding: 10px 14px;
+  border-left: 3px solid #22406b;
+  background: rgba(34, 64, 107, .05);
+  color: #241d12;
+  font: italic calc(var(--r-body) + 1px)/1.45 Georgia, serif;
+}
+.gdb-account span {
+  font: 600 var(--r-label)/1.3 var(--gc-sc);
+  font-style: normal;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: rgba(51, 45, 37, .6);
+}
+.gdb-account strong { font: 400 calc(var(--r-body) + 3px)/1.2 Georgia, serif; font-style: normal; color: var(--gdb-green); }
+
+/* ---------------- footer ---------------- */
+
+.gdb-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 18px;
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 3px double var(--gdb-red);
+}
+.gdb-letter,
+.gdb-exits button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: none;
+  color: rgba(51, 45, 37, .7);
+  font: 600 var(--r-label)/1 var(--gc-sc);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 8px 6px;
+}
+.gdb-letter:hover,
+.gdb-exits button:hover { color: var(--gdb-green); }
+.gdb-letter.is-breaking .gcon-seal { animation: gcon-result-crack .38s ease forwards; }
+.gdb-exits { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.gdb-exits button.is-primary {
+  padding: 9px 14px;
+  border-radius: 4px;
+  background: #2c6b4d;
+  color: #f2f9f2;
+}
+.gdb-exits button.is-primary:hover { background: #245a40; color: #fff; }
+.gdb-exits button.is-primary kbd { border-color: rgba(242, 249, 242, .4); color: rgba(242, 249, 242, .8); }
+.gdb-letter:focus-visible,
+.gdb-exits button:focus-visible { outline: 1px solid #2c6b4d; outline-offset: 2px; }
+
+/* ---------------- A/B switch ---------------- */
+
+.gcon-ab {
+  position: fixed;
+  z-index: 90;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(10, 16, 24, .7);
+  pointer-events: auto;
+}
+.gcon-ab button {
+  min-width: 30px;
+  padding: 5px 9px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: rgba(236, 223, 190, .6);
+  font: 600 12px/1 Georgia, serif;
+  cursor: pointer;
+}
+.gcon-ab button[aria-pressed='true'] { background: #ecdfbe; color: #1d1913; }
+
+@keyframes gdb-write {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+@keyframes gdb-drop {
+  from { opacity: 0; transform: translateY(-14px) rotate(-8deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gdb-ink, .gdb-figure, .gdb-coins img, .gdb-purse { animation: none; }
+  .gdb-coins { transition: none; }
+}
