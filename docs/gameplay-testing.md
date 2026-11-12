@@ -107,7 +107,7 @@ Add `--text` when the run is about game logic. Commands then return state
 and visible text without a screenshot, which is several times faster per
 step; send `{"type":"screenshot"}` when a picture is needed. A failed step
 still saves one. `--lowgfx` also turns off shadows, post-processing, and
-grass. Loading the game takes most of a short run either way.
+grass.
 
 Each capture's state file includes `casebook`, the saved visit records, so a
 replay's diagnosis, prescription, and outcome can be read without the screen.
@@ -128,6 +128,21 @@ can produce a cast that does not. The runner does not select diagnoses,
 disclose hidden evidence, or decide outcomes for the player.
 The `appointment` scenario starts in the park shortly before the first visit,
 so a short wait can exercise the appointment reminder.
+
+## Compare the look before and after
+
+```sh
+node game/scripts/looks.mjs --baseline   # before the change
+node game/scripts/looks.mjs              # after it
+```
+
+This captures a fixed list of viewpoints (park, streets, dusk, night, the
+rooms, one consultation) in about two minutes and writes
+`artifacts/looks/index.html`, with the baseline on the left and the current
+picture on the right. `--only=pond,office` captures a few. The list is at the
+top of the script; add a viewpoint when a new place is worth watching. The
+pictures are not compared by machine: crowds, clouds and leaves move, so look
+at them.
 
 ## Replay and review a change
 
@@ -234,6 +249,13 @@ three gaps with ordinary movement keys, and climbs back down. A `move` command
 can press Space at `jumpAt` and release its keys at `until`, using a world
 axis and an `above` or `below` position. The replay checks each landing height.
 
+The park loads what is within range of the physician, as it does for a
+player, and the runner waits for that after every action. It does not wait
+for the player to move first, and it prepares several districts at once, so
+the opening frame is ready in about 10 seconds. `--full-park` loads every
+district before the first capture, which takes about 90 seconds. `--streaming`
+keeps the game's own pacing; use it to test the streaming itself.
+
 Use the streaming replay to walk out of the southeast entrance from the
 opening frame, then check that the Plaza vendor offers an apple.
 
@@ -242,8 +264,7 @@ node game/scripts/gameplay-playtest.mjs --scenario=park --streaming --continuous
   --replay=game/scripts/playthroughs/park-stream.jsonl
 ```
 
-The other park replays request all districts before starting so their
-teleports find the features they inspect. For the cold start and frame times
+For the cold start and frame times
 around the first district crossing, run the timing check against a production
 preview.
 

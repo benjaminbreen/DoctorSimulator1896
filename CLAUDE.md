@@ -37,3 +37,6 @@ game, own package, `npm run game`, port 5175).
   grows, run `npm run repo:prune`, which drops local LFS copies already on GitHub.
 - Test the behaviour that matters. Do not add tests to pin down details that
   will change, and do not exhaustively verify a change that is obviously right.
+- Check a graphics change with `node game/scripts/looks.mjs` (before with
+  `--baseline`, then after) and a gameplay change with the text runners in
+  `docs/agent-play.md`. Both are much faster than a full browser playtest.

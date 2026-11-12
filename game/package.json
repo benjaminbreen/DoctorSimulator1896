@@ -12,6 +12,7 @@
     "playtest:carmela": "node scripts/consultation-playtest.mjs --patient=carmela",
     "playtest:chapuys": "node scripts/consultation-playtest.mjs --patient=chapuys",
     "playtest:game": "node scripts/gameplay-playtest.mjs",
+    "looks": "node scripts/looks.mjs",
     "agent": "node scripts/agent-play.mjs",
     "agent:batch": "node scripts/agent-batch.mjs",
     "agent:parity": "node scripts/agent-parity.mjs",
