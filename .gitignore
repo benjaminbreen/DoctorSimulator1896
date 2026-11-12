@@ -43,6 +43,7 @@ assets-local/
 # Local performance captures and browser traces.
 artifacts/performance/
 artifacts/gameplay/
+artifacts/agent/
 artifacts/characters/
 artifacts/models/
 

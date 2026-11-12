@@ -22,7 +22,7 @@ const scenarios = {
 if (process.argv.includes('--help')) {
   console.log(`Usage: node game/scripts/gameplay-playtest.mjs [--scenario=park] [--seed=4]
   [--output=DIR] [--url=URL] [--headed] [--continuous] [--video] [--trace] [--offline]
-  [--quality=auto|quality|performance]
+  [--quality=auto|quality|performance] [--streaming] [--text] [--lowgfx]
   [--replay=actions.jsonl]
 
 Scenarios: ${Object.keys(scenarios).join(', ')}
@@ -40,9 +40,15 @@ Send one JSON command per line on stdin. Every command saves a screenshot and st
   {"type":"wait-seated"}
   {"type":"camera","position":[1.8,1,-2],"target":[0.45,0.7,-1.7],"fov":45}
   {"type":"assert","text":"Consultation"}
+  {"type":"travel","to":"Your Consulting Room"}
+  {"type":"see-patient","name":"Carmela Russo"}
+  {"type":"ask","text":"What medicines do you take?"}
+  {"type":"screenshot"}
   {"type":"pause"} / {"type":"resume"} / {"type":"quit"}
 Click/fill/assert also accept a CSS selector. Assert supports visible:false.
 The browser pauses between actions by default. --continuous uses real timers.
+--text returns state without a screenshot; send {"type":"screenshot"} when you need one.
+--lowgfx turns off shadows, post-processing, and grass for runs about game logic.
 Replay exits when finished. EOF, quit, and Ctrl+C close owned browser/server resources.`);
   process.exit(0);
 }
@@ -56,9 +62,12 @@ const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 const output = resolve(arg('output', resolve(repoRoot, `artifacts/gameplay/${new Date().toISOString().replaceAll(':', '-')}`)));
 const continuous = process.argv.includes('--continuous');
 const offline = process.argv.includes('--offline');
+const streaming = process.argv.includes('--streaming');
 const quality = arg('quality', continuous ? 'auto' : 'quality');
 if (!['auto', 'quality', 'performance'].includes(quality)) throw new Error('Unknown graphics quality.');
-const config = { scenario: scenarioName, seed, continuous, offline, quality, output };
+const textOnly = process.argv.includes('--text');
+const lowgfx = process.argv.includes('--lowgfx');
+const config = { scenario: scenarioName, seed, continuous, offline, streaming, quality, textOnly, lowgfx, output };
 await mkdir(output, { recursive: true });
 // Do not overwrite a previous run: its actions must remain a usable replay.
 await writeFile(resolve(output, 'actions.jsonl'), '', { flag: 'wx' });
@@ -153,8 +162,23 @@ async function waitForPosition({ axis, below, above }, timeout) {
 
 async function act(command) {
   switch (command.type) {
-    case 'observe': case 'pause': case 'resume': case 'quit': return;
+    case 'observe': case 'screenshot': case 'pause': case 'resume': case 'quit': return;
     case 'click': await target(command).click(); return;
+    // Macros: several UI clicks in one command. They use the same buttons a
+    // player does, so they cannot do anything the game does not allow.
+    case 'travel':
+      await page.getByRole('button', { name: 'Fast Travel', exact: true }).first().click();
+      await page.getByRole('button', { name: command.to, exact: false }).click();
+      return;
+    case 'see-patient':
+      await page.getByRole('button', { name: `Open the casebook for ${command.name}`, exact: false }).click();
+      await page.getByRole('button', { name: `Ask ${command.name} to return`, exact: false }).click();
+      await page.getByLabel('Ask in your own words', { exact: true }).waitFor();
+      return;
+    case 'ask':
+      await page.getByLabel('Ask in your own words', { exact: true }).fill(command.text);
+      await page.getByRole('button', { name: 'Ask custom question', exact: true }).click();
+      return;
     case 'fill': {
       const locator = command.selector ? page.locator(command.selector) : page.getByLabel(command.label, { exact: true });
       await locator.fill(command.value);
@@ -295,6 +319,8 @@ async function capture(command, failure = null) {
       performances,
       materialResponses,
       clock: window.__playtest?.clock(),
+      // Saved visit records, so a replay's outcome can be compared with a text run.
+      casebook: JSON.parse(localStorage.getItem('ghosts.casebook.records.v1') || 'null'),
       text: document.body.innerText,
       controls: [...document.querySelectorAll('button, input, textarea, select, [role="tab"]')]
         .filter(visible).map((element) => ({
@@ -334,7 +360,9 @@ async function capture(command, failure = null) {
     const style = await page.addStyleTag({ content: 'body * { visibility: hidden !important; } body canvas { visibility: visible !important; }' });
     await style.evaluate(node => { node.id = 'playtest-camera-style'; });
   }
-  await page.screenshot({ path: screenshot, timeout: 60000 });
+  // In text mode a picture is taken only when asked for, or to show a failure.
+  const pictured = !textOnly || failure || ['screenshot', 'camera', 'start'].includes(command.type);
+  if (pictured) await page.screenshot({ path: screenshot, timeout: 60000 });
   if (command.type === 'camera') await page.locator('#playtest-camera-style').evaluate(node => node.remove());
   if (arg('inspect-shadows', null) === stem) {
     for (const mode of ['on','off','restore']) {
@@ -352,7 +380,7 @@ async function capture(command, failure = null) {
     }
   }
   await writeFile(stateFile, JSON.stringify({ command, failure, paused: pausedBetweenActions, state, errors }, null, 2));
-  const result = { step: stem, ok: !failure && errors.length === 0, screenshot, stateFile, failure, errorCount: errors.length };
+  const result = { step: stem, ok: !failure && errors.length === 0, screenshot: pictured ? screenshot : null, stateFile, failure, errorCount: errors.length };
   await appendFile(resolve(output, 'steps.jsonl'), `${JSON.stringify(result)}\n`);
   await writeFile(resolve(output, 'run.json'), JSON.stringify({ ...config, url: page.url(), steps: step, failedSteps, errors, status: 'running' }, null, 2));
   emit(arg('replay', null) ? result : { ...result,
@@ -367,7 +395,7 @@ async function execute(command) {
   }
   await appendFile(resolve(output, 'actions.jsonl'), `${JSON.stringify(command)}\n`);
   let failure = null;
-  const inspectOnly = ['observe', 'assert', 'quit', 'pause', 'camera'].includes(command.type);
+  const inspectOnly = ['observe', 'screenshot', 'assert', 'quit', 'pause', 'camera'].includes(command.type);
   try {
     if (command.type === 'pause') {
       if (continuous) throw new Error('Pause requires starting without --continuous.');
@@ -401,9 +429,13 @@ try {
     ...(process.argv.includes('--video') ? { recordVideo: { dir: resolve(output, 'video'), size: { width: 1440, height: 900 } } } : {}) });
   // Fake time can make adaptive resolution blur captures for artificial stalls.
   // Keep paused visual reviews at a fixed quality; real-time runs default to auto.
-  await context.addInitScript(({ quality }) => localStorage.setItem('ghosts-game.tuning.v1', JSON.stringify({
-    schemaVersion: 6, values: { graphicsQuality: quality, pixelRatioCap: 1 },
-  })), { quality });
+  await context.addInitScript(({ quality, lowgfx }) => localStorage.setItem('ghosts-game.tuning.v1', JSON.stringify({
+    schemaVersion: 6,
+    values: {
+      graphicsQuality: lowgfx ? 'performance' : quality, pixelRatioCap: 1,
+      ...(lowgfx ? { shadowsEnabled: false, postEnabled: false, tuftAmount: 0 } : {}),
+    },
+  })), { quality, lowgfx });
   if (process.argv.includes('--trace')) await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
   page = await context.newPage();
   if (offline) {
@@ -432,6 +464,7 @@ try {
   if (!continuous) await page.clock.install();
   const url = new URL(server.url);
   url.searchParams.set('playtest', '1');
+  if (!streaming) url.searchParams.set('fullPark', '1');
   url.searchParams.set('seed', String(seed));
   url.searchParams.set('zone', scenario.zone);
   await page.goto(url.href, { waitUntil: 'domcontentloaded' });
@@ -441,7 +474,7 @@ try {
     if (await appointment.count() !== 1) throw new Error(`${scenario.patient} is absent with seed ${seed}; use this scenario's default seed.`);
     await appointment.click();
     await page.getByRole('button', { name: `Ask ${scenario.patient} to return`, exact: false }).click();
-    await page.getByRole('button', { name: 'Continue', exact: true }).waitFor();
+    await page.getByLabel('Ask in your own words', { exact: true }).waitFor();
     await waitForScene();
   }
   if (scenario.hour !== undefined) await page.evaluate((hour) => __game.set('timeOfDay', hour), scenario.hour);

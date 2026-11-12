@@ -4,6 +4,10 @@ Use the gameplay runner for changes to the player experience. It runs the
 ordinary game with the HUD, appointments, conversations, and consultation UI.
 The separate `?shot=1` harness is for composed art captures.
 
+For play without a browser (consultations and whole days as text, batch
+runs, and model players), see [agent-play.md](agent-play.md). It is far
+faster, and it cannot show what the game looks like.
+
 ## Setup
 
 From the repository root:
@@ -41,8 +45,6 @@ tool, use a persistent session with a PTY and send subsequent commands to that
 session. Do not start a browser for each action.
 
 ```jsonl
-{"type":"click","name":"Continue"}
-{"type":"click","name":"I should ask what happens before, during, and after each attack.","exact":false}
 {"type":"click","name":"Ask how the attacks start, how long they last, and what she feels.","exact":false}
 {"type":"observe"}
 {"type":"press","key":"Tab"}
@@ -91,6 +93,24 @@ patient's expression weights.
 {"type":"resize","width":390,"height":844}
 {"type":"assert","selector":".ghud-travel-menu","visible":false}
 ```
+
+Three commands stand for several clicks each, using the same buttons a
+player uses:
+
+```jsonl
+{"type":"travel","to":"Your Consulting Room"}
+{"type":"see-patient","name":"Carmela Russo"}
+{"type":"ask","text":"What medicines do you take?"}
+```
+
+Add `--text` when the run is about game logic. Commands then return state
+and visible text without a screenshot, which is several times faster per
+step; send `{"type":"screenshot"}` when a picture is needed. A failed step
+still saves one. `--lowgfx` also turns off shadows, post-processing, and
+grass. Loading the game takes most of a short run either way.
+
+Each capture's state file includes `casebook`, the saved visit records, so a
+replay's diagnosis, prescription, and outcome can be read without the screen.
 
 Click defaults to an exact button name. Set `role` for another accessible role,
 `exact:false` for a partial name, or `selector` for a CSS target. An ambiguous
@@ -213,6 +233,23 @@ This replay places the physician at the first ladder, then climbs, clears all
 three gaps with ordinary movement keys, and climbs back down. A `move` command
 can press Space at `jumpAt` and release its keys at `until`, using a world
 axis and an `above` or `below` position. The replay checks each landing height.
+
+Use the streaming replay to walk out of the southeast entrance from the
+opening frame, then check that the Plaza vendor offers an apple.
+
+```sh
+node game/scripts/gameplay-playtest.mjs --scenario=park --streaming --continuous --offline \
+  --replay=game/scripts/playthroughs/park-stream.jsonl
+```
+
+The other park replays request all districts before starting so their
+teleports find the features they inspect. For the cold start and frame times
+around the first district crossing, run the timing check against a production
+preview.
+
+```sh
+node game/scripts/park-stream-playtest.mjs --url=http://127.0.0.1:5175 --mbps=20
+```
 
 ## Motion and continuous play
 
