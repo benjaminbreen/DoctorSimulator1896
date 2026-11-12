@@ -108,6 +108,10 @@ try {
     }
     // Lights, shadows and fine textures settle over the next few frames.
     await page.waitForTimeout(1500);
+    // Checked again at the last moment: a dev-server reload during the wait
+    // would otherwise be photographed as a half-built room.
+    await ready();
+    if (view.patient) await page.getByLabel('Ask in your own words', { exact: true }).waitFor();
     const hide = view.hud ? null
       : await page.addStyleTag({ content: 'body *:not(canvas):not(:has(canvas)) { visibility: hidden !important; opacity: 0 !important; }' });
     await page.screenshot({ path: resolve(root, set, `${view.id}.png`) });

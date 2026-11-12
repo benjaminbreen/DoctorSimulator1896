@@ -510,3 +510,33 @@ park view across runs, so single runs cannot rank small changes. The stable
 findings were relative: the pond view costs about three times the plaza
 (the reflection redraws the scene), and ambient occlusion is about 40% of the
 office frame.
+
+## November 11 frame cost by switch
+
+`game/scripts/frame-ab.mjs` alternates one switch with the baseline in a
+single session. Medians at 1440 × 900, DPR 2, Quality, on an M5 Pro:
+
+| View | Switch off | Frame saved |
+| --- | --- | ---: |
+| Office (11 ms) | ambient occlusion | 54% |
+| Office | all post-processing | 66% |
+| Office | bloom | 12% |
+| Office | shadows | 6% |
+| Pond (13 ms) | shadows | 23% |
+| Pond | instanced meshes (mostly trees) | 21% |
+| Pond | skinned figures | 11% |
+| Pond | water surface | 7% |
+| Pond | water reflection | 2% |
+
+The pond reflection is already throttled and is not worth more work; the
+earlier note that it triples the pond frame was wrong. Ambient occlusion now
+uses 8 samples and a plain upsample, which measured 1.9 ms and 1.4 ms of the
+office frame separately. The combined saving was not re-measured.
+
+The Hopper paint style costs 9% more than the plain picture in the park and
+13% more in the office at its default 0.75 render scale. With it on, turning
+ambient occlusion off saves 27% of the office frame, a 0.6 render scale 29%,
+and three brush samples instead of four 15%.
+
+Measure with the display awake. Once it slept, single captures stalled for
+minutes and frame times drifted.
