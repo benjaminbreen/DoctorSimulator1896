@@ -10,6 +10,8 @@ import { examinationFocus, subscribeExamination } from '../consultation/examPres
 import { HopperPaintPass } from './hopperPaint.js';
 import { SeuratPaintPass } from './seuratPaint.js';
 import { hopperFigure, hopperSurface } from './hopperShading.js';
+import { StageSetEffect, stageSetMounted, stageSetTarget } from './stageSet.js';
+import { subscribePlayer } from '../world/player.js';
 
 // The authored warm cast: period-photograph warmth without disturbing the HDR
 // balance that bloom reads from. Outdoors only — the gaslit interiors are
@@ -48,6 +50,7 @@ class WarmGradeEffect extends Effect {
   }
 }
 const WarmGrade = wrapEffect(WarmGradeEffect);
+const StageSet = wrapEffect(StageSetEffect);
 
 const scratchColor = new Color();
 
@@ -110,8 +113,22 @@ function useTuning(runtime, id) {
   return value;
 }
 
+// Expanded neurasthenia (stageSet.js) joins the chain only while the nerves
+// are high enough to show it, or the preview slider is up.
+function useStageSet(runtime) {
+  const [mounted, setMounted] = useState(() => stageSetMounted(runtime.values));
+  useEffect(() => {
+    const update = () => setMounted(stageSetMounted(runtime.values));
+    const stopPlayer = subscribePlayer(update);
+    const stopTuning = runtime.onChange(update);
+    return () => { stopPlayer(); stopTuning(); };
+  }, [runtime]);
+  return mounted;
+}
+
 export default function Effects({ runtime, indoors }) {
   const composerRef = useRef();
+  const stageSet = useStageSet(runtime);
   const examineFocus = useExamineFocus();
   const painted = useTuning(runtime, 'paintStyle') !== 'off';
   const dots = useTuning(runtime, 'paintMethod') === 'dots';
@@ -132,9 +149,10 @@ export default function Effects({ runtime, indoors }) {
   const multisampling = dpr >= 1.5 ? 0 : 2;
   const vignetteBase = indoors ? 0.55 : 0.24;
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     const composer = composerRef.current;
     if (!composer) return;
+    let stage = null;
     let bloom = null;
     let ao = null;
     let grade = null;
@@ -144,12 +162,14 @@ export default function Effects({ runtime, indoors }) {
         if (effect instanceof BloomEffect) bloom = effect;
         else if (effect instanceof VignetteEffect) vignette = effect;
         else if (effect instanceof WarmGradeEffect) grade = effect;
+        else if (effect instanceof StageSetEffect) stage = effect;
       }
       // n8ao keeps its settings on a config object rather than on uniforms.
       if (pass.configuration?.aoRadius !== undefined) ao = pass;
     }
 
     const values = runtime.values;
+    stage?.advance(camera, delta, stageSetTarget(values), indoors);
     // Only for this frame's scene render; the mask pass zeroes them again
     // (hopperShading.js).
     const on = hopperPass ? 1 : 0;
@@ -241,6 +261,8 @@ export default function Effects({ runtime, indoors }) {
       {/* Mounted indoors too so the settings menu's contrast slider works
           everywhere; at default contrast the indoor pass is a no-op. */}
       {runtime.values.gradeEnabled ? <WarmGrade /> : <></>}
+      {/* Before the vignette, so the dark set still falls off at the edges. */}
+      {stageSet ? <StageSet /> : <></>}
       {/* The exterior already has strong edge contrast from sky, buildings,
           and the HUD. A lighter vignette keeps facade detail out of black. */}
       {runtime.values.vignetteEnabled ? (

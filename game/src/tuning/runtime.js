@@ -83,6 +83,10 @@ const MIGRATIONS = {
     values.paintStyle = 'hopper-light';
     for (const id of Object.keys(values)) if (isPaintParameter(id)) delete values[id];
   },
+  // Clustered trees became the default.
+  13: (values) => {
+    if (values.treeStyle === 'rounded') values.treeStyle = 'clustered';
+  },
 };
 
 export function migrateStoredTuning(stored, schema) {

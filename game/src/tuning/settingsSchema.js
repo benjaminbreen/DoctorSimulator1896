@@ -6,7 +6,7 @@ export const STARTING_ZONE = 'central-park';
 export const STARTING_TIME = 9.5;
 
 export const settingsSchema = {
-  version: 12,
+  version: 13,
   groups: [
     {
       id: 'world',
@@ -290,9 +290,14 @@ export const settingsSchema = {
         // Choosing a style writes its preset over the paint sliders below
         // (tuning/paintStyles.js). 'hopper-light' is the schema defaults.
         { id: 'paintStyle', label: 'Paint style', type: 'select', options: ['off', 'hopper-light', 'hopper', 'hopper-planes', 'hopper-strokes', 'seurat'], default: 'hopper-light' },
+        // Expanded neurasthenia (scene/stageSet.js): above 82 nerves the world
+        // drains into a dark stage set with a follow spot. The preview slider
+        // forces the effect at any nerve level, for looking at it.
+        { id: 'expandedNeurasthenia', label: 'Expanded neurasthenia', type: 'toggle', default: false },
+        { id: 'stageSetPreview', label: 'Stage set preview', type: 'range', min: 0, max: 1, step: 0.05, default: 0 },
         // Rounded and clustered: simple trees that never swap for leaf models.
         // Clustered is shorter, with a crown of round balls set low on the trunk.
-        { id: 'treeStyle', label: 'Trees', type: 'select', options: ['rounded', 'clustered', 'detailed'], default: 'rounded', mode: 'rebuild' },
+        { id: 'treeStyle', label: 'Trees', type: 'select', options: ['rounded', 'clustered', 'detailed'], default: 'clustered', mode: 'rebuild' },
         { id: 'buildingDetail', label: 'Street building detail', type: 'select', options: ['simple', 'full'], default: 'simple', mode: 'rebuild' },
       ],
     },

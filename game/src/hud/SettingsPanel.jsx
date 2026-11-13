@@ -12,7 +12,7 @@ import './settings.css';
 
 // The tuning parameters this panel owns. Restore Defaults resets these and
 // nothing else, so a player cannot wreck the dev tuning from here.
-const TUNING_IDS = ['graphicsQuality', 'paintStyle', 'exposure', 'contrast', 'vignetteAmount', 'fov', 'shadowsEnabled', 'lookSensitivity', 'invertY'];
+const TUNING_IDS = ['graphicsQuality', 'paintStyle', 'exposure', 'contrast', 'vignetteAmount', 'fov', 'shadowsEnabled', 'expandedNeurasthenia', 'lookSensitivity', 'invertY'];
 
 const GRAPHICS_QUALITY = [
   { value: 'auto', label: 'Auto' },
@@ -219,6 +219,11 @@ export default function SettingsPanel({ open, onClose, runtime, worldClock }) {
               label="Shadows"
               on={values.shadowsEnabled}
               onToggle={() => tune('shadowsEnabled')(!values.shadowsEnabled)}
+            />
+            <ToggleRow
+              label="Expanded neurasthenia"
+              on={values.expandedNeurasthenia}
+              onToggle={() => tune('expandedNeurasthenia')(!values.expandedNeurasthenia)}
             />
           </section>
 

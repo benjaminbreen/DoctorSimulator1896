@@ -3,6 +3,7 @@ import { getPlayer, NEURASTHENIA_RECOVERY_TARGET, subscribePlayer } from '../wor
 import { requestFastTravel, travelMinutesBetween } from '../world/travel.js';
 import { notice } from '../world/notices.js';
 import { neurastheniaVisual } from './neurastheniaVisual.js';
+import { stageSetTarget } from '../scene/stageSet.js';
 import { useDismissableOverlay } from './useDismissableOverlay.js';
 import './neurasthenia.css';
 
@@ -13,6 +14,13 @@ export default function NeurastheniaCrisis({ runtime, worldClock, consultationAc
   const [acknowledged, setAcknowledged] = useState(false);
   const visual = neurastheniaVisual(player.neurasthenia);
   const crisis = Boolean(player.neurastheniaCrisis);
+  // The stage set darkens the picture itself, so the closing purple iris
+  // mostly steps aside for it rather than hiding the spotlight.
+  const [expanded, setExpanded] = useState(runtime.values.expandedNeurasthenia);
+  useEffect(() => runtime.onChange((id, value) => {
+    if (id === 'expandedNeurasthenia') setExpanded(value);
+  }), [runtime]);
+  const irisScale = expanded ? 1 - 0.7 * stageSetTarget(runtime.values, player.neurasthenia) : 1;
   const showCard = crisis && !consultationActive && !acknowledged;
   const cardRef = useDismissableOverlay(showCard, seekRelief);
 
@@ -36,7 +44,7 @@ export default function NeurastheniaCrisis({ runtime, worldClock, consultationAc
         <div
           className={`neurasthenia-vision${crisis ? ' is-crisis' : ''}`}
           style={{
-            '--nerves-opacity': visual.opacity,
+            '--nerves-opacity': visual.opacity * irisScale,
             '--nerves-aperture': `${visual.aperture}%`,
             '--nerves-blur': `${visual.blur}px`,
           }}

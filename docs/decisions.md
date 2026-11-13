@@ -140,8 +140,9 @@ conflict. The plan and first results are in [case-cards.md](case-cards.md).
 - The game is drawn as a painting, not as a photograph. Light Hopper is the
   default paint style; the others (full Hopper, flat planes, brushwork, Seurat)
   are in the settings menu, and paint can be turned off. Park trees are simple
-  rounded shapes by default, one outline per species; a second simple style,
-  'clustered' (shorter, with a fuller crown), is in the tuning list to compare. The styles are new looks
+  shapes that never swap for leaf models. The default style is 'clustered'
+  (shortened, with a full crown of round balls); the earlier 'rounded' style
+  and the detailed leaf models are in the tuning list. The styles are new looks
   made for the game, not claims about either painter.
 - Buildings do not change as the player approaches (2026-11-12). Ordinary
   street buildings have one version, built when the park loads. Landmarks

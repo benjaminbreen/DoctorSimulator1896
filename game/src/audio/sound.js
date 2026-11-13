@@ -156,6 +156,14 @@ const EFFECTS = {
     tone({ frequency: 523.25, duration: 0.28, gain: 0.1 });
     tone({ frequency: 659.25, duration: 0.4, gain: 0.12, when: 0.12 });
   },
+  // A big lamp struck in an empty hall: the switch, the thump, then the hum.
+  'stage-lamp': (level) => {
+    noise({ duration: 0.03, gain: 0.16 * level, highpass: 900, lowpass: 5200 });
+    tone({ frequency: 62, duration: 0.5, gain: 0.2 * level, type: 'triangle', when: 0.02 });
+    noise({ duration: 0.9, gain: 0.03 * level, highpass: 60, lowpass: 420, when: 0.03, attack: 0.02 });
+    tone({ frequency: 120, duration: 2.6, gain: 0.03 * level, type: 'sawtooth', when: 0.08 });
+    tone({ frequency: 240, duration: 2.2, gain: 0.012 * level, when: 0.08 });
+  },
   // A card being set down: paper brush, then a low respectful chime.
   'event-card': () => {
     noise({ duration: 0.07, gain: 0.05, highpass: 700 });
