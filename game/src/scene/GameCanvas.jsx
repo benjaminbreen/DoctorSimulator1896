@@ -49,6 +49,7 @@ import { consultationSeatFraming } from '../consultation/seatFraming.js';
 import {
   graphicsSettingsForDevice,
   MOBILE_CONTEXT_RECYCLE_DELAY_MS,
+  MOBILE_TEXTURE_SIZE_CAP,
   shouldRecycleWebGLContextOnTravel,
   webGLContextKey,
 } from './mobileGraphics.js';
@@ -358,6 +359,11 @@ export default function GameCanvas({
         // Darwin's lesson: PCFSoft silently loses filtering in recent three,
         // and PCF is the only type that honors shadow.radius.
         gl.shadowMap.type = THREE.PCFShadowMap;
+        // The shadow map read this limit when the renderer was built, so only
+        // image textures are affected. Compressed (KTX2) textures are skipped.
+        if (recycleOnTravel) {
+          gl.capabilities.maxTextureSize = Math.min(gl.capabilities.maxTextureSize, MOBILE_TEXTURE_SIZE_CAP);
+        }
       }}
     >
       <SceneContents
@@ -681,6 +687,14 @@ function SceneContents({
   const onParkJobReady = useCallback(id => {
     if (/:(structure|trees|props|landmark)(:|$)/.test(id)) setParkParts(previous => new Set([...previous, id]));
   }, []);
+  const onParkJobUnload = useCallback(id => {
+    setParkParts(previous => {
+      if (!previous.has(id)) return previous;
+      const next = new Set(previous);
+      next.delete(id);
+      return next;
+    });
+  }, []);
   const onParkStreamComplete = useCallback(() => {
     const elapsedMs = Math.round(performance.now() - bootStartedAt.current);
     gameDebug.stats.boot = { zone: blueprint.id, stage: 'park-streamed', elapsedMs, playable: true, complete: true };
@@ -769,7 +783,9 @@ function SceneContents({
               </Stage>
 
               <ParkStream jobs={parkJobs} full={fullPark} eager={eagerPark} enabled={coreReady && avatarReady}
-                Stage={Stage} onReady={onParkJobReady} onComplete={onParkStreamComplete} />
+                // deferIdleActors is true only on constrained phones.
+                unloadMargin={graphics.deferIdleActors ? 25 : null}
+                Stage={Stage} onReady={onParkJobReady} onUnload={onParkJobUnload} onComplete={onParkStreamComplete} />
               <Suspense fallback={null}><ColliderDebug room={room} runtime={runtime} /></Suspense>
             </Physics>
           </Suspense>

@@ -11,11 +11,16 @@ function distanceToJob(position, job) {
 }
 
 // One mounted job at a time keeps file decoding and GPU preparation from
-// competing with each other. Completed districts stay mounted to keep state.
+// competing with each other. Completed districts stay mounted to keep state,
+// except on phones (unloadMargin set): there a job unmounts once the player is
+// unloadMargin beyond its range, because a fully loaded park outruns the GPU.
 // Eager (playtests) runs several at once: frame pacing does not matter there.
-export default function ParkStream({ jobs, full, eager, enabled, Stage, onReady, onComplete }) {
+export default function ParkStream({ jobs, full, eager, enabled, unloadMargin, Stage, onReady, onUnload, onComplete }) {
   const [started, setStarted] = useState([]);
   const finished = useRef(new Set());
+  // Separate from finished so an unloaded job still counts toward completion.
+  const everFinished = useRef(new Set());
+  const nextUnloadAt = useRef(0);
   const active = useRef(new Set());
   const nextAt = useRef(0);
   const nextWarmAt = useRef(0);
@@ -41,6 +46,20 @@ export default function ParkStream({ jobs, full, eager, enabled, Stage, onReady,
       if (target) {
         warmed.current.add(target.warmKey);
         target.preload().catch(() => {});
+      }
+    }
+    if (unloadMargin && !full && !eager && clock.elapsedTime >= nextUnloadAt.current) {
+      nextUnloadAt.current = clock.elapsedTime + 1;
+      const far = schedule.filter(job => finished.current.has(job.id) && Number.isFinite(job.range)
+        && distanceToJob(position, job) > job.range + unloadMargin);
+      if (far.length) {
+        for (const job of far) {
+          finished.current.delete(job.id);
+          onUnload(job.id);
+        }
+        const dropped = new Set(far.map(job => job.index));
+        setStarted(current => current.filter(index => !dropped.has(index)));
+        gameDebug.stats.parkStream.ready = [...finished.current];
       }
     }
     if (active.current.size >= (eager ? 6 : 1) || (!eager && clock.elapsedTime < nextAt.current)) return;
@@ -76,7 +95,9 @@ export default function ParkStream({ jobs, full, eager, enabled, Stage, onReady,
     gameDebug.stats.parkStream.active = [...active.current].at(-1) ?? null;
     nextAt.current = time.current + .12;
     onReady(job.id);
-    if (finished.current.size === schedule.length) onComplete();
+    const first = !everFinished.current.has(job.id);
+    everFinished.current.add(job.id);
+    if (first && everFinished.current.size === schedule.length) onComplete();
   }, [onComplete, onReady, schedule]);
 
   return started.map(index => (

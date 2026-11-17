@@ -44,6 +44,11 @@ const QUALITY_PROFILES = {
 // destination starts allocating its own framebuffer, shadows, and textures.
 export const MOBILE_CONTEXT_RECYCLE_DELAY_MS = 1500;
 
+// The park's textures decode to about 400 MB at full size, and iPhone Safari
+// restarts the page well before that. three downscales any image larger than
+// capabilities.maxTextureSize at upload, so lowering it there caps every map.
+export const MOBILE_TEXTURE_SIZE_CAP = 512;
+
 // Touch-first phones and tablets have a much tighter WebGL memory budget than
 // laptops. Keep desktop zone caching, but let these devices release the old
 // context before the next zone uploads its textures and render targets.
