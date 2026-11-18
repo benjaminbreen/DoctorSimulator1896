@@ -6,6 +6,7 @@ import { lazy, Suspense } from 'react';
 // A different game (Shakespeare's London, say) ships its own feature
 // components and zone lists against the same seam.
 const FEATURES = {
+  'dane-classroom': lazy(() => import('./DaneClassroom.jsx')),
   backdrop: lazy(() => import('./Backdrop.jsx')),
   'street-surfaces': lazy(() => import('./StreetSurfaces.jsx')),
   'street-dressing': lazy(() => import('./StreetDressing.jsx')),

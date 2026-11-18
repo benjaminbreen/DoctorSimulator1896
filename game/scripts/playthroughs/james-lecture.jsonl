@@ -1,0 +1,25 @@
+{"type":"place-player","position":[-0.5,0,5.57],"yaw":3.14159}
+{"type":"press","key":"KeyE"}
+{"type":"click","name":"Attend lecture"}
+{"type":"assert","selector":".jlecture-caption"}
+{"type":"place-player","position":[-2.75,0,-0.81],"yaw":0.24}
+{"type":"press","key":"KeyQ"}
+{"type":"assert","text":"Your question for Professor James"}
+{"type":"fill","label":"Your question for Professor James","value":"If the first movement is a reflex, how does the child ever intend to do it?"}
+{"type":"click","name":"Ask"}
+{"type":"assert","text":"Ask a follow-up"}
+{"type":"fill","label":"Ask a follow-up","value":"Could that still happen with no pleasure from the object?"}
+{"type":"click","name":"Ask"}
+{"type":"assert","text":"Could that still happen with no pleasure from the object?"}
+{"type":"click","name":"Return to the lecture"}
+{"type":"assert","text":"Back to the hand on the desk."}
+{"type":"wait","ms":9000}
+{"type":"assert","text":"Raise a hand"}
+{"type":"wait","ms":22000}
+{"type":"camera","position":[-2.31,1.71,-1.18],"target":[-3.99,1.47,-4.17],"fov":48}
+{"type":"click","name":"Pause"}
+{"type":"place-player","position":[4.45,0,5.27],"yaw":3.14159}
+{"type":"press","key":"KeyE"}
+{"type":"place-player","position":[-0.5,0,5.57],"yaw":3.14159}
+{"type":"press","key":"KeyE"}
+{"type":"assert","text":"Resume lecture"}

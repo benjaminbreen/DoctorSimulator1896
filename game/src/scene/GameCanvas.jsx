@@ -662,17 +662,17 @@ function SceneContents({
     const elapsedMs = Math.round(now - bootStartedAt.current);
     const label = room.exterior ? 'core' : interiorStageLabels[rendered];
     const complete = !room.exterior && rendered >= interiorStageLabels.length - 1;
-    gameDebug.stats.boot = { zone: blueprint.id, stage: label, elapsedMs, playable: !room.exterior, complete };
+    // The flashback needs its teacher and board, which both arrive in the prop stage.
+    const playableStage = zoneId === 'dane-hall' ? 2 : 0;
+    gameDebug.stats.boot = { zone: blueprint.id, stage: label, elapsedMs, playable: !room.exterior && rendered >= playableStage, complete };
     globalThis.performance?.mark?.(`${bootTag}:boot:${label}`);
     console.info(`[${bootTag}-boot] ${label} ${elapsedMs}ms`);
-    if (rendered === 0) {
-      setCoreReady(true);
-      if (!room.exterior) {
-        performance.mark('room:boot:playable');
-        onPlayable?.(zoneId);
-      }
-    }
+    if (rendered === 0) setCoreReady(true);
     if (room.exterior) return;
+    if (rendered === playableStage) {
+      performance.mark('room:boot:playable');
+      onPlayable?.(zoneId);
+    }
     if (complete) { setBootComplete(true); return; }
     if (advanceTimer.current !== null) clearTimeout(advanceTimer.current);
     // A short quiet frame between batches makes the progress visible and
@@ -846,7 +846,7 @@ function SceneContents({
               <SootStains room={room} />
               {/* A room placed in the built world sees the real thing; a
                   standalone one gets a procedural sky and skyline. */}
-              {!zone.interior?.building && (
+              {!zone.interior?.building && zoneId !== 'dane-hall' && (
                 <WindowSky holes={room.openingHoles} room={room} runtime={runtime} />
               )}
               {zone.interior?.building && (
@@ -861,14 +861,14 @@ function SceneContents({
               <WindowGlass holes={room.windowHoles} runtime={runtime} />
               {dressing && <Curtains holes={room.windowHoles} dressing={dressing} />}
               <Portiere holes={room.openingHoles} />
-              <LightShafts room={room} runtime={runtime} dressing={dressing} />
+              {zoneId !== 'dane-hall' && <LightShafts room={room} runtime={runtime} dressing={dressing} />}
             </Stage>
 
             <Stage active={stage >= (office ? 1 : 2)} stage={office ? 1 : 2} onRendered={onStageRendered} streaming={office ? 24 : false}>
               <PropModels items={office?.essentials ?? room.furnitureBoxes.filter((item) => item.model)} />
               <Firebox items={room.furnitureBoxes} visualsOnly={Boolean(office)} />
               {!office && <><InstrumentStage /><ExaminePicker room={room} zone={zone} /></>}
-              <ZoneFeatures zone={zone} runtime={runtime} graphics={graphics} />
+              <ZoneFeatures zone={zone} runtime={runtime} graphics={graphics} suspendTogether={zoneId === 'dane-hall'} />
               <ColliderDebug room={room} runtime={runtime} />
               {office && <OpiumRitual />}
             </Stage>

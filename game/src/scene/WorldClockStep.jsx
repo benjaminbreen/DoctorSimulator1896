@@ -6,6 +6,11 @@ export default function WorldClockStep({ clock, runtime }) {
   useFrame((_, delta) => {
     // Keep civil time honest at a low frame rate. Long stalls are capped at a
     // second, so returning to a suspended tab cannot skip an afternoon.
+    if (runtime.values.zone === 'dane-hall') {
+      runtime.values.timeOfDay = 10.5;
+      runtime.values.dayOfYear = 99;
+      return;
+    }
     clock.tick(Math.min(delta, 1));
     runtime.values.timeOfDay = clock.getVisualHours();
     runtime.values.dayOfYear = clock.getVisualDate().dayOfYear;

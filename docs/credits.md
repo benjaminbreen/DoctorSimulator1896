@@ -391,3 +391,13 @@ credited above. Hair textures and procedural hats/accessories retain their
 previous credits. Historical sources and reconstruction limits are recorded in
 `docs/patient-expansion.md`; museum images are reference-only and are not
 distributed in these assets.
+
+### Dane Hall classroom
+
+The room and its slate follow Harvard University's 1893 exhibition photographs, especially *Interior of a Laboratory Room (Chain-reaction experiment)*. The board texture is a rectified detail of the public-domain plate. The game enlarges the room and arranges it for a lecture. [Harvard's exhibition catalogue](https://archive.org/details/psychologicallab00harv) and [W. O. Krohn's contemporary description](https://psychclassics.yorku.ca/Krohn/report.htm).
+
+The teaching charts adapt public-domain figures published by Wesley Mills after Exner, Horsley and Schäfer in *Popular Science Monthly*, November 1892, pp. 11–12. The view through the windows adapts a public-domain photograph of Harvard Yard, circa 1892, Harvard University Archives, HUV 20. [Cortical diagrams](https://archive.org/details/sim_popular-science_1892-11_42/page/n10) and [Harvard Yard photograph](https://nrs.harvard.edu/urn-3:HUL.ARCH:2641574).
+
+**The Will and Its Alternatives.** This hour in Dane Hall reconstructs a class from W. E. B. Du Bois’s *Philosophy IV* notebook, ca. 1889, W. E. B. Du Bois Papers (MS 312), UMass Amherst, item mums312-b230-i008. Images 35–37 supply the movement and its foreseen end, 38–39 the statistical objection and branching paths, and 41–45 the argument from regret and real alternatives. The chalk diagram O–M–P and the drawing of several paths between two ends adapt Du Bois’s figures. The hour combines material from several meetings. The porter’s two doors, the missed visit, and the classroom wording around those examples were written for the game. [Du Bois’s notebook](https://credo.library.umass.edu/view/full/mums312-b230-i008)
+
+Passages of James’s own prose in the first two sections come from *The Feeling of Effort* (1880). Later sections use his Harvard Divinity School address *The Dilemma of Determinism* (1884), including the walk by Oxford Street or Divinity Avenue and the expert and novice at chess. Text was taken from the local Jamesiana transcriptions and lightly edited for speech. The performance uses the American Michael voice in Kokoro v1.0. Authored questions and returns use the same voice. Improvised answers can use the browser’s English voice. [James’s address](https://www.gutenberg.org/files/26659/26659-h/26659-h.htm) · [Kokoro model card](https://huggingface.co/hexgrad/Kokoro-82M)

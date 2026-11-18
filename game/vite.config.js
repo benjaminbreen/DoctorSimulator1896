@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { loadEnv } from 'vite';
 import { POST as consultPost } from '../api/consult.mjs';
 import { POST as npcDialoguePost } from '../api/npc-dialogue.mjs';
+import { POST as lecturePost } from '../api/lecture-question.mjs';
 import { POST as examinePost } from '../api/examine.mjs';
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
@@ -17,6 +18,7 @@ function serverlessRoutes() {
     ['/api/consult', consultPost],
     ['/api/npc-dialogue', npcDialoguePost],
     ['/api/examine', examinePost],
+    ['/api/lecture-question', lecturePost],
   ];
   return {
     name: 'serverless-routes',
@@ -98,7 +100,7 @@ export default {
   // import from the game's dependency tree in clean monorepo builds.
   resolve: { dedupe: ['three'] },
   // Pre-bundling would inline the wasm again before rapierWasmAsset can see it.
-  optimizeDeps: { exclude: ['@dimforge/rapier3d-compat'] },
+  optimizeDeps: { include: ['three/addons/lights/RectAreaLightUniformsLib.js'], exclude: ['@dimforge/rapier3d-compat'] },
   // PORT lets a second dev server run when 5175 is already taken.
   server: { host: '127.0.0.1', port: Number(process.env.PORT) || 5175, strictPort: true },
 };

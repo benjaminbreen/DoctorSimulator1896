@@ -128,7 +128,7 @@ export default function ControlHelper({ hidden = false, zone }) {
         <kbd>M</kbd> changes view
       </p>
 
-      {!fastTravelUsed && (
+      {!fastTravelUsed && zone !== 'dane-hall' && (
         <p className="control-helper__travel">
           <button type="button" onClick={() => requestHudOverlay('travel')}>Fast Travel</button>
           {' '}reaches the waiting room, consulting room, or Columbia lab.

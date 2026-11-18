@@ -2,7 +2,7 @@
 // not painted assets. Every value shown comes from the civil clock, the zone
 // and landmark tables, or hudState; this component invents nothing.
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import * as THREE from 'three';
 import { gameDebug } from '../debug.js';
 import { parkLandmark } from './landmarks.js';
@@ -38,7 +38,10 @@ import FastTravelMenu from './FastTravelMenu.jsx';
 import { subscribeHudOverlayRequests } from './overlayRequests.js';
 import HeldItemHud from './HeldItemHud.jsx';
 import ItemsDrawer from './ItemsDrawer.jsx';
+
 import './hud.css';
+
+const JamesLecture = lazy(() => import('./JamesLecture.jsx'));
 
 function formatClock(hours) {
   const h24 = Math.floor(hours);
@@ -459,6 +462,18 @@ export default function GameHud({
       `${label} ${delta > 0 ? 'increased' : 'decreased'} by ${Math.abs(Math.round(delta))}`
     )).join('. ')}.`
     : '';
+
+  if (runtime.values.zone === 'dane-hall') {
+    return <div className="ghud">
+      <div className="ghud-memory">
+        <span>Dane Hall</span>
+        <small>Harvard College · 1888–89</small>
+        <button type="button" aria-label="Settings" onClick={() => setOverlay('settings')}><GearIcon /></button>
+      </div>
+      <Suspense fallback={null}><JamesLecture ready={hintsReady} settings={overlay === 'settings'} /></Suspense>
+      <SettingsPanel open={overlay === 'settings'} onClose={closeOverlay} runtime={runtime} worldClock={worldClock} />
+    </div>;
+  }
 
   return (
     <div

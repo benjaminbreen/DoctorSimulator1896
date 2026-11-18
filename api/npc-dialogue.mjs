@@ -3,6 +3,7 @@
 // Luna improvises the person within that. The API key remains in this server
 // process on Vercel and in Vite dev.
 
+import { clientKey, sameOrigin } from '../shared/requestOrigin.mjs';
 import { buildCrowdDefinition } from '../game/src/world/crowdDialogue.js';
 
 const MODEL = 'gpt-5.6-luna';
@@ -174,22 +175,6 @@ function overRateLimit(key, now = Date.now()) {
   }
   entry.count += 1;
   return entry.count > WINDOW_LIMIT;
-}
-
-function clientKey(request) {
-  const forwarded = request.headers.get('x-forwarded-for') || '';
-  return forwarded.split(',')[0].trim() || request.headers.get('x-real-ip') || 'local-npc';
-}
-
-function sameOrigin(request) {
-  const origin = request.headers.get('origin');
-  const host = request.headers.get('host');
-  if (!origin || !host) return false;
-  try {
-    return new URL(origin).host === host;
-  } catch {
-    return false;
-  }
 }
 
 // Speakers exist only in the client's simulation. Their deterministic context

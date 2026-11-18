@@ -5,6 +5,7 @@ import { zones } from '../src/world/zones.js';
 // The scene-side registry (scene/ZoneFeatures.jsx) resolves these ids; the
 // list itself lives with the zone so content stays in world data.
 const KNOWN_FEATURES = [
+  'dane-classroom',
   'backdrop',
   'street-surfaces',
   'street-dressing',

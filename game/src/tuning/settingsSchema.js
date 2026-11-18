@@ -21,6 +21,7 @@ export const settingsSchema = {
             'waiting-room',
             'foyer',
             'cattell-lab',
+            'dane-hall',
             'metropolitan-club-lobby',
             'new-netherland-lobby',
             'central-park',

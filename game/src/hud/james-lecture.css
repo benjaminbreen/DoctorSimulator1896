@@ -1,0 +1,38 @@
+.jlecture {
+  position: absolute; bottom: max(36px, 6%); left: 50%; transform: translateX(-50%);
+  width: min(600px, calc(100% - 32px)); box-sizing: border-box; pointer-events: auto;
+  padding: 13px 19px 12px; border: 1px solid #aa956e; border-top: 2px solid #c3a676;
+  box-shadow: 0 4px 18px #100f0d48; color: #f7eddb; background: #222820f2;
+  font: 14px/1.45 'Libre Caslon Text', Georgia, serif;
+}
+.jlecture h2 { margin: 5px 0 9px; font: 500 24px/1.14 'Cormorant',Georgia,serif; }
+.jlecture-meta,.jlecture-actions,.jlecture-input { display:flex; align-items:center; justify-content:space-between; gap:.65rem; }
+.jlecture-meta { color:#e6d3aa; font: 12px/1.4 Georgia,serif; }
+.jlecture-meta span:first-child { font-variant:small-caps; font-size:15px; letter-spacing:.075em; }
+.jlecture button,.jlecture select { cursor:pointer; color:inherit; font:inherit; }
+.jlecture select { padding:0; border:0; background:transparent; color:#e1cdab; font:italic 13px Georgia,serif; max-width:100%; }
+.jlecture select option { color:#24271f; background:#fcf3de; }
+.jlecture-caption { margin:6px 0 10px; font-size:16px; line-height:1.4; text-wrap:pretty; }
+.jlecture button { padding:4px 10px; border:1px solid #a18c62; border-radius:2px; background:#46503d; }
+.jlecture button:hover,.jlecture button:focus-visible { background:#5b654c; }
+.jlecture button:disabled { opacity:.55; }
+.jlecture-actions { justify-content:flex-start; color:#f7eddb; font-size:12px; }
+.jlecture-actions span { color:#d4c5a7; } .jlecture kbd { margin-left:5px; font:11px Georgia,serif; color:#e3d0aa; }
+.jlecture--question { bottom: max(35px, 8%); max-height:75%; overflow:auto; background:#f3e9cf; color:#302d24; border:2px solid #665f45; box-shadow:0 7px 32px #15170f63; }
+.jlecture--question .jlecture-meta { color:#64543c; border-bottom:1px solid #ad9b71; padding-bottom:6px; }
+.jlecture--question label,.jlecture-turn small { display:block; color:#5e4a33; margin:8px 0 3px; }
+.jlecture--question button { background:#364837; color:#fff5df; }
+.jlecture-input input { min-width:0; flex:1; padding:7px; font:inherit; background:#fffaf0; border:1px solid #8d8064; color:#24231c; }
+.jlecture-turn { max-height:27vh; overflow:auto; }
+.jlecture-turn p { margin:0 0 7px; }
+.jlecture button.jlecture-prompt { margin:8px 8px 0 0; background:transparent; text-align:left; color:#4c412b; border-style:dashed; }
+.jlecture-return { display:block; margin-top:10px; }
+@media (max-width:600px) {
+  .jlecture { bottom:max(100px,18%); padding:8px 12px; }
+  .jlecture-caption { font-size:14px; }
+  .jlecture--question { bottom:8px; max-height:65dvh; }
+}
+/* Keep the general controls card clear of the subtitles on narrower desktops. */
+@media (min-width:601px) and (max-width:1550px) {
+  body:has(.jlecture) .control-helper { bottom:auto; top:75px; }
+}

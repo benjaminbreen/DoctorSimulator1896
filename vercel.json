@@ -4,6 +4,7 @@
   "buildCommand": "npm --prefix game run build",
   "outputDirectory": "game/dist",
   "functions": {
+    "api/lecture-question.mjs": { "maxDuration": 20 },
     "api/consult.mjs": { "maxDuration": 20 },
     "api/npc-dialogue.mjs": { "maxDuration": 20 }
   },

@@ -1,0 +1,14 @@
+{"type":"place-player","position":[-0.5,0,5.57],"yaw":3.14159}
+{"type":"press","key":"KeyE"}
+{"type":"wait","ms":900}
+{"type":"assert","text":"Harvard College · 1888–89"}
+{"type":"move","keys":["KeyW"],"ms":550}
+{"type":"place-player","position":[3.8,0,4.85],"yaw":0}
+{"type":"camera","position":[4.2,1.66,3.35],"target":[-2.5,1.5,-3.3],"fov":66}
+{"type":"camera","position":[-0.86,1.66,-2.49],"target":[-1.62,1.40,-4.03],"fov":40}
+{"type":"camera","position":[-5.37,1.75,-3.4],"target":[1.6,1.0,0.75],"fov":66}
+{"type":"place-player","position":[2.09,0,2.79],"yaw":0}
+{"type":"press","key":"KeyE"}
+{"type":"press","key":"KeyE"}
+{"type":"place-player","position":[4.45,0,5.27],"yaw":3.14159}
+{"type":"press","key":"KeyE"}

@@ -30,6 +30,7 @@ import {
   bookcase, vaseOfFlowers, fallenPetals, labeledBottle, reagentBottleRack, opiumPipe,
 } from './furnishings.js';
 import { labBench } from './instruments.js';
+import { daneHall, notebookTransition } from './daneHall.js';
 import { cattellLabItems } from './cattellLab.js';
 import { lobbyItems } from './lobby.js';
 import { metClubLobbyItems } from './metClubLobby.js';
@@ -37,7 +38,9 @@ import { newNetherlandLobbyItems } from './newNetherlandLobby.js';
 import { blueprintMouldings, friezeBand, ceilingPanel } from './mouldings.js';
 
 export const zones = {
+  'dane-hall': daneHall,
   'consulting-office': {
+    extraTransitions: [notebookTransition],
     blueprint: consultingBlueprint,
     lighting: consultingLighting,
     // A consulting room is a working room: Venetian blinds and shades, not
@@ -48,6 +51,8 @@ export const zones = {
     // not worth hand-authoring as JSON. It stands against the west party wall
     // south of the chimney breast.
     extraItems: [
+      { id: 'harvard-notebook', kind: 'furniture', position: [-0.84, 1.08, 6.15], size: [0.25, 0.035, 0.33], color: '#354539', collider: false },
+      { id: 'harvard-notebook-label', kind: 'wallArt', artTexture: '/textures/dane-hall/notebook.webp', moulding: 'none', pitch: -Math.PI / 2, position: [-0.84, 1.100, 6.15], size: [0.25, 0.33, 0.002], collider: false },
       ...bookcase('bookcase-west', -3.65, 3.1, Math.PI / 2, { height: 2.4, width: 2.2, depth: 0.4 }),
       // The study behind the portière: a working bench under the sconce with
       // the dispensary glass turned label-out, shelving on the party wall,

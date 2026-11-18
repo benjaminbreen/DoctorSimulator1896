@@ -224,7 +224,7 @@ export default function Room({ room, lighting }) {
     // The pack's parquet tile is about 1.6m across; the canvas fallback was
     // authored for 2.4m.
     const tile = mosaic ? 1.0 : (packMaps.floor ? 1.6 : 2.4);
-    texture.repeat.set(room.floor.size[0] / tile, room.floor.size[2] / tile);
+    if (!colors.floorTextureFitsRoom) texture.repeat.set(room.floor.size[0] / tile, room.floor.size[2] / tile);
     return { map: texture };
   }, [room, colors, packMaps]);
   // Annex slabs repeat by their own footprint, or the boards change scale

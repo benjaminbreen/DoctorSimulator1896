@@ -3260,3 +3260,22 @@ button.ghud-plate--time:focus-visible {
     animation: none;
   }
 }
+
+.ghud-memory {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: grid;
+  grid-template-columns: auto 1.8em;
+  align-items: center;
+  column-gap: 1em;
+  padding: .55em .75em .55em 1em;
+  color: #f3e7ca;
+  background: #292820e8;
+  border: 1px solid #9e8966;
+  box-shadow: 0 2px 8px #231e1540;
+  font-family: 'Libre Caslon Text', Georgia, serif;
+}
+.ghud-memory small { grid-row: 2; color: #d7c7a4; font-size: .72em; }
+.ghud-memory button { grid-column: 2; grid-row: 1/3; pointer-events: auto; color: inherit; }
+.ghud-memory svg { width: 1.1em; }
